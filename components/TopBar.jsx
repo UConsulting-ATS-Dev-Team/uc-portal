@@ -1,0 +1,65 @@
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { currentUser, navCounts } from "../data/mockUser.js";
+
+export default function TopBar() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
+  function handleSearchSubmit(event) {
+    event.preventDefault();
+    const query = new FormData(event.target).get("q");
+    navigate(`/search?q=${encodeURIComponent(query || "")}`);
+  }
+
+  return (
+    <header className="topbar">
+      <Link className="topbar__brand" to="/">
+        <span className="topbar__mark">
+          U<span>C</span>
+        </span>
+        <span className="topbar__wordmark">UC Career</span>
+      </Link>
+
+      <form className="topbar__search" onSubmit={handleSearchSubmit}>
+        <input type="search" name="q" placeholder="Search jobs, people, companies…" />
+      </form>
+
+      <div className="topbar__spacer" />
+
+      <div className="topbar__actions">
+        <Link className="topbar__notifications" to="/notifications" aria-label="Notifications">
+          🔔
+          {navCounts.notificationsUnread > 0 && (
+            <span className="topbar__notifications-count">{navCounts.notificationsUnread}</span>
+          )}
+        </Link>
+
+        <div>
+          <button
+            type="button"
+            className="topbar__avatar"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+          >
+            {currentUser.initials}
+          </button>
+          {menuOpen && (
+            <div className="topbar__menu" role="menu" onMouseLeave={() => setMenuOpen(false)}>
+              <Link to="/profile" role="menuitem" onClick={() => setMenuOpen(false)}>
+                Profile
+              </Link>
+              <Link to="/profile" role="menuitem" onClick={() => setMenuOpen(false)}>
+                Settings
+              </Link>
+              <Link to="/sign-in" role="menuitem" onClick={() => setMenuOpen(false)}>
+                Sign out
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}

@@ -1,20 +1,131 @@
 import { Routes, Route } from "react-router-dom";
+import NavShell from "./components/NavShell.jsx";
+import Placeholder from "./pages/Placeholder.jsx";
 
-// Placeholder route — real pages are added under pages/ once the wireframe
-// review is confirmed (see CLAUDE.md).
-function Placeholder() {
-  return (
-    <main style={{ padding: "2rem" }}>
-      <h1>UC Career</h1>
-      <p>Scaffolding only. Pages are built next, from design/handoff/.</p>
-    </main>
-  );
-}
-
+// Each route below is a stub until it's built for real, per the build
+// order in CLAUDE.md (shell → auth → onboarding → jobs → job detail →
+// tracker, then the rest). Replace a route's element as each screen lands.
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Placeholder />} />
+      <Route
+        path="/"
+        element={
+          <NavShell>
+            <Placeholder title="Home / Career Dashboard" screenId="1a" />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/jobs"
+        element={
+          <NavShell>
+            <Placeholder title="Jobs" screenId="1d" />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/applications"
+        element={
+          <NavShell>
+            <Placeholder title="Applications" screenId="1f / 1g / 1j" />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/network"
+        element={
+          <NavShell>
+            <Placeholder title="Network" screenId="1h" />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/feed"
+        element={
+          <NavShell>
+            <Placeholder title="Feed" screenId="2a" />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/companies"
+        element={
+          <NavShell>
+            <Placeholder title="Companies" screenId="2b" />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/resources"
+        element={
+          <NavShell>
+            <Placeholder title="Career Resources" screenId="2d" />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <NavShell>
+            <Placeholder title="My Profile" screenId="2g" />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/notifications"
+        element={
+          <NavShell>
+            <Placeholder title="Notifications" screenId="2f" />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/search"
+        element={
+          <NavShell>
+            <Placeholder title="Search results" screenId="3b" />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/sign-in"
+        element={<Placeholder title="Sign in" screenId="3a" />}
+      />
+
+      {/* Leadership only — see components/NavRail.jsx for the visibility gate */}
+      <Route
+        path="/admin"
+        element={
+          <NavShell>
+            <Placeholder title="Admin Dashboard" screenId="2h" />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/admin/opportunities"
+        element={
+          <NavShell>
+            <Placeholder title="Opportunities queue" screenId="2h" />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/admin/members"
+        element={
+          <NavShell>
+            <Placeholder title="Members" screenId="2h" />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/admin/content"
+        element={
+          <NavShell>
+            <Placeholder title="Content management" screenId="2h" />
+          </NavShell>
+        }
+      />
     </Routes>
   );
 }

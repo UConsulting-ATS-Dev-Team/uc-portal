@@ -241,8 +241,18 @@ Structure:
 - `styles/tokens.css` — design tokens pulled from the wireframe handoff
 - `styles/global.css` — base reset/typography
 - `assets/` — icons, placeholder logos, etc.
-- Mock data (users, opportunities, applications, etc.) will live in its
-  own module once pages are built — no backend, no real auth.
+- `data/` — mock data modules (starting with `mockUser.js`: current user,
+  nav counts, club stats) — no backend, no real auth.
+
+## Progress
+
+- **Shell built** — `components/NavShell.jsx` (+ `TopBar.jsx`, `NavRail.jsx`)
+  implements the nav shell spec above and wraps every route in `App.jsx`.
+  Every rail item, the leadership section (gate it by editing
+  `data/mockUser.js`'s `role`), search, notifications, and the avatar menu
+  are wired to real routes — most just render `pages/Placeholder.jsx`
+  until built for real, next in this order: auth → onboarding → jobs →
+  job detail → tracker.
 
 Run locally:
 ```bash
