@@ -1,0 +1,54 @@
+/* Design tokens observed in design/handoff/ (Industry design system).
+   UC's real brand colors/logo are still TBD (see CLAUDE.md) — accent is
+   a single swappable token, not a commitment to steel blue. */
+
+:root {
+  --color-ground: #f2f2f3;
+  --color-surface: #ffffff;
+  --color-text: #1d1f20;
+  --color-text-secondary: #5d5d60;
+  --color-text-muted: #7a7a7d;
+  --color-placeholder: #b7b7ba;
+  --color-neutral: #98989b;
+
+  --color-border: #d4d4d7;
+  --color-border-inner: #e7e7ea;
+  --color-table-header: #f5f5f8;
+
+  --color-accent: #5980a6;
+  --color-accent-deep: #41607f;
+  --color-accent-tint: #eaeff4;
+  --color-accent-tint-border: #b7c7d6;
+
+  --font-heading: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --text-meta: 11px;
+  --text-secondary: 12px;
+  --text-body: 13px;
+  --text-kicker: 9.5px;
+  --text-title-min: 22px;
+  --text-title-max: 30px;
+  --text-display-min: 20px;
+  --text-display-max: 46px;
+  --tracking-kicker: 0.12em;
+
+  --space-1: 6px;
+  --space-2: 7px;
+  --space-3: 9px;
+  --space-4: 11px;
+  --space-5: 14px;
+  --space-6: 16px;
+  --space-7: 20px;
+  --space-8: 24px;
+
+  --radius: 0; /* square corners throughout */
+  --border-hairline: 1px solid var(--color-border);
+  --border-accent-emphasis: 3px solid var(--color-accent);
+
+  --nav-topbar-height: 52px;
+  --nav-rail-width: 206px;
+  --nav-rail-width-collapsed: 56px;
+  --filter-column-width: 248px;
+  --right-rail-width: 280px;
+}

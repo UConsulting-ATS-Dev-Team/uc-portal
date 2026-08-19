@@ -1,0 +1,232 @@
+# UC Portal — Project Notes
+
+## Purpose
+
+**UC Career** is a private, members-only career and professional-development
+hub for UConsulting (UC), a university consulting club. It replaces the
+spreadsheets/group-chats/Handshake/Drive mix members currently use with one
+place that carries UC's own private data — which alumni work where, what UC
+applicants actually experienced in interviews, and how past UC members
+performed at each firm.
+
+Two audiences:
+- **Members** (class years ~2026–2029) — find opportunities, track
+  applications, meet alumni, work through learning tracks/certifications.
+- **Leadership** (Exec + Careers Committee) — see aggregate member interest,
+  approve postings, manage content and access.
+
+Three intertwined jobs, not just a job board: **recruiting** (jobs, tracker,
+deadlines), **networking** (alumni directory, coffee chats, messages), and
+**education** (learning tracks, free certifications, resource library).
+Every job/company/resource is annotated with UC's own private data — that
+annotation is the product's differentiator.
+
+This is a **clickable prototype**: no real backend, no real auth, no real
+user data. Interactions (drag-and-drop tracker, live odds recompute, live
+onboarding match counts, filters) should work against mock/in-memory data
+so the flows feel real when clicked through, but nothing here is
+production-secure or persistent beyond the browser session.
+
+## Source
+
+Wireframes: [design/handoff/UC Career Platform Wireframes.dc.html](design/handoff/UC%20Career%20Platform%20Wireframes.dc.html)
+(24 screens, single scrollable canvas, Industry design system) plus its
+handoff [README.md](design/handoff/README.md), which is the authoritative
+spec — this file summarizes it, but defer to the handoff README for exact
+copy, field lists, and behavior detail.
+
+## Navigation shell (shared by every authenticated screen)
+
+- **Top bar** (~52px): UC Career brandmark (left) → global search (~300px,
+  "Search jobs, people, companies…", submits to Global search `3b`) →
+  notifications (unread count) → user avatar menu (profile/settings/sign out).
+- **Left nav rail** (~206px, full height): Home · Jobs · Applications (count
+  badge) · Network · Feed · Companies · Career Resources · My Profile. Below
+  a hairline + "LEADERSHIP" label, visible only to Exec/Careers Committee:
+  Admin Dashboard · Opportunities · Members · Content. Bottom: club stats
+  strip ("142 members · 380 alumni · invite only").
+- Active rail item: tinted background + 2px accent left border + heavier
+  weight. Two alternatives (top-bar-only nav, icon rail w/ contextual
+  column) were explicitly rejected — left rail is final.
+- **Content area**: main column + fixed-width right rail (250–300px) on
+  most screens; Jobs/Companies add a second fixed filter column
+  (230–248px) between nav rail and main content.
+- **Responsive**: desktop/laptop only (1280px+ designed; collapses rail to
+  icons below ~1100px). Below ~900px is explicitly undefined in the
+  wireframes — treat this prototype as desktop-only.
+
+## Page inventory & flow
+
+**Access gate** (`3a`) — Sign in (university Google or email/password) →
+if not on roster, "Not on the roster" request-access state → "Access
+pending" state → once approved, first-time members land in **Onboarding**.
+
+**Onboarding** (`2i`/`2j`, 5 steps + completion) — persistent 5-segment
+progress indicator, "Save & finish later", Back/Continue footer:
+1. You (confirm roster info, optional resume upload)
+2. Industries (rank up to 3, shows UC member/alumni counts per industry)
+3. Roles & locations (role chips, location chips, live "matches 46 open
+   roles / 23 alumni" payoff card that updates as answers change)
+4. Companies (suggested by UC alumni presence, follow toggle)
+5. Timeline (recruiting cycle + "what would help most" → seeds learning
+   tracks)
+   → **Completion** screen (payoff stats + 3 concrete first actions) →
+   routes to Home dashboard.
+
+**Main app** (rail order):
+1. **Home / Dashboard** (`1a`) — welcome card, recommended jobs, recruiting
+   progress (stat strip + attention-needing applications), UC feed preview.
+   Right rail: recommended actions, people to meet, deadlines this week.
+2. **Jobs / job board** (`1d`, *highest priority screen*) — filter column
+   (UC advantage, type, grad year, industry, location/work mode,
+   compensation slider, deadline, company size) + job cards with match
+   score, UC-posted flag, UC-intelligence footer (connections, past-cycle
+   outcomes). Tabs: Recommended / UC-posted / All / Saved.
+   - **Job detail** (`1e`) — header/apply actions, match checklist, **the
+     odds model** (see below), role description, UC recruiting
+     intelligence (stat strip, stage timeline, member interview
+     write-ups). Right rail: UC members at company, prep resources,
+     similar roles.
+3. **Applications tracker** (`1f`/`1g`/`1j`, one page, Board/Table/Timeline
+   toggle, shared stage taxonomy `Interested → Preparing → Applied →
+   Assessment → First round → Final round → Closed`):
+   - Board: 7 stage columns, draggable cards.
+   - Table: sortable rows, CSV export, calendar sync.
+   - Timeline: Gantt-style over the recruiting cycle, rows grouped by
+     stage, draggable bars, dashed projected stages, diamond event marks.
+4. **Network** (`1h`) — alumni/member directory, filters, coffee-chat
+   status, suggested connections.
+   - **Member/alumni profile** (`1i`) — shared UC context, experience,
+     "happy to help with" checklist.
+5. **Feed** (`2a`) — composer (post job/write-up/question/event), tabbed
+   posts, "helpful" reactions (deliberately not "like").
+6. **Companies** (`2b`) — directory with UC-specific filters/stats.
+   - **Company page** (`2c`) — tabs: Overview / Opportunities / UC
+     connections / Recruiting intelligence / Activity.
+7. **Career Resources** (`2d`, the education hub) — categories +
+   skills/certifications nav, recommended tiles, learning tracks, free
+   certifications table, most-used/recently-added resources.
+   - **Resource detail** (`2e`) — contents checklist, UC-specific outcome
+     notes, progress tracking, "log prep time".
+   - **Learning track detail** (`3d`) — 12-step checklist mixing reading,
+     drills, peer sessions, and live events.
+8. **My Profile / preferences** (`2g`) — personal info, ranked/draggable
+   career preferences (drives recommendations), recruiting/privacy
+   settings, quarterly re-confirmation banner.
+
+**Leadership only** (below the "LEADERSHIP" divider):
+- **Admin Dashboard** (`2h`) — KPI strip, "where members want to work" gap
+  analysis, class-year breakdown, opportunity review queue. Admins see
+  **aggregate only, never an individual's application list** — this
+  privacy boundary is explicit in both `2g` and `2h` copy.
+
+**Cross-cutting / utility screens:**
+- **Global search** (`3b`) — tabbed results (All/Jobs/People/Companies/
+  Resources/Feed), grouped by type, diagnostic no-results state.
+- **Action modals** (`3c`) — Request coffee chat · Add application · Post
+  opportunity (goes to Careers Committee review queue) · Contribute to
+  library · Log prep time (shows odds-estimate effect of logging).
+- **Notifications** (`2f`) — Needs action (accent rows w/ inline actions) +
+  lower-density recent activity. Top-bar badge = "Needs action" count.
+- **Messages** (`3f`) — two-pane conversation list + thread, inline shared
+  resource cards.
+- **Empty/first-run states** (`3e`) — pattern: name the situation, explain
+  why in UC terms, quantify what's available, one primary + one secondary
+  action. Never a bare "No data." Applies to Home (first login), empty
+  Applications, zero-result Jobs (diagnostic — names which filter to
+  drop), no-connections Network, and a generic error state.
+
+## The odds model (job detail `1e`) — signature feature
+
+Left panel: headline probability estimate (large, accent) + 3 comparison
+rows (open-market baseline, past UC applicants at that company, member's
+UC percentile) — the baseline comparison is what keeps a low percentage
+from reading as simply discouraging.
+
+Right: factor table — UC track record (30%), Prep logged (25%), Networking
+depth (20%), Profile/resume fit (15%), Timing of application (10%) — each
+with a "where you stand" signal and a contribution bar (accent = strength,
+neutral = weakness). Below it, a "biggest lever" callout naming the
+highest-marginal-value action with a quantified effect
+("→ estimated 38%").
+
+Recomputes whenever inputs change (e.g. logging prep time animates the
+figure). Every number must be traceable to something visible elsewhere in
+the app (no invented/opaque inputs).
+
+**Sparse-data handling — see "Needs clarification" below; not yet
+decided.**
+
+## Design conventions (Industry design system, from the wireframes)
+
+- **Palette** (grayscale + one steel-blue accent — treated as a
+  placeholder token, UC's real brand colors are still TBD): ground
+  `#f2f2f3`, surface `#ffffff`, text `#1d1f20`; accent `#5980a6`, accent
+  deep (text-on-tint) `#41607f`, accent tint `#eaeff4`, accent tint border
+  `#b7c7d6`; neutrals `#d4d4d7` (borders), `#e7e7ea` (inner rules),
+  `#b7b7ba`, `#98989b`, `#7a7a7d` (muted text), `#5d5d60` (secondary
+  text), `#f5f5f8` (table headers / subtle fills).
+- **Type**: Barlow Condensed 600 for headings/numerals, Barlow 400/500 for
+  body. Body 13px, secondary 12px, meta 11px, section kickers 9.5px
+  uppercase (0.12em tracking), page titles 22–30px, display numerals
+  20–46px.
+- **Shape**: square corners everywhere (0 radius), 1px hairline borders,
+  2–3px accent left borders for emphasis (active nav item, featured
+  cards, UC-posted job cards), flat surfaces, no shadows.
+- **Spacing rhythm**: 6/7/9/11/14/16/20/24px.
+- **Icons**: wireframes use text labels / plain squares as stand-ins;
+  target system is Lucide at stroke-width 1.5.
+- **Recurring patterns**: stat strips (3–5 cells across the top of a
+  section), chip rows for attributes/filters, overlapping-avatar clusters
+  for "N UC connections", progress bars paired with a fraction/percentage,
+  card footers with a primary + secondary action, loading = skeleton bars
+  in the same hairline card frame (never a spinner).
+
+## Decisions
+
+- **Odds model sparse-data rule** — below the suggested minimum sample
+  (~5 applications at a company), the "UC track record" factor still
+  renders (contribution bar included), but is visibly flagged as
+  low-confidence (e.g. "n=1 · limited data") rather than suppressed or
+  silently blended into the industry mean. Preserves the "every number is
+  traceable" principle while not overstating certainty on thin data.
+- **Stack** — React (Vite + React Router), no backend. See below.
+
+## Still open / to confirm as we build
+
+1. **Brand colors/logo** — not yet decided per the handoff; the
+   steel-blue accent stays a single swappable CSS variable
+   (`--color-accent` in [styles/tokens.css](styles/tokens.css)) rather
+   than a final commitment.
+2. **Sub-900px / mobile** — undefined in the wireframes. Treating this
+   prototype as desktop-only unless a mobile pass gets scoped in.
+3. **Assets** — wireframes use text-placeholder logos and initials
+   avatars, no real images. Keeping that placeholder approach rather than
+   sourcing real company logos for the prototype.
+
+## Stack
+
+**React (Vite + React Router), no backend.** Chosen over plain HTML/JS
+once the true scope (24 screens, heavy shared chrome — nav shell, job/
+person/resource cards, chips, modals — plus state that must stay in sync
+across pages: tracker stage across Board/Table/Timeline, saved jobs,
+odds-model inputs, notification counts) became clear from the wireframe
+handoff. Component reuse and a shared in-memory/localStorage mock-data
+layer avoid re-duplicating markup and hand-wiring state across ~24 static
+files.
+
+Structure:
+- `index.html` / `main.jsx` / `App.jsx` — entry point + router setup
+- `pages/` — one component per route/screen (e.g. `Jobs.jsx`, `JobDetail.jsx`)
+- `components/` — shared UI (nav shell, cards, chips, modals, stat strips)
+- `styles/tokens.css` — design tokens pulled from the wireframe handoff
+- `styles/global.css` — base reset/typography
+- `assets/` — icons, placeholder logos, etc.
+- Mock data (users, opportunities, applications, etc.) will live in its
+  own module once pages are built — no backend, no real auth.
+
+Run locally:
+```bash
+npm install
+npm run dev
+```
