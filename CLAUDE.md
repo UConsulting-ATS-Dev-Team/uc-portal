@@ -355,9 +355,30 @@ priorities (P1/P2/P3) — kept in sync with this section as we go.
   on the `3c` modal); "Sync deadlines to calendar" likewise (no calendar
   integration planned for the prototype).
 
-Next in build order: Network + member/alumni profile (`1h`/`1i`), per
-PROJECT_PLAN.md's P2 sequencing — MVP-scoped screens (P1) are now all
-built.
+- **Network + member/alumni profile built** (`pages/Network.jsx` +
+  `pages/MemberProfile.jsx`, wireframe `1h`/`1i`) — full filter row
+  (search, industry, company, location, grad year, audience toggle), a
+  3-column person grid, and a right rail (Suggested for you / Your coffee
+  chats / Where UC alumni work) all working against a richer
+  `data/mockPeople.js` (14 people, mix of alumni + current members).
+  Profile-page detail (experience, UC experience, contributions,
+  education, skills, "happy to help with") is **generated** from each
+  person's core fields via `data/peopleUtils.js`, same approach as Job
+  detail's `descriptionFor`/`qualificationsFor` — writing 14 full bios by
+  hand wasn't worth it for mock data. Extracted the small `hashString`
+  helper both that file and `data/oddsModel.js` use into `data/hash.js`.
+
+  Coffee-chat requests and "Save to my network" are real, not inert:
+  extended `data/store.jsx` with `coffeeChatStatus` (seeded with two
+  examples so the rail isn't empty) and `savedConnections`. "Shared UC
+  context" on the profile page is computed live from the viewer's own
+  `preferences` (target industries, followed companies) and the person's
+  `mutualConnections` — same "every number traceable" principle as the
+  odds model.
+
+Next in build order: per PROJECT_PLAN.md's P2 list — Feed, Companies +
+company page, Career Resources, full My Profile, Admin Dashboard, or the
+Timeline tracker view — whichever you want next.
 
 Run locally:
 ```bash

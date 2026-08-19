@@ -1,0 +1,148 @@
+.profile-header {
+  display: flex;
+  gap: var(--space-6);
+  padding: var(--space-6);
+  border: var(--border-hairline);
+  background: var(--color-surface);
+  margin-bottom: var(--space-7);
+}
+
+.profile-header__main {
+  flex: 1 1 auto;
+}
+
+.profile-header__top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.profile-header__avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: var(--border-hairline);
+  background: var(--color-accent-tint);
+  color: var(--color-accent-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: var(--text-title-min);
+  flex: 0 0 auto;
+}
+
+.profile-header__name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.profile-header__role {
+  color: var(--color-text-secondary);
+  margin: var(--space-2) 0;
+}
+
+.profile-header__meta {
+  color: var(--color-text-muted);
+  font-size: var(--text-secondary);
+  margin-bottom: var(--space-5);
+}
+
+.profile-header__actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.profile-shared-context {
+  width: 260px;
+  flex: 0 0 auto;
+  border: var(--border-hairline);
+  padding: var(--space-5);
+}
+
+.profile-shared-context__title {
+  font-size: var(--text-kicker);
+  letter-spacing: var(--tracking-kicker);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.profile-shared-context ul {
+  margin: 0;
+  padding-left: var(--space-6);
+}
+
+.profile-shared-context li {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-secondary);
+}
+
+.experience-row {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  border-bottom: var(--border-hairline);
+}
+
+.experience-row:last-child {
+  border-bottom: none;
+}
+
+.experience-row__logo {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--border-hairline);
+  background: var(--color-ground);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.experience-row__title {
+  font-weight: 700;
+}
+
+.experience-row__meta {
+  color: var(--color-text-muted);
+  font-size: var(--text-secondary);
+}
+
+.contributions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+.contributions-grid__cell {
+  border: var(--border-hairline);
+  padding: var(--space-5);
+  text-align: center;
+}
+
+.checklist-simple {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.checklist-simple li {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.checklist-simple li.is-checked {
+  color: var(--color-text);
+}
+
+.checklist-simple li:not(.is-checked) {
+  color: var(--color-text-muted);
+}

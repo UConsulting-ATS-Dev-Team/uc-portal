@@ -1,5 +1,6 @@
 import { JOBS } from "./mockJobs.js";
 import { daysUntil } from "./jobUtils.js";
+import { hashString } from "./hash.js";
 
 // The odds model (wireframe 1e, "the product's signature feature").
 // The spec fixes the 5 factors, their weights, and the presentation, but
@@ -27,14 +28,6 @@ const SPARSE_DATA_THRESHOLD = 5;
 const OFFER_MEDIAN_HOURS = 26; // prep-hours ceiling a factor score of 1.0 represents
 const TRACK_RECORD_CEILING = 0.35; // a 35% company offer rate reads as maximum strength
 const TIMING_CEILING_DAYS = 30;
-
-function hashString(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 31 + str.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash);
-}
 
 // Deterministic mock "logged prep hours" / "coffee chats completed" seeds
 // per job, standing in for real data from prep-logging (3c/3d/2e) and

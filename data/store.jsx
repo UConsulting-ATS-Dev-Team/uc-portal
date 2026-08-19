@@ -19,11 +19,20 @@ const SEED_TRACKED_JOBS = {
   "accenture-strategy-fulltime": { stage: "Closed", addedAt: "2026-07-20T12:00:00.000Z" },
 };
 
+// Seeded so Network's "Your coffee chats" isn't empty on first load --
+// real requests (via "Request coffee chat") add "Request sent" entries.
+const SEED_COFFEE_CHATS = {
+  "marcus-webb": "Confirmed · Wed 4:00pm",
+  "priya-nair": "Follow-up due",
+};
+
 const DEFAULT_STATE = {
   onboardingComplete: false,
   savedJobIds: [],
   trackedJobs: SEED_TRACKED_JOBS, // { [jobId]: { stage, addedAt } } -- stage taxonomy matches the Applications tracker (1f/1g/1j)
   prepLogged: {}, // { [jobId]: extraHoursLogged } -- feeds the odds model's "Preparation logged" factor
+  coffeeChatStatus: SEED_COFFEE_CHATS, // { [personId]: status label } -- Network (1h) "Your coffee chats"
+  savedConnections: [], // personIds saved via Member profile's "Save to my network"
   preferences: {
     industries: [], // ranked array of industry names, max 3
     roles: [], // max 5
@@ -98,6 +107,22 @@ export function AppStateProvider({ children }) {
     }));
   }
 
+  function requestCoffeeChat(personId) {
+    setState((prev) => {
+      if (prev.coffeeChatStatus[personId]) return prev; // don't overwrite an existing status
+      return { ...prev, coffeeChatStatus: { ...prev.coffeeChatStatus, [personId]: "Request sent" } };
+    });
+  }
+
+  function toggleSavedConnection(personId) {
+    setState((prev) => ({
+      ...prev,
+      savedConnections: prev.savedConnections.includes(personId)
+        ? prev.savedConnections.filter((id) => id !== personId)
+        : [...prev.savedConnections, personId],
+    }));
+  }
+
   return (
     <AppStateContext.Provider
       value={{
@@ -108,6 +133,8 @@ export function AppStateProvider({ children }) {
         addToTracker,
         logPrep,
         updateApplicationStage,
+        requestCoffeeChat,
+        toggleSavedConnection,
       }}
     >
       {children}

@@ -75,7 +75,9 @@ against mock data), Job detail built (`1e`, incl. the full odds model
 with live recompute and sparse-data handling — pulled forward from P2),
 Applications tracker built (`1f`/`1g`, Board with real drag-and-drop +
 Table with sorting/CSV export; Timeline `1j` still pending — most
-complex of the three). ~3 weeks to MVP, ~5.5 weeks to production-ready.
+complex of the three), Network + member/alumni profile built (`1h`/`1i`,
+filters, coffee-chat requests, and shared-context all working against
+mock data). ~3 weeks to MVP, ~5.5 weeks to production-ready.
 
 ## MVP plan
 
@@ -126,7 +128,7 @@ stretch / beyond this initiative's timeline.
       started, most complex of the three (draggable date bars, projected
       stages, event diamonds); Board + Table are fully usable meanwhile
 - [ ] Full Admin Dashboard — KPIs, gap analysis, opportunity queue (`2h`)
-- [ ] Network / alumni directory + profile (`1h`, `1i`)
+- [x] Network / alumni directory + profile (`1h`, `1i`)
 - [ ] Feed with alumni engagement (`2a`) — explicitly called out in the
       initiative notes
 - [ ] Companies directory + company page (`2b`, `2c`)
@@ -200,7 +202,7 @@ few depends on the shell and data model being in place.
 - [x] Jobs board
 - [x] Job detail (incl. odds model)
 - [x] Applications tracker (Board + Table; Timeline still pending)
-- [ ] Network + member/alumni profile
+- [x] Network + member/alumni profile
 - [ ] Feed
 - [ ] Companies + company page
 - [ ] Career Resources
