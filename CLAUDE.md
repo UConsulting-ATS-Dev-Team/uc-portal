@@ -2,7 +2,7 @@
 
 ## Purpose
 
-**UC Career** is a private, members-only career and professional-development
+**UC Portal** is a private, members-only career and professional-development
 hub for UConsulting (UC), a university consulting club. It replaces the
 spreadsheets/group-chats/Handshake/Drive mix members currently use with one
 place that carries UC's own private data — which alumni work where, what UC
@@ -33,11 +33,14 @@ Wireframes: [design/handoff/UC Career Platform Wireframes.dc.html](design/handof
 (24 screens, single scrollable canvas, Industry design system) plus its
 handoff [README.md](design/handoff/README.md), which is the authoritative
 spec — this file summarizes it, but defer to the handoff README for exact
-copy, field lists, and behavior detail.
+copy, field lists, and behavior detail. Note: the wireframe source files
+themselves still say "UC Career" throughout (their original working
+title) — the product was renamed **UC Portal** after the handoff was
+exported, so treat every "UC Career" in design/handoff/ as this product.
 
 ## Navigation shell (shared by every authenticated screen)
 
-- **Top bar** (~52px): UC Career brandmark (left) → global search (~300px,
+- **Top bar** (~52px): UC Portal brandmark (left) → global search (~300px,
   "Search jobs, people, companies…", submits to Global search `3b`) →
   notifications (unread count) → user avatar menu (profile/settings/sign out).
 - **Left nav rail** (~206px, full height): Home · Jobs · Applications (count

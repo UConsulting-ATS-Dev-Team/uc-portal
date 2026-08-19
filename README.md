@@ -1,10 +1,11 @@
-# UC Portal — UC Career prototype
+# UC Portal
 
-Clickable prototype of **UC Career**, a private career/professional-
+Clickable prototype of **UC Portal**, a private career/professional-
 development platform for a university consulting club. See
 [CLAUDE.md](CLAUDE.md) for the full page inventory, design conventions,
 and open decisions, sourced from the wireframe handoff in
-[design/handoff/](design/handoff).
+[design/handoff/](design/handoff), and [PROJECT_PLAN.md](PROJECT_PLAN.md)
+for the problem statement, MVP scope, timeline, and user stories.
 
 ## Stack
 
@@ -31,14 +32,15 @@ uc-portal/
   pages/             one component per screen/route
   components/        shared UI (nav shell, cards, chips, modals, ...)
   styles/            tokens.css (design tokens) + global.css (base styles)
+  data/              mock data modules (no backend, no real auth)
   assets/            icons, placeholder logos, etc.
-  design/            wireframe handoff — reference only, not app source
+  design/            wireframe handoff + brand guide — reference only, not app source
     handoff/          exported Claude Design wireframes + README spec
+    branding/          UConsulting 2020 style guide (source of the real brand tokens)
 ```
 
 ## Status
 
-Scaffolding only — no pages built yet. Next: confirm the page list/design
-read in CLAUDE.md, then build screens starting with the shell → auth →
-onboarding → jobs → job detail → tracker, per the handoff's suggested
-order (everything else depends on those).
+Nav shell built (top bar, left rail, routing to every screen — most as
+placeholders). Next, per the build order in CLAUDE.md: auth → onboarding →
+jobs → job detail → tracker.

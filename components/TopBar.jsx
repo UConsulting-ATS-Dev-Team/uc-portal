@@ -18,7 +18,7 @@ export default function TopBar() {
         <span className="topbar__mark">
           U<span>C</span>
         </span>
-        <span className="topbar__wordmark">UC Career</span>
+        <span className="topbar__wordmark">UC Portal</span>
       </Link>
 
       <form className="topbar__search" onSubmit={handleSearchSubmit}>
