@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { currentUser, navCounts } from "../data/mockUser.js";
 
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const isAdminMode = location.pathname.startsWith("/admin");
 
   function handleSearchSubmit(event) {
     event.preventDefault();
@@ -20,6 +22,8 @@ export default function TopBar() {
         </span>
         <span className="topbar__wordmark">UC Portal</span>
       </Link>
+
+      {isAdminMode && <span className="chip chip-accent">Admin mode</span>}
 
       <form className="topbar__search" onSubmit={handleSearchSubmit}>
         <input type="search" name="q" placeholder="Search jobs, people, companies…" />

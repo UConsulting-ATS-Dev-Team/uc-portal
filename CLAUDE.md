@@ -466,8 +466,32 @@ priorities (P1/P2/P3) — kept in sync with this section as we go.
   deeper. Worth remembering for any future top-level state key that's
   itself an object members might get added to later.
 
-Next in build order: per PROJECT_PLAN.md's P2 list — Admin Dashboard or
-the Timeline tracker view — whichever you want next.
+- **Admin Dashboard built** (`pages/AdminDashboard.jsx`, wireframe `2h`)
+  — the 5-cell KPI strip, class-year breakdown, "most targeted
+  companies," and member-engagement numbers are illustrative mock
+  figures (`data/mockAdmin.js`) since they describe club-wide survey/
+  analytics data no single browser session could actually compute —
+  unlike Jobs/Companies/Network, this is the one screen where real
+  computation from browsable records isn't possible. Where it *was*
+  possible, it's real: "Where members want to work" reuses the exact
+  same industry member/alumni counts onboarding shows, and the "Gap:"
+  insight line is genuinely computed (`biggestGap()`, highest
+  members-to-alumni ratio) rather than hardcoded — it lands on "Tech /
+  product strategy," matching the wireframe's own example industry
+  organically. The opportunity queue is real interactive state
+  (`store.jsx`'s `opportunityQueue`/`approveOpportunity`/
+  `removeOpportunity`), verified in the browser: Approve flips a row to
+  "Live," Remove deletes it. Added an "Admin mode" chip to
+  `components/TopBar.jsx`, shown only when the route starts with
+  `/admin` — verified it appears on `/admin` and not on `/jobs`.
+  `/admin/opportunities`, `/admin/members`, `/admin/content` stay as
+  `Placeholder`s — they're nav-rail destinations, not among the 24
+  screens the handoff actually designed.
+
+Next in build order: the Timeline tracker view (`1j`) is the last
+substantial P2 screen — everything else remaining is smaller
+cross-cutting P2/P3 work (global search, action modals, notifications,
+messages, empty states).
 
 Run locally:
 ```bash

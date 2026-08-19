@@ -15,6 +15,7 @@ import CareerResources from "./pages/CareerResources.jsx";
 import ResourceDetail from "./pages/ResourceDetail.jsx";
 import LearningTrackDetail from "./pages/LearningTrackDetail.jsx";
 import MyProfile from "./pages/MyProfile.jsx";
+import AdminDashboard from "./pages/AdminDashboard.jsx";
 
 // Each route below is a stub until it's built for real, per the build
 // order in CLAUDE.md (shell → auth → onboarding → jobs → job detail →
@@ -150,7 +151,7 @@ export default function App() {
         path="/admin"
         element={
           <NavShell>
-            <Placeholder title="Admin Dashboard" screenId="2h" />
+            <AdminDashboard />
           </NavShell>
         }
       />

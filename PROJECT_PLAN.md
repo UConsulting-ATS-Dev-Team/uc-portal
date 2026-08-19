@@ -86,7 +86,10 @@ section-completion tracking, and tracker-driven recommendations all
 verified working), My Profile built (`2g`, all 4 tabs: Personal,
 Career preferences, Recruiting settings, Privacy — Career preferences
 edits the same `preferences` object onboarding writes to, so nothing's
-duplicated). ~3 weeks to MVP, ~5.5 weeks to production-ready.
+duplicated), Admin Dashboard built (`2h`, KPI strip, gap analysis
+computed from real industry-interest data, class-year breakdown, and a
+working opportunity review queue with Approve/Remove). ~3 weeks to
+MVP, ~5.5 weeks to production-ready.
 
 ## MVP plan
 
@@ -136,7 +139,7 @@ stretch / beyond this initiative's timeline.
 - [ ] Applications tracker — Timeline view (`1j`), Gantt-style — not
       started, most complex of the three (draggable date bars, projected
       stages, event diamonds); Board + Table are fully usable meanwhile
-- [ ] Full Admin Dashboard — KPIs, gap analysis, opportunity queue (`2h`)
+- [x] Full Admin Dashboard — KPIs, gap analysis, opportunity queue (`2h`)
 - [x] Network / alumni directory + profile (`1h`, `1i`)
 - [x] Feed with alumni engagement (`2a`) — explicitly called out in the
       initiative notes
@@ -216,7 +219,7 @@ few depends on the shell and data model being in place.
 - [x] Companies + company page
 - [x] Career Resources
 - [x] My Profile (full tabs)
-- [ ] Admin Dashboard
+- [x] Admin Dashboard
 - [ ] Cross-cutting: search, notifications, modals, messages, empty states
 
 ## Risks & blockers
