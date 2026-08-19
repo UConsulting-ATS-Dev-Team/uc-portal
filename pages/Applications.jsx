@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { JOBS } from "../data/mockJobs.js";
 import { daysUntil } from "../data/jobUtils.js";
 import { STAGES } from "../data/trackerUtils.js";
@@ -8,6 +9,7 @@ import TrackerTable from "../components/TrackerTable.jsx";
 import TrackerTimeline from "../components/TrackerTimeline.jsx";
 import "../styles/tracker.css";
 import "../styles/timeline.css";
+import "../styles/home.css";
 
 const VIEWS = ["Board", "Table", "Timeline"];
 
@@ -116,26 +118,44 @@ export default function Applications() {
         </div>
       </div>
 
-      {view === "Board" && (
-        <TrackerBoard applications={applications} onMoveStage={updateApplicationStage} />
-      )}
+      {Object.keys(trackedJobs).length === 0 ? (
+        <div className="empty-state">
+          <h1 style={{ fontSize: "var(--text-title-min)" }}>Nothing tracked yet</h1>
+          <p>
+            Add a role you're just considering, not only ones you've already applied to — the tracker is
+            useful before you apply, not just after.
+          </p>
+          <div style={{ display: "flex", gap: "var(--space-3)", justifyContent: "center", marginTop: "var(--space-5)" }}>
+            <button className="btn btn-primary">+ Add your first application</button>
+            <Link to="/jobs" className="btn btn-secondary">
+              Browse {JOBS.filter((j) => j.matchScore >= 70).length} matched roles
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <>
+          {view === "Board" && (
+            <TrackerBoard applications={applications} onMoveStage={updateApplicationStage} />
+          )}
 
-      {view === "Table" && (
-        <TrackerTable
-          applications={sortedForTable}
-          sortColumn={sortColumn}
-          sortDirection={sortDirection}
-          onSort={handleSort}
-          onExportCsv={() => downloadCsv(toCsv(applications))}
-        />
-      )}
+          {view === "Table" && (
+            <TrackerTable
+              applications={sortedForTable}
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              onExportCsv={() => downloadCsv(toCsv(applications))}
+            />
+          )}
 
-      {view === "Timeline" && (
-        <TrackerTimeline
-          applications={applications}
-          timelineShiftDays={timelineShiftDays}
-          onShiftTimeline={shiftTimeline}
-        />
+          {view === "Timeline" && (
+            <TrackerTimeline
+              applications={applications}
+              timelineShiftDays={timelineShiftDays}
+              onShiftTimeline={shiftTimeline}
+            />
+          )}
+        </>
       )}
     </div>
   );

@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import JobCard from "../components/JobCard.jsx";
+import ErrorState from "../components/ErrorState.jsx";
 import { JOBS } from "../data/mockJobs.js";
 import { INDUSTRIES, LOCATIONS } from "../data/careerOptions.js";
 import { daysUntil, matchesDeadlineBucket } from "../data/jobUtils.js";
 import { useAppState } from "../data/store.jsx";
 import "../styles/jobs.css";
+import "../styles/search.css";
+import "../styles/home.css";
 
 const GRAD_YEARS = ["2026", "2027", "2028", "2029"];
 const DEADLINE_BUCKETS = ["This week", "This month", "Rolling"];
@@ -61,6 +65,27 @@ function matchesFilters(job, filters) {
   return true;
 }
 
+// Zero-result diagnostic (wireframe 3e): for each active filter, compute
+// how many results dropping *just that one* would unlock, so the empty
+// state can say something concrete ("Dropping Remote would show 6
+// roles") instead of a bare "No results."
+const DROPPABLE_FILTERS = [
+  { key: "keyword", label: (f) => `"${f.keyword}"`, clear: (f) => ({ ...f, keyword: "" }) },
+  { key: "locations", label: (f) => f.locations.join(", "), clear: (f) => ({ ...f, locations: [] }) },
+  { key: "industries", label: (f) => f.industries.join(", "), clear: (f) => ({ ...f, industries: [] }) },
+  { key: "gradYears", label: (f) => `Class of ${f.gradYears.join(", ")}`, clear: (f) => ({ ...f, gradYears: [] }) },
+  { key: "types", label: (f) => f.types.join(", "), clear: (f) => ({ ...f, types: [] }) },
+  { key: "deadlines", label: (f) => f.deadlines.join(", "), clear: (f) => ({ ...f, deadlines: [] }) },
+  { key: "companySizes", label: (f) => f.companySizes.join(", "), clear: (f) => ({ ...f, companySizes: [] }) },
+  { key: "comp", label: (f) => `$${f.compMax}/hr+`, clear: (f) => ({ ...f, compMin: 15, compMax: 60 }) },
+];
+
+function diagnoseEmptyFilters(filters) {
+  return DROPPABLE_FILTERS.filter((d) => (d.key === "comp" ? filters.compMin > 15 || filters.compMax < 60 : filters[d.key].length > 0))
+    .map((d) => ({ ...d, count: JOBS.filter((j) => matchesFilters(j, d.clear(filters))).length, currentLabel: d.label(filters) }))
+    .sort((a, b) => b.count - a.count);
+}
+
 function matchesTab(job, tab, savedJobIds) {
   if (tab === "recommended") return job.matchScore >= 70;
   if (tab === "ucPosted") return job.ucPosted;
@@ -82,6 +107,7 @@ function toggleInArray(array, value) {
 }
 
 export default function Jobs() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [tab, setTab] = useState("recommended");
   const [sortBy, setSortBy] = useState("bestMatch");
@@ -120,6 +146,17 @@ export default function Jobs() {
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const pageJobs = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const diagnostics = useMemo(() => (sorted.length === 0 ? diagnoseEmptyFilters(filters) : []), [sorted.length, filters]);
+
+  // Demo-only trigger for wireframe 3e's error state -- there's no real
+  // fetch layer in this prototype to fail naturally. Visit
+  // /jobs?simulateError=1 to see it. Placed after every hook call (not
+  // before) -- an early return above any hook breaks the Rules of Hooks
+  // the moment two renders call a different number of hooks, which is
+  // exactly what happened here on first pass.
+  if (searchParams.get("simulateError")) {
+    return <ErrorState what="jobs" onRetry={() => setSearchParams({})} />;
+  }
 
   const activeChips = [];
   if (filters.keyword) activeChips.push({ label: `"${filters.keyword}"`, onRemove: () => patchFilters({ keyword: "" }) });
@@ -387,8 +424,33 @@ export default function Jobs() {
         </div>
 
         {pageJobs.length === 0 && (
-          <div className="skeleton-card" style={{ textAlign: "center", color: "var(--color-text-muted)" }}>
-            No results with these filters. Try dropping one — the "Clear all" link above resets everything.
+          <div className="no-results">
+            <p style={{ fontWeight: 700 }}>0 results with these filters</p>
+            {diagnostics.length > 0 ? (
+              <>
+                {diagnostics.slice(0, 2).map((d) => (
+                  <p key={d.key} className="meta">
+                    Dropping <strong>{d.currentLabel}</strong> would show {d.count} role{d.count === 1 ? "" : "s"}.
+                  </p>
+                ))}
+                <div style={{ display: "flex", gap: "var(--space-3)", justifyContent: "center", marginTop: "var(--space-5)" }}>
+                  <button className="btn btn-primary" onClick={() => setFilters(diagnostics[0].clear(filters))}>
+                    Drop "{diagnostics[0].currentLabel}"
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => setFilters(DEFAULT_FILTERS)}>
+                    Clear all filters
+                  </button>
+                  <button className="btn btn-secondary">Save as an alert</button>
+                </div>
+                <p className="meta" style={{ marginTop: "var(--space-4)", marginBottom: 0 }}>
+                  We'll email you when a matching role is posted.
+                </p>
+              </>
+            ) : (
+              <button className="btn btn-secondary" onClick={() => setFilters(DEFAULT_FILTERS)}>
+                Clear all filters
+              </button>
+            )}
           </div>
         )}
 

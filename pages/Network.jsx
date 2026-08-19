@@ -5,6 +5,7 @@ import { capabilitiesFor } from "../data/peopleUtils.js";
 import { useAppState } from "../data/store.jsx";
 import "../styles/jobDetail.css";
 import "../styles/network.css";
+import "../styles/home.css";
 
 const AUDIENCES = ["All", "Alumni", "Current members"];
 
@@ -24,6 +25,7 @@ export default function Network() {
   const [location, setLocation] = useState("All");
   const [gradYear, setGradYear] = useState("All");
   const [audience, setAudience] = useState("All");
+  const [browseAnyway, setBrowseAnyway] = useState(false);
 
   const alumniCount = PEOPLE.filter((p) => p.status !== "Current member").length;
   const memberCount = PEOPLE.filter((p) => p.status === "Current member").length;
@@ -115,6 +117,23 @@ export default function Network() {
 
       <div className="network-layout">
         <div className="network-main">
+          {savedConnections.length === 0 && !browseAnyway ? (
+            <div className="empty-state">
+              <h1 style={{ fontSize: "var(--text-title-min)" }}>You haven't met anyone here yet</h1>
+              <p>
+                {openCount} alumni are open to coffee chats this month — the Networking track walks you through
+                sending your first message if that feels intimidating.
+              </p>
+              <div style={{ display: "flex", gap: "var(--space-3)", justifyContent: "center", marginTop: "var(--space-5)" }}>
+                <button className="btn btn-primary" onClick={() => setBrowseAnyway(true)}>
+                  Browse alumni open to chats
+                </button>
+                <Link to="/resources" className="btn btn-secondary">
+                  Start the Networking track
+                </Link>
+              </div>
+            </div>
+          ) : (
           <div className="network-grid">
             {filtered.map((p) => {
               const isMember = p.status === "Current member";
@@ -160,6 +179,7 @@ export default function Network() {
               );
             })}
           </div>
+          )}
         </div>
 
         <div className="network-rail">

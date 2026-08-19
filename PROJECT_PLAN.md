@@ -155,7 +155,10 @@ stretch / beyond this initiative's timeline.
       career-wise")
 - [x] Notifications (`2f`)
 - [x] Global search (`3b`)
-- [ ] Action modals (`3c`), empty/first-run states (`3e`)
+- [x] Empty/first-run states (`3e`) — Home first-login, Applications
+      empty, Jobs diagnostic no-results, Network no-connections, and a
+      demo-triggered Error state all built (`/jobs?simulateError=1`)
+- [ ] Action modals (`3c`)
 
 **P3 — Stretch / beyond this initiative**
 - [x] Messages (`3f`)
