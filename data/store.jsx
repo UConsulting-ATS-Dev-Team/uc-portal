@@ -6,10 +6,23 @@ import { createContext, useContext, useEffect, useState } from "react";
 // answers actually show up later on My Profile / Jobs.
 const STORAGE_KEY = "uc-portal-state";
 
+// Seeded so the tracker (1f/1g/1j) has cards across most stages on first
+// load instead of looking empty -- real usage adds more via "Add to
+// tracker" / "Mark interested" on Job detail.
+const SEED_TRACKED_JOBS = {
+  "bain-consulting-intern": { stage: "First round", addedAt: "2026-08-05T12:00:00.000Z" },
+  "mckinsey-generalist-intern": { stage: "Preparing", addedAt: "2026-08-10T12:00:00.000Z" },
+  "deloitte-human-capital": { stage: "Applied", addedAt: "2026-08-12T12:00:00.000Z" },
+  "goldman-ibd-summer": { stage: "Assessment", addedAt: "2026-08-08T12:00:00.000Z" },
+  "stripe-strategy-ops": { stage: "Interested", addedAt: "2026-08-15T12:00:00.000Z" },
+  "bcg-summer-associate": { stage: "Final round", addedAt: "2026-08-01T12:00:00.000Z" },
+  "accenture-strategy-fulltime": { stage: "Closed", addedAt: "2026-07-20T12:00:00.000Z" },
+};
+
 const DEFAULT_STATE = {
   onboardingComplete: false,
   savedJobIds: [],
-  trackedJobs: {}, // { [jobId]: { stage, addedAt } } -- stage taxonomy matches the Applications tracker (1f/1g/1j)
+  trackedJobs: SEED_TRACKED_JOBS, // { [jobId]: { stage, addedAt } } -- stage taxonomy matches the Applications tracker (1f/1g/1j)
   prepLogged: {}, // { [jobId]: extraHoursLogged } -- feeds the odds model's "Preparation logged" factor
   preferences: {
     industries: [], // ranked array of industry names, max 3
@@ -78,9 +91,24 @@ export function AppStateProvider({ children }) {
     }));
   }
 
+  function updateApplicationStage(jobId, stage) {
+    setState((prev) => ({
+      ...prev,
+      trackedJobs: { ...prev.trackedJobs, [jobId]: { ...prev.trackedJobs[jobId], stage } },
+    }));
+  }
+
   return (
     <AppStateContext.Provider
-      value={{ ...state, updatePreferences, completeOnboarding, toggleSavedJob, addToTracker, logPrep }}
+      value={{
+        ...state,
+        updatePreferences,
+        completeOnboarding,
+        toggleSavedJob,
+        addToTracker,
+        logPrep,
+        updateApplicationStage,
+      }}
     >
       {children}
     </AppStateContext.Provider>

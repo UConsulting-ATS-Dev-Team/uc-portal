@@ -330,8 +330,34 @@ priorities (P1/P2/P3) — kept in sync with this section as we go.
   Also extended `data/store.jsx` with `trackedJobs` (stage taxonomy
   matches the Applications tracker exactly, so `1f`/`1g`/`1j` can consume
   it directly) and `prepLogged`.
+- **Applications tracker built** (`pages/Applications.jsx`, wireframe
+  `1f`/`1g`/`1j`) — Board and Table views, both reading the same
+  `trackedJobs` records from the store; Timeline (`1j`) is a stated-scope
+  "not built yet" panel within the view toggle rather than a dead link.
+  `components/TrackerBoard.jsx` does **real HTML5 drag-and-drop** between
+  the 7 stage columns (unlike onboarding's button-based ranking) —
+  verified in the browser by dispatching actual `dragstart`/`dragover`/
+  `drop` events and confirming the store update persisted. Cards with an
+  imminent deadline (`data/jobUtils.js`'s `isUrgent`) get the accent left
+  border; `Closed` cards render at reduced opacity, both per spec.
+  `components/TrackerTable.jsx` has real column sorting (default:
+  deadline ascending, as a proxy for "next action" urgency — the
+  wireframe doesn't define an exact tiebreak) and a working **CSV
+  export** (client-side `Blob` download, no backend). `data/trackerUtils.js`
+  holds the shared `STAGES` taxonomy and `nextActionForStage` — reuse
+  this rather than re-deriving the stage list elsewhere (e.g. My Profile
+  or Admin, if they ever need it). `data/store.jsx` seeds 7 demo
+  applications across most stages (`SEED_TRACKED_JOBS`) so the board
+  isn't empty on first load — real usage (via Job detail's "Add to
+  tracker") layers on top since `loadState` only shallow-merges, so an
+  existing user's real `trackedJobs` in localStorage always wins over the
+  seed. "+ Add application" is visually present but inert (P2 — depends
+  on the `3c` modal); "Sync deadlines to calendar" likewise (no calendar
+  integration planned for the prototype).
 
-Next in build order: tracker.
+Next in build order: Network + member/alumni profile (`1h`/`1i`), per
+PROJECT_PLAN.md's P2 sequencing — MVP-scoped screens (P1) are now all
+built.
 
 Run locally:
 ```bash

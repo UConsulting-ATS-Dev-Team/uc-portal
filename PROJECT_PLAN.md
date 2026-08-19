@@ -72,8 +72,10 @@ built (`3a`, all four states), onboarding built (`2i`/`2j`, all 5 steps +
 completion, preferences persist via a shared store so later pages can
 read them), Jobs board built (`1d`, filters/tabs/sort/save all working
 against mock data), Job detail built (`1e`, incl. the full odds model
-with live recompute and sparse-data handling — pulled forward from P2).
-~3 weeks to MVP, ~5.5 weeks to production-ready.
+with live recompute and sparse-data handling — pulled forward from P2),
+Applications tracker built (`1f`/`1g`, Board with real drag-and-drop +
+Table with sorting/CSV export; Timeline `1j` still pending — most
+complex of the three). ~3 weeks to MVP, ~5.5 weeks to production-ready.
 
 ## MVP plan
 
@@ -113,13 +115,16 @@ stretch / beyond this initiative's timeline.
 - [x] Job detail (`1e`) — match checklist, role info, and the full odds
       model (pulled forward from P2 since it's the signature feature and
       was cheap to build alongside the rest of the page)
-- [ ] Applications tracker — Board view only (`1f`)
+- [x] Applications tracker — Board view (`1f`) with real drag-and-drop
 - [ ] Admin — a members view with access to member info (subset of `2h`)
 
 **P2 — Production-ready**
 - [x] Full odds model with sparse-data handling (`1e`, see CLAUDE.md) —
       done as part of Job detail
-- [ ] Applications tracker — Table (`1g`) and Timeline (`1j`) views
+- [x] Applications tracker — Table view (`1g`), sortable + CSV export
+- [ ] Applications tracker — Timeline view (`1j`), Gantt-style — not
+      started, most complex of the three (draggable date bars, projected
+      stages, event diamonds); Board + Table are fully usable meanwhile
 - [ ] Full Admin Dashboard — KPIs, gap analysis, opportunity queue (`2h`)
 - [ ] Network / alumni directory + profile (`1h`, `1i`)
 - [ ] Feed with alumni engagement (`2a`) — explicitly called out in the
@@ -194,7 +199,7 @@ few depends on the shell and data model being in place.
 - [x] Onboarding
 - [x] Jobs board
 - [x] Job detail (incl. odds model)
-- [ ] Applications tracker
+- [x] Applications tracker (Board + Table; Timeline still pending)
 - [ ] Network + member/alumni profile
 - [ ] Feed
 - [ ] Companies + company page
