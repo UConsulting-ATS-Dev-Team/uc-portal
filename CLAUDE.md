@@ -296,10 +296,42 @@ priorities (P1/P2/P3) — kept in sync with this section as we go.
   wireframe's $/hr slider doesn't apply to full-time annual-salary roles,
   so those always pass the comp filter. "Post a job" and "Save this
   search" are visually present but not wired (P2 — the action modals in
-  `3c` aren't built yet). `/jobs/:jobId` (`View & apply`) currently routes
-  to a `Placeholder` — Job detail is next.
+  `3c` aren't built yet).
+- **Job detail built** (`pages/JobDetail.jsx`, wireframe `1e`) — header
+  card with action row (Apply/Add to tracker/Save/Mark interested, all
+  functional except "Apply" which has no real employer URL to send users
+  to), the match checklist generated live from `preferences` (not
+  authored per job), role description + qualifications (templated from
+  job fields, not hand-written per listing), and UC recruiting
+  intelligence (stat strip, 5-stage timeline, two interview write-ups
+  drawn from a small shared pool in `data/jobUtils.js`). Right rail pulls
+  from a new `data/mockPeople.js` (UC members at the company — also
+  reusable for Network later), plus static prep-resource links and
+  similar-role rows from `data/mockJobs.js`.
 
-Next in build order: job detail → tracker.
+  **Odds model** (`components/OddsModel.jsx` + `data/oddsModel.js`) — the
+  full signature feature, pulled forward from P2 since it was cheap to
+  build alongside the rest of the page. Every number is traceable to
+  something shown elsewhere (profile fit reuses the job's own match
+  score, track record reuses its past-cycle applicants/offers, timing
+  reuses the same deadline math as the job cards). Prep hours and
+  networking-chat counts are deterministically seeded per job (no real
+  logging exists yet) via `data/store.jsx`'s `prepLogged`; the "Log prep"
+  button increments that and the estimate recomputes live — verified in
+  the browser (53% → 54% after logging 2 hours). Sparse data (<5 past
+  applicants) shows the factor with an explicit "n=N · limited data" tag
+  per the decision in CLAUDE.md, never suppressed or silently blended.
+  The exact scoring formula (normalize each factor 0–1, weighted-sum into
+  a "quality index," scale the company's — or industry's, when thin — UC
+  offer rate by that index) is documented in `data/oddsModel.js`; the
+  wireframe explicitly leaves the functional form as an implementation
+  choice, only fixing the factors/weights/presentation.
+
+  Also extended `data/store.jsx` with `trackedJobs` (stage taxonomy
+  matches the Applications tracker exactly, so `1f`/`1g`/`1j` can consume
+  it directly) and `prepLogged`.
+
+Next in build order: tracker.
 
 Run locally:
 ```bash

@@ -4,6 +4,7 @@ import Placeholder from "./pages/Placeholder.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import Onboarding from "./pages/Onboarding.jsx";
 import Jobs from "./pages/Jobs.jsx";
+import JobDetail from "./pages/JobDetail.jsx";
 
 // Each route below is a stub until it's built for real, per the build
 // order in CLAUDE.md (shell → auth → onboarding → jobs → job detail →
@@ -31,7 +32,7 @@ export default function App() {
         path="/jobs/:jobId"
         element={
           <NavShell>
-            <Placeholder title="Job detail" screenId="1e" />
+            <JobDetail />
           </NavShell>
         }
       />

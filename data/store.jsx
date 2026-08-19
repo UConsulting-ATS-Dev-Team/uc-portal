@@ -9,6 +9,8 @@ const STORAGE_KEY = "uc-portal-state";
 const DEFAULT_STATE = {
   onboardingComplete: false,
   savedJobIds: [],
+  trackedJobs: {}, // { [jobId]: { stage, addedAt } } -- stage taxonomy matches the Applications tracker (1f/1g/1j)
+  prepLogged: {}, // { [jobId]: extraHoursLogged } -- feeds the odds model's "Preparation logged" factor
   preferences: {
     industries: [], // ranked array of industry names, max 3
     roles: [], // max 5
@@ -59,9 +61,26 @@ export function AppStateProvider({ children }) {
     }));
   }
 
+  function addToTracker(jobId, stage = "Interested") {
+    setState((prev) => {
+      if (prev.trackedJobs[jobId]) return prev; // don't downgrade an existing stage
+      return {
+        ...prev,
+        trackedJobs: { ...prev.trackedJobs, [jobId]: { stage, addedAt: new Date().toISOString() } },
+      };
+    });
+  }
+
+  function logPrep(jobId, hours = 2) {
+    setState((prev) => ({
+      ...prev,
+      prepLogged: { ...prev.prepLogged, [jobId]: (prev.prepLogged[jobId] || 0) + hours },
+    }));
+  }
+
   return (
     <AppStateContext.Provider
-      value={{ ...state, updatePreferences, completeOnboarding, toggleSavedJob }}
+      value={{ ...state, updatePreferences, completeOnboarding, toggleSavedJob, addToTracker, logPrep }}
     >
       {children}
     </AppStateContext.Provider>

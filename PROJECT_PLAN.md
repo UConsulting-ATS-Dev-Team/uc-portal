@@ -71,7 +71,9 @@ screens' routes (most still placeholders), sign-in/access-gate flow
 built (`3a`, all four states), onboarding built (`2i`/`2j`, all 5 steps +
 completion, preferences persist via a shared store so later pages can
 read them), Jobs board built (`1d`, filters/tabs/sort/save all working
-against mock data). ~3 weeks to MVP, ~5.5 weeks to production-ready.
+against mock data), Job detail built (`1e`, incl. the full odds model
+with live recompute and sparse-data handling — pulled forward from P2).
+~3 weeks to MVP, ~5.5 weeks to production-ready.
 
 ## MVP plan
 
@@ -108,13 +110,15 @@ stretch / beyond this initiative's timeline.
 - [x] Onboarding (`2i`/`2j`) — all 5 steps + completion built, with the
       live-match-count payoff working
 - [x] Jobs board (`1d`) — filters, match score, save/bookmark all working
-- [ ] Job detail (`1e`) — at minimum the match checklist + role info;
-      full odds-model panel can lag into P2 if needed
+- [x] Job detail (`1e`) — match checklist, role info, and the full odds
+      model (pulled forward from P2 since it's the signature feature and
+      was cheap to build alongside the rest of the page)
 - [ ] Applications tracker — Board view only (`1f`)
 - [ ] Admin — a members view with access to member info (subset of `2h`)
 
 **P2 — Production-ready**
-- [ ] Full odds model with sparse-data handling (`1e`, see CLAUDE.md)
+- [x] Full odds model with sparse-data handling (`1e`, see CLAUDE.md) —
+      done as part of Job detail
 - [ ] Applications tracker — Table (`1g`) and Timeline (`1j`) views
 - [ ] Full Admin Dashboard — KPIs, gap analysis, opportunity queue (`2h`)
 - [ ] Network / alumni directory + profile (`1h`, `1i`)
@@ -189,7 +193,7 @@ few depends on the shell and data model being in place.
 - [x] Auth / access gate
 - [x] Onboarding
 - [x] Jobs board
-- [ ] Job detail (incl. odds model)
+- [x] Job detail (incl. odds model)
 - [ ] Applications tracker
 - [ ] Network + member/alumni profile
 - [ ] Feed
