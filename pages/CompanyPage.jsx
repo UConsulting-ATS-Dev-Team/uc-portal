@@ -7,6 +7,7 @@ import { peopleAt } from "../data/mockPeople.js";
 import { COMPANIES } from "../data/mockCompanies.js";
 import { useAppState } from "../data/store.jsx";
 import Placeholder from "./Placeholder.jsx";
+import CompanyLogo from "../components/CompanyLogo.jsx";
 import "../styles/jobs.css";
 import "../styles/jobDetail.css";
 import "../styles/network.css";
@@ -47,7 +48,7 @@ export default function CompanyPage() {
   return (
     <div>
       <div className="company-header">
-        <div className="company-header__logo">{company.logoInitials}</div>
+        <CompanyLogo name={company.name} initials={company.logoInitials} className="company-header__logo" />
         <div style={{ flex: 1 }}>
           <div className="company-header__title-row">
             <h1>{company.name}</h1>
@@ -257,7 +258,7 @@ export default function CompanyPage() {
             <div className="rail-card__title">Similar companies</div>
             {similar.map((c) => (
               <Link to={`/companies/${c.id}`} className="similar-row" key={c.id} style={{ color: "inherit", textDecoration: "none" }}>
-                <div className="similar-row__logo">{c.logoInitials}</div>
+                <CompanyLogo name={c.name} initials={c.logoInitials} className="similar-row__logo" />
                 <div style={{ flex: 1 }}>{c.name}</div>
               </Link>
             ))}

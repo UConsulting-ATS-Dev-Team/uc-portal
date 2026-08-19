@@ -117,3 +117,12 @@ textarea {
   background: var(--color-accent-tint);
   color: var(--color-accent-deep);
 }
+
+/* Real company logos inside any of the __logo badge boxes (job cards,
+   company cards, tracker rows, etc.) -- sized to fit within the box's
+   existing padding rather than filling it edge-to-edge. */
+[class$="__logo"] img {
+  width: 76%;
+  height: 76%;
+  object-fit: contain;
+}

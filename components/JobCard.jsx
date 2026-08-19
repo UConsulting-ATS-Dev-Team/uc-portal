@@ -1,12 +1,13 @@
 import { Link } from "react-router-dom";
 import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
+import CompanyLogo from "./CompanyLogo.jsx";
 
 export default function JobCard({ job, saved, onToggleSave }) {
   const urgent = isUrgent(job);
 
   return (
     <div className={`job-card${job.ucPosted ? " is-uc-posted" : ""}`}>
-      <div className="job-card__logo">{job.logoInitials}</div>
+      <CompanyLogo name={job.company} initials={job.logoInitials} className="job-card__logo" />
 
       <div className="job-card__body">
         <div className="job-card__title-row">

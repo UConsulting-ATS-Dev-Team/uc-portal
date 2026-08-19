@@ -10,6 +10,7 @@ import {
   buildRow,
 } from "../data/timelineUtils.js";
 import { matchesDeadlineBucket } from "../data/jobUtils.js";
+import CompanyLogo from "./CompanyLogo.jsx";
 
 const TOTAL_DAYS = (TIMELINE_END - TIMELINE_START) / 86400000;
 
@@ -93,7 +94,7 @@ export default function TrackerTimeline({ applications, timelineShiftDays, onShi
                 return (
                   <div className="timeline-row" key={jobId}>
                     <div className="timeline-row__label">
-                      <span className="board-card__logo">{job.logoInitials}</span>
+                      <CompanyLogo name={job.company} initials={job.logoInitials} className="board-card__logo" />
                       <div>
                         <div style={{ fontWeight: 700, fontSize: "var(--text-secondary)" }}>{job.company}</div>
                         <div className="meta">{job.role}</div>

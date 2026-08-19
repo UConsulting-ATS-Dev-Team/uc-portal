@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { STAGES, INTERVIEW_STAGES } from "../data/trackerUtils.js";
 import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
+import CompanyLogo from "./CompanyLogo.jsx";
 
 export default function TrackerBoard({ applications, onMoveStage }) {
   const [dragOverStage, setDragOverStage] = useState(null);
@@ -44,7 +45,7 @@ export default function TrackerBoard({ applications, onMoveStage }) {
                   >
                     <Link to={`/jobs/${jobId}`} style={{ color: "inherit", textDecoration: "none" }}>
                       <div className="board-card__company">
-                        <span className="board-card__logo">{job.logoInitials}</span>
+                        <CompanyLogo name={job.company} initials={job.logoInitials} className="board-card__logo" />
                         {job.company}
                       </div>
                       <div className="board-card__role">{job.role}</div>

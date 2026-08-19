@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { COMPANIES } from "../data/mockCompanies.js";
 import { statsFor } from "../data/companyUtils.js";
 import { useAppState } from "../data/store.jsx";
+import CompanyLogo from "../components/CompanyLogo.jsx";
 import "../styles/jobs.css";
 import "../styles/companies.css";
 
@@ -178,7 +179,7 @@ export default function Companies() {
             return (
               <div className={`company-card${isWatched ? " is-watched" : ""}`} key={c.id}>
                 <div className="company-card__top">
-                  <div className="company-card__logo">{c.logoInitials}</div>
+                  <CompanyLogo name={c.name} initials={c.logoInitials} className="company-card__logo" />
                   <div>
                     <Link to={`/companies/${c.id}`} className="company-card__name" style={{ color: "inherit", textDecoration: "none" }}>
                       {c.name}

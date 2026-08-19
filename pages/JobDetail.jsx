@@ -6,6 +6,7 @@ import { peopleAt } from "../data/mockPeople.js";
 import { useAppState } from "../data/store.jsx";
 import OddsModel from "../components/OddsModel.jsx";
 import LogPrepModal from "../components/modals/LogPrepModal.jsx";
+import CompanyLogo from "../components/CompanyLogo.jsx";
 import Placeholder from "./Placeholder.jsx";
 import "../styles/jobDetail.css";
 
@@ -78,7 +79,7 @@ export default function JobDetail() {
       <div className="detail-layout">
         <div className="detail-main">
           <div className="detail-header">
-            <div className="detail-header__logo">{job.logoInitials}</div>
+            <CompanyLogo name={job.company} initials={job.logoInitials} className="detail-header__logo" />
             <div className="detail-header__body">
               <div className="detail-header__title-row">
                 <h1 className="detail-header__role">{job.role}</h1>
@@ -215,7 +216,7 @@ export default function JobDetail() {
             <div className="rail-card__title">Similar UC-relevant roles</div>
             {similar.map((s) => (
               <Link to={`/jobs/${s.id}`} className="similar-row" key={s.id} style={{ color: "inherit", textDecoration: "none" }}>
-                <div className="similar-row__logo">{s.logoInitials}</div>
+                <CompanyLogo name={s.company} initials={s.logoInitials} className="similar-row__logo" />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700 }}>{s.role}</div>
                   <div className="meta">{s.company}</div>

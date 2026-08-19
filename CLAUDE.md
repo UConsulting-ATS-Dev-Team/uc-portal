@@ -218,11 +218,10 @@ UConsulting Drive > Committees > Marketing > Branding, accessed read-only).
 1. **Mobile** — lower priority for now per your steer, but planned for
    eventually. Prototype targets desktop (1280px+, matching the
    wireframes) first; a responsive pass is future work, not unscoped.
-2. **Assets** — wireframes use text-placeholder company logos and
-   initials avatars, no real images. Keeping that placeholder approach for
-   companies/people for now (real third-party company logos would mean
-   downloading trademarked assets from outside the club's own Drive,
-   which needs an explicit go-ahead first).
+2. **People avatars** — still text-initials placeholders, intentionally.
+   `mockPeople.js` entries are fictional, so there's no real photo to use
+   and none should be sourced for them. Only companies got real logos
+   (see Progress below).
 
 ## Stack
 
@@ -615,10 +614,37 @@ priorities (P1/P2/P3) — kept in sync with this section as we go.
   (`naturalWidth`/`naturalHeight`, `complete`) and renders with no
   console errors in both locations.
 
-Remaining work is P3/stretch only — mobile/responsive pass and real
-company logos (the latter would mean downloading trademarked assets from
-outside the club's own Drive, which needs an explicit go-ahead first) —
-see PROJECT_PLAN.md's Feature priorities for the full breakdown.
+- **Real company logos wired in** (`data/companyLogos.js` +
+  `components/CompanyLogo.jsx`) — the 8 companies in `mockJobs.js`/
+  `mockCompanies.js` (Bain, McKinsey, Deloitte, Stripe, Goldman Sachs,
+  BCG, EY-Parthenon, Accenture) now show their real logos instead of
+  text initials. Sourced each company's own logo file from Wikimedia
+  Commons via Wikidata's P154 ("logo image") claim per company — the
+  same public reference logos any article or press mention would use,
+  not scraped from Handshake/LinkedIn/a competitor job board. `bcg.svg`
+  looked broken in an early small-scale preview (solid green block) until
+  a larger render showed it's genuinely BCG's real mark: white "BCG"
+  text reversed out of a green square. `CompanyLogo.jsx` is a small
+  wrapper — real logo if `companyLogos.js` has one for that exact name,
+  otherwise it falls back to the existing text-initials badge (same
+  className, so every `__logo` box's existing CSS still applies
+  unchanged) — added one shared rule (`[class$="__logo"] img`) to
+  `global.css` rather than styling each of the 8 call sites separately.
+  Wired into all 8 places a logo badge appears: `JobCard.jsx`,
+  `CompanyPage.jsx` (header + similar-companies rail), `Companies.jsx`
+  grid, `JobDetail.jsx` (header + similar-roles rail), and all three
+  tracker views (`TrackerBoard`/`TrackerTable`/`TrackerTimeline`) via
+  their shared `.board-card__logo` class. Verified in the browser at
+  the full size range these boxes actually render at (22px tracker rows
+  up to 64px company header) — legible down to ~44px, expectedly faint
+  at 22px the same way any wordmark logo would be. People/alumni avatars
+  in `mockPeople.js` intentionally stay text-initials — those are
+  fictional people, so there's no real photo to source.
+
+**All P1/P2/P3 work that doesn't require a real backend is now done.**
+Remaining is the mobile/responsive pass only (explicitly deprioritized,
+not unscoped) — see PROJECT_PLAN.md's Feature priorities for the full
+breakdown.
 
 Run locally:
 ```bash

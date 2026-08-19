@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { nextActionForStage, formatDate } from "../data/trackerUtils.js";
 import { deadlineLabel } from "../data/jobUtils.js";
+import CompanyLogo from "./CompanyLogo.jsx";
 
 const COLUMNS = [
   { key: "company", label: "Company" },
@@ -31,7 +32,7 @@ export default function TrackerTable({ applications, sortColumn, sortDirection, 
             <tr key={jobId} className={stage === "Closed" ? "is-closed" : ""}>
               <td>
                 <Link to={`/jobs/${jobId}`} className="tracker-table__company" style={{ textDecoration: "none" }}>
-                  <span className="board-card__logo">{job.logoInitials}</span>
+                  <CompanyLogo name={job.company} initials={job.logoInitials} className="board-card__logo" />
                   {job.company}
                 </Link>
               </td>

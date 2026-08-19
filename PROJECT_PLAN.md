@@ -172,9 +172,11 @@ stretch / beyond this initiative's timeline.
 - [x] Messages (`3f`)
 - [ ] Mobile/responsive pass (explicitly deprioritized for now)
 - [x] Bear-icon logo asset wired into the brandmark
-- [ ] Real company logos / avatar uploads — on hold: would mean
-      downloading trademarked third-party logos rather than the club's
-      own Drive assets, so needs an explicit go-ahead first
+- [x] Real company logos — all 8 companies in the mock data now show
+      their real logo (sourced from Wikimedia Commons), wired into
+      every logo-badge spot across Jobs/Companies/Applications/Job
+      detail. People avatars stay text-initials on purpose (fictional
+      people, no real photo to use).
 - [ ] Anything requiring a real backend: persistence, real auth, job
       scraping, email integration, Slack "Opportunities" channel sync —
       out of scope for a clickable prototype; would be the next phase
