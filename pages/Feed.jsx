@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { FEED_POSTS } from "../data/mockFeed.js";
 import { JOBS } from "../data/mockJobs.js";
 import { PEOPLE } from "../data/mockPeople.js";
@@ -22,8 +23,12 @@ function initials(name) {
 
 export default function Feed() {
   const { savedJobIds, toggleSavedJob, savedConnections, toggleSavedConnection } = useAppState();
+  const location = useLocation();
   const [tab, setTab] = useState("All");
-  const [composerText, setComposerText] = useState("");
+  // "Ask the network" from Global search's no-results state hands off a
+  // prefilled prompt via router state rather than a URL param, since it's
+  // one-time composer seeding, not a shareable/bookmarkable URL.
+  const [composerText, setComposerText] = useState(location.state?.prefill || "");
   const [selectedType, setSelectedType] = useState("Advice");
   const [posts, setPosts] = useState(FEED_POSTS);
   const [helpfulPosts, setHelpfulPosts] = useState([]);

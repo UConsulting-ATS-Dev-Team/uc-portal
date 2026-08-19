@@ -98,6 +98,7 @@ const SEED_OPPORTUNITY_QUEUE = [
 
 const DEFAULT_STATE = {
   onboardingComplete: false,
+  recentSearches: [], // Global search (3b) -- most recent first, capped at 5
   savedJobIds: [],
   trackedJobs: SEED_TRACKED_JOBS, // { [jobId]: { stage, addedAt, stageHistory } } -- stage taxonomy matches the Applications tracker (1f/1g/1j)
   timelineShiftDays: {}, // { [jobId]: days } -- manual reschedule from dragging a projected bar on the Timeline view (1j)
@@ -208,6 +209,14 @@ export function AppStateProvider({ children }) {
     setState((prev) => ({
       ...prev,
       notificationSettings: { ...prev.notificationSettings, [key]: value },
+    }));
+  }
+
+  function addRecentSearch(query) {
+    if (!query.trim()) return;
+    setState((prev) => ({
+      ...prev,
+      recentSearches: [query, ...prev.recentSearches.filter((q) => q !== query)].slice(0, 5),
     }));
   }
 
@@ -324,6 +333,7 @@ export function AppStateProvider({ children }) {
         updateProfileOverrides,
         touchProfileUpdated,
         updateNotificationSetting,
+        addRecentSearch,
         completeOnboarding,
         toggleSavedJob,
         addToTracker,

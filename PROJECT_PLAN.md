@@ -154,7 +154,8 @@ stretch / beyond this initiative's timeline.
       called out in the initiative notes ("go here for any help
       career-wise")
 - [x] Notifications (`2f`)
-- [ ] Global search (`3b`), action modals (`3c`), empty/first-run states (`3e`)
+- [x] Global search (`3b`)
+- [ ] Action modals (`3c`), empty/first-run states (`3e`)
 
 **P3 — Stretch / beyond this initiative**
 - [ ] Messages (`3f`)
