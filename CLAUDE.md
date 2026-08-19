@@ -157,19 +157,31 @@ the app (no invented/opaque inputs).
 **Sparse-data handling — see "Needs clarification" below; not yet
 decided.**
 
-## Design conventions (Industry design system, from the wireframes)
+## Design conventions
 
-- **Palette** (grayscale + one steel-blue accent — treated as a
-  placeholder token, UC's real brand colors are still TBD): ground
-  `#f2f2f3`, surface `#ffffff`, text `#1d1f20`; accent `#5980a6`, accent
-  deep (text-on-tint) `#41607f`, accent tint `#eaeff4`, accent tint border
-  `#b7c7d6`; neutrals `#d4d4d7` (borders), `#e7e7ea` (inner rules),
-  `#b7b7ba`, `#98989b`, `#7a7a7d` (muted text), `#5d5d60` (secondary
-  text), `#f5f5f8` (table headers / subtle fills).
-- **Type**: Barlow Condensed 600 for headings/numerals, Barlow 400/500 for
-  body. Body 13px, secondary 12px, meta 11px, section kickers 9.5px
-  uppercase (0.12em tracking), page titles 22–30px, display numerals
-  20–46px.
+Layout/shape/spacing come from the wireframe handoff's Industry design
+system (design/handoff/). Colors, fonts, and the wordmark are UC's real
+brand, from the 2020 style guide (design/branding/UConsulting Style.pdf —
+UConsulting Drive > Committees > Marketing > Branding, accessed read-only).
+
+- **Palette (UC brand)**: primary navy `#042742` (headings, most text,
+  primary elements), accent blue `#0C74C1` (accents — links, active
+  states, CTAs). Neutrals/surfaces borrowed from the wireframes' grayscale
+  since UC's style guide doesn't define a full neutral scale: ground
+  `#f2f2f3`, surface `#ffffff`, borders `#d4d4d7`, inner rules `#e7e7ea`,
+  table headers `#f5f5f8`.
+- **Type (UC brand)**: Montserrat Bold for headings, Montserrat Light for
+  body (loaded via Google Fonts). Size scale borrowed from the wireframes
+  since the style guide doesn't specify sizes: body 13px, secondary 12px,
+  meta 11px, section kickers 9.5px uppercase (0.12em tracking), page
+  titles 22–30px, display numerals 20–46px.
+- **Logo**: wordmark is "UConsulting" in Montserrat Bold, the "U"
+  recolored to accent blue, rest in primary navy (style guide's
+  reproduction rule) — built as CSS/markup, no image needed. There's also
+  a bear-icon mark (line art, used standalone or in a filled navy square)
+  for the "square mark" the wireframe's nav brandmark calls for — not yet
+  pulled into `assets/` as an image file; flag if you want
+  `UC Logo.png` (8.5 KB, from the same Branding folder) added for that.
 - **Shape**: square corners everywhere (0 radius), 1px hairline borders,
   2–3px accent left borders for emphasis (active nav item, featured
   cards, UC-posted job cards), flat surfaces, no shadows.
@@ -191,18 +203,25 @@ decided.**
   silently blended into the industry mean. Preserves the "every number is
   traceable" principle while not overstating certainty on thin data.
 - **Stack** — React (Vite + React Router), no backend. See below.
+- **Brand** — real UC colors/fonts (navy `#042742`, blue `#0C74C1`,
+  Montserrat) applied in [styles/tokens.css](styles/tokens.css), replacing
+  the wireframes' placeholder steel-blue/Barlow. Source: 2020 style guide
+  in the club's Google Drive, read-only access. Layout/shape conventions
+  stay from the wireframes' Industry system (the brand guide doesn't
+  cover those).
 
 ## Still open / to confirm as we build
 
-1. **Brand colors/logo** — not yet decided per the handoff; the
-   steel-blue accent stays a single swappable CSS variable
-   (`--color-accent` in [styles/tokens.css](styles/tokens.css)) rather
-   than a final commitment.
-2. **Sub-900px / mobile** — undefined in the wireframes. Treating this
-   prototype as desktop-only unless a mobile pass gets scoped in.
-3. **Assets** — wireframes use text-placeholder logos and initials
-   avatars, no real images. Keeping that placeholder approach rather than
-   sourcing real company logos for the prototype.
+1. **Bear-icon logo mark** — the style guide's line-art bear mark isn't
+   pulled into `assets/` yet (only the CSS wordmark is built). Say the
+   word if you want `UC Logo.png` downloaded for the nav brandmark's
+   square icon.
+2. **Mobile** — lower priority for now per your steer, but planned for
+   eventually. Prototype targets desktop (1280px+, matching the
+   wireframes) first; a responsive pass is future work, not unscoped.
+3. **Assets** — wireframes use text-placeholder company logos and
+   initials avatars, no real images. Keeping that placeholder approach for
+   companies/people; only UC's own brandmark uses the real assets above.
 
 ## Stack
 

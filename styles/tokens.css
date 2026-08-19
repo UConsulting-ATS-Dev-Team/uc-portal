@@ -1,12 +1,14 @@
-/* Design tokens observed in design/handoff/ (Industry design system).
-   UC's real brand colors/logo are still TBD (see CLAUDE.md) — accent is
-   a single swappable token, not a commitment to steel blue. */
+/* Design tokens. Layout/shape values (square corners, hairline borders,
+   spacing rhythm) come from the wireframe handoff's Industry design
+   system (design/handoff/). Colors, fonts, and the wordmark are UC's
+   actual brand, from design/branding/UConsulting Style.pdf (2020 style
+   guide, UConsulting Drive > Committees > Marketing > Branding). */
 
 :root {
   --color-ground: #f2f2f3;
   --color-surface: #ffffff;
-  --color-text: #1d1f20;
-  --color-text-secondary: #5d5d60;
+  --color-text: #042742; /* UC primary navy — "for primary elements and most text" */
+  --color-text-secondary: #3a4b5c;
   --color-text-muted: #7a7a7d;
   --color-placeholder: #b7b7ba;
   --color-neutral: #98989b;
@@ -15,13 +17,16 @@
   --color-border-inner: #e7e7ea;
   --color-table-header: #f5f5f8;
 
-  --color-accent: #5980a6;
-  --color-accent-deep: #41607f;
-  --color-accent-tint: #eaeff4;
-  --color-accent-tint-border: #b7c7d6;
+  --color-primary: #042742; /* UC navy */
+  --color-accent: #0c74c1; /* UC blue — "for accents" */
+  --color-accent-deep: #0a5c98;
+  --color-accent-tint: #eaf3fa;
+  --color-accent-tint-border: #b8d7ec;
 
-  --font-heading: "Barlow Condensed", "Arial Narrow", sans-serif;
-  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-heading: "Montserrat", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-heading-weight: 700; /* Montserrat Bold */
+  --font-body: "Montserrat", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body-weight: 300; /* Montserrat Light */
 
   --text-meta: 11px;
   --text-secondary: 12px;
