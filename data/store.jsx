@@ -33,6 +33,9 @@ const DEFAULT_STATE = {
   prepLogged: {}, // { [jobId]: extraHoursLogged } -- feeds the odds model's "Preparation logged" factor
   coffeeChatStatus: SEED_COFFEE_CHATS, // { [personId]: status label } -- Network (1h) "Your coffee chats"
   savedConnections: [], // personIds saved via Member profile's "Save to my network"
+  savedResourceIds: [], // Career Resources (2d) "My saved"
+  resourceProgress: { "case-guide-1": [0, 1] }, // { [resourceId]: completed section indexes } -- seeded so the library isn't empty on first load
+  trackProgress: { "case-interview-track": 3 }, // { [trackId]: completed step count } -- matches the wireframe's own "3 of 12" example
   preferences: {
     industries: [], // ranked array of industry names, max 3
     roles: [], // max 5
@@ -123,6 +126,31 @@ export function AppStateProvider({ children }) {
     }));
   }
 
+  function toggleSavedResource(resourceId) {
+    setState((prev) => ({
+      ...prev,
+      savedResourceIds: prev.savedResourceIds.includes(resourceId)
+        ? prev.savedResourceIds.filter((id) => id !== resourceId)
+        : [...prev.savedResourceIds, resourceId],
+    }));
+  }
+
+  function toggleResourceSection(resourceId, sectionIndex) {
+    setState((prev) => {
+      const done = prev.resourceProgress[resourceId] || [];
+      const next = done.includes(sectionIndex) ? done.filter((i) => i !== sectionIndex) : [...done, sectionIndex];
+      return { ...prev, resourceProgress: { ...prev.resourceProgress, [resourceId]: next } };
+    });
+  }
+
+  function advanceTrackStep(trackId, totalSteps) {
+    setState((prev) => {
+      const current = prev.trackProgress[trackId] || 0;
+      if (current >= totalSteps) return prev;
+      return { ...prev, trackProgress: { ...prev.trackProgress, [trackId]: current + 1 } };
+    });
+  }
+
   return (
     <AppStateContext.Provider
       value={{
@@ -135,6 +163,9 @@ export function AppStateProvider({ children }) {
         updateApplicationStage,
         requestCoffeeChat,
         toggleSavedConnection,
+        toggleSavedResource,
+        toggleResourceSection,
+        advanceTrackStep,
       }}
     >
       {children}

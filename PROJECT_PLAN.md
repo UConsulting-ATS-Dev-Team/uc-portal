@@ -80,7 +80,10 @@ filters, coffee-chat requests, and shared-context all working against
 mock data), Feed built (`2a`, composer/tabs/helpful reactions/embedded
 job cards/events all working), Companies + company page built (`2b`/`2c`,
 filters/watchlist/5 tabs all working, every stat computed from real
-job/people data). ~3 weeks to MVP, ~5.5 weeks to production-ready.
+job/people data), Career Resources built (`2d`/`2e`/`3d` — library,
+resource detail, learning track detail; sequential step-unlock,
+section-completion tracking, and tracker-driven recommendations all
+verified working). ~3 weeks to MVP, ~5.5 weeks to production-ready.
 
 ## MVP plan
 
@@ -135,7 +138,7 @@ stretch / beyond this initiative's timeline.
 - [x] Feed with alumni engagement (`2a`) — explicitly called out in the
       initiative notes
 - [x] Companies directory + company page (`2b`, `2c`)
-- [ ] Career Resources / education hub (`2d`, `2e`, `3d`) — explicitly
+- [x] Career Resources / education hub (`2d`, `2e`, `3d`) — explicitly
       called out in the initiative notes ("go here for any help
       career-wise")
 - [ ] Notifications (`2f`)
@@ -208,7 +211,7 @@ few depends on the shell and data model being in place.
 - [x] Network + member/alumni profile
 - [x] Feed
 - [x] Companies + company page
-- [ ] Career Resources
+- [x] Career Resources
 - [ ] My Profile (full tabs)
 - [ ] Admin Dashboard
 - [ ] Cross-cutting: search, notifications, modals, messages, empty states

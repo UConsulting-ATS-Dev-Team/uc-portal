@@ -11,6 +11,9 @@ import MemberProfile from "./pages/MemberProfile.jsx";
 import Feed from "./pages/Feed.jsx";
 import Companies from "./pages/Companies.jsx";
 import CompanyPage from "./pages/CompanyPage.jsx";
+import CareerResources from "./pages/CareerResources.jsx";
+import ResourceDetail from "./pages/ResourceDetail.jsx";
+import LearningTrackDetail from "./pages/LearningTrackDetail.jsx";
 
 // Each route below is a stub until it's built for real, per the build
 // order in CLAUDE.md (shell → auth → onboarding → jobs → job detail →
@@ -94,7 +97,23 @@ export default function App() {
         path="/resources"
         element={
           <NavShell>
-            <Placeholder title="Career Resources" screenId="2d" />
+            <CareerResources />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/resources/tracks/:trackId"
+        element={
+          <NavShell>
+            <LearningTrackDetail />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/resources/:resourceId"
+        element={
+          <NavShell>
+            <ResourceDetail />
           </NavShell>
         }
       />

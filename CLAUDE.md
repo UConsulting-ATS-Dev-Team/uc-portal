@@ -409,9 +409,29 @@ priorities (P1/P2/P3) — kept in sync with this section as we go.
   actual mock data (Any/1+/2+) rather than the wireframe's literal
   5+/10+/20+, which would filter to zero results against ~14 mock people.
 
-Next in build order: per PROJECT_PLAN.md's P2 list — Career Resources,
-full My Profile, Admin Dashboard, or the Timeline tracker view —
-whichever you want next.
+- **Career Resources built** (`pages/CareerResources.jsx` +
+  `pages/ResourceDetail.jsx` + `pages/LearningTrackDetail.jsx`, wireframe
+  `2d`/`2e`/`3d`) — the library's categories/skills nav counts are
+  computed from `data/mockResources.js`'s `RESOURCES`/`CERTIFICATIONS`
+  arrays; "Recommended for you" reads the member's own `trackedJobs` and
+  retitles itself ("Recommended for your Bain & Company first round")
+  when a tracked application is at an interview stage — verified in the
+  browser against the tracker's seed data. Learning track detail
+  enforces real sequential unlock (step N shows "Locked until N" until
+  step N-1 is marked done); "Continue" advances via `store.jsx`'s new
+  `advanceTrackStep`, verified 3/12 → 4/12 live. Resource detail's
+  section checklist toggles via `toggleResourceSection`; "Used for" is
+  deliberately narrow (only tracker stages `Preparing` through
+  `Final round`, capped at 3) after an early version matched almost
+  every tracked job and was useless as a signal. "Open guide"/
+  "Download PDF"/certification "Start" buttons are inert — no real
+  document or external content behind them in a prototype. `data/hash.js`
+  seeds "Members on this track" counts and the outcome-stat sample-size
+  framing, same deterministic-mock approach as the odds model and people
+  profiles.
+
+Next in build order: per PROJECT_PLAN.md's P2 list — full My Profile,
+Admin Dashboard, or the Timeline tracker view — whichever you want next.
 
 Run locally:
 ```bash
