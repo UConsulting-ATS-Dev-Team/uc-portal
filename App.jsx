@@ -8,6 +8,7 @@ import JobDetail from "./pages/JobDetail.jsx";
 import Applications from "./pages/Applications.jsx";
 import Network from "./pages/Network.jsx";
 import MemberProfile from "./pages/MemberProfile.jsx";
+import Feed from "./pages/Feed.jsx";
 
 // Each route below is a stub until it's built for real, per the build
 // order in CLAUDE.md (shell → auth → onboarding → jobs → job detail →
@@ -67,7 +68,7 @@ export default function App() {
         path="/feed"
         element={
           <NavShell>
-            <Placeholder title="Feed" screenId="2a" />
+            <Feed />
           </NavShell>
         }
       />

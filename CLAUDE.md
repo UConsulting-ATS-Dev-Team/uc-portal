@@ -376,9 +376,24 @@ priorities (P1/P2/P3) — kept in sync with this section as we go.
   `mutualConnections` — same "every number traceable" principle as the
   odds model.
 
-Next in build order: per PROJECT_PLAN.md's P2 list — Feed, Companies +
-company page, Career Resources, full My Profile, Admin Dashboard, or the
-Timeline tracker view — whichever you want next.
+- **Feed built** (`pages/Feed.jsx`, wireframe `2a`) — composer (4 post
+  types, functional: posting prepends a real entry using the current
+  user's identity), the 6-tab filter row, and post cards with the
+  "helpful" reaction (never "like," per spec), comments count, save,
+  and share. `data/mockFeed.js` holds 8 seeded posts; two embed a real
+  `JobCard` via `embeddedJobId` (reusing the same component from Jobs/
+  Job detail rather than a separate mini card). Event-type posts swap
+  the engagement row for RSVP/Add to calendar/attendance count. Helpful
+  toggles and saved posts are local component state (resets on reload) —
+  unlike saved jobs or tracked applications, nothing else in the app
+  reads "posts I've saved," so persisting them to the shared store
+  wasn't worth it. Right rail's "Alumni active this week" Follow button
+  reuses `toggleSavedConnection` from the store (same underlying concept
+  as Member profile's "Save to my network").
+
+Next in build order: per PROJECT_PLAN.md's P2 list — Companies + company
+page, Career Resources, full My Profile, Admin Dashboard, or the Timeline
+tracker view — whichever you want next.
 
 Run locally:
 ```bash
