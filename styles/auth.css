@@ -29,14 +29,12 @@
   align-items: center;
   justify-content: center;
   background: var(--color-primary);
-  color: var(--color-surface);
-  font-family: var(--font-heading);
-  font-weight: var(--font-heading-weight);
-  font-size: var(--text-secondary);
+  flex: 0 0 auto;
 }
 
-.auth__mark span {
-  color: var(--color-accent);
+.auth__mark img {
+  width: 17px;
+  height: auto;
 }
 
 .auth__wordmark {

@@ -171,8 +171,10 @@ stretch / beyond this initiative's timeline.
 **P3 — Stretch / beyond this initiative**
 - [x] Messages (`3f`)
 - [ ] Mobile/responsive pass (explicitly deprioritized for now)
-- [ ] Bear-icon logo asset wired into the brandmark
-- [ ] Real company logos / avatar uploads
+- [x] Bear-icon logo asset wired into the brandmark
+- [ ] Real company logos / avatar uploads — on hold: would mean
+      downloading trademarked third-party logos rather than the club's
+      own Drive assets, so needs an explicit go-ahead first
 - [ ] Anything requiring a real backend: persistence, real auth, job
       scraping, email integration, Slack "Opportunities" channel sync —
       out of scope for a clickable prototype; would be the next phase

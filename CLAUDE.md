@@ -215,16 +215,14 @@ UConsulting Drive > Committees > Marketing > Branding, accessed read-only).
 
 ## Still open / to confirm as we build
 
-1. **Bear-icon logo mark** — the style guide's line-art bear mark isn't
-   pulled into `assets/` yet (only the CSS wordmark is built). Say the
-   word if you want `UC Logo.png` downloaded for the nav brandmark's
-   square icon.
-2. **Mobile** — lower priority for now per your steer, but planned for
+1. **Mobile** — lower priority for now per your steer, but planned for
    eventually. Prototype targets desktop (1280px+, matching the
    wireframes) first; a responsive pass is future work, not unscoped.
-3. **Assets** — wireframes use text-placeholder company logos and
+2. **Assets** — wireframes use text-placeholder company logos and
    initials avatars, no real images. Keeping that placeholder approach for
-   companies/people; only UC's own brandmark uses the real assets above.
+   companies/people for now (real third-party company logos would mean
+   downloading trademarked assets from outside the club's own Drive,
+   which needs an explicit go-ahead first).
 
 ## Stack
 
@@ -598,9 +596,29 @@ priorities (P1/P2/P3) — kept in sync with this section as we go.
   `localStorage` state changes confirmed for coffee chat status, tracked
   jobs, prep hours, and the opportunity queue after each submit.
 
-**All 24 wireframe screens are now built.** Remaining work is P3/stretch
-only — mobile/responsive pass, the bear-icon logo asset, real company
-logos — see PROJECT_PLAN.md's Feature priorities for the full breakdown.
+**All 24 wireframe screens are now built.**
+
+- **Bear-icon logo mark wired in** — pulled `UCBearLogoAlt.png` (the
+  line-art bear, read-only from the club's Branding Drive folder) and
+  processed it locally with Pillow rather than committing the raw
+  2701×2701 source: masked out a stray leftover "U" glyph baked into
+  that export, cropped tight to the bear silhouette, and recolored the
+  line art to solid white with alpha derived from ink coverage (so it
+  reads cleanly on the navy square regardless of anti-aliasing). Only
+  the final small processed PNG (`assets/uc-bear-mark-white.png`, ~10KB)
+  is committed — the multi-hundred-KB raw exports aren't, since nothing
+  references them. Replaces the CSS-text "U"+"C" square mark in both
+  `components/TopBar.jsx` and `pages/SignIn.jsx`'s `Brand()` (the two
+  places the nav brandmark's square icon appears), imported as a normal
+  Vite asset module rather than a `public/`-relative path since this
+  project has no `public/` directory. Verified the image loads
+  (`naturalWidth`/`naturalHeight`, `complete`) and renders with no
+  console errors in both locations.
+
+Remaining work is P3/stretch only — mobile/responsive pass and real
+company logos (the latter would mean downloading trademarked assets from
+outside the club's own Drive, which needs an explicit go-ahead first) —
+see PROJECT_PLAN.md's Feature priorities for the full breakdown.
 
 Run locally:
 ```bash

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Skeleton from "../components/Skeleton.jsx";
 import { useAppState } from "../data/store.jsx";
+import bearMark from "../assets/uc-bear-mark-white.png";
 import "../styles/auth.css";
 
 // Wireframe 3a — four states: sign-in, not-on-roster, access-pending,
@@ -20,7 +21,7 @@ function Brand() {
   return (
     <div className="auth__brand">
       <span className="auth__mark">
-        U<span>C</span>
+        <img src={bearMark} alt="" />
       </span>
       <span className="auth__wordmark">UC Portal</span>
     </div>

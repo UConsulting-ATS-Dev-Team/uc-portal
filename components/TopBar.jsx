@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { currentUser, navCounts } from "../data/mockUser.js";
 import { CONVERSATIONS } from "../data/mockMessages.js";
+import bearMark from "../assets/uc-bear-mark-white.png";
 
 const unreadMessageCount = CONVERSATIONS.filter((c) => c.unread).length;
 
@@ -21,7 +22,7 @@ export default function TopBar() {
     <header className="topbar">
       <Link className="topbar__brand" to="/">
         <span className="topbar__mark">
-          U<span>C</span>
+          <img src={bearMark} alt="" />
         </span>
         <span className="topbar__wordmark">UC Portal</span>
       </Link>
