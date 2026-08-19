@@ -516,10 +516,27 @@ priorities (P1/P2/P3) — kept in sync with this section as we go.
   actual `left_click_drag` worked — worth remembering if this needs
   testing again.
 
+- **Home built** (`pages/Home.jsx`, wireframe `1a`) — this had been
+  missed earlier (the build order jumped from shell straight to auth and
+  Home never got a turn). Welcome card, Recommended for you (reuses
+  `JobCard`, the same component from Jobs/Job detail/Feed), Recruiting
+  progress stat strip, From the UC feed preview, and a right rail
+  (Recommended actions, UC people to meet, Deadlines this week) — all
+  computed live from the same store data every other page reads, no new
+  data model. "Recommended actions" are genuinely computed nudges (an
+  interview-stage tracked app → prep nudge with real logged hours; a
+  followed company with a UC alum → meet nudge; profile <100% → finish
+  nudge), not static copy. Also builds the first-login empty state
+  (`3e`) as Home's own zero-tracked-applications branch rather than a
+  separate screen, matching how the wireframe describes it as belonging
+  to Home. Extracted `computeProfileStrength` out of `MyProfile.jsx`
+  into `data/profileUtils.js` since Home needed the identical
+  calculation — small refactor, not a new concept.
+
 Remaining work is smaller cross-cutting P2/P3: global search (`3b`),
-action modals (`3c`), Notifications (`2f`), Messages (`3f`), and
-empty/first-run states (`3e`). See PROJECT_PLAN.md's Feature priorities
-for the full P2/P3 breakdown.
+action modals (`3c`), Notifications (`2f`), Messages (`3f`), and the
+other four empty/first-run states (`3e`). See PROJECT_PLAN.md's Feature
+priorities for the full P2/P3 breakdown.
 
 Run locally:
 ```bash

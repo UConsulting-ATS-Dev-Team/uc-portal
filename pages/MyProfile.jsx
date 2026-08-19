@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
 import { INDUSTRIES, ROLES, LOCATIONS, COMPANIES, RECRUITING_CYCLES } from "../data/careerOptions.js";
+import { computeProfileStrength } from "../data/profileUtils.js";
 import "../styles/jobDetail.css";
 import "../styles/onboarding.css";
 import "../styles/tracker.css";
@@ -91,17 +92,7 @@ export default function MyProfile() {
     });
   }
 
-  // Profile strength: 7 signals that feed recommendations/match scores.
-  const strengthChecks = [
-    { label: "Resume attached", done: preferences.resumeAttached },
-    { label: "Target industries selected", done: preferences.industries.length > 0 },
-    { label: "Target roles selected", done: preferences.roles.length > 0 },
-    { label: "Target locations selected", done: preferences.locations.length > 0 },
-    { label: "LinkedIn added", done: !!form.linkedIn },
-    { label: "Companies of interest followed", done: preferences.followedCompanies.length > 0 },
-    { label: "Recruiting timeline set", done: !!preferences.recruitingCycle },
-  ];
-  const strengthPct = Math.round((strengthChecks.filter((c) => c.done).length / strengthChecks.length) * 100);
+  const { checks: strengthChecks, pct: strengthPct } = computeProfileStrength(preferences, form.linkedIn);
 
   return (
     <div>

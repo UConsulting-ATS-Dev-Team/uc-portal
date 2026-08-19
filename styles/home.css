@@ -1,0 +1,172 @@
+.home-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+}
+
+.home-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.home-rail {
+  width: var(--right-rail-width);
+  flex: 0 0 auto;
+}
+
+.welcome-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-6);
+  border: var(--border-hairline);
+  background: var(--color-surface);
+  margin-bottom: var(--space-7);
+}
+
+.welcome-card__greeting {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.welcome-card__subtitle {
+  color: var(--color-text-secondary);
+  margin: var(--space-1) 0 0;
+}
+
+.welcome-card__strength {
+  flex: 0 0 auto;
+  text-align: center;
+  width: 120px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--space-4);
+}
+
+.section-header h2 {
+  margin: 0;
+}
+
+.recommended-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-5);
+  margin-bottom: var(--space-7);
+}
+
+/* JobCard is laid out for the full-width Jobs board; stack it in this
+   narrower 2-column grid instead of squeezing logo/body/actions into one row. */
+.recommended-grid .job-card {
+  flex-direction: column;
+}
+
+.recommended-grid .job-card__actions {
+  flex-direction: row;
+  width: auto;
+}
+
+.recommended-grid .job-card__actions .btn {
+  flex: 1 1 auto;
+}
+
+.progress-app-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: var(--border-hairline);
+}
+
+.progress-app-row:last-child {
+  border-bottom: none;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  flex: 0 0 auto;
+}
+
+.progress-app-row__body {
+  flex: 1 1 auto;
+}
+
+.progress-app-row__timing {
+  color: var(--color-text-muted);
+  font-size: var(--text-meta);
+}
+
+.feed-preview-card {
+  border: var(--border-hairline);
+  background: var(--color-surface);
+  padding: var(--space-5);
+  margin-bottom: var(--space-4);
+}
+
+.recommended-action-row {
+  padding: var(--space-3) 0;
+  border-bottom: var(--border-hairline);
+}
+
+.recommended-action-row:last-child {
+  border-bottom: none;
+}
+
+.recommended-action-row__title {
+  font-weight: 700;
+  font-size: var(--text-secondary);
+}
+
+.recommended-action-row__detail {
+  color: var(--color-text-muted);
+  font-size: var(--text-meta);
+}
+
+.meet-person-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) 0;
+  border-bottom: var(--border-hairline);
+}
+
+.meet-person-row:last-child {
+  border-bottom: none;
+}
+
+.deadline-row {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-2) 0;
+  font-size: var(--text-secondary);
+}
+
+/* First-login empty state */
+.empty-state {
+  text-align: center;
+  padding: var(--space-8);
+  border: var(--border-hairline);
+  background: var(--color-surface);
+}
+
+.empty-state__tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+  margin-top: var(--space-7);
+  text-align: left;
+}
+
+.empty-state__tile {
+  border: var(--border-hairline);
+  padding: var(--space-5);
+}

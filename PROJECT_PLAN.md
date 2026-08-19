@@ -226,6 +226,9 @@ few depends on the shell and data model being in place.
 - [x] Career Resources
 - [x] My Profile (full tabs)
 - [x] Admin Dashboard
+- [x] Home / Dashboard (`1a`) — this was missed earlier in the sequence
+      (jumped straight from shell to auth); caught and built now, incl.
+      the first-login empty state (`3e`)
 - [ ] Cross-cutting: search, notifications, modals, messages, empty states
 
 ## Risks & blockers
