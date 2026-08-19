@@ -17,6 +17,7 @@ import LearningTrackDetail from "./pages/LearningTrackDetail.jsx";
 import MyProfile from "./pages/MyProfile.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
 import Home from "./pages/Home.jsx";
+import Notifications from "./pages/Notifications.jsx";
 
 // Each route below is a stub until it's built for real, per the build
 // order in CLAUDE.md (shell → auth → onboarding → jobs → job detail →
@@ -132,7 +133,7 @@ export default function App() {
         path="/notifications"
         element={
           <NavShell>
-            <Placeholder title="Notifications" screenId="2f" />
+            <Notifications />
           </NavShell>
         }
       />

@@ -153,7 +153,7 @@ stretch / beyond this initiative's timeline.
 - [x] Career Resources / education hub (`2d`, `2e`, `3d`) — explicitly
       called out in the initiative notes ("go here for any help
       career-wise")
-- [ ] Notifications (`2f`)
+- [x] Notifications (`2f`)
 - [ ] Global search (`3b`), action modals (`3c`), empty/first-run states (`3e`)
 
 **P3 — Stretch / beyond this initiative**

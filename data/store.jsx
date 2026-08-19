@@ -135,6 +135,13 @@ const DEFAULT_STATE = {
     resumeFileName: null,
   },
   profileLastUpdated: "2026-08-02T12:00:00.000Z",
+  notificationSettings: {
+    deadlineReminders: true,
+    newMatchedJobs: true,
+    alumniReplies: true,
+    allFeedActivity: false,
+    weeklyDigest: true,
+  },
 };
 
 function loadState() {
@@ -159,6 +166,7 @@ function loadState() {
         },
       },
       profileOverrides: { ...DEFAULT_STATE.profileOverrides, ...saved.profileOverrides },
+      notificationSettings: { ...DEFAULT_STATE.notificationSettings, ...saved.notificationSettings },
     };
   } catch {
     return DEFAULT_STATE;
@@ -194,6 +202,13 @@ export function AppStateProvider({ children }) {
 
   function touchProfileUpdated() {
     setState((prev) => ({ ...prev, profileLastUpdated: new Date().toISOString() }));
+  }
+
+  function updateNotificationSetting(key, value) {
+    setState((prev) => ({
+      ...prev,
+      notificationSettings: { ...prev.notificationSettings, [key]: value },
+    }));
   }
 
   function completeOnboarding() {
@@ -308,6 +323,7 @@ export function AppStateProvider({ children }) {
         updateRecruitingSetting,
         updateProfileOverrides,
         touchProfileUpdated,
+        updateNotificationSetting,
         completeOnboarding,
         toggleSavedJob,
         addToTracker,
