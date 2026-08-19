@@ -68,8 +68,9 @@ goals for next week. Two hard deadlines:
 **Where we are (as of 2026-08-18):** stack + scaffold set up, real UC
 brand applied, navigation shell built and clickable across all 24
 screens' routes (most still placeholders), sign-in/access-gate flow
-built (`3a`, all four states). ~3 weeks to MVP, ~5.5 weeks to
-production-ready.
+built (`3a`, all four states), onboarding built (`2i`/`2j`, all 5 steps +
+completion, preferences persist via a shared store so later pages can
+read them). ~3 weeks to MVP, ~5.5 weeks to production-ready.
 
 ## MVP plan
 
@@ -103,9 +104,8 @@ stretch / beyond this initiative's timeline.
 - [x] Sign-in / access gate (`3a`) — all four states (sign-in, not-on-roster,
       pending, loading skeleton) built and clickable
 - [ ] My Profile (`2g`) — personal info + career preferences
-- [ ] Onboarding (`2i`/`2j`) — the natural path to a filled-out profile;
-      pull forward from P2 if time allows, since a demo lands better with
-      the live-match-count payoff than a page that starts pre-filled
+- [x] Onboarding (`2i`/`2j`) — all 5 steps + completion built, with the
+      live-match-count payoff working
 - [ ] Jobs board (`1d`) — filters, match score, save/bookmark
 - [ ] Job detail (`1e`) — at minimum the match checklist + role info;
       full odds-model panel can lag into P2 if needed
@@ -186,7 +186,7 @@ few depends on the shell and data model being in place.
 - [x] Stack + scaffold (Vite + React Router, real UC brand tokens)
 - [x] Navigation shell
 - [x] Auth / access gate
-- [ ] Onboarding
+- [x] Onboarding
 - [ ] Jobs board
 - [ ] Job detail (incl. odds model)
 - [ ] Applications tracker

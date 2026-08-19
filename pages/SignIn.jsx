@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Skeleton from "../components/Skeleton.jsx";
+import { useAppState } from "../data/store.jsx";
 import "../styles/auth.css";
 
 // Wireframe 3a — four states: sign-in, not-on-roster, access-pending,
@@ -32,11 +33,12 @@ export default function SignIn() {
   const [submittedAt, setSubmittedAt] = useState(null);
   const [resent, setResent] = useState(false);
   const navigate = useNavigate();
+  const { onboardingComplete } = useAppState();
 
   function simulateSignIn(event) {
     event?.preventDefault();
     setState(STATE.LOADING);
-    setTimeout(() => navigate("/"), 700);
+    setTimeout(() => navigate(onboardingComplete ? "/" : "/onboarding"), 700);
   }
 
   function requestAccess() {

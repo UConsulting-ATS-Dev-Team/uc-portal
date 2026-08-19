@@ -266,8 +266,25 @@ priorities (P1/P2/P3) — kept in sync with this section as we go.
   Introduced `components/Skeleton.jsx` as the reusable app-wide loading
   pattern and shared button/input/chip primitives in `styles/global.css`
   for reuse on every later page.
+- **Onboarding built** (`pages/Onboarding.jsx`, wireframe `2i`/`2j`) — all
+  5 steps + completion. Introduced `data/store.jsx` (`AppStateProvider` /
+  `useAppState`), a small React Context persisted to `localStorage` under
+  the key `uc-portal-state` — this is the shared prototype state layer
+  CLAUDE.md's Stack section anticipated (tracker stage, saved jobs, etc.
+  will extend the same store rather than each page inventing its own).
+  Onboarding writes `preferences` (industries, roles, locations, followed
+  companies, recruiting cycle, help needed) that later pages (My Profile,
+  Jobs matching) should read from `useAppState()` rather than duplicating.
+  Industry ranking uses up/down buttons instead of real drag-and-drop —
+  simpler and reliable for a prototype; true drag-and-drop is worth doing
+  for real on the tracker board (`1f`) where there's no button equivalent.
+  `data/careerOptions.js` holds the mock industries/roles/locations/
+  companies reference lists — Jobs/Companies pages should reuse these
+  rather than inventing their own.
+  Sign-in now routes first-timers (`onboardingComplete: false`) into
+  `/onboarding` instead of straight to `/`.
 
-Next in build order: onboarding → jobs → job detail → tracker.
+Next in build order: jobs → job detail → tracker.
 
 Run locally:
 ```bash
