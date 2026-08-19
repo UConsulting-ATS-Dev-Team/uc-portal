@@ -507,3 +507,213 @@ Stage 5          LLM-assisted classification fallback for the long tail;
 
 Nothing here is implemented. Let me know what to adjust before we move
 into Stage 1.
+
+---
+
+## Part 8 — User Story Requirements & MVP Prioritization
+
+Second pass, driven by the 61-story backlog you provided. **Still no code
+below — this maps stories onto the architecture above, flags where it
+needs to change, and reprioritizes.** The single biggest finding: a
+surprising number of these stories are **already built in the existing
+UC Portal frontend**, just running against `mockJobs.js` instead of a
+real database. That changes what "P0" actually means here — for those
+stories, the frontend work is done and the P0 task is *only* the backend
+underneath it, not new UI.
+
+### 8.1 Already built in the prototype (frontend side)
+
+Confirmed against the current codebase, not aspirational:
+
+| Story | Where it already lives |
+|---|---|
+| US-07 Submit an opportunity manually | `components/modals/PostOpportunityModal.jsx` |
+| US-08 Review submitted opportunities | `pages/AdminDashboard.jsx` opportunity queue (Approve/Remove) |
+| US-21 Track application deadlines | `data/jobUtils.js` deadline math + urgency flags |
+| US-29/US-30 Create/update career preferences | Onboarding (`2i`/`2j`) + My Profile (`2g`), `store.preferences` |
+| US-34 Explain job match scores | Job detail's "Why this is a 94% match" checklist — this is *exactly* US-34's example shape already |
+| US-35/US-36/US-37 Keyword search, filter, sort | `pages/Jobs.jsx` filter column + tabs + sort |
+| US-39 Save a search | Button exists, wiring is the only gap (currently inert) |
+| US-44 Show UC connections | `data/mockPeople.js`'s `peopleAt()`, Job detail's "UC members at {company}" |
+| US-45 Show previous UC experiences | Job detail's interview write-ups; the *contribution* flow also already exists (`ContributeModal.jsx`) |
+| US-46 Show UC recruiting resources | Job detail's prep-resources rail, Career Resources tie-in |
+| US-47 View complete job info | `pages/JobDetail.jsx`, full page |
+| US-48 Apply through original source | Job detail's "Apply on {company} site" button |
+| US-49 Save a job | `toggleSavedJob` |
+| US-50 Add to application tracker | `addToTracker`, `AddApplicationModal.jsx` |
+| US-53 Monitor member behavior (aggregate) | Admin Dashboard KPI strip, industry gap analysis — already privacy-safe (aggregate only, per the explicit "never an individual's application list" rule already in CLAUDE.md) |
+| US-59/US-60 (P2, but worth noting) | Home's "Recommended actions," Career Resources' tracker-driven recommendations already prototype this pattern |
+
+None of this is wasted effort even though it's "just mock data" — it's
+the spec. The real backend's job is to make these screens true instead
+of scripted, not to redesign them.
+
+### 8.2 Full story classification
+
+Format: **P-level** — one-line technical requirement — depends on —
+mock-data-feasible? — needs a real authorized source?
+
+**1. Source Management**
+- US-01 **P0** — `Source` table CRUD (id, type, config JSON, enabled) — depends on nothing — mock: yes — real source: no
+- US-02 **P0** — compliance fields on `Source` (already spec'd in §3.7) + an admin view of them — depends on US-01 — mock: yes — real: no
+- US-03 **P0** — toggle `authorization_status`/`enabled`; adapters check it before every fetch — depends on US-01 — mock: yes — real: no
+
+**2. Ingestion**
+- US-04 **P1** — adapter interface (fetch → raw record → pipeline entry) — depends on US-01/03, normalization (US-10–13) — mock: yes (a fake adapter proves the interface) — real: only to *validate* it, in Stage 3
+- US-05 **P1** — retry policy + failure log + "Potentially expired" transition, never delete on fetch failure — depends on US-04, US-22 — mock: yes
+- US-06 **P0** — provenance fields on `Job` (source, source_job_id, source_url, first/last seen, last verified) — depends on nothing — mock: yes — real: no
+
+**3. Manual / UC Submission**
+- US-07 **P0** — *(frontend done, see 8.1)* — submission → raw `Job` record, `source_type = member` — depends on US-01 — mock: yes
+- US-08 **P0** — *(frontend done, see 8.1)* — needs real persistence behind the existing queue UI — depends on US-07 — mock: yes
+- US-09 **P0** — run the dedup pipeline (US-16/17) on every submission before it reaches the review queue — depends on US-16/17 — mock: yes
+
+**4. Normalization**
+- US-10 **P0** — title → taxonomy lookup, rule-based first (§3.2) — depends on taxonomy tables — mock: yes
+- US-11 **P0** — location string parsing/normalization — depends on taxonomy tables — mock: yes
+- US-12 **P1** — compensation regex parser (`$35–45/hr` → structured) — mock: yes
+- US-13 **P0** — industry/function/employment-type classification — depends on taxonomy tables — mock: yes
+
+**5. Data Quality**
+- US-14 **P0** — validation ruleset at ingestion (required fields, URL reachability, known source) — depends on US-06 — mock: yes (URL-health check is meaningful even against fake URLs in a synthetic set)
+- US-15 **P1** — composite quality score (§3.5) — depends on US-14, source-reliability history — mock: yes
+
+**6. Duplicate Detection**
+- US-16 **P0** — canonical-URL / `source_job_id` exact match — mock: yes
+- US-17 **P0** — multi-signal near-duplicate scoring (§3.3) — depends on US-10/11 (needs normalized fields to compare fairly) — mock: yes
+- US-18 **P0** — 70–89 confidence band → review queue (same queue as US-08, "merge" as a new action) — depends on US-17 — mock: yes
+- US-19 **P1** — merge operation: keep best field per source, **retain every contributing source in provenance** (not collapse to one) — depends on US-18 — mock: yes — *(see 8.3 below — this one changes the data model slightly)*
+
+**7. Freshness & Expiration**
+- US-20 **P0** — expiration state machine (§3.4) — mock: yes
+- US-21 **P0** — *(frontend done, see 8.1)* — needs deadline field to persist real — mock: yes
+- US-22 **P1** — "Potentially expired" flag after N failed re-verifications — depends on US-20 — mock: yes
+- US-23 **P1** — archive transition, excluded from active search, retained for history — depends on US-20 — mock: yes
+
+**8. Enrichment**
+- US-24 **P0** — industry classification (part of US-13's taxonomy work) — mock: yes
+- US-25 **P0** — function classification (same) — mock: yes
+- US-26 **P1** — skill extraction from description text — depends on a source actually permitting description storage (copyright note, Part 2) — mock: yes with synthetic descriptions — real: extraction quality only provable against real postings later
+- US-27 **P0** — grad-year/degree/experience eligibility parsing — feeds US-33's hard-constraint filter — mock: yes
+- US-28 **P0** — `classification_method` (fact/rule/llm) surfaced in the UI as a "employer-stated" vs. "our estimate" badge — depends on every enrichment story tagging its own method — mock: yes
+
+**9. Member Profiles**
+- US-29 **P0** — *(frontend done, see 8.1)* — depends on nothing — mock: yes
+- US-30 **P0** — *(frontend done, see 8.1)* — mock: yes
+- US-31 **P0** — grad year must become a **hard filter**, not the soft signal it is today in the prototype's match checklist — depends on US-29 — mock: yes
+
+**10. Job–Member Matching**
+- US-32 **P0** — scoring engine per §3.9 — depends on US-29/31, US-24/25/27 — mock: yes
+- US-33 **P0** — filter-then-rank split (hard constraints remove, soft preferences score) — depends on US-32 — mock: yes
+- US-34 **P0** — *(frontend done, see 8.1)* — needs a real score behind the existing checklist UI — depends on US-32 — mock: yes
+
+**11. Search**
+- US-35 **P0** — *(frontend done, see 8.1)* — needs Postgres FTS behind it (§3.8) — mock: yes
+- US-36 **P0** — *(frontend done, see 8.1)* — needs a real filtered query — mock: yes
+- US-37 **P0** — *(frontend done, see 8.1)* — mock: yes
+- US-38 **P2** — NL query → structured filter object; keyword-extraction first, LLM fallback only on what that can't map — depends on US-35/36 — mock: yes eventually, explicitly deferred
+- US-39 **P1** — persist a named filter set per member — depends on US-36 — mock: yes
+
+**12. Ranking**
+- US-40 **P0** — weighted ranking formula (§3.9) — depends on US-32 — mock: yes
+- US-41 **P1** — freshness term in the formula — depends on US-40, US-20 — mock: yes
+- US-42 **P1** — UC-relevance term, reads from the CRM boundary (§3.6) — depends on US-40, US-44 — mock: yes (mocked CRM data, exactly as today)
+- US-43 **P1** — anti-domination cap (§3.9 already specifies "max N per company in top 20") — depends on US-40 — mock: yes
+
+**13. UC-Specific Intelligence**
+- US-44 **P0** — *(frontend done, see 8.1)* — needs the real CRM read API in place of `peopleAt()` eventually; mocked data is fine through MVP — mock: yes
+- US-45 **P0** — *(frontend done, see 8.1)* — mock: yes
+- US-46 **P1** — *(frontend done, see 8.1)* — mock: yes
+
+**14. Job Detail Page**
+- US-47 through US-50 — **all P0**, all *(frontend done, see 8.1)* — the only backend work is pointing the existing page at real data instead of `mockJobs.js`/`localStorage`
+
+**15. Analytics / Administration**
+- US-51 **P1** — source-health admin panel — depends on US-05 — mock: yes
+- US-52 **P1** — job-quality admin panel (broken links, low scores, pending duplicates) — depends on US-14/15/18 — mock: yes
+- US-53 **P1** — *(frontend done, see 8.1)* — needs a real aggregate query behind it, same privacy rule already in place (aggregate only, never an individual's list) — mock: yes
+
+**16. Compliance & Safety**
+- US-54 **P0** — same as US-06, restated as a compliance requirement — mock: yes
+- US-55 **P0** — source-registry gate (§3.7) blocks disabled/unapproved sources from the pipeline entirely — depends on US-01/02/03 — mock: yes
+- US-56 **P0** — **needs an actual enforcement point, not just a recorded field** — see 8.3 — depends on US-02 — mock: yes
+- US-57 **P0** — `Requires review` blocks ingestion by default (§3.7); duplicate review queue (US-18) and submission review queue (US-08) are the two other "send to a human" paths — mock: yes
+
+**17. Future / Advanced (explicitly not MVP, per your instruction)**
+- US-58 **P2** — personalized continuous feed — depends on US-32/40
+- US-59 **P2** — next-recommended-action — pattern already prototyped on Home, see 8.1
+- US-60 **P2** — interview-prep recommendation — pattern already prototyped on Career Resources, see 8.1
+- US-61 **P2** — job-trend insights over time — depends on historical data existing (needs Stage 2+ running for a while first, not just an engineering dependency)
+
+### 8.3 Two things this pass found that Part 3 didn't fully cover
+
+1. **US-19 (merge) breaks the "one `source_id` per job" assumption** in
+   §3.1's schema. A merged record needs a `contributing_sources: []`
+   list, not a single `source_id` — otherwise merging silently drops
+   provenance for every source except the one that "won." This also has
+   a compliance angle: if one contributing source restricts
+   redistribution and another doesn't, **the merged record must follow
+   the most restrictive applicable source**, not the least — a merge
+   can't be used to launder a restriction away. Small schema change,
+   worth making before Stage 1 rather than retrofitting after merges
+   exist.
+2. **US-56 needs an enforcement mechanism, not just a database column.**
+   §3.7 already records `storage_restrictions` per source, but nothing
+   in Part 3 actually *checks* it. Concretely: the normalization/write
+   layer should refuse to persist fields a source's restrictions
+   disallow (e.g. full description text) rather than relying on every
+   future adapter author to remember to honor the flag. This is the
+   difference between "we wrote it down" and "the system can't violate
+   it by accident" — worth being the literal last gate before any
+   `INSERT`, not documentation.
+
+### 8.4 New/refined privacy note from this pass
+
+US-38's natural-language search, if it ever calls an LLM to parse a
+query, should send **only the query text** — never the member's profile,
+preferences, or identity alongside it. Keep that call stateless and
+anonymized even though it's a low-stakes feature; no reason to widen the
+data-sharing surface for a P2 convenience layer. Everything else in this
+batch (US-26 skill extraction, US-53 aggregate analytics) is already
+covered by rules established in Part 2/3.6/6 — reaffirmed, not new.
+
+### 8.5 Minimum viable architecture — confirmed, now story-anchored
+
+Part 5's MVP list already matches what this pass independently arrives
+at. Restated as a build order, anchored to story IDs, with the "frontend
+already exists" reality from 8.1 factored in:
+
+```text
+1. Postgres schema: Job (+ contributing_sources per 8.3), Source,
+   DuplicateReviewQueue, taxonomy tables.
+   Covers: US-01, 02, 03, 06, 54, 55, 56, 57
+
+2. Manual pipeline end-to-end against the real DB:
+   submit → validate (14) → normalize (10,11,13) → dedup (16,17,18,9)
+   → enrich (24,25,27,28) → review queue (8) → approve → active job
+   (20,21). Admin/Member submission is the only source enabled.
+   Covers: US-07 through 28 except 12/15/19/22/23/26 (P1, follow-on)
+
+3. Point the existing frontend at the real API instead of mock data:
+   search/filter/sort (35,36,37), matching/ranking (29-34, 40),
+   job detail actions (47-50). This is almost entirely "swap the data
+   source," not new UI, per 8.1.
+
+4. Admin monitoring: extend the existing Admin Dashboard with source
+   health (51) and job quality (52) panels; real aggregate query behind
+   the member-behavior stats it already shows (53).
+
+5. Only after 1-4 are proven: first automated source pilot (04, 05),
+   one employer ATS adapter, individually verified — deliberately last,
+   since it's the highest-risk and highest-effort piece and shouldn't
+   be what the rest of the system gets validated against.
+```
+
+Everything marked P1/P2 above (12, 15, 19, 22, 23, 26, 38, 39, 41-43, 46
+[already done frontend-wise], 51-53, 58-61) is real and worth building,
+just after step 5 proves the foundation is solid — same reasoning as
+Part 5's original cut list.
+
+Still nothing implemented. This supersedes none of Parts 1–7 — it's the
+same architecture, now checked against a much more detailed backlog and
+adjusted in the two places (8.3) it actually needed to change.
