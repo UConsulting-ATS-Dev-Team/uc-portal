@@ -88,8 +88,13 @@ Career preferences, Recruiting settings, Privacy — Career preferences
 edits the same `preferences` object onboarding writes to, so nothing's
 duplicated), Admin Dashboard built (`2h`, KPI strip, gap analysis
 computed from real industry-interest data, class-year breakdown, and a
-working opportunity review queue with Approve/Remove). ~3 weeks to
-MVP, ~5.5 weeks to production-ready.
+working opportunity review queue with Approve/Remove), and the
+Timeline tracker view built (`1j`, Gantt-style — grouped rows, real
+per-stage bars, projected/dashed segments, event diamonds, and a
+working mouse-drag reschedule interaction). ~3 weeks to MVP, ~5.5
+weeks to production-ready. All P1 screens and the large majority of
+P2 are done — remaining: Notifications, global search, action modals,
+Messages, and empty/first-run states (see Feature priorities below).
 
 ## MVP plan
 
@@ -130,15 +135,16 @@ stretch / beyond this initiative's timeline.
       model (pulled forward from P2 since it's the signature feature and
       was cheap to build alongside the rest of the page)
 - [x] Applications tracker — Board view (`1f`) with real drag-and-drop
-- [ ] Admin — a members view with access to member info (subset of `2h`)
+- [x] Admin — a members view with access to member info (subset of `2h`)
+      — superseded by the full Admin Dashboard build
 
 **P2 — Production-ready**
 - [x] Full odds model with sparse-data handling (`1e`, see CLAUDE.md) —
       done as part of Job detail
 - [x] Applications tracker — Table view (`1g`), sortable + CSV export
-- [ ] Applications tracker — Timeline view (`1j`), Gantt-style — not
-      started, most complex of the three (draggable date bars, projected
-      stages, event diamonds); Board + Table are fully usable meanwhile
+- [x] Applications tracker — Timeline view (`1j`), Gantt-style —
+      grouped rows, real per-stage bars, projected dashed segments,
+      event diamonds, and a genuine mouse-drag reschedule interaction
 - [x] Full Admin Dashboard — KPIs, gap analysis, opportunity queue (`2h`)
 - [x] Network / alumni directory + profile (`1h`, `1i`)
 - [x] Feed with alumni engagement (`2a`) — explicitly called out in the
@@ -213,7 +219,7 @@ few depends on the shell and data model being in place.
 - [x] Onboarding
 - [x] Jobs board
 - [x] Job detail (incl. odds model)
-- [x] Applications tracker (Board + Table; Timeline still pending)
+- [x] Applications tracker (Board + Table + Timeline)
 - [x] Network + member/alumni profile
 - [x] Feed
 - [x] Companies + company page

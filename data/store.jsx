@@ -8,15 +8,76 @@ const STORAGE_KEY = "uc-portal-state";
 
 // Seeded so the tracker (1f/1g/1j) has cards across most stages on first
 // load instead of looking empty -- real usage adds more via "Add to
-// tracker" / "Mark interested" on Job detail.
+// tracker" / "Mark interested" on Job detail. stageHistory records when
+// each stage was entered -- required for the Timeline view (1j) to draw
+// real per-stage bars rather than a single blob; addToTracker/
+// updateApplicationStage append to it going forward the same way.
 const SEED_TRACKED_JOBS = {
-  "bain-consulting-intern": { stage: "First round", addedAt: "2026-08-05T12:00:00.000Z" },
-  "mckinsey-generalist-intern": { stage: "Preparing", addedAt: "2026-08-10T12:00:00.000Z" },
-  "deloitte-human-capital": { stage: "Applied", addedAt: "2026-08-12T12:00:00.000Z" },
-  "goldman-ibd-summer": { stage: "Assessment", addedAt: "2026-08-08T12:00:00.000Z" },
-  "stripe-strategy-ops": { stage: "Interested", addedAt: "2026-08-15T12:00:00.000Z" },
-  "bcg-summer-associate": { stage: "Final round", addedAt: "2026-08-01T12:00:00.000Z" },
-  "accenture-strategy-fulltime": { stage: "Closed", addedAt: "2026-07-20T12:00:00.000Z" },
+  "bain-consulting-intern": {
+    stage: "First round",
+    addedAt: "2026-08-05T12:00:00.000Z",
+    stageHistory: [
+      { stage: "Interested", date: "2026-08-05T12:00:00.000Z" },
+      { stage: "Preparing", date: "2026-08-07T12:00:00.000Z" },
+      { stage: "Applied", date: "2026-08-10T12:00:00.000Z" },
+      { stage: "Assessment", date: "2026-08-13T12:00:00.000Z" },
+      { stage: "First round", date: "2026-08-16T12:00:00.000Z" },
+    ],
+  },
+  "mckinsey-generalist-intern": {
+    stage: "Preparing",
+    addedAt: "2026-08-10T12:00:00.000Z",
+    stageHistory: [
+      { stage: "Interested", date: "2026-08-10T12:00:00.000Z" },
+      { stage: "Preparing", date: "2026-08-12T12:00:00.000Z" },
+    ],
+  },
+  "deloitte-human-capital": {
+    stage: "Applied",
+    addedAt: "2026-08-12T12:00:00.000Z",
+    stageHistory: [
+      { stage: "Interested", date: "2026-08-12T12:00:00.000Z" },
+      { stage: "Preparing", date: "2026-08-13T12:00:00.000Z" },
+      { stage: "Applied", date: "2026-08-15T12:00:00.000Z" },
+    ],
+  },
+  "goldman-ibd-summer": {
+    stage: "Assessment",
+    addedAt: "2026-08-08T12:00:00.000Z",
+    stageHistory: [
+      { stage: "Interested", date: "2026-08-08T12:00:00.000Z" },
+      { stage: "Preparing", date: "2026-08-09T12:00:00.000Z" },
+      { stage: "Applied", date: "2026-08-11T12:00:00.000Z" },
+      { stage: "Assessment", date: "2026-08-14T12:00:00.000Z" },
+    ],
+  },
+  "stripe-strategy-ops": {
+    stage: "Interested",
+    addedAt: "2026-08-15T12:00:00.000Z",
+    stageHistory: [{ stage: "Interested", date: "2026-08-15T12:00:00.000Z" }],
+  },
+  "bcg-summer-associate": {
+    stage: "Final round",
+    addedAt: "2026-08-01T12:00:00.000Z",
+    stageHistory: [
+      { stage: "Interested", date: "2026-08-01T12:00:00.000Z" },
+      { stage: "Preparing", date: "2026-08-03T12:00:00.000Z" },
+      { stage: "Applied", date: "2026-08-06T12:00:00.000Z" },
+      { stage: "Assessment", date: "2026-08-09T12:00:00.000Z" },
+      { stage: "First round", date: "2026-08-12T12:00:00.000Z" },
+      { stage: "Final round", date: "2026-08-17T12:00:00.000Z" },
+    ],
+  },
+  "accenture-strategy-fulltime": {
+    stage: "Closed",
+    addedAt: "2026-07-20T12:00:00.000Z",
+    stageHistory: [
+      { stage: "Interested", date: "2026-07-20T12:00:00.000Z" },
+      { stage: "Preparing", date: "2026-07-22T12:00:00.000Z" },
+      { stage: "Applied", date: "2026-07-25T12:00:00.000Z" },
+      { stage: "Closed", date: "2026-08-01T12:00:00.000Z" },
+    ],
+  },
 };
 
 // Seeded so Network's "Your coffee chats" isn't empty on first load --
@@ -38,7 +99,8 @@ const SEED_OPPORTUNITY_QUEUE = [
 const DEFAULT_STATE = {
   onboardingComplete: false,
   savedJobIds: [],
-  trackedJobs: SEED_TRACKED_JOBS, // { [jobId]: { stage, addedAt } } -- stage taxonomy matches the Applications tracker (1f/1g/1j)
+  trackedJobs: SEED_TRACKED_JOBS, // { [jobId]: { stage, addedAt, stageHistory } } -- stage taxonomy matches the Applications tracker (1f/1g/1j)
+  timelineShiftDays: {}, // { [jobId]: days } -- manual reschedule from dragging a projected bar on the Timeline view (1j)
   prepLogged: {}, // { [jobId]: extraHoursLogged } -- feeds the odds model's "Preparation logged" factor
   coffeeChatStatus: SEED_COFFEE_CHATS, // { [personId]: status label } -- Network (1h) "Your coffee chats"
   savedConnections: [], // personIds saved via Member profile's "Save to my network"
@@ -150,9 +212,10 @@ export function AppStateProvider({ children }) {
   function addToTracker(jobId, stage = "Interested") {
     setState((prev) => {
       if (prev.trackedJobs[jobId]) return prev; // don't downgrade an existing stage
+      const now = new Date().toISOString();
       return {
         ...prev,
-        trackedJobs: { ...prev.trackedJobs, [jobId]: { stage, addedAt: new Date().toISOString() } },
+        trackedJobs: { ...prev.trackedJobs, [jobId]: { stage, addedAt: now, stageHistory: [{ stage, date: now }] } },
       };
     });
   }
@@ -165,9 +228,23 @@ export function AppStateProvider({ children }) {
   }
 
   function updateApplicationStage(jobId, stage) {
+    setState((prev) => {
+      const existing = prev.trackedJobs[jobId];
+      const history = existing.stageHistory || [];
+      return {
+        ...prev,
+        trackedJobs: {
+          ...prev.trackedJobs,
+          [jobId]: { ...existing, stage, stageHistory: [...history, { stage, date: new Date().toISOString() }] },
+        },
+      };
+    });
+  }
+
+  function shiftTimeline(jobId, deltaDays) {
     setState((prev) => ({
       ...prev,
-      trackedJobs: { ...prev.trackedJobs, [jobId]: { ...prev.trackedJobs[jobId], stage } },
+      timelineShiftDays: { ...prev.timelineShiftDays, [jobId]: (prev.timelineShiftDays[jobId] || 0) + deltaDays },
     }));
   }
 
@@ -236,6 +313,7 @@ export function AppStateProvider({ children }) {
         addToTracker,
         logPrep,
         updateApplicationStage,
+        shiftTimeline,
         requestCoffeeChat,
         toggleSavedConnection,
         toggleSavedResource,

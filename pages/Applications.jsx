@@ -5,7 +5,9 @@ import { STAGES } from "../data/trackerUtils.js";
 import { useAppState } from "../data/store.jsx";
 import TrackerBoard from "../components/TrackerBoard.jsx";
 import TrackerTable from "../components/TrackerTable.jsx";
+import TrackerTimeline from "../components/TrackerTimeline.jsx";
 import "../styles/tracker.css";
+import "../styles/timeline.css";
 
 const VIEWS = ["Board", "Table", "Timeline"];
 
@@ -32,7 +34,7 @@ function downloadCsv(csv) {
 }
 
 export default function Applications() {
-  const { trackedJobs, updateApplicationStage } = useAppState();
+  const { trackedJobs, updateApplicationStage, timelineShiftDays, shiftTimeline } = useAppState();
   const [view, setView] = useState("Board");
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("All stages");
@@ -129,10 +131,11 @@ export default function Applications() {
       )}
 
       {view === "Timeline" && (
-        <div className="skeleton-card" style={{ textAlign: "center", color: "var(--color-text-muted)" }}>
-          Timeline (wireframe 1j) — Gantt-style view over the recruiting cycle, not built yet. Board and
-          Table read the same records and are fully usable in the meantime.
-        </div>
+        <TrackerTimeline
+          applications={applications}
+          timelineShiftDays={timelineShiftDays}
+          onShiftTimeline={shiftTimeline}
+        />
       )}
     </div>
   );

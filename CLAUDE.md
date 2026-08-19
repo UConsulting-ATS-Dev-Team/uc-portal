@@ -488,10 +488,38 @@ priorities (P1/P2/P3) — kept in sync with this section as we go.
   `Placeholder`s — they're nav-rail destinations, not among the 24
   screens the handoff actually designed.
 
-Next in build order: the Timeline tracker view (`1j`) is the last
-substantial P2 screen — everything else remaining is smaller
-cross-cutting P2/P3 work (global search, action modals, notifications,
-messages, empty states).
+- **Timeline tracker view built** (`components/TrackerTimeline.jsx`,
+  wireframe `1j`) — the last substantial P2 screen. `data/timelineUtils.js`
+  holds the Gantt math: a fixed Aug–Nov date window, rows grouped into
+  the spec's four buckets (Interview rounds / Applied & assessment /
+  Not yet applied / Closed) with live counts and a "N deadlines this
+  week" tag, bars shaded progressively darker by stage (interpolated
+  from ground gray to UC's accent blue), and one event diamond per
+  application in an interview-ish stage. Required extending
+  `trackedJobs` with real `stageHistory` (an array of `{stage, date}`
+  entries) — the flat `{stage, addedAt}` shape from the tracker Board/
+  Table wasn't enough to draw historical per-stage bars, so
+  `addToTracker`/`updateApplicationStage` now append to it, and the 7
+  seeded demo applications got hand-authored history spanning their
+  addedAt to now.
+
+  Drag-to-reschedule is real but intentionally simplified: dragging a
+  projected (dashed) bar commits a day-shift on mouse-up rather than
+  live-following the cursor, and moves every remaining projected stage
+  for that application together rather than independent start/end
+  handles — a full Gantt editor is out of scope for a prototype, but
+  this is genuine drag state (`store.jsx`'s `timelineShiftDays`/
+  `shiftTimeline`), not a button standing in for one. Verified with a
+  real mouse drag in the browser (65px drag → 35-day shift, bar visibly
+  extended). Note: synthetic `dispatchEvent(MouseEvent)` calls did
+  *not* trigger the React handler in testing — only the browser tool's
+  actual `left_click_drag` worked — worth remembering if this needs
+  testing again.
+
+Remaining work is smaller cross-cutting P2/P3: global search (`3b`),
+action modals (`3c`), Notifications (`2f`), Messages (`3f`), and
+empty/first-run states (`3e`). See PROJECT_PLAN.md's Feature priorities
+for the full P2/P3 breakdown.
 
 Run locally:
 ```bash
