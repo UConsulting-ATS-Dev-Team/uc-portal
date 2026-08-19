@@ -158,7 +158,7 @@ stretch / beyond this initiative's timeline.
 - [ ] Action modals (`3c`), empty/first-run states (`3e`)
 
 **P3 — Stretch / beyond this initiative**
-- [ ] Messages (`3f`)
+- [x] Messages (`3f`)
 - [ ] Mobile/responsive pass (explicitly deprioritized for now)
 - [ ] Bear-icon logo asset wired into the brandmark
 - [ ] Real company logos / avatar uploads

@@ -73,7 +73,7 @@ export default function MemberProfile() {
               {chatStatus ? chatStatus : "Request coffee chat"}
             </button>
             <button className="btn btn-secondary">Ask for advice</button>
-            <button className="btn btn-secondary">Message</button>
+            <Link to="/messages" className="btn btn-secondary">Message</Link>
             <button className="btn btn-secondary" onClick={() => toggleSavedConnection(person.id)}>
               {isSaved ? "Saved to network ✓" : "Save to my network"}
             </button>

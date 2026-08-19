@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { currentUser, navCounts } from "../data/mockUser.js";
+import { CONVERSATIONS } from "../data/mockMessages.js";
+
+const unreadMessageCount = CONVERSATIONS.filter((c) => c.unread).length;
 
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -32,6 +35,11 @@ export default function TopBar() {
       <div className="topbar__spacer" />
 
       <div className="topbar__actions">
+        <Link className="topbar__notifications" to="/messages" aria-label="Messages">
+          ✉️
+          {unreadMessageCount > 0 && <span className="topbar__notifications-count">{unreadMessageCount}</span>}
+        </Link>
+
         <Link className="topbar__notifications" to="/notifications" aria-label="Notifications">
           🔔
           {navCounts.notificationsUnread > 0 && (

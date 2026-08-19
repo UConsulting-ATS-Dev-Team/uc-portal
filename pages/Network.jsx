@@ -142,7 +142,7 @@ export default function Network() {
                   </div>
                   <div className="person-card__actions">
                     {isMember ? (
-                      <button className="btn btn-primary">Message</button>
+                      <Link to="/messages" className="btn btn-primary">Message</Link>
                     ) : (
                       <button
                         className="btn btn-primary"

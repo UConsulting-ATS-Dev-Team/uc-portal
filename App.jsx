@@ -19,6 +19,7 @@ import AdminDashboard from "./pages/AdminDashboard.jsx";
 import Home from "./pages/Home.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import GlobalSearch from "./pages/GlobalSearch.jsx";
+import Messages from "./pages/Messages.jsx";
 
 // Each route below is a stub until it's built for real, per the build
 // order in CLAUDE.md (shell → auth → onboarding → jobs → job detail →
@@ -143,6 +144,14 @@ export default function App() {
         element={
           <NavShell>
             <GlobalSearch />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/messages"
+        element={
+          <NavShell>
+            <Messages />
           </NavShell>
         }
       />
