@@ -83,7 +83,10 @@ filters/watchlist/5 tabs all working, every stat computed from real
 job/people data), Career Resources built (`2d`/`2e`/`3d` — library,
 resource detail, learning track detail; sequential step-unlock,
 section-completion tracking, and tracker-driven recommendations all
-verified working). ~3 weeks to MVP, ~5.5 weeks to production-ready.
+verified working), My Profile built (`2g`, all 4 tabs: Personal,
+Career preferences, Recruiting settings, Privacy — Career preferences
+edits the same `preferences` object onboarding writes to, so nothing's
+duplicated). ~3 weeks to MVP, ~5.5 weeks to production-ready.
 
 ## MVP plan
 
@@ -116,7 +119,7 @@ stretch / beyond this initiative's timeline.
 - [x] Navigation shell (top bar, left rail, routing)
 - [x] Sign-in / access gate (`3a`) — all four states (sign-in, not-on-roster,
       pending, loading skeleton) built and clickable
-- [ ] My Profile (`2g`) — personal info + career preferences
+- [x] My Profile (`2g`) — personal info + career preferences
 - [x] Onboarding (`2i`/`2j`) — all 5 steps + completion built, with the
       live-match-count payoff working
 - [x] Jobs board (`1d`) — filters, match score, save/bookmark all working
@@ -212,7 +215,7 @@ few depends on the shell and data model being in place.
 - [x] Feed
 - [x] Companies + company page
 - [x] Career Resources
-- [ ] My Profile (full tabs)
+- [x] My Profile (full tabs)
 - [ ] Admin Dashboard
 - [ ] Cross-cutting: search, notifications, modals, messages, empty states
 

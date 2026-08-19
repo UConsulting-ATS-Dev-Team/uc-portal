@@ -62,6 +62,11 @@ export default function JobDetail() {
       label: `${job.ucConnections} UC connections at this office`,
       mismatchLabel: "No UC connections here yet",
     },
+    {
+      match: !job.compHourly || job.compMax >= preferences.compTarget,
+      label: `Compensation meets your $${preferences.compTarget}/hr target`,
+      mismatchLabel: `Compensation below your $${preferences.compTarget}/hr target`,
+    },
   ];
 
   const stageCount = completedStageCount(job);

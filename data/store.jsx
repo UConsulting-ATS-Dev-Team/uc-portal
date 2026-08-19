@@ -47,14 +47,47 @@ const DEFAULT_STATE = {
     helpNeeded: [],
     remindersEnabled: true,
     resumeAttached: false,
+    opportunityType: "Internship", // "Internship" | "Full-time" | "Both" -- set on My Profile (2g), not collected in onboarding
+    compTarget: 35, // $/hr -- feeds Job detail's match checklist compensation check
+    recruitingSettings: {
+      showOutsideTargetLocations: true,
+      letAlumniSeeRecruiting: true,
+      prioritizeUcConnections: true,
+      openToCoffeeChatRequests: false,
+      shareOutcomesAnonymized: true,
+      includeInExecReporting: true,
+    },
   },
+  profileOverrides: {
+    linkedIn: "",
+    resumeFileName: null,
+  },
+  profileLastUpdated: "2026-08-02T12:00:00.000Z",
 };
 
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_STATE;
-    return { ...DEFAULT_STATE, ...JSON.parse(raw) };
+    const saved = JSON.parse(raw);
+    // Shallow-merge at the top level, but preferences/profileOverrides are
+    // merged one level deeper too -- otherwise a session saved before a new
+    // preference field existed (e.g. compTarget, recruitingSettings) would
+    // silently lose that field forever, since the saved sub-object would
+    // fully overwrite DEFAULT_STATE's.
+    return {
+      ...DEFAULT_STATE,
+      ...saved,
+      preferences: {
+        ...DEFAULT_STATE.preferences,
+        ...saved.preferences,
+        recruitingSettings: {
+          ...DEFAULT_STATE.preferences.recruitingSettings,
+          ...saved.preferences?.recruitingSettings,
+        },
+      },
+      profileOverrides: { ...DEFAULT_STATE.profileOverrides, ...saved.profileOverrides },
+    };
   } catch {
     return DEFAULT_STATE;
   }
@@ -71,6 +104,24 @@ export function AppStateProvider({ children }) {
 
   function updatePreferences(patch) {
     setState((prev) => ({ ...prev, preferences: { ...prev.preferences, ...patch } }));
+  }
+
+  function updateRecruitingSetting(key, value) {
+    setState((prev) => ({
+      ...prev,
+      preferences: {
+        ...prev.preferences,
+        recruitingSettings: { ...prev.preferences.recruitingSettings, [key]: value },
+      },
+    }));
+  }
+
+  function updateProfileOverrides(patch) {
+    setState((prev) => ({ ...prev, profileOverrides: { ...prev.profileOverrides, ...patch } }));
+  }
+
+  function touchProfileUpdated() {
+    setState((prev) => ({ ...prev, profileLastUpdated: new Date().toISOString() }));
   }
 
   function completeOnboarding() {
@@ -156,6 +207,9 @@ export function AppStateProvider({ children }) {
       value={{
         ...state,
         updatePreferences,
+        updateRecruitingSetting,
+        updateProfileOverrides,
+        touchProfileUpdated,
         completeOnboarding,
         toggleSavedJob,
         addToTracker,

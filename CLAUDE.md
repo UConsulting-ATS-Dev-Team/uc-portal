@@ -430,8 +430,44 @@ priorities (P1/P2/P3) — kept in sync with this section as we go.
   framing, same deterministic-mock approach as the odds model and people
   profiles.
 
-Next in build order: per PROJECT_PLAN.md's P2 list — full My Profile,
-Admin Dashboard, or the Timeline tracker view — whichever you want next.
+- **My Profile built** (`pages/MyProfile.jsx`, wireframe `2g`) — all 4
+  tabs (Personal, Career preferences, Recruiting settings, Privacy).
+  Career preferences reads/writes the exact same `preferences` object
+  onboarding populates — same ranked-industry up/down controls, same
+  chip toggles — rather than a second copy of that state. Added three
+  fields to `preferences` that onboarding never collected:
+  `opportunityType`, `compTarget`, and `recruitingSettings` (6 booleans,
+  defaults matching the wireframe's checked pattern). Personal-tab
+  fields (name, grad year, major, committee, LinkedIn, resume) are
+  staged in local state and committed on "Save changes" via the new
+  `updateProfileOverrides`/`touchProfileUpdated`; career
+  preferences/recruiting settings apply immediately on click, same as
+  onboarding. Profile strength is a real computed percentage across 7
+  signals (resume, industries, roles, locations, LinkedIn, followed
+  companies, recruiting cycle) — verified moving 14% → 29% → 43% live
+  as fields were filled in. "Update interests" in the quarterly-refresh
+  banner routes back into `/onboarding` rather than duplicating a
+  shorter re-confirm flow. Privacy tab content isn't detailed in the
+  handoff spec beyond the tab existing, so it's a short factual summary
+  of what the Recruiting-settings toggles actually control, not invented
+  UI.
+
+  Also closed a gap flagged when Job detail was built: `compTarget` now
+  feeds the match checklist's compensation check
+  (`pages/JobDetail.jsx`), which had been skipped since no comp
+  preference existed yet.
+
+  **Note on `data/store.jsx`'s `loadState`**: this page's new nested
+  `preferences` fields exposed a real bug in the previous shallow merge
+  — a saved session missing e.g. `compTarget` would have that field
+  silently disappear forever, since the saved `preferences` sub-object
+  fully overwrote the default rather than merging into it. Fixed to
+  merge `preferences` (and `recruitingSettings` within it) one level
+  deeper. Worth remembering for any future top-level state key that's
+  itself an object members might get added to later.
+
+Next in build order: per PROJECT_PLAN.md's P2 list — Admin Dashboard or
+the Timeline tracker view — whichever you want next.
 
 Run locally:
 ```bash
