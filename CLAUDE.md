@@ -283,8 +283,23 @@ priorities (P1/P2/P3) — kept in sync with this section as we go.
   rather than inventing their own.
   Sign-in now routes first-timers (`onboardingComplete: false`) into
   `/onboarding` instead of straight to `/`.
+- **Jobs board built** (`pages/Jobs.jsx`, wireframe `1d`) — full filter
+  column (keyword, UC advantage, type, grad year, industry w/ show-more,
+  location/work mode, compensation range, deadline, company size), the
+  four tabs (Recommended/UC-posted/All/Saved) with live counts, sort,
+  removable active-filter chips, and pagination, all filtering real
+  `data/mockJobs.js`. `components/JobCard.jsx` is the shared card,
+  reusable later on Home's "recommended for you" and the Saved views.
+  Extended `data/store.jsx` with `savedJobIds`/`toggleSavedJob`. Added
+  `data/jobUtils.js` for deadline math (shared with Job detail next).
+  Compensation is filtered only on jobs with `compHourly: true` — the
+  wireframe's $/hr slider doesn't apply to full-time annual-salary roles,
+  so those always pass the comp filter. "Post a job" and "Save this
+  search" are visually present but not wired (P2 — the action modals in
+  `3c` aren't built yet). `/jobs/:jobId` (`View & apply`) currently routes
+  to a `Placeholder` — Job detail is next.
 
-Next in build order: jobs → job detail → tracker.
+Next in build order: job detail → tracker.
 
 Run locally:
 ```bash

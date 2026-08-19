@@ -8,6 +8,7 @@ const STORAGE_KEY = "uc-portal-state";
 
 const DEFAULT_STATE = {
   onboardingComplete: false,
+  savedJobIds: [],
   preferences: {
     industries: [], // ranked array of industry names, max 3
     roles: [], // max 5
@@ -49,8 +50,19 @@ export function AppStateProvider({ children }) {
     setState((prev) => ({ ...prev, onboardingComplete: true }));
   }
 
+  function toggleSavedJob(jobId) {
+    setState((prev) => ({
+      ...prev,
+      savedJobIds: prev.savedJobIds.includes(jobId)
+        ? prev.savedJobIds.filter((id) => id !== jobId)
+        : [...prev.savedJobIds, jobId],
+    }));
+  }
+
   return (
-    <AppStateContext.Provider value={{ ...state, updatePreferences, completeOnboarding }}>
+    <AppStateContext.Provider
+      value={{ ...state, updatePreferences, completeOnboarding, toggleSavedJob }}
+    >
       {children}
     </AppStateContext.Provider>
   );

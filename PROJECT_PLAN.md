@@ -70,7 +70,8 @@ brand applied, navigation shell built and clickable across all 24
 screens' routes (most still placeholders), sign-in/access-gate flow
 built (`3a`, all four states), onboarding built (`2i`/`2j`, all 5 steps +
 completion, preferences persist via a shared store so later pages can
-read them). ~3 weeks to MVP, ~5.5 weeks to production-ready.
+read them), Jobs board built (`1d`, filters/tabs/sort/save all working
+against mock data). ~3 weeks to MVP, ~5.5 weeks to production-ready.
 
 ## MVP plan
 
@@ -106,7 +107,7 @@ stretch / beyond this initiative's timeline.
 - [ ] My Profile (`2g`) — personal info + career preferences
 - [x] Onboarding (`2i`/`2j`) — all 5 steps + completion built, with the
       live-match-count payoff working
-- [ ] Jobs board (`1d`) — filters, match score, save/bookmark
+- [x] Jobs board (`1d`) — filters, match score, save/bookmark all working
 - [ ] Job detail (`1e`) — at minimum the match checklist + role info;
       full odds-model panel can lag into P2 if needed
 - [ ] Applications tracker — Board view only (`1f`)
@@ -187,7 +188,7 @@ few depends on the shell and data model being in place.
 - [x] Navigation shell
 - [x] Auth / access gate
 - [x] Onboarding
-- [ ] Jobs board
+- [x] Jobs board
 - [ ] Job detail (incl. odds model)
 - [ ] Applications tracker
 - [ ] Network + member/alumni profile

@@ -1,0 +1,327 @@
+.jobs-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+}
+
+/* Filter column */
+.filters {
+  width: var(--filter-column-width);
+  flex: 0 0 auto;
+  background: var(--color-surface);
+  border: var(--border-hairline);
+}
+
+.filters__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5);
+  border-bottom: var(--border-hairline);
+  font-weight: 700;
+}
+
+.filters__header button {
+  font-weight: 400;
+}
+
+.filters__group {
+  padding: var(--space-5);
+  border-bottom: var(--border-hairline);
+}
+
+.filters__group:last-child {
+  border-bottom: none;
+}
+
+.filters__group-title {
+  font-size: var(--text-kicker);
+  letter-spacing: var(--tracking-kicker);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-4);
+}
+
+.filters__checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  cursor: pointer;
+  font-size: var(--text-secondary);
+}
+
+.filters__checkbox-count {
+  color: var(--color-text-muted);
+}
+
+.filters__chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.filters__chip {
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-hairline);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: var(--text-secondary);
+}
+
+.filters__chip.is-selected {
+  border-color: var(--color-accent);
+  background: var(--color-accent-tint);
+  color: var(--color-accent-deep);
+  font-weight: 700;
+}
+
+.filters__range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-secondary);
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
+}
+
+.filters__show-more {
+  margin-top: var(--space-3);
+}
+
+/* Main column */
+.jobs-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.jobs-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+}
+
+.jobs-header__count {
+  color: var(--color-text-secondary);
+  margin: var(--space-2) 0 0;
+}
+
+.jobs-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.jobs-header__actions select {
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-hairline);
+  background: var(--color-surface);
+}
+
+.jobs-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: var(--border-hairline);
+  margin-bottom: var(--space-6);
+}
+
+.jobs-tabs__list {
+  display: flex;
+  gap: var(--space-7);
+}
+
+.jobs-tabs__tab {
+  background: none;
+  border: none;
+  padding: var(--space-4) 0;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.jobs-tabs__tab.is-active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-accent);
+}
+
+.jobs-banner {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  margin-bottom: var(--space-6);
+  border: var(--border-hairline);
+  border-left: var(--border-accent-emphasis);
+  background: var(--color-accent-tint);
+  font-size: var(--text-secondary);
+}
+
+.jobs-banner strong {
+  color: var(--color-accent-deep);
+}
+
+.job-card {
+  display: flex;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  border: var(--border-hairline);
+  background: var(--color-surface);
+  margin-bottom: var(--space-5);
+}
+
+.job-card.is-uc-posted {
+  border-left: var(--border-accent-emphasis);
+}
+
+.job-card__logo {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--border-hairline);
+  background: var(--color-ground);
+  font-size: var(--text-meta);
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.job-card__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.job-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.job-card__role {
+  font-size: var(--text-title-min);
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+}
+
+.job-card__match {
+  font-weight: 700;
+  font-size: var(--text-secondary);
+  color: var(--color-accent-deep);
+  background: var(--color-accent-tint);
+  border: 1px solid var(--color-accent-tint-border);
+  padding: 2px var(--space-3);
+}
+
+.job-card__detail-line {
+  color: var(--color-text-secondary);
+  margin: var(--space-2) 0 var(--space-4);
+}
+
+.job-card__chip.is-urgent {
+  border-color: var(--color-accent);
+  background: var(--color-accent-tint);
+  color: var(--color-accent-deep);
+}
+
+.job-card__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-secondary);
+  color: var(--color-text-muted);
+  flex-wrap: wrap;
+}
+
+.job-card__avatars {
+  display: flex;
+}
+
+.job-card__avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--color-surface);
+  background: var(--color-accent-tint);
+  margin-left: -6px;
+}
+
+.job-card__avatar:first-child {
+  margin-left: 0;
+}
+
+.job-card__connections {
+  color: var(--color-accent-deep);
+  font-weight: 700;
+}
+
+.job-card__why {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.job-card__actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  width: 140px;
+  text-align: center;
+}
+
+.job-card__posted {
+  color: var(--color-text-muted);
+  font-size: var(--text-meta);
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-7);
+}
+
+.pagination button {
+  width: 32px;
+  height: 32px;
+  border: var(--border-hairline);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.pagination button.is-active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.active-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.active-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-hairline);
+  background: var(--color-ground);
+  font-size: var(--text-secondary);
+}
+
+.active-filter-chip button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: var(--text-secondary);
+  padding: 0;
+}
