@@ -249,13 +249,25 @@ Structure:
 
 ## Progress
 
+See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the full build checklist and
+priorities (P1/P2/P3) — kept in sync with this section as we go.
+
 - **Shell built** — `components/NavShell.jsx` (+ `TopBar.jsx`, `NavRail.jsx`)
   implements the nav shell spec above and wraps every route in `App.jsx`.
   Every rail item, the leadership section (gate it by editing
   `data/mockUser.js`'s `role`), search, notifications, and the avatar menu
   are wired to real routes — most just render `pages/Placeholder.jsx`
-  until built for real, next in this order: auth → onboarding → jobs →
-  job detail → tracker.
+  until built for real.
+- **Auth / access gate built** (`pages/SignIn.jsx`, wireframe `3a`) — all
+  four states (sign-in, not-on-roster, access-pending, loading skeleton)
+  as one component with local state transitions; no real auth, so
+  "Continue with Google" / "Sign in" simulate success and route home,
+  "Alumni — request access" walks the not-on-roster → pending path.
+  Introduced `components/Skeleton.jsx` as the reusable app-wide loading
+  pattern and shared button/input/chip primitives in `styles/global.css`
+  for reuse on every later page.
+
+Next in build order: onboarding → jobs → job detail → tracker.
 
 Run locally:
 ```bash

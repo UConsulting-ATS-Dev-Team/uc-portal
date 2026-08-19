@@ -1,0 +1,29 @@
+.skeleton-card {
+  border: var(--border-hairline);
+  background: var(--color-surface);
+  padding: var(--space-6);
+}
+
+.skeleton-bar {
+  height: 12px;
+  background: var(--color-border-inner);
+  margin-bottom: var(--space-4);
+}
+
+.skeleton-bar:last-child {
+  margin-bottom: 0;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.skeleton-bar {
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}

@@ -39,3 +39,81 @@ textarea {
   font-family: inherit;
   font-size: inherit;
 }
+
+/* Shared primitives — reused across every page */
+
+.btn {
+  display: inline-block;
+  padding: var(--space-4) var(--space-6);
+  border-radius: var(--radius);
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  border: var(--border-hairline);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.btn-secondary {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-primary);
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+}
+
+.field {
+  display: block;
+  margin-bottom: var(--space-5);
+}
+
+.field label {
+  display: block;
+  font-size: var(--text-secondary);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+.field input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-hairline);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.chip {
+  display: inline-block;
+  padding: 2px var(--space-3);
+  border: var(--border-hairline);
+  font-size: var(--text-meta);
+  color: var(--color-text-secondary);
+  background: var(--color-ground);
+}
+
+.chip-accent {
+  border-color: var(--color-accent-tint-border);
+  background: var(--color-accent-tint);
+  color: var(--color-accent-deep);
+}

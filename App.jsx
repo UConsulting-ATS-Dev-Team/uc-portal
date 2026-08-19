@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import NavShell from "./components/NavShell.jsx";
 import Placeholder from "./pages/Placeholder.jsx";
+import SignIn from "./pages/SignIn.jsx";
 
 // Each route below is a stub until it's built for real, per the build
 // order in CLAUDE.md (shell → auth → onboarding → jobs → job detail →
@@ -88,10 +89,7 @@ export default function App() {
           </NavShell>
         }
       />
-      <Route
-        path="/sign-in"
-        element={<Placeholder title="Sign in" screenId="3a" />}
-      />
+      <Route path="/sign-in" element={<SignIn />} />
 
       {/* Leadership only — see components/NavRail.jsx for the visibility gate */}
       <Route
