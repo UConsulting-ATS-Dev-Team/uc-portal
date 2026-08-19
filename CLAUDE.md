@@ -391,9 +391,27 @@ priorities (P1/P2/P3) — kept in sync with this section as we go.
   reuses `toggleSavedConnection` from the store (same underlying concept
   as Member profile's "Save to my network").
 
-Next in build order: per PROJECT_PLAN.md's P2 list — Companies + company
-page, Career Resources, full My Profile, Admin Dashboard, or the Timeline
-tracker view — whichever you want next.
+- **Companies + company page built** (`pages/Companies.jsx` +
+  `pages/CompanyPage.jsx`, wireframe `2b`/`2c`) — filter column (name,
+  industry, recruiting status, UC connections, size, location, reusing
+  `.filters*` classes from `styles/jobs.css`), a 2-column company grid,
+  and the full company page with all 5 tabs (Overview / Opportunities /
+  UC connections / Recruiting intelligence / Activity) plus a persistent
+  right rail. `data/mockCompanies.js` holds 8 companies (industry, size,
+  offices, recruiting status, a one-sentence UC characterization, a
+  description); every *number* — open roles, UC alumni, applicants,
+  offer rate, final rounds — is computed in `data/companyUtils.js` from
+  the same `mockJobs.js`/`mockPeople.js` records shown elsewhere, never
+  separately authored, so it can't drift out of sync. "Watchlist" reuses
+  `preferences.followedCompanies` from onboarding rather than a new
+  field, since it's the same concept as onboarding's company-follow
+  toggle. The UC-connections filter chips are scaled to this prototype's
+  actual mock data (Any/1+/2+) rather than the wireframe's literal
+  5+/10+/20+, which would filter to zero results against ~14 mock people.
+
+Next in build order: per PROJECT_PLAN.md's P2 list — Career Resources,
+full My Profile, Admin Dashboard, or the Timeline tracker view —
+whichever you want next.
 
 Run locally:
 ```bash

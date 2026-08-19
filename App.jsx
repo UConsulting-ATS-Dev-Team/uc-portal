@@ -9,6 +9,8 @@ import Applications from "./pages/Applications.jsx";
 import Network from "./pages/Network.jsx";
 import MemberProfile from "./pages/MemberProfile.jsx";
 import Feed from "./pages/Feed.jsx";
+import Companies from "./pages/Companies.jsx";
+import CompanyPage from "./pages/CompanyPage.jsx";
 
 // Each route below is a stub until it's built for real, per the build
 // order in CLAUDE.md (shell → auth → onboarding → jobs → job detail →
@@ -76,7 +78,15 @@ export default function App() {
         path="/companies"
         element={
           <NavShell>
-            <Placeholder title="Companies" screenId="2b" />
+            <Companies />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/companies/:companyId"
+        element={
+          <NavShell>
+            <CompanyPage />
           </NavShell>
         }
       />

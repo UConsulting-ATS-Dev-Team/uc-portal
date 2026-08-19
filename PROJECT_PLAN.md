@@ -78,8 +78,9 @@ Table with sorting/CSV export; Timeline `1j` still pending — most
 complex of the three), Network + member/alumni profile built (`1h`/`1i`,
 filters, coffee-chat requests, and shared-context all working against
 mock data), Feed built (`2a`, composer/tabs/helpful reactions/embedded
-job cards/events all working). ~3 weeks to MVP, ~5.5 weeks to
-production-ready.
+job cards/events all working), Companies + company page built (`2b`/`2c`,
+filters/watchlist/5 tabs all working, every stat computed from real
+job/people data). ~3 weeks to MVP, ~5.5 weeks to production-ready.
 
 ## MVP plan
 
@@ -133,7 +134,7 @@ stretch / beyond this initiative's timeline.
 - [x] Network / alumni directory + profile (`1h`, `1i`)
 - [x] Feed with alumni engagement (`2a`) — explicitly called out in the
       initiative notes
-- [ ] Companies directory + company page (`2b`, `2c`)
+- [x] Companies directory + company page (`2b`, `2c`)
 - [ ] Career Resources / education hub (`2d`, `2e`, `3d`) — explicitly
       called out in the initiative notes ("go here for any help
       career-wise")
@@ -206,7 +207,7 @@ few depends on the shell and data model being in place.
 - [x] Applications tracker (Board + Table; Timeline still pending)
 - [x] Network + member/alumni profile
 - [x] Feed
-- [ ] Companies + company page
+- [x] Companies + company page
 - [ ] Career Resources
 - [ ] My Profile (full tabs)
 - [ ] Admin Dashboard

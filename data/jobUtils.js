@@ -1,3 +1,9 @@
+import { JOBS } from "./mockJobs.js";
+
+export function jobsAt(companyName) {
+  return JOBS.filter((j) => j.company === companyName);
+}
+
 // Deadline math shared by the Jobs board's filter and its job cards.
 export function daysUntil(dateStr) {
   if (!dateStr) return null;
