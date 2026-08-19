@@ -324,6 +324,16 @@ export function AppStateProvider({ children }) {
     setState((prev) => ({ ...prev, opportunityQueue: prev.opportunityQueue.filter((o) => o.id !== id) }));
   }
 
+  function submitOpportunity(entry) {
+    setState((prev) => ({
+      ...prev,
+      opportunityQueue: [
+        { id: `queue-${Date.now()}`, status: "Needs review", applicants: 0, ...entry },
+        ...prev.opportunityQueue,
+      ],
+    }));
+  }
+
   return (
     <AppStateContext.Provider
       value={{
@@ -347,6 +357,7 @@ export function AppStateProvider({ children }) {
         advanceTrackStep,
         approveOpportunity,
         removeOpportunity,
+        submitOpportunity,
       }}
     >
       {children}

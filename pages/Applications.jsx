@@ -7,6 +7,7 @@ import { useAppState } from "../data/store.jsx";
 import TrackerBoard from "../components/TrackerBoard.jsx";
 import TrackerTable from "../components/TrackerTable.jsx";
 import TrackerTimeline from "../components/TrackerTimeline.jsx";
+import AddApplicationModal from "../components/modals/AddApplicationModal.jsx";
 import "../styles/tracker.css";
 import "../styles/timeline.css";
 import "../styles/home.css";
@@ -42,6 +43,7 @@ export default function Applications() {
   const [stageFilter, setStageFilter] = useState("All stages");
   const [sortColumn, setSortColumn] = useState("deadline");
   const [sortDirection, setSortDirection] = useState("asc");
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const applications = useMemo(() => {
     return Object.entries(trackedJobs)
@@ -114,7 +116,7 @@ export default function Applications() {
               <option key={s}>{s}</option>
             ))}
           </select>
-          <button className="btn btn-primary">+ Add application</button>
+          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>+ Add application</button>
         </div>
       </div>
 
@@ -126,7 +128,7 @@ export default function Applications() {
             useful before you apply, not just after.
           </p>
           <div style={{ display: "flex", gap: "var(--space-3)", justifyContent: "center", marginTop: "var(--space-5)" }}>
-            <button className="btn btn-primary">+ Add your first application</button>
+            <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>+ Add your first application</button>
             <Link to="/jobs" className="btn btn-secondary">
               Browse {JOBS.filter((j) => j.matchScore >= 70).length} matched roles
             </Link>
@@ -157,6 +159,8 @@ export default function Applications() {
           )}
         </>
       )}
+
+      {showAddModal && <AddApplicationModal onClose={() => setShowAddModal(false)} />}
     </div>
   );
 }

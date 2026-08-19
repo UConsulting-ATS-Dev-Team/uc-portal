@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { RESOURCES, CERTIFICATIONS, LEARNING_TRACKS } from "../data/mockResources.js";
 import { JOBS } from "../data/mockJobs.js";
 import { useAppState } from "../data/store.jsx";
+import ContributeModal from "../components/modals/ContributeModal.jsx";
 import "../styles/jobDetail.css";
 import "../styles/resources.css";
 
@@ -16,6 +17,7 @@ function daysAgo(dateStr) {
 export default function CareerResources() {
   const { trackedJobs, savedResourceIds, resourceProgress, trackProgress } = useAppState();
   const [search, setSearch] = useState("");
+  const [showContributeModal, setShowContributeModal] = useState(false);
 
   const interviewJob = Object.entries(trackedJobs)
     .map(([jobId, info]) => ({ job: JOBS.find((j) => j.id === jobId), stage: info.stage }))
@@ -89,7 +91,7 @@ export default function CareerResources() {
           <div style={{ display: "flex", gap: "var(--space-3)" }}>
             <input type="text" placeholder="Search resources" value={search} onChange={(e) => setSearch(e.target.value)} />
             <span className="chip chip-accent">My saved ({savedResourceIds.length})</span>
-            <button className="btn btn-primary">+ Contribute</button>
+            <button className="btn btn-primary" onClick={() => setShowContributeModal(true)}>+ Contribute</button>
           </div>
         </div>
 
@@ -191,6 +193,8 @@ export default function CareerResources() {
           </>
         )}
       </div>
+
+      {showContributeModal && <ContributeModal onClose={() => setShowContributeModal(false)} />}
     </div>
   );
 }

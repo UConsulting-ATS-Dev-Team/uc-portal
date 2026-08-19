@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import JobCard from "../components/JobCard.jsx";
 import ErrorState from "../components/ErrorState.jsx";
+import PostOpportunityModal from "../components/modals/PostOpportunityModal.jsx";
 import { JOBS } from "../data/mockJobs.js";
 import { INDUSTRIES, LOCATIONS } from "../data/careerOptions.js";
 import { daysUntil, matchesDeadlineBucket } from "../data/jobUtils.js";
@@ -113,6 +114,7 @@ export default function Jobs() {
   const [sortBy, setSortBy] = useState("bestMatch");
   const [page, setPage] = useState(1);
   const [showMoreIndustries, setShowMoreIndustries] = useState(false);
+  const [showPostModal, setShowPostModal] = useState(false);
   const { savedJobIds, toggleSavedJob } = useAppState();
 
   useEffect(() => {
@@ -378,7 +380,7 @@ export default function Jobs() {
               <option value="newest">Newest</option>
             </select>
             <button className="btn btn-secondary">Save this search</button>
-            <button className="btn btn-primary">Post a job</button>
+            <button className="btn btn-primary" onClick={() => setShowPostModal(true)}>Post a job</button>
           </div>
         </div>
 
@@ -477,6 +479,8 @@ export default function Jobs() {
           </div>
         )}
       </div>
+
+      {showPostModal && <PostOpportunityModal onClose={() => setShowPostModal(false)} />}
     </div>
   );
 }

@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import PostOpportunityModal from "../components/modals/PostOpportunityModal.jsx";
 import {
   KPIS,
   INDUSTRY_INTEREST,
@@ -18,6 +20,7 @@ import "../styles/admin.css";
 
 export default function AdminDashboard() {
   const { opportunityQueue, approveOpportunity, removeOpportunity } = useAppState();
+  const [showPostModal, setShowPostModal] = useState(false);
   const gap = biggestGap();
   const maxMembers = Math.max(...INDUSTRY_INTEREST.map((i) => i.members));
 
@@ -34,7 +37,7 @@ export default function AdminDashboard() {
             <option>Spring 2026</option>
           </select>
           <button className="btn btn-secondary">Export report</button>
-          <button className="btn btn-primary">+ Post opportunity</button>
+          <button className="btn btn-primary" onClick={() => setShowPostModal(true)}>+ Post opportunity</button>
         </div>
       </div>
 
@@ -220,6 +223,8 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {showPostModal && <PostOpportunityModal onClose={() => setShowPostModal(false)} source="Admin posted" />}
     </div>
   );
 }

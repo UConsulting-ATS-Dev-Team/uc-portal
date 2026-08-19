@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { findPerson } from "../data/mockPeople.js";
 import {
@@ -13,6 +14,7 @@ import {
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
 import Placeholder from "./Placeholder.jsx";
+import RequestCoffeeChatModal from "../components/modals/RequestCoffeeChatModal.jsx";
 import "../styles/jobDetail.css";
 import "../styles/memberProfile.css";
 
@@ -23,7 +25,8 @@ function initials(name) {
 export default function MemberProfile() {
   const { personId } = useParams();
   const person = findPerson(personId);
-  const { preferences, savedConnections, coffeeChatStatus, requestCoffeeChat, toggleSavedConnection } = useAppState();
+  const { preferences, savedConnections, coffeeChatStatus, toggleSavedConnection } = useAppState();
+  const [showChatModal, setShowChatModal] = useState(false);
 
   if (!person) {
     return <Placeholder title="Member not found" />;
@@ -68,7 +71,7 @@ export default function MemberProfile() {
             <button
               className="btn btn-primary"
               disabled={!!chatStatus}
-              onClick={() => requestCoffeeChat(person.id)}
+              onClick={() => setShowChatModal(true)}
             >
               {chatStatus ? chatStatus : "Request coffee chat"}
             </button>
@@ -181,6 +184,8 @@ export default function MemberProfile() {
           </div>
         </div>
       </div>
+
+      {showChatModal && <RequestCoffeeChatModal person={person} onClose={() => setShowChatModal(false)} />}
     </div>
   );
 }

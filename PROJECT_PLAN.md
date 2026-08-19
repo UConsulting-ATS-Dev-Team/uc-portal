@@ -91,10 +91,14 @@ computed from real industry-interest data, class-year breakdown, and a
 working opportunity review queue with Approve/Remove), and the
 Timeline tracker view built (`1j`, Gantt-style — grouped rows, real
 per-stage bars, projected/dashed segments, event diamonds, and a
-working mouse-drag reschedule interaction). ~3 weeks to MVP, ~5.5
-weeks to production-ready. All P1 screens and the large majority of
-P2 are done — remaining: Notifications, global search, action modals,
-Messages, and empty/first-run states (see Feature priorities below).
+working mouse-drag reschedule interaction). Home/Dashboard (`1a`),
+Notifications (`2f`), Global search (`3b`), Messages (`3f`), all five
+empty/first-run states (`3e`), and all 5 action modals (`3c`) are also
+now built. **All P1 and P2 scope from the Feature priorities list below
+is complete** — every wireframe screen is built and clickable against
+mock data. Remaining work is P3/stretch only: mobile responsive pass,
+bear-icon logo asset, real company logos — none required for the
+Sept 8 MVP or Sept 25 production-ready bar.
 
 ## MVP plan
 
@@ -158,7 +162,11 @@ stretch / beyond this initiative's timeline.
 - [x] Empty/first-run states (`3e`) — Home first-login, Applications
       empty, Jobs diagnostic no-results, Network no-connections, and a
       demo-triggered Error state all built (`/jobs?simulateError=1`)
-- [ ] Action modals (`3c`)
+- [x] Action modals (`3c`) — all 5 built and wired into their real
+      trigger points: Request a coffee chat (Network, Member profile),
+      Add an application (Applications), Post an opportunity (Jobs,
+      Admin Dashboard), Contribute to the library (Career Resources),
+      Log prep time (Job detail, replacing the old fixed +2hr direct call)
 
 **P3 — Stretch / beyond this initiative**
 - [x] Messages (`3f`)
@@ -233,7 +241,7 @@ few depends on the shell and data model being in place.
 - [x] Home / Dashboard (`1a`) — this was missed earlier in the sequence
       (jumped straight from shell to auth); caught and built now, incl.
       the first-login empty state (`3e`)
-- [ ] Cross-cutting: search, notifications, modals, messages, empty states
+- [x] Cross-cutting: search, notifications, modals, messages, empty states
 
 ## Risks & blockers
 

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { PEOPLE, findPerson } from "../data/mockPeople.js";
 import { capabilitiesFor } from "../data/peopleUtils.js";
 import { useAppState } from "../data/store.jsx";
+import RequestCoffeeChatModal from "../components/modals/RequestCoffeeChatModal.jsx";
 import "../styles/jobDetail.css";
 import "../styles/network.css";
 import "../styles/home.css";
@@ -18,7 +19,7 @@ function uniqueValues(key) {
 }
 
 export default function Network() {
-  const { preferences, savedConnections, coffeeChatStatus, requestCoffeeChat, toggleSavedConnection } = useAppState();
+  const { preferences, savedConnections, coffeeChatStatus, toggleSavedConnection } = useAppState();
   const [search, setSearch] = useState("");
   const [industry, setIndustry] = useState("All");
   const [company, setCompany] = useState("All");
@@ -26,6 +27,7 @@ export default function Network() {
   const [gradYear, setGradYear] = useState("All");
   const [audience, setAudience] = useState("All");
   const [browseAnyway, setBrowseAnyway] = useState(false);
+  const [chatModalPerson, setChatModalPerson] = useState(null);
 
   const alumniCount = PEOPLE.filter((p) => p.status !== "Current member").length;
   const memberCount = PEOPLE.filter((p) => p.status === "Current member").length;
@@ -166,7 +168,7 @@ export default function Network() {
                       <button
                         className="btn btn-primary"
                         disabled={!!chatStatus}
-                        onClick={() => requestCoffeeChat(p.id)}
+                        onClick={() => setChatModalPerson(p)}
                       >
                         {chatStatus ? chatStatus : "Request coffee chat"}
                       </button>
@@ -226,6 +228,10 @@ export default function Network() {
           </div>
         </div>
       </div>
+
+      {chatModalPerson && (
+        <RequestCoffeeChatModal person={chatModalPerson} onClose={() => setChatModalPerson(null)} />
+      )}
     </div>
   );
 }

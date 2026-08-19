@@ -1,0 +1,137 @@
+import { useState } from "react";
+import Modal from "../Modal.jsx";
+import { INDUSTRIES, LOCATIONS } from "../../data/careerOptions.js";
+import { useAppState } from "../../data/store.jsx";
+import "../../styles/onboarding.css";
+
+const TYPES = ["Internship", "Full-time", "Off-cycle / rolling"];
+const WORK_MODES = ["Remote", "Hybrid", "In-person"];
+const CLASS_YEARS = ["2026", "2027", "2028", "2029"];
+
+// source: "Member submitted" | "Alumni post" -- the modal is reused by both
+// Jobs' "Post a job" (member-facing) and Admin's "+ Post opportunity"
+// (leadership, still routed through the same review queue).
+export default function PostOpportunityModal({ onClose, source = "Member submitted" }) {
+  const { submitOpportunity } = useAppState();
+  const [company, setCompany] = useState("");
+  const [role, setRole] = useState("");
+  const [type, setType] = useState(TYPES[0]);
+  const [classYears, setClassYears] = useState([]);
+  const [location, setLocation] = useState("");
+  const [workMode, setWorkMode] = useState(WORK_MODES[0]);
+  const [comp, setComp] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [link, setLink] = useState("");
+  const [description, setDescription] = useState("");
+  const [industries, setIndustries] = useState([]);
+  const [submitted, setSubmitted] = useState(false);
+
+  function toggle(list, setList, value) {
+    setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
+  }
+
+  function handleSubmit() {
+    submitOpportunity({
+      company,
+      role: `${role}${classYears.length ? ` · Class of ${classYears.join(", ")}` : ""}`,
+      source,
+    });
+    setSubmitted(true);
+    setTimeout(onClose, 1200);
+  }
+
+  const canSubmit = company.trim() && role.trim() && location.trim();
+
+  return (
+    <Modal
+      title="Post an opportunity"
+      onClose={onClose}
+      width={640}
+      footer={
+        submitted ? (
+          <span className="modal__footer-note">Sent to the Careers Committee review queue.</span>
+        ) : (
+          <>
+            <span className="modal__footer-note">Goes to the Careers Committee for review before it's live.</span>
+            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" disabled={!canSubmit} onClick={handleSubmit}>
+              Submit for review
+            </button>
+          </>
+        )
+      }
+    >
+      <div className="field-row">
+        <div>
+          <label className="field-label">Company</label>
+          <input type="text" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company name" />
+        </div>
+        <div>
+          <label className="field-label">Role title</label>
+          <input type="text" value={role} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Strategy Analyst Intern" />
+        </div>
+      </div>
+
+      <label className="field-label">Open to class years</label>
+      <div className="chip-row">
+        {CLASS_YEARS.map((y) => (
+          <button key={y} type="button" className={`chip-toggle${classYears.includes(y) ? " is-selected" : ""}`} onClick={() => toggle(classYears, setClassYears, y)}>
+            {y}
+          </button>
+        ))}
+      </div>
+
+      <div className="field-row">
+        <div>
+          <label className="field-label">Location</label>
+          <input type="text" list="post-opp-locations" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="City" />
+          <datalist id="post-opp-locations">
+            {LOCATIONS.map((l) => <option key={l} value={l} />)}
+          </datalist>
+        </div>
+        <div>
+          <label className="field-label">Work mode</label>
+          <select value={workMode} onChange={(e) => setWorkMode(e.target.value)}>
+            {WORK_MODES.map((m) => <option key={m}>{m}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className="field-row">
+        <div>
+          <label className="field-label">Type</label>
+          <select value={type} onChange={(e) => setType(e.target.value)}>
+            {TYPES.map((t) => <option key={t}>{t}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="field-label">Compensation</label>
+          <input type="text" value={comp} onChange={(e) => setComp(e.target.value)} placeholder="$32/hr or $85k/yr" />
+        </div>
+      </div>
+
+      <div className="field-row">
+        <div>
+          <label className="field-label">Application deadline</label>
+          <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+        </div>
+        <div>
+          <label className="field-label">Application link</label>
+          <input type="url" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://" />
+        </div>
+      </div>
+
+      <label className="field-label">Industry tags</label>
+      <div className="chip-row">
+        {INDUSTRIES.filter((i) => i.name !== "Still figuring it out").map((i) => (
+          <button key={i.name} type="button" className={`chip-toggle${industries.includes(i.name) ? " is-selected" : ""}`} onClick={() => toggle(industries, setIndustries, i.name)}>
+            {i.name}
+          </button>
+        ))}
+      </div>
+
+      <label className="field-label">Description</label>
+      <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What the role involves, who it's a fit for..." />
+    </Modal>
+  );
+}

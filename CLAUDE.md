@@ -533,10 +533,74 @@ priorities (P1/P2/P3) — kept in sync with this section as we go.
   into `data/profileUtils.js` since Home needed the identical
   calculation — small refactor, not a new concept.
 
-Remaining work is smaller cross-cutting P2/P3: global search (`3b`),
-action modals (`3c`), Notifications (`2f`), Messages (`3f`), and the
-other four empty/first-run states (`3e`). See PROJECT_PLAN.md's Feature
-priorities for the full P2/P3 breakdown.
+- **Notifications, Global search, Messages, and the remaining empty
+  states built** (`pages/Notifications.jsx` `2f`, `pages/GlobalSearch.jsx`
+  `3b`, `pages/Messages.jsx` `3f`) — Notifications derives real
+  "Needs action" rows (`data/notificationUtils.js`) from urgent
+  deadlines, thin prep hours on interview-stage applications, and
+  unresolved coffee chats, plus a right rail of real notification-setting
+  checkboxes. Global search (`data/searchUtils.js`) does a real substring
+  search across jobs/people/companies/resources/feed, with tabs, grouped
+  All-tab results, a no-results diagnostic that hands off to Feed's
+  composer (prefilled via router state) to "ask the network," and recent
+  searches backed by `store.recentSearches`. Messages is a two-pane
+  conversation list/thread (`data/mockMessages.js`, tied to real
+  `mockPeople.js` ids) with working local Send; Network/Member profile's
+  "Message" buttons now link there. Jobs' diagnostic no-results state
+  (`3e`) computes which dropped filter would surface the most results
+  (`diagnoseEmptyFilters`) rather than a generic "no results" — this
+  needed fixing once to include `keyword` in the droppable-filter list,
+  caught by testing a nonsense keyword search. A `?simulateError=1` query
+  param on Jobs demo-triggers the Error empty state (`components/
+  ErrorState.jsx`) since a mock-data prototype has no real fetch layer to
+  fail on its own — documented in-code as a deliberate demo hook. This
+  also surfaced a real Rules-of-Hooks bug: the error-state early return
+  was originally above several `useMemo` calls, crashing on toggle
+  ("Rendered more hooks than during the previous render") — fixed by
+  moving it after every hook call.
+
+- **Action modals built** (`components/modals/*.jsx` + `components/
+  Modal.jsx` shell + `styles/modal.css`, wireframe `3c`) — the last
+  wireframe screen. `Modal.jsx` is a shared shell (title row, ✕,
+  Escape/backdrop-click to close, footer slot) reused by all five;
+  simplified deliberately (no focus-trap, no confirm-on-dirty). Each
+  modal is wired into its real trigger, replacing what had been an inert
+  button or (for coffee chats/prep) a direct store call with no form:
+  - **Request a coffee chat** — topic/time-slot/format/note form, calls
+    the existing `requestCoffeeChat(personId)` on send. Wired into both
+    Network's cards and Member profile's header action.
+  - **Add an application** — 3-tab entry method; only "From a UC posting"
+    is fully functional (search + select + starting stage, calls
+    `addToTracker`) since UC's job data model has no record for an
+    external/manual posting — "Paste a link" and "Enter manually" render
+    per spec but say so honestly rather than silently doing nothing.
+    Wired into both of Applications' "+ Add application" buttons.
+  - **Post an opportunity** — full form (company, role, class years,
+    location, work mode, type, comp, deadline, link, industry tags,
+    description) submits into the real `opportunityQueue` via a new
+    `store.jsx` function, `submitOpportunity` (prepends a `Needs review`
+    entry). Wired into both Jobs' "Post a job" (`source: "Member
+    submitted"`) and Admin Dashboard's "+ Post opportunity" (`source:
+    "Admin posted"`) — same modal, both feed the same review queue Admin
+    already had Approve/Remove for.
+  - **Contribute to the library** — type-driven form (interview write-up
+    fields conditionally shown), validates and shows an in-modal
+    "Published" success state on submit. Deliberately does *not* inject
+    into `RESOURCES` (a static reference list, not stored state) — noted
+    in-code rather than faked, consistent with the "every number is
+    traceable" principle. Wired into Career Resources' "+ Contribute."
+  - **Log prep time** — the one modal with real computed output: picks a
+    tracked application (or takes one as a prop from Job detail),
+    computes `computeOdds()` before/after the entered hours live in an
+    "effect card" (e.g. "53% → 54%"), then calls the existing `logPrep`.
+    Replaces Job detail's old fixed +2-hours-per-click button.
+  All five verified end-to-end in the browser (not just rendered): real
+  `localStorage` state changes confirmed for coffee chat status, tracked
+  jobs, prep hours, and the opportunity queue after each submit.
+
+**All 24 wireframe screens are now built.** Remaining work is P3/stretch
+only — mobile/responsive pass, the bear-icon logo asset, real company
+logos — see PROJECT_PLAN.md's Feature priorities for the full breakdown.
 
 Run locally:
 ```bash

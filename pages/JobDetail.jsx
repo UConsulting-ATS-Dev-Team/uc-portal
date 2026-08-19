@@ -5,6 +5,7 @@ import { deadlineLabel, descriptionFor, qualificationsFor, writeupsFor } from ".
 import { peopleAt } from "../data/mockPeople.js";
 import { useAppState } from "../data/store.jsx";
 import OddsModel from "../components/OddsModel.jsx";
+import LogPrepModal from "../components/modals/LogPrepModal.jsx";
 import Placeholder from "./Placeholder.jsx";
 import "../styles/jobDetail.css";
 
@@ -21,8 +22,8 @@ function completedStageCount(job) {
 export default function JobDetail() {
   const { jobId } = useParams();
   const job = JOBS.find((j) => j.id === jobId);
-  const { preferences, savedJobIds, toggleSavedJob, trackedJobs, addToTracker, prepLogged, logPrep } = useAppState();
-  const [justLogged, setJustLogged] = useState(false);
+  const { preferences, savedJobIds, toggleSavedJob, trackedJobs, addToTracker, prepLogged } = useAppState();
+  const [showLogPrepModal, setShowLogPrepModal] = useState(false);
 
   if (!job) {
     return <Placeholder title="Job not found" />;
@@ -31,12 +32,6 @@ export default function JobDetail() {
   const isTracked = !!trackedJobs[job.id];
   const isSaved = savedJobIds.includes(job.id);
   const extraPrepHours = prepLogged[job.id] || 0;
-
-  function handleLogPrep() {
-    logPrep(job.id);
-    setJustLogged(true);
-    setTimeout(() => setJustLogged(false), 1200);
-  }
 
   const checklist = [
     {
@@ -123,8 +118,7 @@ export default function JobDetail() {
             </div>
           </div>
 
-          <OddsModel job={job} extraPrepHours={extraPrepHours} onLogPrep={handleLogPrep} />
-          {justLogged && <p className="field-note">Logged 2 hours of prep — your odds estimate just moved.</p>}
+          <OddsModel job={job} extraPrepHours={extraPrepHours} onLogPrep={() => setShowLogPrepModal(true)} />
 
           <div className="detail-section">
             <h2 className="detail-section__title">Role description</h2>
@@ -232,6 +226,8 @@ export default function JobDetail() {
           </div>
         </div>
       </div>
+
+      {showLogPrepModal && <LogPrepModal job={job} onClose={() => setShowLogPrepModal(false)} />}
     </div>
   );
 }
