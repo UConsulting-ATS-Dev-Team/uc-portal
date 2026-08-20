@@ -487,26 +487,50 @@ Stage 5          LLM-assisted classification fallback for the long tail;
 
 ---
 
-## Open questions for you
+## Part 9 — Stack Decision: Supabase + Vercel + TypeScript
 
-1. Where should the backend actually live — a `server/` or `api/`
-   directory inside this same repo, or a separate service/repo? (My
-   default recommendation: separate from the React frontend code, since
-   it's a genuinely different runtime/deploy target, but same
-   organization/monorepo is fine too if that's simpler for the team to
-   manage.)
-2. Backend language: I'd lean **Python (FastAPI)** for the ingestion/
-   enrichment pipeline specifically — strong ecosystem for text
-   normalization, scheduling, and LLM SDK usage, and most CS curricula
-   teach it early, which matters for "future freshmen can pick this up."
-   The alternative is Node/TypeScript, for one language across the whole
-   stack. Want me to just pick one, or do you have a preference?
-3. Hosting: Railway or Render for Postgres + backend (cheap, low-ops,
-   good docs) — reasonable default, but flag if UC already has hosting
-   infrastructure or preferences from another initiative.
+Resolves the three open questions above. Your advisor already pays for
+both Supabase and Vercel, which removes the "free tier is a toy"
+concern — this is now the confirmed plan, not a proposal.
 
-Nothing here is implemented. Let me know what to adjust before we move
-into Stage 1.
+**Database + backend logic: Supabase.** It's the same Postgres this
+whole document already assumes (§3.1's schema, §3.8's FTS approach)
+with less ops burden — managed hosting, built-in auth, a REST/GraphQL
+layer generated from the schema (PostgREST), and **Edge Functions** for
+anything that needs real logic beyond a query (normalization, dedup
+scoring, the ranking formula, source adapters). Free-tier note worth
+knowing, not worth worrying about: a project pauses after 7 days with no
+API traffic and needs a manual "restore" click to wake up — irrelevant
+once real usage exists, only matters during a quiet stretch like a
+school break.
+
+**Language: TypeScript, not Python.** This reverses my original lean
+toward Python/FastAPI. Supabase Edge Functions run on Deno/TypeScript,
+and the existing frontend is already React/JS — Supabase's own ecosystem
+is the deciding factor here, not a language-preference toss-up. One
+language across the whole stack matters more for "a rotating student
+team can pick this up" than Python's text-processing libraries do, and
+Deno's stdlib + npm compatibility covers everything §3.2's normalization
+rules and §3.3's dedup scoring need.
+
+**Hosting: Vercel for the frontend** (and any code that doesn't fit as
+an Edge Function) — zero-config for the existing Vite app, generous free
+tier that's a non-issue anyway since it's already paid for.
+
+**Where the backend lives:** a `supabase/` directory in this same repo
+(migrations + Edge Functions), not a separate service/repo. Supabase's
+own CLI/project structure expects this, and it keeps one repo as the
+source of truth rather than splitting deploys across two codebases for
+a team this size.
+
+**Concrete mapping onto the architecture already specified:**
+- §3.1 schema → Supabase migrations (plain SQL, versioned in `supabase/migrations/`)
+- §3.7 source registry, §3.2 normalization, §3.3 dedup, §3.9 ranking → Edge Functions, each one function per pipeline stage so a stage can be tested/redeployed independently
+- §3.8 search → Postgres FTS via PostgREST or a thin Edge Function wrapper, same filter shape the existing `pages/Jobs.jsx` already sends
+- Admin review queue (US-08/18) → a Supabase table + Row Level Security policy restricting write access to admin roles, extending the exact `opportunityQueue` shape already prototyped in `data/store.jsx`
+
+Still nothing implemented. This section is a confirmed decision, not
+open anymore — the rest of Part 7's staged sequence stands unchanged.
 
 ---
 
