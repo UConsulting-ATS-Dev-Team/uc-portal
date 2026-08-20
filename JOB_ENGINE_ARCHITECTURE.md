@@ -534,6 +534,81 @@ open anymore — the rest of Part 7's staged sequence stands unchanged.
 
 ---
 
+## Part 10 — O*NET for Title Normalization & Skill Enrichment
+
+Confirmed addition, refining §3.2's normalization approach and §8.2's
+US-10/US-26 entries. O*NET (O*NET Web Services, sponsored by the U.S.
+Dept. of Labor) is a free, public, government resource explicitly built
+for this kind of reuse — an authorized source from the start, not
+something requiring the case-by-case caution the rest of Part 2's source
+table applies to job-listing sources. It's free with a developer
+registration + API key, and its one real condition is attribution — a
+visible credit/link to O*NET Web Services near wherever it's used.
+([O*NET Web Services Data License](https://services.onetcenter.org/help/license_data))
+
+**Important distinction from Part 2's source table:** O*NET is a
+*reference/taxonomy* source, not a job-listing source — it never
+contributes an actual job record, only classification data used during
+enrichment. It doesn't go in the `Source` registry (§3.7) that gates job
+ingestion; it's closer to the taxonomy lookup tables §3.2 already
+describes (industries, functions, employment types) — just sourced from
+an authoritative external dataset instead of hand-curated from scratch.
+Its API key and attribution requirement should be documented as
+deploy/config concerns, not a per-record governance flag.
+
+**The approach:**
+1. **Title → O*NET occupation.** O*NET organizes the labor market into
+   ~900 standardized occupations, each with a crosswalk of alternate job
+   titles — this can seed (or outright replace) the hand-built
+   title-normalization lookup table §3.2 originally proposed for US-10.
+   "Business Analyst Intern," "Summer Business Analyst," and "BA
+   Internship" plausibly all resolve to the same occupation code through
+   this crosswalk, deterministically, before any LLM fallback is needed.
+2. **Occupation → skills/knowledge/technology-skills.** Once a job is
+   classified to an occupation, pull that occupation's associated
+   skills/knowledge/technology-skills list as the job's *inferred* skill
+   profile for US-26 — no free-text NLP extraction required as the first
+   pass.
+3. **Tag it honestly.** Store these as `classification_method:
+   "onet-occupation"`, distinct from anything the posting itself states
+   — this is US-28's fact-vs-inferred distinction in practice: "typical
+   for this role type" (O*NET), never presented as "this employer's
+   stated requirements."
+4. **Match against member-reported skills.** This is the piece that
+   makes US-32's matching actually use skill data — requires adding a
+   `skills` field to the member profile, which doesn't exist yet in the
+   prototype's `preferences` object (industries/roles/locations/
+   compTarget/recruitingCycle are there; skills isn't). Small addition,
+   same shape as the existing fields.
+
+**Two honest limitations, worth designing around rather than ignoring:**
+- **Occupation-level, not posting-level.** O*NET says what's typical for
+  "Financial Analysts" broadly, not that *this specific* posting wants
+  Excel VBA specifically. Fine as a baseline enrichment layer as long as
+  it stays labeled "typical for this role type," never conflated with
+  the posting's own stated requirements.
+- **General labor-market taxonomy, thinner for UC's actual niche.**
+  O*NET classifies "Investment Banking Analyst" reasonably but won't
+  capture the specifics UC members actually care about (case-interview
+  skills, particular deal experience, etc.) with much granularity.
+  Recommendation: treat O*NET as the free authoritative *base layer*,
+  and leave room for a small UC-curated supplementary skills list
+  layered on top for consulting/finance/tech specifics — not a
+  replacement for it, an addition once the base layer is proven.
+
+**Effect on MVP scope:** this makes US-10 (title normalization, already
+P0) cheaper and more accurate to build than the from-scratch lookup
+table originally planned. It also makes US-26 (skill extraction,
+originally P1 specifically *because* free-text NLP extraction is hard to
+get right) meaningfully more tractable — worth reconsidering for MVP
+inclusion rather than deferral, since occupation-based skill lookup is
+deterministic and roughly the same effort as the title crosswalk it
+depends on. Not forcing that reclassification here — just flagging that
+the original reason for deferring US-26 (extraction difficulty) is
+substantially weaker now.
+
+---
+
 ## Part 8 — User Story Requirements & MVP Prioritization
 
 Second pass, driven by the 61-story backlog you provided. **Still no code
