@@ -501,19 +501,37 @@ in progress)     applied and verified end-to-end. Real auth (email/password,
 
                  Real jobs are now visible in the app, not just provable via
                  a console query: GlobalSearch.jsx's Jobs results come from
-                 data/jobSearch.js instead of the mock substring search,
-                 linking straight to each job's real application_url (no
-                 real JobDetail page exists yet for a real job's UUID, and
-                 this is also just correct per US-48). Verified in-browser:
-                 "consulting" returns the 3 correct real jobs alongside the
-                 existing mock company/resource/feed results.
+                 data/jobSearch.js instead of the mock substring search.
+                 Verified in-browser: "consulting" returns the 3 correct
+                 real jobs alongside the existing mock company/resource/
+                 feed results.
+
+                 pages/RealJobDetail.jsx gives a real job its own detail
+                 view at the same /jobs/:jobId route the mock JobDetail
+                 already uses -- JobDetail.jsx dispatches on whether the id
+                 is a UUID (real) or a slug (mock), so there's one canonical
+                 job-detail URL, not two parallel schemes, and the existing
+                 mock page is untouched. Deliberately simpler than the mock
+                 page (no odds model/UC connections/write-ups -- that needs
+                 CRM/tracker data a real job doesn't have), but the match
+                 checklist is genuinely real (data/jobMatch.js), reusing the
+                 mock page's own CSS classes for visual consistency.
+                 GlobalSearch's Jobs results now link here instead of
+                 straight to application_url, closing the loop US-48
+                 describes (apply from the detail page, not search results
+                 directly). Verified in-browser: real match factors render
+                 correctly (industry/location/compensation matched, role
+                 honestly unmatched since no relevant_roles data exists
+                 yet), Apply opens the real application_url, the real
+                 company logo loads -- and neither existing path regressed
+                 (a mock job still renders unchanged, a bogus slug still
+                 shows "Job not found").
 
                  Still open: wiring Jobs.jsx itself to real data (the
                  deliberately-deferred bigger piece -- see this section's
-                 note on why that's a larger, riskier change), migrating
+                 note on why that's a larger, riskier change), and migrating
                  member preferences from localStorage into Supabase so
-                 matching can run server-side instead of only client-side,
-                 and a real JobDetail page for real jobs.
+                 matching can run server-side instead of only client-side.
 
 Stage 3          First automated source: one employer ATS API adapter,
                  for one company, only after that deployment's terms are
