@@ -20,6 +20,13 @@
 // duplicating, and vice versa -- one pipeline, regardless of which source
 // governance row a job came through.
 //
+// Every run writes to source_fetch_log (US-51), success or failure --
+// this runs unattended via pg_cron, and a silent failure would otherwise be
+// invisible until someone noticed stale data. runFetch() below returns its
+// outcome as data rather than calling Response directly, specifically so
+// the one logging call in Deno.serve() can sit after every possible exit
+// path instead of needing to be duplicated at each one.
+//
 // Two things found only by running this against the real feed (575 live
 // postings), both fixed before this shipped:
 // 1. Employment-type coverage: ~90% of Stripe's titles carry no
@@ -38,7 +45,7 @@
 //    O(n^2) in-memory dedup scoring itself (Stage 1's documented, accepted
 //    complexity) was never the actual bottleneck.
 
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { normalizeJob } from "../_shared/pipeline/normalize.ts";
 import { validateJob, scoreQuality } from "../_shared/pipeline/quality.ts";
 import { scoreDuplicate, classifyDuplicateTier } from "../_shared/pipeline/dedupe.ts";
@@ -61,18 +68,19 @@ interface GreenhouseJob {
   location: { name: string } | null;
 }
 
-Deno.serve(async (_req) => {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const adminClient = createClient(supabaseUrl, serviceRoleKey);
+interface FetchOutcome {
+  httpStatus: number;
+  body: Record<string, unknown>;
+  logStatus: "success" | "failed" | "skipped";
+  logSummary: Record<string, unknown>;
+}
 
-  const { data: source, error: sourceError } = await adminClient.from("sources").select("*").eq("name", SOURCE_NAME).single();
-  if (sourceError || !source) {
-    return jsonResponse({ error: `Source "${SOURCE_NAME}" not found -- has the seed migration been applied?` }, 500);
-  }
+// deno-lint-ignore no-explicit-any
+async function runFetch(adminClient: SupabaseClient, source: any): Promise<FetchOutcome> {
   if (source.authorization_status === "disabled" || source.authorization_status === "not_approved") {
     // §3.7's kill switch -- flip this row and the next scheduled run is a no-op, no code change or redeploy needed.
-    return jsonResponse({ skipped: true, reason: `source is ${source.authorization_status}` });
+    const reason = `source is ${source.authorization_status}`;
+    return { httpStatus: 200, body: { skipped: true, reason }, logStatus: "skipped", logSummary: { reason } };
   }
 
   let ghJobs: GreenhouseJob[];
@@ -83,7 +91,8 @@ Deno.serve(async (_req) => {
     ghJobs = body.jobs ?? [];
   } catch (err) {
     // §3.4: never touch existing data on a failed fetch. Report and exit.
-    return jsonResponse({ error: `Fetch failed: ${err instanceof Error ? err.message : String(err)}` }, 502);
+    const message = err instanceof Error ? err.message : String(err);
+    return { httpStatus: 502, body: { error: `Fetch failed: ${message}` }, logStatus: "failed", logSummary: { error: message } };
   }
 
   // A near-empty result from a source that normally has hundreds of
@@ -99,8 +108,8 @@ Deno.serve(async (_req) => {
     adminClient.from("job_sources").select("job_id, source_job_id").eq("source_id", source.id),
     adminClient.from("job_functions").select("id, name"),
   ]);
-  if (activeJobsError) return jsonResponse({ error: activeJobsError.message }, 500);
-  if (existingSourcesError) return jsonResponse({ error: existingSourcesError.message }, 500);
+  if (activeJobsError) return failed(`Loading active jobs failed: ${activeJobsError.message}`);
+  if (existingSourcesError) return failed(`Loading existing sources failed: ${existingSourcesError.message}`);
 
   const activeJobs = rawActiveJobs ?? [];
   const jobFunctionIdByName = new Map<string, string>((jobFunctions ?? []).map((f) => [f.name as string, f.id as string]));
@@ -181,27 +190,27 @@ Deno.serve(async (_req) => {
   // ---- Write everything in bulk (bounded number of round-trips, not O(n)) ----
   if (newJobRows.length > 0) {
     const { error } = await adminClient.from("jobs").insert(newJobRows);
-    if (error) return jsonResponse({ error: `Bulk job insert failed: ${error.message}` }, 500);
+    if (error) return failed(`Bulk job insert failed: ${error.message}`);
   }
   const allJobSources = [...newJobSources, ...mergeAttachments];
   if (allJobSources.length > 0) {
     const { error } = await adminClient.from("job_sources").insert(allJobSources);
-    if (error) return jsonResponse({ error: `Bulk job_sources insert failed: ${error.message}` }, 500);
+    if (error) return failed(`Bulk job_sources insert failed: ${error.message}`);
   }
   if (newDuplicateCandidates.length > 0) {
     const { error } = await adminClient.from("duplicate_candidates").insert(newDuplicateCandidates);
-    if (error) return jsonResponse({ error: `Bulk duplicate_candidates insert failed: ${error.message}` }, 500);
+    if (error) return failed(`Bulk duplicate_candidates insert failed: ${error.message}`);
   }
   if (mergeJobIds.length > 0) {
     const { error } = await adminClient.from("jobs").update({ last_seen_at: nowIso, updated_at: nowIso }).in("id", [...new Set(mergeJobIds)]);
-    if (error) return jsonResponse({ error: `Merge freshness update failed: ${error.message}` }, 500);
+    if (error) return failed(`Merge freshness update failed: ${error.message}`);
   }
   if (refreshJobIds.length > 0) {
     const { error } = await adminClient
       .from("jobs")
       .update({ last_seen_at: nowIso, last_verified_at: nowIso, status: "active", active: true, updated_at: nowIso })
       .in("id", [...new Set(refreshJobIds)]);
-    if (error) return jsonResponse({ error: `Refresh update failed: ${error.message}` }, 500);
+    if (error) return failed(`Refresh update failed: ${error.message}`);
   }
 
   // Freshness (§3.4): a job previously tracked from this source but absent
@@ -225,7 +234,7 @@ Deno.serve(async (_req) => {
     }
   }
 
-  return jsonResponse({
+  const summary = {
     fetched: ghJobs.length,
     inserted: newJobRows.length,
     merged: mergeAttachments.length,
@@ -234,5 +243,35 @@ Deno.serve(async (_req) => {
     skippedInvalid,
     markedExpired,
     suspiciouslyEmpty,
+  };
+  return { httpStatus: 200, body: summary, logStatus: "success", logSummary: summary };
+}
+
+function failed(message: string): FetchOutcome {
+  return { httpStatus: 500, body: { error: message }, logStatus: "failed", logSummary: { error: message } };
+}
+
+Deno.serve(async (_req) => {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  const startedAt = new Date().toISOString();
+
+  const { data: source, error: sourceError } = await adminClient.from("sources").select("*").eq("name", SOURCE_NAME).single();
+  if (sourceError || !source) {
+    // No source row to attribute a log entry to -- nothing to record against.
+    return jsonResponse({ error: `Source "${SOURCE_NAME}" not found -- has the seed migration been applied?` }, 500);
+  }
+
+  const outcome = await runFetch(adminClient, source);
+
+  await adminClient.from("source_fetch_log").insert({
+    source_id: source.id,
+    started_at: startedAt,
+    completed_at: new Date().toISOString(),
+    status: outcome.logStatus,
+    summary: outcome.logSummary,
   });
+
+  return jsonResponse(outcome.body, outcome.httpStatus);
 });

@@ -11,6 +11,18 @@ const STATUS_LABEL = {
   disabled: "Disabled",
 };
 
+const FETCH_STATUS_LABEL = { success: "Success", failed: "Failed", skipped: "Skipped" };
+
+// Short, glanceable text for a log row's summary -- the full JSON is in the
+// DB for anyone who needs it, but this page just needs "is this healthy."
+function summarizeFetchLog(log) {
+  if (!log) return null;
+  if (log.status === "failed") return log.summary?.error ?? "Unknown error";
+  if (log.status === "skipped") return log.summary?.reason ?? "Skipped";
+  const s = log.summary ?? {};
+  return `${s.fetched ?? "?"} fetched, ${s.inserted ?? 0} new, ${s.merged ?? 0} merged, ${s.flaggedDuplicate ?? 0} flagged`;
+}
+
 // The one UI surface for §3.7's source registry -- until now, flipping a
 // source's authorization_status (the actual kill-switch every ingestion
 // path checks before writing anything, per approve-submission and
@@ -44,7 +56,18 @@ export default function SourceManagement() {
       if (row.jobs?.active) activeCountBySource[row.source_id] = (activeCountBySource[row.source_id] ?? 0) + 1;
     }
 
-    setSources((sourcesData ?? []).map((s) => ({ ...s, activeJobCount: activeCountBySource[s.id] ?? 0 })));
+    // US-51: the most recent source_fetch_log row per source, if any --
+    // written by every scheduled fetcher on every run (success or
+    // failure), see fetch-greenhouse-stripe's header comment. Submission
+    // sources (admin/member) never fetch on a schedule, so they'll always
+    // show "Never" here, which is correct, not a bug.
+    const { data: logs } = await supabase.from("source_fetch_log").select("*").order("created_at", { ascending: false });
+    const latestLogBySource = {};
+    for (const log of logs ?? []) {
+      if (!latestLogBySource[log.source_id]) latestLogBySource[log.source_id] = log;
+    }
+
+    setSources((sourcesData ?? []).map((s) => ({ ...s, activeJobCount: activeCountBySource[s.id] ?? 0, lastFetch: latestLogBySource[s.id] ?? null })));
     setLoading(false);
   }
 
@@ -92,6 +115,7 @@ export default function SourceManagement() {
             <th>Type</th>
             <th>Status</th>
             <th>Active jobs</th>
+            <th>Last fetch</th>
             <th>Notes</th>
             <th>Action</th>
           </tr>
@@ -107,7 +131,20 @@ export default function SourceManagement() {
                 </span>
               </td>
               <td>{s.activeJobCount}</td>
-              <td className="meta" style={{ maxWidth: 360 }}>
+              <td className="meta" style={{ maxWidth: 220 }}>
+                {s.lastFetch ? (
+                  <>
+                    <span style={{ color: s.lastFetch.status === "failed" ? "#B3261E" : "inherit", fontWeight: 700 }}>
+                      {FETCH_STATUS_LABEL[s.lastFetch.status] ?? s.lastFetch.status}
+                    </span>
+                    <div>{new Date(s.lastFetch.completed_at ?? s.lastFetch.started_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</div>
+                    <div>{summarizeFetchLog(s.lastFetch)}</div>
+                  </>
+                ) : (
+                  "Never"
+                )}
+              </td>
+              <td className="meta" style={{ maxWidth: 300 }}>
                 {s.storage_restrictions && <div>⚠ {s.storage_restrictions}</div>}
                 {s.notes}
               </td>
@@ -124,14 +161,14 @@ export default function SourceManagement() {
           ))}
           {!loading && sources.length === 0 && (
             <tr>
-              <td colSpan={6} className="meta">
+              <td colSpan={7} className="meta">
                 No sources registered.
               </td>
             </tr>
           )}
           {loading && (
             <tr>
-              <td colSpan={6} className="meta">
+              <td colSpan={7} className="meta">
                 Loading…
               </td>
             </tr>
