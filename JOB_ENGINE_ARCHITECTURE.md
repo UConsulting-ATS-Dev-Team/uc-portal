@@ -815,6 +815,33 @@ Stage 3 (done)   First automated source: Stripe, via Greenhouse's public Job
                  provenance entirely -- an honest gap in old data, not a
                  miscount.
 
+                 A third gap closed in the same pass: fetch-greenhouse-stripe
+                 runs completely unattended (daily via pg_cron) with zero
+                 record of whether any given run actually succeeded --
+                 exactly the kind of silent failure Part 6 already names as
+                 the real risk for a small, rotating team. Added
+                 source_fetch_log (US-51, one row per run, every scheduled
+                 fetcher writes to it -- not Stripe-specific) and a
+                 restructured fetch-greenhouse-stripe: the whole body now
+                 returns its outcome as data (httpStatus/body/logStatus/
+                 logSummary) instead of calling Response directly at each of
+                 its many exit points, so Deno.serve()'s single call site
+                 can log success, failure, *and* skipped consistently rather
+                 than needing the log call duplicated at every early return
+                 (a real risk of exactly the kind of blind spot this feature
+                 exists to catch). SourceManagement.jsx surfaces the latest
+                 log per source -- status, timestamp, one-line summary --
+                 with submission-only sources (admin/member) correctly
+                 showing "Never" since they have no schedule to run on.
+                 Verified live, all three states: a normal run logged
+                 "Success -- 575 fetched, 0 new, 0 merged, 0 flagged"
+                 (nothing had changed since the prior day's run); disabling
+                 Stripe and re-invoking logged "Skipped -- source is
+                 disabled" and rendered correctly; re-enabling restored
+                 normal status. (Failed wasn't force-tested -- no safe way
+                 to simulate a genuine Greenhouse outage -- but the code
+                 path is structurally identical to the two that were.)
+
 Stage 4          Additional ATS adapters for other UC-target companies;
                  RSS/institutional feeds where available; evaluate a
                  licensed provider only if coverage is still insufficient.
