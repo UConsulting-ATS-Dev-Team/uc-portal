@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { searchAll } from "../data/searchUtils.js";
+import { searchJobs } from "../data/jobSearch.js";
 import { COMPANIES } from "../data/mockCompanies.js";
 import { useAppState } from "../data/store.jsx";
 import "../styles/jobs.css";
@@ -19,33 +20,65 @@ export default function GlobalSearch() {
   const [onlyActionable, setOnlyActionable] = useState(false);
   const [onlySaved, setOnlySaved] = useState(false);
   const [onlyRecent, setOnlyRecent] = useState(false);
-  const { savedJobIds, savedConnections, savedResourceIds, preferences, recentSearches, addRecentSearch } = useAppState();
+  const { savedConnections, savedResourceIds, preferences, recentSearches, addRecentSearch } = useAppState();
+
+  // Jobs come from the real jobs table (Stage 2, data/jobSearch.js) --
+  // everything else here (people/companies/resources/feed) still reads the
+  // mock-data layer via searchAll(). Real jobs link straight to their real
+  // application_url instead of an internal /jobs/:id route -- there's no
+  // real JobDetail page yet, and a real job's id is a UUID mockJobs.js-based
+  // JobDetail wouldn't recognize anyway (see JOB_ENGINE_ARCHITECTURE.md's
+  // Stage 2 notes on why the full Jobs.jsx swap is deliberately deferred).
+  const [realJobs, setRealJobs] = useState([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
 
   useEffect(() => {
     if (query) addRecentSearch(query);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
+  useEffect(() => {
+    if (!query.trim()) {
+      // Matches searchAll()'s own "no query -> no results" behavior, rather
+      // than surprising a blank search with every active job.
+      setRealJobs([]);
+      return;
+    }
+    let cancelled = false;
+    setJobsLoading(true);
+    searchJobs(query).then(({ data }) => {
+      if (!cancelled) {
+        setRealJobs(data);
+        setJobsLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [query]);
+
   const raw = useMemo(() => searchAll(query), [query]);
 
   const results = useMemo(() => {
-    let { jobs, people, companies, resources, posts } = raw;
+    let { people, companies, resources, posts } = raw;
+    let jobs = realJobs;
     if (onlyActionable) {
       resources = [];
       posts = [];
     }
     if (onlySaved) {
-      jobs = jobs.filter((j) => savedJobIds.includes(j.id));
+      // No "save a real job" feature exists yet -- honestly empty, not broken.
+      jobs = [];
       people = people.filter((p) => savedConnections.includes(p.id));
       resources = resources.filter((r) => savedResourceIds.includes(r.id));
       companies = companies.filter((c) => preferences.followedCompanies.includes(c.name));
     }
     if (onlyRecent) {
-      jobs = jobs.filter((j) => j.postedDaysAgo <= 30);
+      jobs = jobs.filter((j) => j.posted_date && (new Date() - new Date(j.posted_date)) / 86400000 <= 30);
       resources = resources.filter((r) => (new Date() - new Date(r.updated)) / 86400000 <= 30);
     }
     return { jobs, people, companies, resources, posts };
-  }, [raw, onlyActionable, onlySaved, onlyRecent, savedJobIds, savedConnections, savedResourceIds, preferences]);
+  }, [raw, realJobs, onlyActionable, onlySaved, onlyRecent, savedConnections, savedResourceIds, preferences]);
 
   const total = results.jobs.length + results.people.length + results.companies.length + results.resources.length + results.posts.length;
 
@@ -125,7 +158,7 @@ export default function GlobalSearch() {
                 </div>
               )}
 
-              {shown.jobs?.length > 0 && (
+              {(shown.jobs?.length > 0 || (tab !== "All" && jobsLoading)) && (
                 <div className="search-group">
                   <div className="search-group__header">
                     <h2 style={{ margin: 0 }}>Jobs</h2>
@@ -135,13 +168,16 @@ export default function GlobalSearch() {
                       </button>
                     )}
                   </div>
+                  {jobsLoading && shown.jobs?.length === 0 && <p className="meta">Searching…</p>}
                   {(tab === "All" ? shown.jobs.slice(0, 3) : shown.jobs).map((j) => (
                     <div className="search-result-row" key={j.id}>
                       <div>
-                        <strong>{j.role}</strong>
+                        <strong>{j.title}</strong>
                         <div className="search-result-row__meta">{j.company}</div>
                       </div>
-                      <Link to={`/jobs/${j.id}`} className="btn btn-secondary">View</Link>
+                      <a href={j.application_url} target="_blank" rel="noreferrer" className="btn btn-secondary">
+                        View & apply
+                      </a>
                     </div>
                   ))}
                 </div>
