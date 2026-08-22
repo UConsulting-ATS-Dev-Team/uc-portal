@@ -459,11 +459,14 @@ Stage 0 (done)   Current mock-data prototype -- Jobs board, filters, store,
                  Admin opportunity queue. This already validates the UI/UX
                  and data shapes the real engine will serve.
 
-Stage 1          Synthetic dataset (100-500 jobs, deliberately duplicated/
-                 malformed, per your ask in point 18) + Postgres schema +
-                 normalization/dedup/search/ranking built and tested
-                 against it. No real source yet -- prove the pipeline in
-                 isolation first.
+Stage 1 (done)   Synthetic dataset (server/synthetic/generateSyntheticJobs.ts,
+                 seeded/deterministic, deliberately duplicated/malformed) +
+                 Supabase schema (supabase/migrations/0001_init_schema.sql,
+                 not yet applied to a live project) + normalization/dedup/
+                 quality/matching/ranking built as plain TypeScript
+                 (server/src/) and proven against the synthetic set --
+                 44 tests passing (`npm run test:server`), no live database
+                 or real source involved. See server/README.md.
 
 Stage 2 (MVP)    Real admin + member submission forms, real users, real
                  search, real matching against real member preferences,
