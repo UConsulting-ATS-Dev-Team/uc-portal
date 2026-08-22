@@ -497,12 +497,23 @@ in progress)     applied and verified end-to-end. Real auth (email/password,
                  externship correctly excluded entirely for an
                  internship-only preference (hard constraint), correct top
                  match, and freshness correctly breaking a tie between two
-                 equal-scoring jobs. Also standalone so far.
+                 equal-scoring jobs.
+
+                 Real jobs are now visible in the app, not just provable via
+                 a console query: GlobalSearch.jsx's Jobs results come from
+                 data/jobSearch.js instead of the mock substring search,
+                 linking straight to each job's real application_url (no
+                 real JobDetail page exists yet for a real job's UUID, and
+                 this is also just correct per US-48). Verified in-browser:
+                 "consulting" returns the 3 correct real jobs alongside the
+                 existing mock company/resource/feed results.
+
                  Still open: wiring Jobs.jsx itself to real data (the
                  deliberately-deferred bigger piece -- see this section's
-                 note on why that's a larger, riskier change), and migrating
+                 note on why that's a larger, riskier change), migrating
                  member preferences from localStorage into Supabase so
-                 matching can run server-side instead of only client-side.
+                 matching can run server-side instead of only client-side,
+                 and a real JobDetail page for real jobs.
 
 Stage 3          First automated source: one employer ATS API adapter,
                  for one company, only after that deployment's terms are
