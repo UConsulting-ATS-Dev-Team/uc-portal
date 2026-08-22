@@ -561,16 +561,87 @@ done)            applied and verified end-to-end. Real auth (email/password,
                  neither the mock JobDetail path nor Home/Feed's mock
                  JobCard usage regressed.
 
-                 **Stage 2 is functionally complete.** Real auth, real
-                 submissions with admin approval, real search, real
-                 matching, a real job detail page, real synced preferences,
-                 and now a real Jobs board -- all live and verified against
-                 the actual Supabase project, not just written. What's left
-                 is Stage 3+ scope: an automated source, the full normalize/
-                 enrich pipeline running server-side (Edge Functions) instead
-                 of the simplified field mapping Approve currently does, and
-                 a real CRM integration to replace the still-mocked UC
-                 connections/past-cycle data.
+                 The Approve action now runs the real pipeline server-side
+                 too (supabase/functions/approve-submission), closing the
+                 one gap the paragraph above used to flag: the "simplified
+                 field mapping" AdminDashboard.jsx's Approve used to do
+                 (data/opportunitySubmissionUtils.js, now deleted) is
+                 replaced by an Edge Function that ports Stage 1's
+                 normalize/dedup/quality pipeline (server/src/, 44 tests)
+                 essentially unchanged -- same taxonomy modules, same
+                 dedup scoring/tiering, only two adaptations for Deno:
+                 explicit .ts import extensions, and crypto.randomUUID()
+                 in place of node:crypto. The function re-derives and
+                 checks the caller's admin status itself (service_role
+                 bypasses RLS, so the client-side Approve button being
+                 admin-gated is UX only, not the real boundary), then
+                 normalizes the submission, validates required fields,
+                 scores it against every active job for duplicates, and
+                 branches on the same three tiers §3.3 defines: <70 inserts
+                 a new job; 70-89 still goes live (the admin already
+                 approved it) but is also flagged into duplicate_candidates
+                 for review (US-18); >=90 doesn't create a second job at
+                 all -- it attaches as an additional job_sources row on the
+                 existing one, so two submissions of the same posting never
+                 produce a visible duplicate. Full field-level merge
+                 reconciliation (US-19) stays deferred, per Part 8.5's own
+                 exclusion list. Source attribution (member vs. admin, for
+                 job_sources' provenance) is resolved from the submitter's
+                 own profiles.role at approval time, not from which UI
+                 screen posted it -- PostOpportunityModal.jsx is shared
+                 between both and never recorded that distinction itself.
+                 Seeded via a new migration (20260822100000): two `sources`
+                 rows, "UC Admin Submission" and "UC Member Submission",
+                 both `approved` -- §3.7's registry gate now has a real
+                 enabled/disabled switch sitting in front of this path, not
+                 just the automated-source path Part 7 originally pictured
+                 it guarding.
+
+                 Two real bugs found before this shipped, both instructive:
+                 (1) the submitter's own class-year chip selections
+                 (payload.classYears -- a structured fact, not free text)
+                 were being silently discarded in favor of the weaker
+                 extractGraduationYears() text-fallback, because a comment
+                 asserted they'd be "passed through directly" without the
+                 code actually doing it -- caught before deploying, not
+                 after. (2) deployed and got "permission denied for table
+                 profiles" on the very first live Approve click --
+                 service_role bypasses RLS but not table-level GRANTs,
+                 which turned out not to be auto-granted on this project
+                 any more than 20260821150000_grants.sql already found
+                 authenticated wasn't. Fixed the same way: an explicit
+                 grant migration (20260822110000), this time to
+                 service_role, discovered by putting the actual Postgres
+                 error (with its own correct GRANT hint) into the
+                 function's response temporarily, not by guessing.
+
+                 Verified against the live project, not just deployed: a
+                 clean submission ("Redwood Strategy Partners") came back
+                 fully normalized -- occupation classified from the title
+                 alone (Consulting, via the O*NET stub), city/state/country
+                 parsed from "Chicago" + a Hybrid work-mode chip, comp
+                 parsed from "$40/hr" into structured min/max/hourly, the
+                 submitter's own class-year chips landing correctly in
+                 graduation_years, quality_score's completeness math
+                 checking out field-by-field by hand. Then both dedup
+                 branches, against the real seeded Bain job: a submission
+                 reusing its exact application URL scored 100 and
+                 correctly merged (job count for Bain stayed at 1, a new
+                 job_sources row appeared instead); a similar-but-distinct
+                 title ("Associate Consultant Summer Intern," Jaccard
+                 0.75 against the original) scored 75 and correctly went
+                 live as its own job while landing a real
+                 duplicate_candidates row with the exact matched signals
+                 recorded. All test data (3 submissions, 2 jobs, 1 dedup
+                 row, 1 provenance row) removed afterward via a dedicated
+                 cleanup migration (20260822120000) rather than left in
+                 the live database.
+
+                 **Stage 2 is now fully complete**, including the piece
+                 that used to be deferred. What's left is genuinely Stage
+                 3+ scope: an automated source, and a real CRM integration
+                 to replace the still-mocked UC connections/past-cycle
+                 data.
 
 Stage 3          First automated source: one employer ATS API adapter,
                  for one company, only after that deployment's terms are
