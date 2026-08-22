@@ -643,11 +643,119 @@ done)            applied and verified end-to-end. Real auth (email/password,
                  to replace the still-mocked UC connections/past-cycle
                  data.
 
-Stage 3          First automated source: one employer ATS API adapter,
-                 for one company, only after that deployment's terms are
-                 individually confirmed. Prove the full pipeline handles
-                 a real automated feed end to end, source registry kill-
-                 switch tested.
+Stage 3 (done)   First automated source: Stripe, via Greenhouse's public Job
+                 Board API (developers.greenhouse.io/job-board.html).
+                 Selected after checking all 8 mock companies for a
+                 legitimate, structured, no-login path -- confirmed against
+                 Greenhouse's own developer docs as an explicitly
+                 third-party-facing integration point ("no permission
+                 needed... build custom career and application sites"), the
+                 cleanest affirmative-authorization case of anything found.
+                 For reference, the others: BCG and Deloitte each embed
+                 full schema.org JobPosting markup (Google-for-Jobs data,
+                 a real but different kind of "meant for reuse" signal);
+                 Accenture's Workday career site has an internal JSON
+                 endpoint that works but isn't a documented public API;
+                 Bain (proprietary "Recruits Portal"), McKinsey (site
+                 stalls plain HTTP requests -- bot-protected), Goldman
+                 Sachs (client-rendered SPA, no structured data), and
+                 EY-Parthenon (SuccessFactors, but this instance omits the
+                 schema Deloitte's has) had nothing usable. None of that
+                 rules the others out for a future adapter -- Stripe was
+                 just the cleanest case to pilot the mechanism against
+                 first, per this Part's own "piloted individually"
+                 guidance. Also researched hiQ Labs v. LinkedIn before
+                 building anything: it narrows CFAA (federal
+                 computer-crime) exposure for scraping data with no login
+                 wall, but doesn't touch ToS/breach-of-contract exposure,
+                 and hiQ still lost as a business (settled, shut down)
+                 despite winning that legal question -- reinforces this
+                 doc's existing bar of "affirmatively authorized," not
+                 "technically public."
+
+                 supabase/functions/fetch-greenhouse-stripe reuses the
+                 exact normalize/validate/dedup/insert pipeline
+                 approve-submission already runs -- both were refactored to
+                 share one copy (supabase/functions/_shared/) instead of
+                 diverging, so a member manually submitting a Stripe role
+                 correctly merges with the automated feed's copy and vice
+                 versa. Deliberately never requests Greenhouse's
+                 ?content=true (no full description text ever touched --
+                 Greenhouse's API terms cover API use, not a copyright
+                 license from Stripe over the posting text; application_url
+                 is the link-out path, same default as every other source).
+                 Seeded via 20260822130000 as a normal §3.7 registry row
+                 (authorization_status flips it off with no redeploy, the
+                 actual kill-switch). Scheduled daily via pg_cron + pg_net
+                 (20260822140000) -- the anon key embedded in that cron job
+                 is not a secret (already shipped in the frontend bundle;
+                 the function's own privileged work runs on its injected
+                 SUPABASE_SERVICE_ROLE_KEY, not this header).
+
+                 Three real bugs found only by running this against
+                 Stripe's actual 575-posting feed, not synthetic data, all
+                 fixed before/while shipping:
+                 1. normalizeEmploymentType()'s /intern(ship)?/ pattern had
+                    no word boundary -- matched "Internal Audit Lead" and
+                    "International Accounting Lead" as substrings,
+                    misclassifying 9 real senior full-time titles as
+                    internships. Fixed in both server/src/ and the Edge
+                    Function's copy (word-boundaried); server test suite
+                    (44 tests) still green after.
+                 2. ~90% of Stripe's real titles ("Account Executive,"
+                    "Staff Engineer," etc.) carry no employment-type signal
+                    at all -- only internships/co-ops self-declare in a
+                    title, by convention. normalizeJob()'s "never guess"
+                    rule is correct for its original context (ambiguous
+                    member free text) but would have silently dropped ~90%
+                    of a real external feed unchanged. Fixed as an
+                    adapter-level policy, not a pipeline change: an
+                    unclassified title defaults to full_time here,
+                    documented in the function's own header as this
+                    adapter's judgment call.
+                 3. dedupe.ts's normalizeUrl() stripped query strings
+                    before comparing -- fine for the mock data's per-job
+                    URL paths, but every one of Stripe's 575 postings
+                    shares the identical path (stripe.com/jobs/search) and
+                    is distinguished only by a ?gh_jid=<id> query param
+                    (their careers site is a client-side router). First
+                    deploy auto-merged 574 of 575 postings into one job
+                    before this was caught. Fixed by including the query
+                    string in the comparison (both copies, 44 tests still
+                    green); required a cleanup migration (20260822150000)
+                    to remove the incorrect job_sources rows before
+                    rerunning. The fix also surfaced a real scale problem
+                    the first (pre-fix) run had been masking: once postings
+                    correctly stopped merging into one, ~570 real inserts
+                    at several sequential DB round-trips each hit
+                    Supabase's Edge Function resource limit outright --
+                    Stage 1's README already flagged this exact "not yet
+                    optimized for a hot ingestion path" risk. Rewrote
+                    fetch-greenhouse-stripe to load every lookup once
+                    up front (active jobs, existing job_sources for this
+                    source, job_functions) and write in bulk at the end
+                    (~9 round-trips total regardless of N) rather than
+                    per-job; the O(n^2) in-memory dedup scoring itself was
+                    never the actual bottleneck.
+
+                 Verified against live data, not just deployed: final run
+                 processed all 575 postings (126 inserted, 1 merged, 6
+                 flagged into duplicate_candidates for review, 448 refreshed
+                 from an interrupted prior run, 0 invalid, numbers summing
+                 exactly to 575). Cross-checked directly against Postgres:
+                 job_sources row count and unique job-id count reconcile
+                 exactly against total Stripe rows in `jobs` (573 real +
+                 2 original mock-seeded = 575). Confirmed live on the Jobs
+                 board (584 total including 8 other mock companies + 1
+                 earlier Stage 2 test job kept from before), correct
+                 employment-type breakdown (9 internship / 1 externship /
+                 574 full-time), and a real job's detail page rendering
+                 cleanly with no description (RealJobDetail.jsx already
+                 handled a null description gracefully) -- a real gap
+                 caught in that same pass: the detail page's "About this
+                 listing" copy said "admin-approved posting" unconditionally,
+                 inaccurate for an automated-source job; fixed to be
+                 sourcing-neutral.
 
 Stage 4          Additional ATS adapters for other UC-target companies;
                  RSS/institutional feeds where available; evaluate a
