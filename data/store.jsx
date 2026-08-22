@@ -87,15 +87,6 @@ const SEED_COFFEE_CHATS = {
   "priya-nair": "Follow-up due",
 };
 
-// Admin Dashboard (2h) opportunity review queue -- member/alumni-submitted
-// postings awaiting Careers Committee approval before they'd go live.
-const SEED_OPPORTUNITY_QUEUE = [
-  { id: "queue-1", company: "Bridgewater Associates", role: "Investment Analyst Intern", source: "Alumni post", status: "Needs review", applicants: 0 },
-  { id: "queue-2", company: "Deloitte", role: "Strategy Consulting Intern", source: "Member submitted", status: "Needs review", applicants: 0 },
-  { id: "queue-3", company: "Amazon", role: "Product Manager Intern", source: "Feed import", status: "Live", applicants: 6 },
-  { id: "queue-4", company: "Roland Berger", role: "Summer Associate", source: "Alumni post", status: "Expired", applicants: 2 },
-];
-
 const DEFAULT_STATE = {
   onboardingComplete: false,
   recentSearches: [], // Global search (3b) -- most recent first, capped at 5
@@ -108,7 +99,6 @@ const DEFAULT_STATE = {
   savedResourceIds: [], // Career Resources (2d) "My saved"
   resourceProgress: { "case-guide-1": [0, 1] }, // { [resourceId]: completed section indexes } -- seeded so the library isn't empty on first load
   trackProgress: { "case-interview-track": 3 }, // { [trackId]: completed step count } -- matches the wireframe's own "3 of 12" example
-  opportunityQueue: SEED_OPPORTUNITY_QUEUE, // Admin Dashboard (2h) review queue
   preferences: {
     industries: [], // ranked array of industry names, max 3
     roles: [], // max 5
@@ -313,27 +303,6 @@ export function AppStateProvider({ children }) {
     });
   }
 
-  function approveOpportunity(id) {
-    setState((prev) => ({
-      ...prev,
-      opportunityQueue: prev.opportunityQueue.map((o) => (o.id === id ? { ...o, status: "Live", applicants: 0 } : o)),
-    }));
-  }
-
-  function removeOpportunity(id) {
-    setState((prev) => ({ ...prev, opportunityQueue: prev.opportunityQueue.filter((o) => o.id !== id) }));
-  }
-
-  function submitOpportunity(entry) {
-    setState((prev) => ({
-      ...prev,
-      opportunityQueue: [
-        { id: `queue-${Date.now()}`, status: "Needs review", applicants: 0, ...entry },
-        ...prev.opportunityQueue,
-      ],
-    }));
-  }
-
   return (
     <AppStateContext.Provider
       value={{
@@ -355,9 +324,6 @@ export function AppStateProvider({ children }) {
         toggleSavedResource,
         toggleResourceSection,
         advanceTrackStep,
-        approveOpportunity,
-        removeOpportunity,
-        submitOpportunity,
       }}
     >
       {children}

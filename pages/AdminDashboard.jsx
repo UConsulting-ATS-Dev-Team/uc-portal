@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import PostOpportunityModal from "../components/modals/PostOpportunityModal.jsx";
+import { supabase } from "../data/supabaseClient.js";
+import { buildJobFromSubmission } from "../data/opportunitySubmissionUtils.js";
 import {
   KPIS,
   INDUSTRY_INTEREST,
@@ -11,18 +13,89 @@ import {
   ACCESS_CONTROL,
   FLAGGED_FEED_POSTS,
 } from "../data/mockAdmin.js";
-import { useAppState } from "../data/store.jsx";
 import "../styles/jobs.css";
 import "../styles/jobDetail.css";
 import "../styles/network.css";
 import "../styles/resources.css";
 import "../styles/admin.css";
 
+// Opportunity queue (Stage 2) reads/writes real Supabase data --
+// opportunity_submissions for the queue itself, promoting an approved
+// submission into a real jobs row. Everything else on this page (KPIs,
+// industry interest, etc.) is still the mock-data prototype layer; only the
+// queue has a real backend behind it so far.
 export default function AdminDashboard() {
-  const { opportunityQueue, approveOpportunity, removeOpportunity } = useAppState();
   const [showPostModal, setShowPostModal] = useState(false);
+  const [queue, setQueue] = useState([]);
+  const [queueLoading, setQueueLoading] = useState(true);
+  const [queueError, setQueueError] = useState(null);
+  const [actioningId, setActioningId] = useState(null);
   const gap = biggestGap();
   const maxMembers = Math.max(...INDUSTRY_INTEREST.map((i) => i.members));
+
+  async function loadQueue() {
+    setQueueLoading(true);
+    const { data, error } = await supabase
+      .from("opportunity_submissions")
+      .select("*")
+      .in("status", ["needs_review", "live"])
+      .order("created_at", { ascending: false });
+    if (error) setQueueError(error.message);
+    else setQueue(data);
+    setQueueLoading(false);
+  }
+
+  useEffect(() => {
+    loadQueue();
+  }, []);
+
+  async function handleApprove(submission) {
+    setActioningId(submission.id);
+    setQueueError(null);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data: newJob, error: jobError } = await supabase
+      .from("jobs")
+      .insert(buildJobFromSubmission(submission.raw_payload))
+      .select()
+      .single();
+
+    if (jobError) {
+      setQueueError(jobError.message);
+      setActioningId(null);
+      return;
+    }
+
+    const { error: updateError } = await supabase
+      .from("opportunity_submissions")
+      .update({ job_id: newJob.id, status: "live", reviewed_by: user.id, reviewed_at: new Date().toISOString() })
+      .eq("id", submission.id);
+
+    if (updateError) setQueueError(updateError.message);
+    await loadQueue();
+    setActioningId(null);
+  }
+
+  async function handleReject(submission) {
+    setActioningId(submission.id);
+    setQueueError(null);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { error } = await supabase
+      .from("opportunity_submissions")
+      .update({ status: "rejected", reviewed_by: user.id, reviewed_at: new Date().toISOString() })
+      .eq("id", submission.id);
+
+    if (error) setQueueError(error.message);
+    await loadQueue();
+    setActioningId(null);
+  }
 
   return (
     <div>
@@ -109,46 +182,53 @@ export default function AdminDashboard() {
 
           <div className="detail-section">
             <h2 className="detail-section__title">Opportunity queue</h2>
+            {queueError && <p className="meta" style={{ color: "#B3261E" }}>{queueError}</p>}
             <table className="queue-table">
               <thead>
                 <tr>
                   <th>Company</th>
                   <th>Role</th>
-                  <th>Source</th>
+                  <th>Submitted</th>
                   <th>Status</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {opportunityQueue.map((o) => (
+                {queue.map((o) => (
                   <tr key={o.id}>
                     <td>{o.company}</td>
                     <td>{o.role}</td>
-                    <td>{o.source}</td>
+                    <td>{new Date(o.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</td>
                     <td>
-                      <span className="chip chip-accent">
-                        {o.status === "Live" ? `Live · ${o.applicants} applicants` : o.status}
-                      </span>
+                      <span className="chip chip-accent">{o.status === "live" ? "Live" : "Needs review"}</span>
                     </td>
                     <td>
                       <div className="queue-table__actions">
-                        {o.status === "Needs review" && (
-                          <button className="btn btn-secondary" onClick={() => approveOpportunity(o.id)}>
-                            Approve
+                        {o.status === "needs_review" && (
+                          <button className="btn btn-secondary" disabled={actioningId === o.id} onClick={() => handleApprove(o)}>
+                            {actioningId === o.id ? "Approving…" : "Approve"}
                           </button>
                         )}
-                        <button className="btn btn-secondary">Edit</button>
-                        <button className="btn btn-secondary" onClick={() => removeOpportunity(o.id)}>
-                          Remove
-                        </button>
+                        {o.status === "needs_review" && (
+                          <button className="btn btn-secondary" disabled={actioningId === o.id} onClick={() => handleReject(o)}>
+                            Reject
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
                 ))}
-                {opportunityQueue.length === 0 && (
+                {!queueLoading && queue.length === 0 && (
                   <tr>
                     <td colSpan={5} className="meta">
                       Queue is empty.
+                    </td>
+                  </tr>
+                )}
+                {queueLoading && (
+                  <tr>
+                    <td colSpan={5} className="meta">
+                      Loading…
                     </td>
                   </tr>
                 )}
@@ -224,7 +304,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {showPostModal && <PostOpportunityModal onClose={() => setShowPostModal(false)} source="Admin posted" />}
+      {showPostModal && <PostOpportunityModal onClose={() => setShowPostModal(false)} />}
     </div>
   );
 }

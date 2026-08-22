@@ -1,18 +1,26 @@
 import { useState } from "react";
 import Modal from "../Modal.jsx";
 import { INDUSTRIES, LOCATIONS } from "../../data/careerOptions.js";
-import { useAppState } from "../../data/store.jsx";
+import { supabase } from "../../data/supabaseClient.js";
 import "../../styles/onboarding.css";
 
-const TYPES = ["Internship", "Full-time", "Off-cycle / rolling"];
+// "Off-cycle / rolling" was dropped from this list -- it described deadline
+// behavior, not an employment type, and didn't map to a real value in the
+// jobs table's employment_type enum (internship/full_time/...). A rolling
+// position is just one with no application_deadline set.
+const TYPES = ["Internship", "Full-time"];
 const WORK_MODES = ["Remote", "Hybrid", "In-person"];
 const CLASS_YEARS = ["2026", "2027", "2028", "2029"];
 
-// source: "Member submitted" | "Alumni post" -- the modal is reused by both
-// Jobs' "Post a job" (member-facing) and Admin's "+ Post opportunity"
-// (leadership, still routed through the same review queue).
-export default function PostOpportunityModal({ onClose, source = "Member submitted" }) {
-  const { submitOpportunity } = useAppState();
+// This modal writes a real row to opportunity_submissions (Stage 2) --
+// submitted_by is the signed-in member's real auth id, raw_payload keeps
+// every field exactly as entered (never auto-scraped, per the source
+// governance compliance note in JOB_ENGINE_ARCHITECTURE.md Part 2), and
+// company/role are pulled out to their own columns for the admin queue to
+// display without parsing JSON. The modal is reused by both Jobs' "Post a
+// job" (member-facing) and Admin's "+ Post opportunity" -- both funnel into
+// the same review queue.
+export default function PostOpportunityModal({ onClose }) {
   const [company, setCompany] = useState("");
   const [role, setRole] = useState("");
   const [type, setType] = useState(TYPES[0]);
@@ -25,22 +33,38 @@ export default function PostOpportunityModal({ onClose, source = "Member submitt
   const [description, setDescription] = useState("");
   const [industries, setIndustries] = useState([]);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   function toggle(list, setList, value) {
     setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
   }
 
-  function handleSubmit() {
-    submitOpportunity({
+  async function handleSubmit() {
+    setSubmitting(true);
+    setSubmitError(null);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { error } = await supabase.from("opportunity_submissions").insert({
+      submitted_by: user.id,
       company,
-      role: `${role}${classYears.length ? ` · Class of ${classYears.join(", ")}` : ""}`,
-      source,
+      role,
+      raw_payload: { company, role, type, classYears, location, workMode, comp, deadline, link, description, industries },
     });
+
+    setSubmitting(false);
+    if (error) {
+      setSubmitError(error.message);
+      return;
+    }
     setSubmitted(true);
     setTimeout(onClose, 1200);
   }
 
-  const canSubmit = company.trim() && role.trim() && location.trim();
+  const canSubmit = company.trim() && role.trim() && location.trim() && link.trim() && !submitting;
 
   return (
     <Modal
@@ -52,10 +76,12 @@ export default function PostOpportunityModal({ onClose, source = "Member submitt
           <span className="modal__footer-note">Sent to the Careers Committee review queue.</span>
         ) : (
           <>
-            <span className="modal__footer-note">Goes to the Careers Committee for review before it's live.</span>
+            <span className="modal__footer-note">
+              {submitError ? <span style={{ color: "#B3261E" }}>{submitError}</span> : "Goes to the Careers Committee for review before it's live."}
+            </span>
             <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
             <button className="btn btn-primary" disabled={!canSubmit} onClick={handleSubmit}>
-              Submit for review
+              {submitting ? "Submitting…" : "Submit for review"}
             </button>
           </>
         )
@@ -116,8 +142,8 @@ export default function PostOpportunityModal({ onClose, source = "Member submitt
           <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
         </div>
         <div>
-          <label className="field-label">Application link</label>
-          <input type="url" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://" />
+          <label className="field-label">Application link (required)</label>
+          <input type="url" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://" required />
         </div>
       </div>
 
