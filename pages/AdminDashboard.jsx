@@ -30,6 +30,11 @@ export default function AdminDashboard() {
   const [queueError, setQueueError] = useState(null);
   const [queueNote, setQueueNote] = useState(null);
   const [actioningId, setActioningId] = useState(null);
+  const [duplicates, setDuplicates] = useState([]);
+  const [duplicatesLoading, setDuplicatesLoading] = useState(true);
+  const [duplicatesError, setDuplicatesError] = useState(null);
+  const [duplicatesNote, setDuplicatesNote] = useState(null);
+  const [resolvingId, setResolvingId] = useState(null);
   const gap = biggestGap();
   const maxMembers = Math.max(...INDUSTRY_INTEREST.map((i) => i.members));
 
@@ -45,9 +50,63 @@ export default function AdminDashboard() {
     setQueueLoading(false);
   }
 
+  // duplicate_candidates (US-18) -- populated by both approve-submission and
+  // fetch-greenhouse-stripe's dedup scoring whenever a job lands in the
+  // 70-89 review band. Each candidate is enriched with both jobs' own
+  // title/company here (one extra query) rather than N+1 queries per row.
+  async function loadDuplicates() {
+    setDuplicatesLoading(true);
+    const { data: candidates, error } = await supabase
+      .from("duplicate_candidates")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+    if (error) {
+      setDuplicatesError(error.message);
+      setDuplicatesLoading(false);
+      return;
+    }
+    const jobIds = [...new Set((candidates ?? []).flatMap((c) => [c.job_id_a, c.job_id_b]))];
+    const { data: jobs } = jobIds.length > 0
+      ? await supabase.from("jobs").select("id, title, company").in("id", jobIds)
+      : { data: [] };
+    const jobById = Object.fromEntries((jobs ?? []).map((j) => [j.id, j]));
+    setDuplicates((candidates ?? []).map((c) => ({ ...c, jobA: jobById[c.job_id_a], jobB: jobById[c.job_id_b] })));
+    setDuplicatesLoading(false);
+  }
+
   useEffect(() => {
     loadQueue();
+    loadDuplicates();
   }, []);
+
+  // Runs the real reassign-sources-and-deactivate flow server-side
+  // (supabase/functions/resolve-duplicate-candidate) for a confirmed
+  // duplicate, or just records the review for "not a duplicate" -- see that
+  // function's header for why this needs service_role rather than a direct
+  // client update (job_sources grants no client writes to anyone).
+  async function handleResolveDuplicate(candidate, resolution, keepJobId) {
+    setResolvingId(candidate.id);
+    setDuplicatesError(null);
+    setDuplicatesNote(null);
+
+    const { data, error } = await supabase.functions.invoke("resolve-duplicate-candidate", {
+      body: { candidateId: candidate.id, resolution, keepJobId },
+    });
+
+    if (error) {
+      const detail = await error.context?.json?.().catch(() => null);
+      setDuplicatesError(detail?.error ?? error.message);
+    } else if (data?.outcome === "confirmed_duplicate") {
+      const kept = keepJobId === candidate.job_id_a ? candidate.jobA : candidate.jobB;
+      setDuplicatesNote(`Kept "${kept?.title ?? "the selected listing"}" -- the duplicate was deactivated and its sources reassigned.`);
+    } else {
+      setDuplicatesNote("Marked as not a duplicate.");
+    }
+
+    await loadDuplicates();
+    setResolvingId(null);
+  }
 
   // Approve runs the real normalize/validate/dedup/enrich pipeline server-side
   // (supabase/functions/approve-submission), not a client-side field copy --
@@ -226,6 +285,82 @@ export default function AdminDashboard() {
                   </tr>
                 )}
                 {queueLoading && (
+                  <tr>
+                    <td colSpan={5} className="meta">
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="detail-section">
+            <h2 className="detail-section__title">Duplicate review queue</h2>
+            <p className="meta" style={{ marginTop: 0 }}>
+              Flagged by dedup scoring (70–89 confidence band) on either a member/admin submission or an
+              automated source -- not auto-merged, since the signals weren't strong enough to be certain.
+            </p>
+            {duplicatesError && <p className="meta" style={{ color: "#B3261E" }}>{duplicatesError}</p>}
+            {duplicatesNote && <p className="meta">{duplicatesNote}</p>}
+            <table className="queue-table">
+              <thead>
+                <tr>
+                  <th>Job A</th>
+                  <th>Job B</th>
+                  <th>Score</th>
+                  <th>Flagged</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {duplicates.map((d) => (
+                  <tr key={d.id}>
+                    <td>
+                      {d.jobA?.title ?? "(job removed)"}
+                      <div className="meta">{d.jobA?.company}</div>
+                    </td>
+                    <td>
+                      {d.jobB?.title ?? "(job removed)"}
+                      <div className="meta">{d.jobB?.company}</div>
+                    </td>
+                    <td>{d.score}</td>
+                    <td>{new Date(d.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</td>
+                    <td>
+                      <div className="queue-table__actions">
+                        <button
+                          className="btn btn-secondary"
+                          disabled={resolvingId === d.id}
+                          onClick={() => handleResolveDuplicate(d, "confirmed_duplicate", d.job_id_a)}
+                        >
+                          Keep A
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          disabled={resolvingId === d.id}
+                          onClick={() => handleResolveDuplicate(d, "confirmed_duplicate", d.job_id_b)}
+                        >
+                          Keep B
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          disabled={resolvingId === d.id}
+                          onClick={() => handleResolveDuplicate(d, "not_duplicate")}
+                        >
+                          Not a duplicate
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {!duplicatesLoading && duplicates.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="meta">
+                      No pending duplicates.
+                    </td>
+                  </tr>
+                )}
+                {duplicatesLoading && (
                   <tr>
                     <td colSpan={5} className="meta">
                       Loading…

@@ -29,7 +29,6 @@
 // the client -- the client-side "Approve" button being admin-only is a UX
 // nicety, not the actual security boundary.
 
-import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { normalizeJob } from "../_shared/pipeline/normalize.ts";
 import { validateJob, scoreQuality } from "../_shared/pipeline/quality.ts";
 import { scoreDuplicate, classifyDuplicateTier } from "../_shared/pipeline/dedupe.ts";
@@ -40,6 +39,7 @@ import {
   jobInsertFromNormalized,
   resolveJobFunctionId,
 } from "../_shared/dedupeHelpers.ts";
+import { requireAdmin } from "../_shared/requireAdmin.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -110,37 +110,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
 
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) return jsonResponse({ error: "Missing Authorization header" }, 401);
-
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-  // Identifies the caller under their own JWT (respects RLS) -- used only to
-  // establish who's calling, never to write anything.
-  const callerClient: SupabaseClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  // Every actual read/write below uses this -- bypasses RLS by design (see
-  // header comment), so every access decision has to be made explicitly in
-  // this function's own code, not delegated to a policy.
-  const adminClient: SupabaseClient = createClient(supabaseUrl, serviceRoleKey);
-
-  const {
-    data: { user },
-    error: userError,
-  } = await callerClient.auth.getUser();
-  if (userError || !user) return jsonResponse({ error: "Not authenticated" }, 401);
-
-  const { data: callerProfile, error: callerProfileError } = await adminClient
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-  if (callerProfileError || callerProfile?.role !== "admin") {
-    return jsonResponse({ error: "Admin access required" }, 403);
-  }
+  const adminResult = await requireAdmin(req);
+  if (adminResult instanceof Response) return adminResult;
+  const { user, adminClient } = adminResult;
 
   let body: { submissionId?: string };
   try {
