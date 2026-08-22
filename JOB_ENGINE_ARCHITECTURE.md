@@ -462,14 +462,14 @@ Stage 0 (done)   Current mock-data prototype -- Jobs board, filters, store,
 Stage 1 (done)   Synthetic dataset (server/synthetic/generateSyntheticJobs.ts,
                  seeded/deterministic, deliberately duplicated/malformed) +
                  Supabase schema (supabase/migrations/20260821120000_init_schema.sql,
-                 not yet applied to a live project) + normalization/dedup/
-                 quality/matching/ranking built as plain TypeScript
-                 (server/src/) and proven against the synthetic set --
-                 44 tests passing (`npm run test:server`), no live database
-                 or real source involved. See server/README.md.
+                 since applied to the live project, see Stage 2 below) +
+                 normalization/dedup/quality/matching/ranking built as plain
+                 TypeScript (server/src/) and proven against the synthetic
+                 set -- 44 tests passing (`npm run test:server`). See
+                 server/README.md.
 
 Stage 2 (MVP,    Real Supabase project live (Part 9), schema + RLS + grants
-in progress)     applied and verified end-to-end. Real auth (email/password,
+done)            applied and verified end-to-end. Real auth (email/password,
                  Google deferred) replaces SignIn.jsx's simulated flow --
                  verified: sign-up, email confirmation, sign-in, and the
                  handle_new_user() trigger's profile creation all confirmed
@@ -542,10 +542,35 @@ in progress)     applied and verified end-to-end. Real auth (email/password,
                  with the UI's own profile-strength calculation reflecting
                  it correctly.
 
-                 Still open: wiring Jobs.jsx itself to real data -- the one
-                 deliberately-deferred piece left (see this section's note
-                 on why that's a larger, riskier change than everything
-                 above).
+                 Jobs.jsx itself now reads real data too -- the piece
+                 deferred three separate times until everything above was
+                 individually proven. data/realJobAdapter.js maps a real job
+                 row (+ its data/jobMatch.js result) into the exact shape
+                 JobCard/jobUtils.js already expect, so neither needed a
+                 rewrite -- JobCard renders real jobs completely unchanged.
+                 Filters tied to fields a real job doesn't carry (UC
+                 connections, UC-posted, referral available, company size)
+                 are gone, not disabled -- that data belongs to the
+                 still-mocked CRM/tracker boundary, and a checkbox that can
+                 never honestly match anything is worse than not having it.
+                 Verified extensively against the 11 live jobs: real match
+                 scores, filters/sort/tabs all correct including several
+                 genuine edge cases (missing comp, missing deadline,
+                 unclassified industry) that rendered gracefully instead of
+                 crashing, Save persists a real job's UUID correctly, and
+                 neither the mock JobDetail path nor Home/Feed's mock
+                 JobCard usage regressed.
+
+                 **Stage 2 is functionally complete.** Real auth, real
+                 submissions with admin approval, real search, real
+                 matching, a real job detail page, real synced preferences,
+                 and now a real Jobs board -- all live and verified against
+                 the actual Supabase project, not just written. What's left
+                 is Stage 3+ scope: an automated source, the full normalize/
+                 enrich pipeline running server-side (Edge Functions) instead
+                 of the simplified field mapping Approve currently does, and
+                 a real CRM integration to replace the still-mocked UC
+                 connections/past-cycle data.
 
 Stage 3          First automated source: one employer ATS API adapter,
                  for one company, only after that deployment's terms are
