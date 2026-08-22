@@ -2,14 +2,16 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Skeleton from "../components/Skeleton.jsx";
 import { useAppState } from "../data/store.jsx";
+import { supabase } from "../data/supabaseClient.js";
 import bearMark from "../assets/uc-bear-mark-white.png";
 import "../styles/auth.css";
 
 // Wireframe 3a — four states: sign-in, not-on-roster, access-pending,
-// loading. No real auth/roster check exists (prototype only), so the
-// "Continue with Google" / "Sign in" buttons simulate a successful login,
-// and "Alumni — request access" walks through the not-on-roster → pending
-// path so both flows are demoable.
+// loading. Sign-in/sign-up now hit real Supabase Auth (Stage 2) instead of
+// simulating success. Google sign-in and the roster-verification check
+// (there's no real roster data source yet -- see CLAUDE.md's open action
+// item to pull one from Alumni Relations) are still out of scope; "Alumni —
+// request access" stays a UI-only walkthrough of that state for now.
 const STATE = {
   SIGN_IN: "sign-in",
   LOADING: "loading",
@@ -30,16 +32,42 @@ function Brand() {
 
 export default function SignIn() {
   const [state, setState] = useState(STATE.SIGN_IN);
+  const [mode, setMode] = useState("sign-in"); // "sign-in" | "sign-up"
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState(null);
+  const [confirmNotice, setConfirmNotice] = useState(false);
   const [submittedAt, setSubmittedAt] = useState(null);
   const [resent, setResent] = useState(false);
   const navigate = useNavigate();
   const { onboardingComplete } = useAppState();
 
-  function simulateSignIn(event) {
-    event?.preventDefault();
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setAuthError(null);
     setState(STATE.LOADING);
-    setTimeout(() => navigate(onboardingComplete ? "/" : "/onboarding"), 700);
+
+    const { data, error } =
+      mode === "sign-in"
+        ? await supabase.auth.signInWithPassword({ email, password })
+        : await supabase.auth.signUp({ email, password });
+
+    if (error) {
+      setAuthError(error.message);
+      setState(STATE.SIGN_IN);
+      return;
+    }
+
+    // Sign-up with email confirmation enabled (the Supabase default) returns
+    // a user but no active session yet -- the member has to click the link
+    // in their inbox before signInWithPassword will succeed.
+    if (mode === "sign-up" && !data.session) {
+      setConfirmNotice(true);
+      setState(STATE.SIGN_IN);
+      return;
+    }
+
+    navigate(onboardingComplete ? "/" : "/onboarding");
   }
 
   function requestAccess() {
@@ -132,16 +160,27 @@ export default function SignIn() {
       <div className="auth__stack">
         <Brand />
         <div className="auth__card">
-          <h1 className="auth__title">Sign in</h1>
+          <h1 className="auth__title">{mode === "sign-in" ? "Sign in" : "Create your account"}</h1>
           <p className="auth__subtitle">UC Portal is private to UConsulting members and alumni.</p>
 
-          <button className="btn btn-primary" style={{ width: "100%" }} onClick={simulateSignIn}>
+          <button className="btn btn-primary" style={{ width: "100%" }} disabled title="Google sign-in isn't set up yet">
             Continue with your university Google account
           </button>
 
           <div className="auth__divider">or</div>
 
-          <form onSubmit={simulateSignIn}>
+          {confirmNotice && (
+            <p className="auth__note" style={{ color: "var(--color-accent)" }}>
+              Check {email} for a confirmation link, then sign in below.
+            </p>
+          )}
+          {authError && (
+            <p className="auth__note" style={{ color: "#B3261E" }}>
+              {authError}
+            </p>
+          )}
+
+          <form onSubmit={handleSubmit}>
             <div className="field">
               <label htmlFor="email">Email</label>
               <input
@@ -150,19 +189,37 @@ export default function SignIn() {
                 placeholder="you@university.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
               />
             </div>
             <div className="field">
               <label htmlFor="password">Password</label>
-              <input id="password" type="password" placeholder="••••••••" />
+              <input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                minLength={6}
+                required
+              />
             </div>
             <button className="btn btn-secondary" type="submit" style={{ width: "100%" }}>
-              Sign in
+              {mode === "sign-in" ? "Sign in" : "Create account"}
             </button>
           </form>
 
           <div className="auth__footer-links">
-            <button className="btn-link">Forgot password</button>
+            <button
+              className="btn-link"
+              onClick={() => {
+                setMode((m) => (m === "sign-in" ? "sign-up" : "sign-in"));
+                setAuthError(null);
+                setConfirmNotice(false);
+              }}
+            >
+              {mode === "sign-in" ? "New here? Create an account" : "Already have an account? Sign in"}
+            </button>
             <button className="btn-link" onClick={requestAccess}>
               Alumni — request access
             </button>

@@ -20,7 +20,7 @@ create table sources (
   type source_type not null,
   authorization_status authorization_status not null default 'requires_review',
   terms_reviewed_at timestamptz,
-  terms_reviewed_by text,
+  terms_reviewed_by uuid references auth.users(id),
   api_available boolean not null default false,
   rate_limits text,
   attribution_required boolean not null default false,
@@ -167,7 +167,7 @@ create table duplicate_candidates (
   score real not null,
   signals jsonb not null,     -- which signals matched and their individual scores, for admin review context
   status duplicate_review_status not null default 'pending',
-  reviewed_by text,
+  reviewed_by uuid references auth.users(id),
   reviewed_at timestamptz,
   created_at timestamptz not null default now()
 );
@@ -182,12 +182,12 @@ create type opportunity_review_status as enum ('needs_review', 'live', 'rejected
 create table opportunity_submissions (
   id uuid primary key default gen_random_uuid(),
   job_id uuid references jobs(id),   -- set once approved and promoted into jobs
-  submitted_by text,
+  submitted_by uuid not null references auth.users(id),
   company text not null,
   role text not null,
   raw_payload jsonb not null,        -- exactly what the submitter entered; never auto-scraped
   status opportunity_review_status not null default 'needs_review',
-  reviewed_by text,
+  reviewed_by uuid references auth.users(id),
   reviewed_at timestamptz,
   created_at timestamptz not null default now()
 );
