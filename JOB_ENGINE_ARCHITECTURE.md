@@ -480,10 +480,17 @@ in progress)     applied and verified end-to-end. Real auth (email/password,
                  Reject marks it rejected. RLS-verified both ways: a
                  non-admin's Approve attempt was correctly blocked, and
                  testing that surfaced a real self-role-escalation gap in
-                 the profiles update policy, now fixed with a trigger.
-                 Still open: real search, real matching against real member
-                 preferences, Jobs board reading real jobs instead of
-                 mockJobs.js.
+                 the profiles update policy, now fixed with a trigger. The
+                 10 mockJobs.js jobs are seeded into the real jobs table
+                 (translated to the real schema, not copied verbatim -- see
+                 20260821190000's header for what didn't carry over and
+                 why), and data/jobSearch.js is real Postgres full-text
+                 search against them (US-35), verified against live data:
+                 keyword search with real stemming, company search, filter
+                 combinations, graduation-year array filtering. Deliberately
+                 standalone -- doesn't touch Jobs.jsx's UI yet.
+                 Still open: real matching/ranking against real member
+                 preferences, and wiring Jobs.jsx itself to real data.
 
 Stage 3          First automated source: one employer ATS API adapter,
                  for one company, only after that deployment's terms are
