@@ -21,28 +21,34 @@ export default function JobCard({ job, saved, onToggleSave }) {
 
         <div className="chip-row" style={{ marginBottom: "var(--space-4)" }}>
           <span className="chip">{job.type}</span>
-          <span className="chip">Class of {job.classYears.join(", ")}</span>
-          <span className="chip">{job.industry}</span>
+          {job.classYears?.length > 0 && <span className="chip">Class of {job.classYears.join(", ")}</span>}
+          {job.industry && <span className="chip">{job.industry}</span>}
           <span className={`chip job-card__chip${urgent ? " is-urgent" : ""}`}>{deadlineLabel(job)}</span>
         </div>
 
-        <div className="job-card__footer">
-          {job.ucConnections > 0 && (
-            <>
-              <div className="job-card__avatars">
-                {Array.from({ length: Math.min(job.ucConnections, 3) }).map((_, i) => (
-                  <div className="job-card__avatar" key={i} />
-                ))}
-              </div>
-              <span className="job-card__connections">{job.ucConnections} UC connections</span>
-              <span>·</span>
-            </>
-          )}
-          <span>
-            {job.pastCycleApplicants} UC members applied last cycle · {job.pastCycleOffers} received offers
-          </span>
-          {job.whyLowerMatch && <span className="job-card__why">— {job.whyLowerMatch}</span>}
-        </div>
+        {(job.ucConnections > 0 || job.pastCycleApplicants != null || job.whyLowerMatch) && (
+          <div className="job-card__footer">
+            {job.ucConnections > 0 && (
+              <>
+                <div className="job-card__avatars">
+                  {Array.from({ length: Math.min(job.ucConnections, 3) }).map((_, i) => (
+                    <div className="job-card__avatar" key={i} />
+                  ))}
+                </div>
+                <span className="job-card__connections">{job.ucConnections} UC connections</span>
+                <span>·</span>
+              </>
+            )}
+            {/* pastCycleApplicants/Offers come from UC's own tracker data (Part 3.6) --
+                left undefined rather than faked as 0 for a real job that doesn't have it yet. */}
+            {job.pastCycleApplicants != null && (
+              <span>
+                {job.pastCycleApplicants} UC members applied last cycle · {job.pastCycleOffers} received offers
+              </span>
+            )}
+            {job.whyLowerMatch && <span className="job-card__why">— {job.whyLowerMatch}</span>}
+          </div>
+        )}
       </div>
 
       <div className="job-card__actions">

@@ -3,20 +3,32 @@ import { useSearchParams } from "react-router-dom";
 import JobCard from "../components/JobCard.jsx";
 import ErrorState from "../components/ErrorState.jsx";
 import PostOpportunityModal from "../components/modals/PostOpportunityModal.jsx";
-import { JOBS } from "../data/mockJobs.js";
 import { INDUSTRIES, LOCATIONS } from "../data/careerOptions.js";
 import { daysUntil, matchesDeadlineBucket } from "../data/jobUtils.js";
 import { useAppState } from "../data/store.jsx";
+import { supabase } from "../data/supabaseClient.js";
+import { matchJob } from "../data/jobMatch.js";
+import { realJobToCardShape } from "../data/realJobAdapter.js";
+import { currentUser } from "../data/mockUser.js";
 import "../styles/jobs.css";
 import "../styles/search.css";
 import "../styles/home.css";
 
+// Stage 2: the Jobs board now reads real data (the jobs table) instead of
+// data/mockJobs.js -- see JOB_ENGINE_ARCHITECTURE.md's Stage 2 notes for why
+// this was deliberately deferred until search/matching/a real detail page
+// all existed and were proven first. Every real job is adapted to the exact
+// shape JobCard/jobUtils.js already expect (data/realJobAdapter.js), so
+// neither of those needed to change. What's genuinely gone, on purpose, not
+// by oversight: the "UC advantage" filters tied to fields a real job
+// doesn't carry (has UC connections, UC-posted only, referral available,
+// company size) -- that data comes from the still-mocked CRM/tracker
+// boundary (Part 3.6), and showing a checkbox that can never honestly match
+// anything would be worse than not having it.
 const GRAD_YEARS = ["2026", "2027", "2028", "2029"];
 const DEADLINE_BUCKETS = ["This week", "This month", "Rolling"];
-const COMPANY_SIZES = ["1-50", "51-500", "501-5k", "5k+"];
 const TABS = [
   { key: "recommended", label: "Recommended for you" },
-  { key: "ucPosted", label: "UC-posted" },
   { key: "all", label: "All jobs" },
   { key: "saved", label: "Saved" },
 ];
@@ -25,9 +37,6 @@ const PAGE_SIZE = 5;
 const DEFAULT_FILTERS = {
   keyword: "",
   recommendedForMe: false,
-  hasUcConnections: false,
-  ucPostedOnly: false,
-  referralAvailable: false,
   types: [],
   gradYears: ["2027"],
   industries: ["Management consulting"],
@@ -35,7 +44,6 @@ const DEFAULT_FILTERS = {
   compMin: 25,
   compMax: 60,
   deadlines: ["This month"],
-  companySizes: [],
 };
 
 const LOCATION_CHIPS = [...new Set([...LOCATIONS, "Los Angeles", "San Francisco"])];
@@ -47,29 +55,21 @@ function matchesFilters(job, filters) {
     if (!job.role.toLowerCase().includes(q) && !job.company.toLowerCase().includes(q)) return false;
   }
   if (filters.recommendedForMe && job.matchScore < 70) return false;
-  if (filters.hasUcConnections && job.ucConnections <= 0) return false;
-  if (filters.ucPostedOnly && !job.ucPosted) return false;
-  if (filters.referralAvailable && !job.referralAvailable) return false;
   if (filters.types.length && !filters.types.includes(job.type)) return false;
-  if (filters.gradYears.length && !job.classYears.some((y) => filters.gradYears.includes(String(y))))
+  // A job with no graduation-year requirement listed passes every grad-year
+  // filter rather than being excluded -- "unknown" isn't "ineligible."
+  if (filters.gradYears.length && job.classYears.length && !job.classYears.some((y) => filters.gradYears.includes(String(y))))
     return false;
-  if (filters.industries.length && !filters.industries.includes(job.industry)) return false;
-  if (
-    filters.locations.length &&
-    !filters.locations.includes(job.location) &&
-    !filters.locations.includes(job.workMode)
-  )
+  if (filters.industries.length && job.industry && !filters.industries.includes(job.industry)) return false;
+  if (filters.locations.length && !filters.locations.includes(job.location) && !filters.locations.includes(job.workMode))
     return false;
-  if (job.compHourly && (job.compMax < filters.compMin || job.compMin > filters.compMax)) return false;
+  if (job.compHourly && job.compMin != null && (job.compMax < filters.compMin || job.compMin > filters.compMax)) return false;
   if (filters.deadlines.length && !filters.deadlines.some((d) => matchesDeadlineBucket(job, d))) return false;
-  if (filters.companySizes.length && !filters.companySizes.includes(job.companySize)) return false;
   return true;
 }
 
 // Zero-result diagnostic (wireframe 3e): for each active filter, compute
-// how many results dropping *just that one* would unlock, so the empty
-// state can say something concrete ("Dropping Remote would show 6
-// roles") instead of a bare "No results."
+// how many results dropping *just that one* would unlock.
 const DROPPABLE_FILTERS = [
   { key: "keyword", label: (f) => `"${f.keyword}"`, clear: (f) => ({ ...f, keyword: "" }) },
   { key: "locations", label: (f) => f.locations.join(", "), clear: (f) => ({ ...f, locations: [] }) },
@@ -77,19 +77,17 @@ const DROPPABLE_FILTERS = [
   { key: "gradYears", label: (f) => `Class of ${f.gradYears.join(", ")}`, clear: (f) => ({ ...f, gradYears: [] }) },
   { key: "types", label: (f) => f.types.join(", "), clear: (f) => ({ ...f, types: [] }) },
   { key: "deadlines", label: (f) => f.deadlines.join(", "), clear: (f) => ({ ...f, deadlines: [] }) },
-  { key: "companySizes", label: (f) => f.companySizes.join(", "), clear: (f) => ({ ...f, companySizes: [] }) },
   { key: "comp", label: (f) => `$${f.compMax}/hr+`, clear: (f) => ({ ...f, compMin: 15, compMax: 60 }) },
 ];
 
-function diagnoseEmptyFilters(filters) {
+function diagnoseEmptyFilters(filters, jobs) {
   return DROPPABLE_FILTERS.filter((d) => (d.key === "comp" ? filters.compMin > 15 || filters.compMax < 60 : filters[d.key].length > 0))
-    .map((d) => ({ ...d, count: JOBS.filter((j) => matchesFilters(j, d.clear(filters))).length, currentLabel: d.label(filters) }))
+    .map((d) => ({ ...d, count: jobs.filter((j) => matchesFilters(j, d.clear(filters))).length, currentLabel: d.label(filters) }))
     .sort((a, b) => b.count - a.count);
 }
 
 function matchesTab(job, tab, savedJobIds) {
   if (tab === "recommended") return job.matchScore >= 70;
-  if (tab === "ucPosted") return job.ucPosted;
   if (tab === "saved") return savedJobIds.includes(job.id);
   return true;
 }
@@ -115,7 +113,28 @@ export default function Jobs() {
   const [page, setPage] = useState(1);
   const [showMoreIndustries, setShowMoreIndustries] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
-  const { savedJobIds, toggleSavedJob } = useAppState();
+  const { savedJobIds, toggleSavedJob, preferences } = useAppState();
+
+  const [rawJobs, setRawJobs] = useState([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
+  const [jobsError, setJobsError] = useState(null);
+
+  useEffect(() => {
+    supabase
+      .from("jobs")
+      .select("*")
+      .eq("active", true)
+      .then(({ data, error }) => {
+        if (error) setJobsError(error.message);
+        else setRawJobs(data);
+        setJobsLoading(false);
+      });
+  }, []);
+
+  const JOBS = useMemo(
+    () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, currentUser.classYear))),
+    [rawJobs, preferences]
+  );
 
   useEffect(() => {
     setPage(1);
@@ -135,10 +154,10 @@ export default function Jobs() {
       counts[j.type] = (counts[j.type] || 0) + 1;
     });
     return counts;
-  }, []);
+  }, [JOBS]);
 
-  const filteredForCount = useMemo(() => JOBS.filter((j) => matchesFilters(j, filters)), [filters]);
-  const matchedCount = useMemo(() => JOBS.filter((j) => j.matchScore >= 70).length, []);
+  const filteredForCount = useMemo(() => JOBS.filter((j) => matchesFilters(j, filters)), [JOBS, filters]);
+  const matchedCount = useMemo(() => JOBS.filter((j) => j.matchScore >= 70).length, [JOBS]);
 
   const tabbed = useMemo(
     () => filteredForCount.filter((j) => matchesTab(j, tab, savedJobIds)),
@@ -148,14 +167,15 @@ export default function Jobs() {
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const pageJobs = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const diagnostics = useMemo(() => (sorted.length === 0 ? diagnoseEmptyFilters(filters) : []), [sorted.length, filters]);
+  const diagnostics = useMemo(
+    () => (sorted.length === 0 ? diagnoseEmptyFilters(filters, JOBS) : []),
+    [sorted.length, filters, JOBS]
+  );
 
   // Demo-only trigger for wireframe 3e's error state -- there's no real
   // fetch layer in this prototype to fail naturally. Visit
   // /jobs?simulateError=1 to see it. Placed after every hook call (not
-  // before) -- an early return above any hook breaks the Rules of Hooks
-  // the moment two renders call a different number of hooks, which is
-  // exactly what happened here on first pass.
+  // before) -- an early return above any hook breaks the Rules of Hooks.
   if (searchParams.get("simulateError")) {
     return <ErrorState what="jobs" onRetry={() => setSearchParams({})} />;
   }
@@ -164,18 +184,15 @@ export default function Jobs() {
   if (filters.keyword) activeChips.push({ label: `"${filters.keyword}"`, onRemove: () => patchFilters({ keyword: "" }) });
   if (filters.recommendedForMe)
     activeChips.push({ label: "Recommended for me", onRemove: () => patchFilters({ recommendedForMe: false }) });
-  if (filters.hasUcConnections)
-    activeChips.push({ label: "Has UC connections", onRemove: () => patchFilters({ hasUcConnections: false }) });
-  if (filters.ucPostedOnly)
-    activeChips.push({ label: "UC-posted only", onRemove: () => patchFilters({ ucPostedOnly: false }) });
-  if (filters.referralAvailable)
-    activeChips.push({ label: "Alumni referral available", onRemove: () => patchFilters({ referralAvailable: false }) });
   filters.types.forEach((t) => activeChips.push({ label: t, onRemove: () => toggleChip("types", t) }));
   filters.gradYears.forEach((y) => activeChips.push({ label: `Class of ${y}`, onRemove: () => toggleChip("gradYears", y) }));
   filters.industries.forEach((i) => activeChips.push({ label: i, onRemove: () => toggleChip("industries", i) }));
   filters.locations.forEach((l) => activeChips.push({ label: l, onRemove: () => toggleChip("locations", l) }));
   filters.deadlines.forEach((d) => activeChips.push({ label: d, onRemove: () => toggleChip("deadlines", d) }));
-  filters.companySizes.forEach((c) => activeChips.push({ label: c, onRemove: () => toggleChip("companySizes", c) }));
+
+  if (jobsError) {
+    return <ErrorState what="jobs" onRetry={() => window.location.reload()} />;
+  }
 
   return (
     <div className="jobs-layout">
@@ -197,7 +214,6 @@ export default function Jobs() {
         </div>
 
         <div className="filters__group">
-          <div className="filters__group-title">UC advantage</div>
           <label className="filters__checkbox">
             <span>
               <input
@@ -206,36 +222,6 @@ export default function Jobs() {
                 onChange={() => patchFilters({ recommendedForMe: !filters.recommendedForMe })}
               />{" "}
               Recommended for me
-            </span>
-          </label>
-          <label className="filters__checkbox">
-            <span>
-              <input
-                type="checkbox"
-                checked={filters.hasUcConnections}
-                onChange={() => patchFilters({ hasUcConnections: !filters.hasUcConnections })}
-              />{" "}
-              Has UC connections
-            </span>
-          </label>
-          <label className="filters__checkbox">
-            <span>
-              <input
-                type="checkbox"
-                checked={filters.ucPostedOnly}
-                onChange={() => patchFilters({ ucPostedOnly: !filters.ucPostedOnly })}
-              />{" "}
-              UC-posted only
-            </span>
-          </label>
-          <label className="filters__checkbox">
-            <span>
-              <input
-                type="checkbox"
-                checked={filters.referralAvailable}
-                onChange={() => patchFilters({ referralAvailable: !filters.referralAvailable })}
-              />{" "}
-              Alumni referral available
             </span>
           </label>
         </div>
@@ -347,22 +333,6 @@ export default function Jobs() {
             ))}
           </div>
         </div>
-
-        <div className="filters__group">
-          <div className="filters__group-title">Company size</div>
-          <div className="filters__chip-group">
-            {COMPANY_SIZES.map((s) => (
-              <button
-                type="button"
-                key={s}
-                className={`filters__chip${filters.companySizes.includes(s) ? " is-selected" : ""}`}
-                onClick={() => toggleChip("companySizes", s)}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
       </aside>
 
       <div className="jobs-main">
@@ -370,7 +340,7 @@ export default function Jobs() {
           <div>
             <h1>Jobs</h1>
             <p className="jobs-header__count">
-              {JOBS.length} opportunities · {matchedCount} matched to your profile
+              {jobsLoading ? "Loading…" : `${JOBS.length} opportunities · ${matchedCount} matched to your profile`}
             </p>
           </div>
           <div className="jobs-header__actions">
@@ -392,15 +362,7 @@ export default function Jobs() {
                 className={`jobs-tabs__tab${tab === t.key ? " is-active" : ""}`}
                 onClick={() => setTab(t.key)}
               >
-                {t.label} (
-                {t.key === "recommended"
-                  ? matchedCount
-                  : t.key === "ucPosted"
-                  ? JOBS.filter((j) => j.ucPosted).length
-                  : t.key === "saved"
-                  ? savedJobIds.length
-                  : JOBS.length}
-                )
+                {t.label} ({t.key === "recommended" ? matchedCount : t.key === "saved" ? savedJobIds.length : JOBS.length})
               </button>
             ))}
           </div>
@@ -425,7 +387,9 @@ export default function Jobs() {
           <button className="btn-link">Learn more</button>
         </div>
 
-        {pageJobs.length === 0 && (
+        {jobsLoading && <p className="meta">Loading opportunities…</p>}
+
+        {!jobsLoading && pageJobs.length === 0 && (
           <div className="no-results">
             <p style={{ fontWeight: 700 }}>0 results with these filters</p>
             {diagnostics.length > 0 ? (
@@ -457,22 +421,13 @@ export default function Jobs() {
         )}
 
         {pageJobs.map((job) => (
-          <JobCard
-            key={job.id}
-            job={job}
-            saved={savedJobIds.includes(job.id)}
-            onToggleSave={toggleSavedJob}
-          />
+          <JobCard key={job.id} job={job} saved={savedJobIds.includes(job.id)} onToggleSave={toggleSavedJob} />
         ))}
 
         {totalPages > 1 && (
           <div className="pagination">
             {Array.from({ length: totalPages }).map((_, i) => (
-              <button
-                key={i}
-                className={page === i + 1 ? "is-active" : ""}
-                onClick={() => setPage(i + 1)}
-              >
+              <button key={i} className={page === i + 1 ? "is-active" : ""} onClick={() => setPage(i + 1)}>
                 {i + 1}
               </button>
             ))}
