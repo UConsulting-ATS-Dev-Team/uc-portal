@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { fetchRemotePreferences, syncPreferencesToRemote } from "./memberPreferencesSync.js";
 
 // Prototype-wide shared state (career preferences, onboarding progress,
 // and later: saved jobs, tracker stage, etc.) -- persisted to
@@ -168,10 +169,42 @@ const AppStateContext = createContext(null);
 
 export function AppStateProvider({ children }) {
   const [state, setState] = useState(loadState);
+  const [hydratedFromRemote, setHydratedFromRemote] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
+
+  // Stage 2: one-time hydration from Supabase on mount, if this signed-in
+  // member has a real member_preferences row already (e.g. set on another
+  // device) -- remote wins over local, but only once this resolves, so a
+  // pre-hydration render of local defaults never races ahead and overwrites
+  // real remote data (see the sync effect below, gated on hydratedFromRemote).
+  useEffect(() => {
+    fetchRemotePreferences().then((remote) => {
+      if (remote) {
+        setState((prev) => ({
+          ...prev,
+          preferences: {
+            ...prev.preferences,
+            ...remote,
+            recruitingSettings: { ...prev.preferences.recruitingSettings, ...remote.recruitingSettings },
+          },
+        }));
+      }
+      setHydratedFromRemote(true);
+    });
+  }, []);
+
+  // Background sync to Supabase whenever preferences actually change --
+  // fire-and-forget, never blocks the UI. data/store.jsx stays the source
+  // of truth Onboarding.jsx/MyProfile.jsx read and write; this only mirrors
+  // it remotely so data/jobMatch.js can eventually run server-side against
+  // real data instead of only client-side against localStorage.
+  useEffect(() => {
+    if (!hydratedFromRemote) return;
+    syncPreferencesToRemote(state.preferences);
+  }, [state.preferences, hydratedFromRemote]);
 
   function updatePreferences(patch) {
     setState((prev) => ({ ...prev, preferences: { ...prev.preferences, ...patch } }));
