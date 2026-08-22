@@ -527,11 +527,25 @@ in progress)     applied and verified end-to-end. Real auth (email/password,
                  (a mock job still renders unchanged, a bogus slug still
                  shows "Job not found").
 
-                 Still open: wiring Jobs.jsx itself to real data (the
-                 deliberately-deferred bigger piece -- see this section's
-                 note on why that's a larger, riskier change), and migrating
-                 member preferences from localStorage into Supabase so
-                 matching can run server-side instead of only client-side.
+                 Member preferences now sync to Supabase in the background
+                 (member_preferences, RLS-restricted to each member's own
+                 row) -- data/memberPreferencesSync.js hydrates from the
+                 remote row once on mount and syncs on every real change,
+                 without touching Onboarding.jsx/MyProfile.jsx at all; they
+                 keep reading/writing the same local `preferences` object
+                 exactly as before. This was the last piece Part 3.9 called
+                 for -- data/jobMatch.js can now eventually run server-side
+                 against real preference data. Verified in the browser:
+                 changing a preference landed in the real row within a
+                 second, and simulating a fresh device (wiped local state,
+                 reloaded, same session) correctly hydrated everything back,
+                 with the UI's own profile-strength calculation reflecting
+                 it correctly.
+
+                 Still open: wiring Jobs.jsx itself to real data -- the one
+                 deliberately-deferred piece left (see this section's note
+                 on why that's a larger, riskier change than everything
+                 above).
 
 Stage 3          First automated source: one employer ATS API adapter,
                  for one company, only after that deployment's terms are
