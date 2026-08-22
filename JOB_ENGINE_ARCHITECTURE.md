@@ -461,7 +461,7 @@ Stage 0 (done)   Current mock-data prototype -- Jobs board, filters, store,
 
 Stage 1 (done)   Synthetic dataset (server/synthetic/generateSyntheticJobs.ts,
                  seeded/deterministic, deliberately duplicated/malformed) +
-                 Supabase schema (supabase/migrations/0001_init_schema.sql,
+                 Supabase schema (supabase/migrations/20260821120000_init_schema.sql,
                  not yet applied to a live project) + normalization/dedup/
                  quality/matching/ranking built as plain TypeScript
                  (server/src/) and proven against the synthetic set --

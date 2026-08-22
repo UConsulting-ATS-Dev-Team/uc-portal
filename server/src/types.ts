@@ -1,4 +1,4 @@
-// Mirrors supabase/migrations/0001_init_schema.sql. Kept as plain types (not
+// Mirrors supabase/migrations/20260821120000_init_schema.sql. Kept as plain types (not
 // generated from the DB yet) since Stage 1 has no live database connection --
 // see JOB_ENGINE_ARCHITECTURE.md Part 7. Field names/shapes should stay in
 // sync with the SQL by hand until Stage 2 wires this to a real Supabase

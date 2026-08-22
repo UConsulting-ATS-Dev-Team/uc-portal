@@ -3,7 +3,7 @@ import type { NormalizedJob, RawJob } from "./types.js";
 import { normalizeEmploymentType } from "./taxonomy/employmentTypes.js";
 import { normalizeLocation } from "./taxonomy/locations.js";
 import { normalizeCompensation } from "./taxonomy/compensation.js";
-import { classifyTitleToOccupation, skillsForOccupation } from "./taxonomy/onet.js";
+import { classifyTitleToOccupation, skillsForOccupation } from "./taxonomy/occupationTaxonomy.js";
 import { extractGraduationYears } from "./taxonomy/eligibility.js";
 
 // US-10/11/12/13/24/25/27/28 -- turns one as-fetched RawJob into a

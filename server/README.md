@@ -5,7 +5,7 @@ Plain, database-agnostic TypeScript implementing the pipeline described in
 10). This is **Stage 1** of that document's Part 7 sequence: prove the
 pipeline against a synthetic dataset before any real source or live database
 exists. No Supabase project is connected here — see
-[supabase/migrations/0001_init_schema.sql](../supabase/migrations/0001_init_schema.sql)
+[supabase/migrations/20260821120000_init_schema.sql](../supabase/migrations/20260821120000_init_schema.sql)
 for the schema this will eventually run against (Part 9).
 
 ## Layout
@@ -24,7 +24,7 @@ server/
       locations.ts                -- known-city lookup + "City, ST" regex fallback
       compensation.ts               -- regex-based comp parsing
       eligibility.ts                  -- graduation-year/class-standing extraction
-      onet.ts                          -- STUB standing in for the real O*NET Web Services API (Part 10) -- see the file's header comment before assuming it has real occupation coverage
+      occupationTaxonomy.ts            -- STUB standing in for the real O*NET Web Services API (Part 10) -- see the file's header comment before assuming it has real occupation coverage
   synthetic/
     generateSyntheticJobs.ts  -- seeded synthetic dataset generator (100-500 jobs, deliberately duplicated/malformed)
   tests/                       -- one file per module, plus pipeline.test.ts for the full end-to-end proof
@@ -49,7 +49,7 @@ npm run typecheck:server   # tsc --noEmit, no test runner involved
   suite exercises real edge cases (title-similarity-alone must never
   auto-merge, a malformed URL must never falsely collide with another
   malformed URL, ranking must respect hard constraints, etc.).
-- **Stubbed, deliberately**: `taxonomy/onet.ts` is a small hand-curated
+- **Stubbed, deliberately**: `taxonomy/occupationTaxonomy.ts` is a small hand-curated
   stand-in for O*NET's real occupation crosswalk + skills API, shaped
   exactly like what the real API returns. There's no live API key yet
   (Part 10 -- needs a developer registration). Swapping its two functions
