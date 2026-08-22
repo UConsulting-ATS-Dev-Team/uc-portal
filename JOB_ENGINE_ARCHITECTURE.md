@@ -791,6 +791,30 @@ Stage 3 (done)   First automated source: Stripe, via Greenhouse's public Job
                  duplicate_candidates row correctly confirmed_duplicate
                  with reviewed_by/reviewed_at set.
 
+                 A second gap closed in the same pass: §3.7's source
+                 registry (the actual enforcement mechanism -- every
+                 ingestion path checks authorization_status before writing
+                 anything) had no UI at all. Flipping a source off required
+                 running SQL by hand. Repurposed the "/admin/opportunities"
+                 nav destination -- a Placeholder stub, not one of the 24
+                 designed wireframe screens -- into pages/SourceManagement.jsx:
+                 every `sources` row, its real active-job count (via
+                 job_sources), and an Approved<->Disabled toggle. No new
+                 Edge Function needed -- sources already grants admins full
+                 RLS access directly, unlike jobs/job_sources. requires_review
+                 and not_approved are shown read-only on purpose (not a
+                 casual toggle) -- §3.7's point is that those need an actual
+                 human review decision. Verified live: disabling Stripe's
+                 source and immediately invoking fetch-greenhouse-stripe
+                 returned {"skipped":true,"reason":"source is disabled"}
+                 with zero code change or redeploy, then re-enabled and
+                 confirmed the status flipped back. Also surfaced something
+                 real, not a bug: "Test Company Inc" (approved before this
+                 session's Stage 2 fix existed) correctly shows 0 active
+                 jobs for UC Admin Submission, since it predates job_sources
+                 provenance entirely -- an honest gap in old data, not a
+                 miscount.
+
 Stage 4          Additional ATS adapters for other UC-target companies;
                  RSS/institutional feeds where available; evaluate a
                  licensed provider only if coverage is still insufficient.
