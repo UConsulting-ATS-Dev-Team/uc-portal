@@ -757,6 +757,40 @@ Stage 3 (done)   First automated source: Stripe, via Greenhouse's public Job
                  inaccurate for an automated-source job; fixed to be
                  sourcing-neutral.
 
+                 Gap-fill after Stage 3: the pilot's own dedup scoring
+                 populated duplicate_candidates with 18 real pending rows
+                 (the 70-89 review band, US-18) and there was no way for an
+                 admin to see or act on any of them -- Part 8.5's own build
+                 order actually lists admin monitoring as a prerequisite
+                 *before* the first automated-source pilot, a step that got
+                 skipped in practice. Closed via a new Admin Dashboard
+                 section (real data, not mocked like the KPI strip above
+                 it) and supabase/functions/resolve-duplicate-candidate,
+                 following the same admin-reverification pattern as
+                 approve-submission -- factored the shared "verify caller is
+                 actually an admin" logic both functions needed into
+                 supabase/functions/_shared/requireAdmin.ts rather than a
+                 third copy. Two resolutions: "not a duplicate" just
+                 records the review; "confirmed duplicate" (admin picks
+                 which of the two survives) reassigns the removed job's
+                 job_sources onto the survivor and deactivates it --
+                 stopping short of US-19's full field-level merge
+                 reconciliation on purpose, same scope line
+                 approve-submission's own auto-merge already draws, since
+                 hiding the redundant listing is what actually matters to a
+                 member browsing the Jobs board. Verified against the real
+                 18 rows from the Stripe pilot, both paths: "not a
+                 duplicate" correctly cleared a row with no data changes;
+                 "confirmed duplicate" on a real pair ("Technical Program
+                 Manager, Service Infrastructure" vs "...Core
+                 Infrastructure") was cross-checked directly against
+                 Postgres afterward -- the kept job correctly ended up with
+                 both job_sources rows (the reassigned one downgraded to
+                 is_primary: false), the removed job correctly
+                 active: false / status: 'removed', and the
+                 duplicate_candidates row correctly confirmed_duplicate
+                 with reviewed_by/reviewed_at set.
+
 Stage 4          Additional ATS adapters for other UC-target companies;
                  RSS/institutional feeds where available; evaluate a
                  licensed provider only if coverage is still insufficient.
