@@ -4,9 +4,16 @@ import type { EmploymentType } from "../types.ts";
 // order of preference. Deliberately simple: employment type has a small,
 // well-known vocabulary, so a regex/LLM fallback isn't needed here.
 // Ported unchanged from server/src/taxonomy/employmentTypes.ts.
+// Word-boundary'd on intern/co-op -- found via fetch-greenhouse-stripe's
+// pilot against real Stripe titles: unbounded /intern(ship)?/ matches
+// "Internal Audit Lead" and "International Accounting Lead" as substrings,
+// misclassifying senior full-time roles as internships (9 real titles hit
+// this in one fetch). /co-?op/ has the same latent risk against
+// "Cooperation"/"Cooperative" titles, fixed defensively even though no live
+// collision was observed yet.
 const EMPLOYMENT_TYPE_PATTERNS: Array<{ pattern: RegExp; type: EmploymentType }> = [
-  { pattern: /intern(ship)?/i, type: "internship" },
-  { pattern: /co-?op/i, type: "co_op" },
+  { pattern: /\bintern(ship)?\b/i, type: "internship" },
+  { pattern: /\bco-?op\b/i, type: "co_op" },
   { pattern: /fellowship/i, type: "fellowship" },
   { pattern: /apprentice/i, type: "apprenticeship" },
   { pattern: /part[\s-]?time/i, type: "part_time" },

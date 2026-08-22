@@ -6,9 +6,11 @@
 // data/opportunitySubmissionUtils.js's buildJobFromSubmission() -- a plain
 // client-side field copy. This function replaces it with the real
 // normalize -> validate -> dedup -> enrich pipeline server/src/ already
-// proved against synthetic data in Stage 1 (see pipeline/ in this folder,
-// ported with only two changes: explicit .ts import extensions for Deno's
-// resolver, and node:crypto's randomUUID swapped for the Web Crypto API).
+// proved against synthetic data in Stage 1 (see ../_shared/pipeline/, ported
+// with only two changes: explicit .ts import extensions for Deno's resolver,
+// and node:crypto's randomUUID swapped for the Web Crypto API -- shared with
+// fetch-greenhouse-stripe, Stage 3's automated-source pilot, rather than
+// duplicated once a second Edge Function needed the same logic).
 //
 // Scope, matching JOB_ENGINE_ARCHITECTURE.md Part 8.5 step 2's build order:
 // normalize (US-10/11/12/13), validate (US-14), dedup-score (US-16/17),
@@ -28,10 +30,16 @@
 // nicety, not the actual security boundary.
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
-import { normalizeJob } from "./pipeline/normalize.ts";
-import { validateJob, scoreQuality } from "./pipeline/quality.ts";
-import { scoreDuplicate, classifyDuplicateTier } from "./pipeline/dedupe.ts";
-import type { NormalizedJob, RawJob } from "./pipeline/types.ts";
+import { normalizeJob } from "../_shared/pipeline/normalize.ts";
+import { validateJob, scoreQuality } from "../_shared/pipeline/quality.ts";
+import { scoreDuplicate, classifyDuplicateTier } from "../_shared/pipeline/dedupe.ts";
+import type { RawJob } from "../_shared/pipeline/types.ts";
+import {
+  comparableFromExistingJob,
+  enforceStorageRestrictions,
+  jobInsertFromNormalized,
+  resolveJobFunctionId,
+} from "../_shared/dedupeHelpers.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -95,102 +103,6 @@ function rawJobFromSubmission(payload: SubmissionPayload, sourceId: string, subm
     // chip selection where present, see the override right after
     // normalizeJob() is called below.
     qualificationsText: payload.description || undefined,
-  };
-}
-
-// §8.3 / US-56 -- an actual enforcement point, not just a recorded column.
-// No currently-seeded source restricts description storage (submissions are
-// the submitter's own words, never auto-scraped, per Part 2's compliance
-// note), but this keeps the gate real for any future source that does.
-function enforceStorageRestrictions(normalized: NormalizedJob, storageRestrictions: string | null): NormalizedJob {
-  if (storageRestrictions && /description/i.test(storageRestrictions)) {
-    return { ...normalized, description: null };
-  }
-  return normalized;
-}
-
-// Only the fields dedupe.ts's scoreDuplicate() actually reads are populated
-// from the real row; everything else is a type-satisfying placeholder --
-// this is a comparison-only object, never written back to the database.
-function comparableFromExistingJob(row: Record<string, unknown>): NormalizedJob {
-  return {
-    id: row.id as string,
-    sources: [],
-    company: (row.company as string) ?? "",
-    title: (row.title as string) ?? "",
-    employmentType: (row.employment_type as NormalizedJob["employmentType"]) ?? null,
-    applicationUrl: (row.application_url as string) ?? "",
-    description: null,
-    department: null,
-    jobFunction: null,
-    city: (row.city as string | null) ?? null,
-    state: null,
-    country: null,
-    remoteType: (row.remote_type as NormalizedJob["remoteType"]) ?? null,
-    salaryMin: (row.salary_min as number | null) ?? null,
-    salaryMax: null,
-    salaryCurrency: "USD",
-    compensationType: "unspecified",
-    compensationText: null,
-    postedDate: (row.posted_date as string | null) ?? null,
-    updatedDate: null,
-    applicationDeadline: null,
-    graduationYears: null,
-    requiredSkills: null,
-    preferredSkills: null,
-    qualificationsText: null,
-    relevantIndustries: [],
-    relevantRoles: [],
-    ucRecruitingNotes: null,
-    firstSeenAt: new Date(0).toISOString(),
-    lastSeenAt: new Date(0).toISOString(),
-    lastVerifiedAt: null,
-    active: true,
-    status: "active",
-    confidenceScore: null,
-    qualityScore: null,
-    classificationMethod: "source_stated",
-  };
-}
-
-function jobInsertFromNormalized(
-  normalized: NormalizedJob,
-  qualityScore: number,
-  jobFunctionId: string | null,
-  submitterIndustries: string[]
-) {
-  return {
-    company: normalized.company,
-    title: normalized.title,
-    employment_type: normalized.employmentType,
-    application_url: normalized.applicationUrl,
-    description: normalized.description,
-    department: normalized.department,
-    job_function_id: jobFunctionId,
-    city: normalized.city,
-    state: normalized.state,
-    country: normalized.country,
-    remote_type: normalized.remoteType,
-    salary_min: normalized.salaryMin,
-    salary_max: normalized.salaryMax,
-    salary_currency: normalized.salaryCurrency,
-    compensation_type: normalized.compensationType,
-    compensation_text: normalized.compensationText,
-    posted_date: new Date().toISOString().slice(0, 10),
-    application_deadline: normalized.applicationDeadline,
-    graduation_years: normalized.graduationYears,
-    required_skills: normalized.requiredSkills,
-    qualifications_text: normalized.qualificationsText,
-    // Submitter-chosen industry tags are a source-stated fact and take
-    // priority over the occupation stub's inferred industries; fall back to
-    // the inferred list only when the submitter didn't tag any.
-    relevant_industries: submitterIndustries.length > 0 ? submitterIndustries : normalized.relevantIndustries,
-    relevant_roles: normalized.relevantRoles,
-    confidence_score: normalized.confidenceScore,
-    quality_score: qualityScore,
-    classification_method: normalized.classificationMethod,
-    active: true,
-    status: "active",
   };
 }
 
@@ -340,19 +252,20 @@ Deno.serve(async (req) => {
     return jsonResponse({ outcome: "merged", jobId: bestMatch.jobId, matchedScore: bestMatch.score });
   }
 
-  let jobFunctionId: string | null = null;
-  if (normalized.jobFunction) {
-    const { data: jobFunctionRow } = await adminClient
-      .from("job_functions")
-      .select("id")
-      .eq("name", normalized.jobFunction)
-      .maybeSingle();
-    jobFunctionId = jobFunctionRow?.id ?? null;
-  }
+  const jobFunctionId = await resolveJobFunctionId(adminClient, normalized.jobFunction);
+
+  // Submitter-chosen industry tags are a source-stated fact and take
+  // priority over the occupation stub's inferred industries; fall back to
+  // the inferred list only when the submitter didn't tag any.
+  const submitterIndustries = payload.industries ?? [];
+  const insertRow = {
+    ...jobInsertFromNormalized(normalized, qualityScore, jobFunctionId),
+    relevant_industries: submitterIndustries.length > 0 ? submitterIndustries : normalized.relevantIndustries,
+  };
 
   const { data: newJob, error: jobInsertError } = await adminClient
     .from("jobs")
-    .insert(jobInsertFromNormalized(normalized, qualityScore, jobFunctionId, payload.industries ?? []))
+    .insert(insertRow)
     .select()
     .single();
   if (jobInsertError) return jsonResponse({ error: jobInsertError.message }, 500);

@@ -135,9 +135,10 @@ export default function RealJobDetail({ jobId }) {
           <div className="rail-card">
             <div className="rail-card__title">About this listing</div>
             <p className="meta" style={{ margin: 0 }}>
-              This is a real, admin-approved posting -- not yet enriched with UC recruiting intelligence
-              (alumni connections, past-cycle outcomes, interview write-ups). That data comes from the
-              application tracker and CRM integration, which don't yet cover real jobs.
+              This is a real posting (admin/member-submitted or from an automated source) -- not yet
+              enriched with UC recruiting intelligence (alumni connections, past-cycle outcomes, interview
+              write-ups). That data comes from the application tracker and CRM integration, which don't yet
+              cover real jobs.
             </p>
           </div>
         </div>

@@ -34,10 +34,20 @@ function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
 // their raw text happens to collide (e.g. two unrelated invalid records both
 // literally reading "not a real url"). Comparing invalid data as if it were
 // meaningful is exactly how a false duplicate slips through.
+//
+// Includes the query string -- found via the Stage 3 Greenhouse pilot
+// against real Stripe data: every one of Stripe's 575 postings shares the
+// identical path (stripe.com/jobs/search) and is distinguished only by a
+// ?gh_jid=<id> query param (their careers site is a client-side router).
+// Dropping the query string, as this function originally did, made all 575
+// look like the same canonical URL -- 574 of them auto-merged into one job
+// on first deploy. Query strings can also be irrelevant tracking params on
+// other sites, but that failure mode (two genuine duplicates falling to a
+// lower match tier instead of auto-merging) is far safer than this one.
 function normalizeUrl(url: string): string | null {
   try {
     const parsed = new URL(url);
-    return `${parsed.hostname}${parsed.pathname}`.replace(/\/$/, "").toLowerCase();
+    return `${parsed.hostname}${parsed.pathname}${parsed.search}`.replace(/\/$/, "").toLowerCase();
   } catch {
     return null;
   }
