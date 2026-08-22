@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import PostOpportunityModal from "../components/modals/PostOpportunityModal.jsx";
 import { supabase } from "../data/supabaseClient.js";
-import { buildJobFromSubmission } from "../data/opportunitySubmissionUtils.js";
 import {
   KPIS,
   INDUSTRY_INTEREST,
@@ -29,6 +28,7 @@ export default function AdminDashboard() {
   const [queue, setQueue] = useState([]);
   const [queueLoading, setQueueLoading] = useState(true);
   const [queueError, setQueueError] = useState(null);
+  const [queueNote, setQueueNote] = useState(null);
   const [actioningId, setActioningId] = useState(null);
   const gap = biggestGap();
   const maxMembers = Math.max(...INDUSTRY_INTEREST.map((i) => i.members));
@@ -49,32 +49,31 @@ export default function AdminDashboard() {
     loadQueue();
   }, []);
 
+  // Approve runs the real normalize/validate/dedup/enrich pipeline server-side
+  // (supabase/functions/approve-submission), not a client-side field copy --
+  // see that function's header comment for why this has to be an Edge
+  // Function (service_role, admin check re-derived server-side) rather than
+  // a direct client insert.
   async function handleApprove(submission) {
     setActioningId(submission.id);
     setQueueError(null);
+    setQueueNote(null);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data, error } = await supabase.functions.invoke("approve-submission", {
+      body: { submissionId: submission.id },
+    });
 
-    const { data: newJob, error: jobError } = await supabase
-      .from("jobs")
-      .insert(buildJobFromSubmission(submission.raw_payload))
-      .select()
-      .single();
-
-    if (jobError) {
-      setQueueError(jobError.message);
-      setActioningId(null);
-      return;
+    if (error) {
+      // Edge Function errors arrive as a generic FunctionsHttpError; the
+      // actual message is on the response body, not `error.message`.
+      const detail = await error.context?.json?.().catch(() => null);
+      setQueueError(detail?.error ?? error.message);
+    } else if (data?.outcome === "merged") {
+      setQueueNote(`Matched an existing listing (score ${data.matchedScore}) -- attached as an additional source instead of creating a duplicate.`);
+    } else if (data?.outcome === "live_flagged_duplicate") {
+      setQueueNote(`Live, but flagged as a possible duplicate (score ${data.duplicateScore}) -- see the duplicate review queue.`);
     }
 
-    const { error: updateError } = await supabase
-      .from("opportunity_submissions")
-      .update({ job_id: newJob.id, status: "live", reviewed_by: user.id, reviewed_at: new Date().toISOString() })
-      .eq("id", submission.id);
-
-    if (updateError) setQueueError(updateError.message);
     await loadQueue();
     setActioningId(null);
   }
@@ -183,6 +182,7 @@ export default function AdminDashboard() {
           <div className="detail-section">
             <h2 className="detail-section__title">Opportunity queue</h2>
             {queueError && <p className="meta" style={{ color: "#B3261E" }}>{queueError}</p>}
+            {queueNote && <p className="meta">{queueNote}</p>}
             <table className="queue-table">
               <thead>
                 <tr>
