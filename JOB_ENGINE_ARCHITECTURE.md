@@ -468,9 +468,22 @@ Stage 1 (done)   Synthetic dataset (server/synthetic/generateSyntheticJobs.ts,
                  44 tests passing (`npm run test:server`), no live database
                  or real source involved. See server/README.md.
 
-Stage 2 (MVP)    Real admin + member submission forms, real users, real
-                 search, real matching against real member preferences,
-                 admin review dashboard live in production.
+Stage 2 (MVP,    Real Supabase project live (Part 9), schema + RLS + grants
+in progress)     applied and verified end-to-end. Real auth (email/password,
+                 Google deferred) replaces SignIn.jsx's simulated flow --
+                 verified: sign-up, email confirmation, sign-in, and the
+                 handle_new_user() trigger's profile creation all confirmed
+                 against the live project. Member submission (Post an
+                 opportunity) writes a real opportunity_submissions row;
+                 admin Approve builds a real jobs row from it (simple field
+                 mapping, not yet the full normalize/enrich pipeline) and
+                 Reject marks it rejected. RLS-verified both ways: a
+                 non-admin's Approve attempt was correctly blocked, and
+                 testing that surfaced a real self-role-escalation gap in
+                 the profiles update policy, now fixed with a trigger.
+                 Still open: real search, real matching against real member
+                 preferences, Jobs board reading real jobs instead of
+                 mockJobs.js.
 
 Stage 3          First automated source: one employer ATS API adapter,
                  for one company, only after that deployment's terms are
