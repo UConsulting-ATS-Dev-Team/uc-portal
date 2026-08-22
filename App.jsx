@@ -16,6 +16,7 @@ import ResourceDetail from "./pages/ResourceDetail.jsx";
 import LearningTrackDetail from "./pages/LearningTrackDetail.jsx";
 import MyProfile from "./pages/MyProfile.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
+import SourceManagement from "./pages/SourceManagement.jsx";
 import Home from "./pages/Home.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import GlobalSearch from "./pages/GlobalSearch.jsx";
@@ -171,7 +172,7 @@ export default function App() {
         path="/admin/opportunities"
         element={
           <NavShell>
-            <Placeholder title="Opportunities queue" screenId="2h" />
+            <SourceManagement />
           </NavShell>
         }
       />

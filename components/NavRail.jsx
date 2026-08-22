@@ -14,7 +14,7 @@ const MAIN_ITEMS = [
 
 const LEADERSHIP_ITEMS = [
   { label: "Admin Dashboard", to: "/admin" },
-  { label: "Opportunities", to: "/admin/opportunities" },
+  { label: "Job sources", to: "/admin/opportunities" },
   { label: "Members", to: "/admin/members" },
   { label: "Content", to: "/admin/content" },
 ];
