@@ -8,10 +8,15 @@ import OddsModel from "../components/OddsModel.jsx";
 import LogPrepModal from "../components/modals/LogPrepModal.jsx";
 import CompanyLogo from "../components/CompanyLogo.jsx";
 import Placeholder from "./Placeholder.jsx";
+import RealJobDetail from "./RealJobDetail.jsx";
 import "../styles/jobDetail.css";
 
 const TIMELINE_STAGES = ["Interested", "Preparing", "Applied", "Interviews", "Offer"];
 const PREP_RESOURCES = ["Case Interview Fundamentals", "Behavioral Prep Guide", "Resume Review Checklist"];
+// Real jobs (Stage 2) have a UUID id; mock jobs (data/mockJobs.js) use a
+// readable slug like "bain-consulting-intern". Checking the shape lets one
+// route (/jobs/:jobId) serve both without a second parallel URL scheme.
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function completedStageCount(job) {
   if (job.pastCycleOffers > 0) return 5;
@@ -27,7 +32,7 @@ export default function JobDetail() {
   const [showLogPrepModal, setShowLogPrepModal] = useState(false);
 
   if (!job) {
-    return <Placeholder title="Job not found" />;
+    return UUID_PATTERN.test(jobId) ? <RealJobDetail jobId={jobId} /> : <Placeholder title="Job not found" />;
   }
 
   const isTracked = !!trackedJobs[job.id];

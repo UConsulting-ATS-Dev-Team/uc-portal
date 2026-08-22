@@ -24,11 +24,11 @@ export default function GlobalSearch() {
 
   // Jobs come from the real jobs table (Stage 2, data/jobSearch.js) --
   // everything else here (people/companies/resources/feed) still reads the
-  // mock-data layer via searchAll(). Real jobs link straight to their real
-  // application_url instead of an internal /jobs/:id route -- there's no
-  // real JobDetail page yet, and a real job's id is a UUID mockJobs.js-based
-  // JobDetail wouldn't recognize anyway (see JOB_ENGINE_ARCHITECTURE.md's
-  // Stage 2 notes on why the full Jobs.jsx swap is deliberately deferred).
+  // mock-data layer via searchAll(). Real jobs link to /jobs/:id same as
+  // mock jobs -- JobDetail.jsx dispatches to pages/RealJobDetail.jsx for a
+  // UUID id vs. the existing mock-job render for a slug id (see that file's
+  // header comment). The full Jobs.jsx board swap is still deliberately
+  // deferred -- see JOB_ENGINE_ARCHITECTURE.md's Stage 2 notes on why.
   const [realJobs, setRealJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(false);
 
@@ -175,9 +175,7 @@ export default function GlobalSearch() {
                         <strong>{j.title}</strong>
                         <div className="search-result-row__meta">{j.company}</div>
                       </div>
-                      <a href={j.application_url} target="_blank" rel="noreferrer" className="btn btn-secondary">
-                        View & apply
-                      </a>
+                      <Link to={`/jobs/${j.id}`} className="btn btn-secondary">View</Link>
                     </div>
                   ))}
                 </div>
