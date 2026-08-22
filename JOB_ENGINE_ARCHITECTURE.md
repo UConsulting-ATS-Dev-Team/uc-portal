@@ -489,8 +489,20 @@ in progress)     applied and verified end-to-end. Real auth (email/password,
                  keyword search with real stemming, company search, filter
                  combinations, graduation-year array filtering. Deliberately
                  standalone -- doesn't touch Jobs.jsx's UI yet.
-                 Still open: real matching/ranking against real member
-                 preferences, and wiring Jobs.jsx itself to real data.
+                 data/jobMatch.js (US-32/33/34/40) ports server/src/match.ts
+                 + rank.ts's logic to plain JS, running against real jobs
+                 rows and the existing local `preferences` object -- same
+                 hard-constraint/soft-preference split, same anti-domination
+                 cap. Verified against live data: full-time jobs and the
+                 externship correctly excluded entirely for an
+                 internship-only preference (hard constraint), correct top
+                 match, and freshness correctly breaking a tie between two
+                 equal-scoring jobs. Also standalone so far.
+                 Still open: wiring Jobs.jsx itself to real data (the
+                 deliberately-deferred bigger piece -- see this section's
+                 note on why that's a larger, riskier change), and migrating
+                 member preferences from localStorage into Supabase so
+                 matching can run server-side instead of only client-side.
 
 Stage 3          First automated source: one employer ATS API adapter,
                  for one company, only after that deployment's terms are
