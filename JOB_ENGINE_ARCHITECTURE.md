@@ -842,6 +842,42 @@ Stage 3 (done)   First automated source: Stripe, via Greenhouse's public Job
                  to simulate a genuine Greenhouse outage -- but the code
                  path is structurally identical to the two that were.)
 
+                 Before Stage 4: a real prioritization signal for which
+                 company to research next, replacing the manual
+                 company-by-company research this session otherwise relied
+                 on. member_preferences.followed_companies already let a
+                 member follow any company name (Onboarding's StepCompanies
+                 always supported free-text follows; MyProfile's Career
+                 preferences tab didn't -- fixed here, plus it was silently
+                 dropping any custom-followed company from its own display
+                 since it only ever rendered the fixed COMPANIES list, a
+                 real bug caught while building this). The hard part isn't
+                 the UI, it's that member_preferences RLS deliberately grants
+                 each member only their own row -- CLAUDE.md and that
+                 table's own migration comment are both explicit that admins
+                 see aggregate signal only, never raw per-member preference
+                 rows. A `security definer` Postgres function
+                 (company_demand_report) is what actually enforces that,
+                 not just documents it: it can read every row internally,
+                 but its return shape is fixed to company/follower-count
+                 pairs, so there's no query against it that gets a member's
+                 identity back out, unlike an RLS policy opening raw table
+                 access that depends on every future query being written
+                 carefully. Gated to admins inside the function itself
+                 (raises an exception otherwise), same defense-in-depth
+                 spirit as is_admin() elsewhere. known_companies is passed
+                 in by the caller (data/careerOptions.js's COMPANIES list)
+                 rather than hardcoded, so the function doesn't need a
+                 migration every time that list changes. Surfaced as a new
+                 "Requested companies" panel on SourceManagement.jsx.
+                 Verified live end-to-end: followed "Palantir" via My
+                 Profile, confirmed it landed in the real member_preferences
+                 row, confirmed it appeared as "Palantir -- 1" on the admin
+                 panel, then unfollowed it and confirmed the panel correctly
+                 emptied back to "No requests yet" -- test data cleaned up
+                 rather than left as fake demand signal in a feature whose
+                 entire point is reflecting real signal.
+
 Stage 4          Additional ATS adapters for other UC-target companies;
                  RSS/institutional feeds where available; evaluate a
                  licensed provider only if coverage is still insufficient.
