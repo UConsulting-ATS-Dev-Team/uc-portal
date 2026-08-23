@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../data/supabaseClient.js";
+import { COMPANIES } from "../data/careerOptions.js";
 import "../styles/jobs.css";
 import "../styles/admin.css";
 
@@ -37,6 +38,28 @@ export default function SourceManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
+  const [demand, setDemand] = useState([]);
+  const [demandLoading, setDemandLoading] = useState(true);
+  const [demandError, setDemandError] = useState(null);
+
+  // Real member demand for companies not on the known list -- the actual
+  // prioritization signal for which company to research next as a Stage
+  // 3/4 source, instead of guessing from an arbitrary list. The RPC is a
+  // security definer function specifically so this page can never end up
+  // querying member_preferences directly: that table only grants each
+  // member their own row (deliberate privacy boundary, see the migration's
+  // own comment), and the function's return shape is aggregate-only by
+  // construction, not by a query this page has to remember to write
+  // carefully.
+  async function loadDemand() {
+    setDemandLoading(true);
+    const { data, error: demandRpcError } = await supabase.rpc("company_demand_report", {
+      known_companies: COMPANIES.map((c) => c.name),
+    });
+    if (demandRpcError) setDemandError(demandRpcError.message);
+    else setDemand(data ?? []);
+    setDemandLoading(false);
+  }
 
   async function loadSources() {
     setLoading(true);
@@ -73,6 +96,7 @@ export default function SourceManagement() {
 
   useEffect(() => {
     loadSources();
+    loadDemand();
   }, []);
 
   // Only approved <-> disabled is a casual one-click toggle. requires_review
@@ -104,6 +128,45 @@ export default function SourceManagement() {
             contribute a single row, regardless of what any submission form or scheduled fetch tries to do.
           </p>
         </div>
+      </div>
+
+      <div className="detail-section">
+        <h2 className="detail-section__title">Requested companies</h2>
+        <p className="meta" style={{ marginTop: 0 }}>
+          Companies members follow that aren't a supported source yet -- the real prioritization signal for
+          which company to research next, aggregated so no individual member's preferences are exposed.
+        </p>
+        {demandError && <p className="meta" style={{ color: "#B3261E" }}>{demandError}</p>}
+        <table className="queue-table">
+          <thead>
+            <tr>
+              <th>Company</th>
+              <th>Members following</th>
+            </tr>
+          </thead>
+          <tbody>
+            {demand.map((d) => (
+              <tr key={d.company}>
+                <td>{d.company}</td>
+                <td>{d.follower_count}</td>
+              </tr>
+            ))}
+            {!demandLoading && demand.length === 0 && (
+              <tr>
+                <td colSpan={2} className="meta">
+                  No requests yet -- every company members currently follow is already a known source.
+                </td>
+              </tr>
+            )}
+            {demandLoading && (
+              <tr>
+                <td colSpan={2} className="meta">
+                  Loading…
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       {error && <p className="meta" style={{ color: "#B3261E" }}>{error}</p>}

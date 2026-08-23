@@ -47,6 +47,7 @@ export default function MyProfile() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("Personal");
   const [saved, setSaved] = useState(false);
+  const [companyQuery, setCompanyQuery] = useState("");
   const fileInput = useRef(null);
 
   const [form, setForm] = useState({
@@ -295,7 +296,47 @@ export default function MyProfile() {
                     {c.name}
                   </button>
                 ))}
+                {/* Companies followed via onboarding's free-text "+ Follow" flow
+                    (or added below) that aren't in the fixed COMPANIES list --
+                    without this, a custom follow would silently disappear from
+                    this tab even though it's still a real preference. */}
+                {preferences.followedCompanies
+                  .filter((name) => !COMPANIES.some((c) => c.name === name))
+                  .map((name) => (
+                    <button key={name} className="chip-toggle is-selected" onClick={() => toggleCompany(name)}>
+                      {name} ✕
+                    </button>
+                  ))}
               </div>
+              <div className="field" style={{ marginTop: "var(--space-3)", marginBottom: "var(--space-2)" }}>
+                <input
+                  type="text"
+                  placeholder="Can't find your company? Type to add it"
+                  value={companyQuery}
+                  onChange={(e) => setCompanyQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter" || !companyQuery.trim()) return;
+                    e.preventDefault();
+                    if (!preferences.followedCompanies.includes(companyQuery.trim())) toggleCompany(companyQuery.trim());
+                    setCompanyQuery("");
+                  }}
+                />
+              </div>
+              {companyQuery.trim() &&
+                !COMPANIES.some((c) => c.name.toLowerCase() === companyQuery.trim().toLowerCase()) &&
+                !preferences.followedCompanies.includes(companyQuery.trim()) && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ marginBottom: "var(--space-4)" }}
+                    onClick={() => {
+                      toggleCompany(companyQuery.trim());
+                      setCompanyQuery("");
+                    }}
+                  >
+                    + Follow "{companyQuery.trim()}"
+                  </button>
+                )}
 
               <p style={{ fontWeight: 700 }}>Recruiting timeline</p>
               <div className="chip-row" style={{ marginBottom: 0 }}>
