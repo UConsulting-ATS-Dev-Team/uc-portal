@@ -878,6 +878,26 @@ Stage 3 (done)   First automated source: Stripe, via Greenhouse's public Job
                  rather than left as fake demand signal in a feature whose
                  entire point is reflecting real signal.
 
+                 Also added: scripts/check-company-source.mjs, a triage tool
+                 for the manual research this session otherwise redid by
+                 hand per company (checking Greenhouse/Lever's public APIs
+                 by guessed slug, and a company's own careers page for
+                 schema.org JobPosting markup or a Workday hint). Explicit
+                 in its own header: this answers "is there a technically
+                 reachable pattern," never "are we authorized" -- Part 2's
+                 case-by-case review still applies to anything it finds
+                 before that source is flipped to approved. Found a real
+                 false-positive risk while verifying it against known
+                 companies: Greenhouse board tokens aren't reserved by
+                 company identity, and slug "bcg" resolved to an unrelated
+                 "Bohen Consulting Group" with placeholder test postings,
+                 not Boston Consulting Group. Fixed by surfacing each hit's
+                 own company_name (Greenhouse) or a sample posting URL
+                 (Lever, which has no equivalent field) so a human confirms
+                 the actual company before trusting a slug match, plus a
+                 same-run regression check against Stripe/Veeva (Lever) to
+                 confirm the fix didn't break real hits.
+
 Stage 4          Additional ATS adapters for other UC-target companies;
                  RSS/institutional feeds where available; evaluate a
                  licensed provider only if coverage is still insufficient.
