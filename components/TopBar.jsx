@@ -2,12 +2,14 @@ import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { currentUser, navCounts } from "../data/mockUser.js";
 import { CONVERSATIONS } from "../data/mockMessages.js";
+import RequestFeatureModal from "./modals/RequestFeatureModal.jsx";
 import bearMark from "../assets/uc-bear-mark-white.png";
 
 const unreadMessageCount = CONVERSATIONS.filter((c) => c.unread).length;
 
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showRequestFeature, setShowRequestFeature] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const isAdminMode = location.pathname.startsWith("/admin");
@@ -66,6 +68,16 @@ export default function TopBar() {
               <Link to="/profile" role="menuitem" onClick={() => setMenuOpen(false)}>
                 Settings
               </Link>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setShowRequestFeature(true);
+                }}
+              >
+                Request a feature
+              </button>
               <Link to="/sign-in" role="menuitem" onClick={() => setMenuOpen(false)}>
                 Sign out
               </Link>
@@ -73,6 +85,8 @@ export default function TopBar() {
           )}
         </div>
       </div>
+
+      {showRequestFeature && <RequestFeatureModal onClose={() => setShowRequestFeature(false)} />}
     </header>
   );
 }

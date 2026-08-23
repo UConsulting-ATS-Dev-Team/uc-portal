@@ -18,6 +18,14 @@ import "../styles/network.css";
 import "../styles/resources.css";
 import "../styles/admin.css";
 
+const FEATURE_REQUEST_STATUS_LABEL = {
+  pending: "Pending",
+  approved: "Approved",
+  in_progress: "In progress",
+  done: "Done",
+  declined: "Declined",
+};
+
 // Opportunity queue (Stage 2) reads/writes real Supabase data --
 // opportunity_submissions for the queue itself, promoting an approved
 // submission into a real jobs row. Everything else on this page (KPIs,
@@ -35,6 +43,10 @@ export default function AdminDashboard() {
   const [duplicatesError, setDuplicatesError] = useState(null);
   const [duplicatesNote, setDuplicatesNote] = useState(null);
   const [resolvingId, setResolvingId] = useState(null);
+  const [featureRequests, setFeatureRequests] = useState([]);
+  const [featureRequestsLoading, setFeatureRequestsLoading] = useState(true);
+  const [featureRequestsError, setFeatureRequestsError] = useState(null);
+  const [updatingRequestId, setUpdatingRequestId] = useState(null);
   const gap = biggestGap();
   const maxMembers = Math.max(...INDUSTRY_INTEREST.map((i) => i.members));
 
@@ -75,10 +87,49 @@ export default function AdminDashboard() {
     setDuplicatesLoading(false);
   }
 
+  // feature_requests -- deliberately not anonymized like duplicate_candidates
+  // or the company-demand report: the whole point of this feature (per the
+  // ask) is admins seeing exactly who requested what, so submitted_by_name
+  // is shown directly, not aggregated.
+  async function loadFeatureRequests() {
+    setFeatureRequestsLoading(true);
+    const { data, error } = await supabase
+      .from("feature_requests")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) setFeatureRequestsError(error.message);
+    else setFeatureRequests(data ?? []);
+    setFeatureRequestsLoading(false);
+  }
+
   useEffect(() => {
     loadQueue();
     loadDuplicates();
+    loadFeatureRequests();
   }, []);
+
+  // feature_requests grants admins direct update access via RLS (unlike
+  // jobs/job_sources) since there's no equivalent trust boundary here --
+  // an admin changing a request's status doesn't need to write to a table
+  // regular members have no access to at all, so a plain client update is
+  // enough, no Edge Function needed.
+  async function handleUpdateRequestStatus(request, status) {
+    setUpdatingRequestId(request.id);
+    setFeatureRequestsError(null);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { error } = await supabase
+      .from("feature_requests")
+      .update({ status, reviewed_by: user.id, reviewed_at: new Date().toISOString() })
+      .eq("id", request.id);
+
+    if (error) setFeatureRequestsError(error.message);
+    await loadFeatureRequests();
+    setUpdatingRequestId(null);
+  }
 
   // Runs the real reassign-sources-and-deactivate flow server-side
   // (supabase/functions/resolve-duplicate-candidate) for a confirmed
@@ -361,6 +412,81 @@ export default function AdminDashboard() {
                   </tr>
                 )}
                 {duplicatesLoading && (
+                  <tr>
+                    <td colSpan={5} className="meta">
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="detail-section">
+            <h2 className="detail-section__title">Feature requests</h2>
+            {featureRequestsError && <p className="meta" style={{ color: "#B3261E" }}>{featureRequestsError}</p>}
+            <table className="queue-table">
+              <thead>
+                <tr>
+                  <th>Requested by</th>
+                  <th>Request</th>
+                  <th>Category</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {featureRequests.map((r) => (
+                  <tr key={r.id}>
+                    <td>
+                      {r.submitted_by_name}
+                      <div className="meta">{new Date(r.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</div>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 700 }}>{r.title}</div>
+                      <div className="meta">{r.description}</div>
+                    </td>
+                    <td>{r.category ?? "—"}</td>
+                    <td>
+                      <span className={`chip${r.status === "declined" ? "" : " chip-accent"}`}>
+                        {FEATURE_REQUEST_STATUS_LABEL[r.status] ?? r.status}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="queue-table__actions">
+                        {r.status === "pending" && (
+                          <>
+                            <button className="btn btn-secondary" disabled={updatingRequestId === r.id} onClick={() => handleUpdateRequestStatus(r, "approved")}>
+                              Approve
+                            </button>
+                            <button className="btn btn-secondary" disabled={updatingRequestId === r.id} onClick={() => handleUpdateRequestStatus(r, "declined")}>
+                              Decline
+                            </button>
+                          </>
+                        )}
+                        {r.status === "approved" && (
+                          <button className="btn btn-secondary" disabled={updatingRequestId === r.id} onClick={() => handleUpdateRequestStatus(r, "in_progress")}>
+                            Mark in progress
+                          </button>
+                        )}
+                        {r.status === "in_progress" && (
+                          <button className="btn btn-secondary" disabled={updatingRequestId === r.id} onClick={() => handleUpdateRequestStatus(r, "done")}>
+                            Mark done
+                          </button>
+                        )}
+                        {(r.status === "done" || r.status === "declined") && <span className="meta">No action needed</span>}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {!featureRequestsLoading && featureRequests.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="meta">
+                      No feature requests yet.
+                    </td>
+                  </tr>
+                )}
+                {featureRequestsLoading && (
                   <tr>
                     <td colSpan={5} className="meta">
                       Loading…
