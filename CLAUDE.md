@@ -641,6 +641,31 @@ priorities (P1/P2/P3) — kept in sync with this section as we go.
   in `mockPeople.js` intentionally stay text-initials — those are
   fictional people, so there's no real photo to source.
 
+- **Request a feature built** (`components/modals/RequestFeatureModal.jsx`
+  + a new "Feature requests" section on `pages/AdminDashboard.jsx`, real
+  Supabase table `feature_requests`) — not one of the original 24 wireframe
+  screens, added after by direct ask: members want an in-portal way to
+  flag an improvement instead of texting someone and hoping it's
+  remembered; admins want to see exactly who asked for what to triage and
+  track it through to done. Triggered from the avatar menu in
+  `TopBar.jsx` (always-accessible, matching how Notifications/Messages
+  are reachable from anywhere) rather than added as a new nav-rail item.
+  Deliberately not anonymized/aggregated the way `member_preferences` or
+  the company-demand report are — the entire point here is admins seeing
+  real identity, so `submitted_by_name` is captured plainly at submission
+  time (from `data/mockUser.js`'s `currentUser`, the same prototype
+  identity-display convention `MyProfile`'s Personal tab already uses,
+  since nothing populates `profiles.full_name` yet). Status moves
+  `pending → approved/declined → in_progress → done`, all via a direct
+  client-side RLS update (`feature_requests` grants admins direct
+  select/update, unlike `jobs`/`job_sources` — there's no equivalent trust
+  boundary here needing an Edge Function). Verified live end-to-end:
+  submitted a real request, watched it appear in the admin queue with the
+  real requester name, and walked it through all four status transitions,
+  confirming the correct action button appears at each stage. Test data
+  removed afterward rather than left showing a fake "done" for a filter
+  feature that doesn't actually exist yet.
+
 **All P1/P2/P3 work that doesn't require a real backend is now done.**
 Remaining is the mobile/responsive pass only (explicitly deprioritized,
 not unscoped) — see PROJECT_PLAN.md's Feature priorities for the full
