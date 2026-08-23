@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:server": "vitest run --config server/vitest.config.ts",
-    "typecheck:server": "tsc --noEmit -p server/tsconfig.json"
+    "typecheck:server": "tsc --noEmit -p server/tsconfig.json",
+    "check-source": "node scripts/check-company-source.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
