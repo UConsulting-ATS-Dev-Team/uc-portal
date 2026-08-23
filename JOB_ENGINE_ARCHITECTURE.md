@@ -898,9 +898,82 @@ Stage 3 (done)   First automated source: Stripe, via Greenhouse's public Job
                  same-run regression check against Stripe/Veeva (Lever) to
                  confirm the fix didn't break real hits.
 
-Stage 4          Additional ATS adapters for other UC-target companies;
+Stage 4 (started) Additional ATS adapters for other UC-target companies;
                  RSS/institutional feeds where available; evaluate a
                  licensed provider only if coverage is still insufficient.
+
+                 First addition: Deloitte, via a real RSS 2.0 feed at
+                 apply.deloitte.com/en_US/careers/SearchJobs/{keyword}/feed/
+                 -- chosen over BCG (schema.org present, but its
+                 search-results page is a client-rendered SPA with no
+                 enumeration mechanism to crawl) and Accenture (a clean
+                 Workday JSON endpoint, but an internal one their own site's
+                 JS calls, not a documented public API -- the weakest legal
+                 footing of the three). RSS is a categorically different
+                 legal posture than scraping the HTML search page sitting
+                 right next to it: it's a format that's existed specifically
+                 for third-party syndication since the format's own
+                 invention, matching Part 2's "RSS/XML/JSON feeds explicitly
+                 published for reuse" category -- confirmed live (real
+                 Content-Type: text/xml, standard <channel>/<item> shape),
+                 not assumed. supabase/functions/fetch-deloitte-jobs
+                 enumerates via three keyword feeds (consultant/strategy/
+                 analyst) and pulls structured facts (employmentType,
+                 jobLocation, validThrough) from each job's own schema.org
+                 JobPosting JSON-LD -- reusing the exact shared pipeline and
+                 batched-write architecture fetch-greenhouse-stripe already
+                 proved, applied from the start this time rather than
+                 relearning the resource-limit lesson twice.
+
+                 Two things confirmed only by testing against the real feed:
+                 (1) the feed hard-caps at 20 results per keyword regardless
+                 of jobRecordsPerPage/jobOffset -- confirmed by requesting
+                 100 and offset 100 and getting back the identical 20 items
+                 both times. Accepted as a real limit, not fought around --
+                 respecting a source's own designed boundary is the more
+                 conservative choice anyway. (2) Deloitte's own
+                 employmentType field is frequently blank ([""]), same real
+                 gap Stripe's titles had, just as an empty structured field
+                 instead of a missing one -- same adapter-level "default to
+                 full_time" policy applied, documented as this adapter's own
+                 call, not a shared pipeline change.
+
+                 One deliberate scope difference from Stripe: no expiration
+                 sweep. Greenhouse's feed is exhaustive (every posting, one
+                 call), so "tracked before, absent today" is a real "this
+                 posting closed" signal. This feed is capped at the 20 most
+                 relevant results per keyword -- a job can drop out of that
+                 window because something more relevant appeared, not
+                 because it closed. Running the same sweep here would
+                 incorrectly mark still-open Deloitte roles expired, so it's
+                 skipped outright rather than producing a false signal.
+
+                 Verified against live data: first run processed all 47
+                 unique postings across the three keywords cleanly (0
+                 invalid, 0 missing schema, 0 company-name mismatches --
+                 the latter a real safeguard, same spirit as
+                 check-company-source.mjs's slug-collision catch, checking
+                 each page's own hiringOrganization.name says Deloitte
+                 rather than trusting the URL). Spot-checked the resulting
+                 jobs directly against Postgres: correct full_time default,
+                 honest null city/state where Deloitte's own address fields
+                 were empty, correct occupation classification varying
+                 sensibly by role (Tax roles -> unclassified "rule", cyber/
+                 consulting roles -> "onet_occupation" with a real
+                 job_function_id), and a genuinely new capability Stripe
+                 never exercised -- application_deadline populated from
+                 validThrough and rendering as a real "Applications close"
+                 banner on the job detail page. Re-ran a second time to
+                 confirm idempotency: all 47 correctly recognized as
+                 already-tracked (0 detail-page re-fetches, 47 refreshed, 0
+                 duplicated) rather than reprocessed or re-inserted. Caught
+                 and fixed one real display bug in the same pass: this
+                 adapter's fetch summary used a different key name
+                 (rssItemsFound) than fetch-greenhouse-stripe's
+                 (fetched) for the same concept, which SourceManagement.jsx's
+                 shared summarizeFetchLog() didn't know how to read --
+                 rendered as a literal "?" until renamed to match the
+                 common shape.
 
 Stage 5          LLM-assisted classification fallback for the long tail;
                  natural-language search; ranking-weight tuning from real
