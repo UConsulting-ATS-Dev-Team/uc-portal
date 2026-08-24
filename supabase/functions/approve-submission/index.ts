@@ -32,14 +32,13 @@
 import { normalizeJob } from "../_shared/pipeline/normalize.ts";
 import { validateJob, scoreQuality } from "../_shared/pipeline/quality.ts";
 import { scoreDuplicate, classifyDuplicateTier } from "../_shared/pipeline/dedupe.ts";
-import type { RawJob } from "../_shared/pipeline/types.ts";
 import {
   comparableFromExistingJob,
-  enforceStorageRestrictions,
   fetchAllRows,
   jobInsertFromNormalized,
   resolveJobFunctionId,
 } from "../_shared/dedupeHelpers.ts";
+import { applySubmittedGradYears, rawJobFromSubmission, SOURCE_NAME_BY_ROLE, type SubmissionPayload } from "../_shared/submissionMapping.ts";
 import { requireAdmin } from "../_shared/requireAdmin.ts";
 
 const CORS_HEADERS = {
@@ -53,58 +52,6 @@ function jsonResponse(body: unknown, status = 200) {
     status,
     headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
   });
-}
-
-// The two sources jobs can currently come from -- seeded by
-// 20260822100000_seed_pipeline_sources.sql. Attribution is by the
-// submitter's own role (profiles.role), not by which UI screen they used to
-// open the modal, since PostOpportunityModal.jsx is shared between Jobs'
-// "Post a job" and Admin's "+ Post opportunity" and doesn't itself record
-// which one was clicked.
-const SOURCE_NAME_BY_ROLE: Record<string, string> = {
-  admin: "UC Admin Submission",
-  member: "UC Member Submission",
-};
-
-interface SubmissionPayload {
-  company: string;
-  role: string;
-  type: string; // "Internship" | "Full-time"
-  classYears: string[]; // e.g. ["2027", "2028"]
-  location: string;
-  workMode: string; // "Remote" | "Hybrid" | "In-person"
-  comp: string;
-  deadline: string; // "" or "YYYY-MM-DD"
-  link: string;
-  description: string;
-  industries: string[];
-}
-
-function rawJobFromSubmission(payload: SubmissionPayload, sourceId: string, submissionId: string): RawJob {
-  // workMode is a separate structured field on the submission form, but
-  // normalizeLocation() (ported unchanged from Stage 1) only reads the
-  // remote/hybrid signal out of free text -- folding it into locationText
-  // here reuses that existing rule instead of adding a second code path.
-  const locationText = payload.workMode && payload.workMode !== "In-person"
-    ? `${payload.location} (${payload.workMode})`
-    : payload.location;
-
-  return {
-    source: { sourceId, sourceJobId: submissionId, sourceUrl: payload.link, isPrimary: true },
-    company: payload.company,
-    title: payload.role,
-    employmentTypeText: payload.type,
-    description: payload.description || undefined,
-    locationText: locationText || undefined,
-    compensationText: payload.comp || undefined,
-    applicationDeadlineText: payload.deadline || undefined,
-    applicationUrl: payload.link,
-    // description doubles as qualificationsText so extractGraduationYears()
-    // has something to try -- overridden by the submitter's own classYears
-    // chip selection where present, see the override right after
-    // normalizeJob() is called below.
-    qualificationsText: payload.description || undefined,
-  };
 }
 
 Deno.serve(async (req) => {
@@ -158,19 +105,7 @@ Deno.serve(async (req) => {
 
   const payload = submission.raw_payload as SubmissionPayload;
   const raw = rawJobFromSubmission(payload, source.id, submission.id);
-  let normalized = normalizeJob(raw);
-
-  // classYears is a structured, submitter-entered fact (chip selection), not
-  // free text -- it takes priority over normalizeJob()'s text-based
-  // extractGraduationYears() fallback (which only ran against the
-  // description and may have found nothing, or found something looser).
-  const submittedGradYears = (payload.classYears ?? [])
-    .map((y) => parseInt(y, 10))
-    .filter((y) => !Number.isNaN(y))
-    .sort((a, b) => a - b);
-  if (submittedGradYears.length > 0) {
-    normalized = { ...normalized, graduationYears: submittedGradYears };
-  }
+  const normalized = applySubmittedGradYears(normalizeJob(raw), payload.classYears);
 
   const issues = validateJob(normalized);
   if (issues.length > 0) {
@@ -180,7 +115,6 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Normalized job failed validation", issues }, 422);
   }
 
-  normalized = enforceStorageRestrictions(normalized, source.storage_restrictions);
   const qualityScore = scoreQuality(normalized);
 
   // Paginated via fetchAllRows() -- a bare .select() here silently truncates
@@ -241,7 +175,7 @@ Deno.serve(async (req) => {
   // the inferred list only when the submitter didn't tag any.
   const submitterIndustries = payload.industries ?? [];
   const insertRow = {
-    ...jobInsertFromNormalized(normalized, qualityScore, jobFunctionId),
+    ...jobInsertFromNormalized(normalized, qualityScore, jobFunctionId, source.storage_restrictions),
     relevant_industries: submitterIndustries.length > 0 ? submitterIndustries : normalized.relevantIndustries,
   };
 

@@ -315,7 +315,7 @@ async function runFetch(adminClient: SupabaseClient, source: any): Promise<Fetch
     const qualityScore = scoreQuality(normalized);
     const jobFunctionId = normalized.jobFunction ? jobFunctionIdByName.get(normalized.jobFunction) ?? null : null;
     const newId = crypto.randomUUID();
-    newJobRows.push({ id: newId, ...jobInsertFromNormalized(normalized, qualityScore, jobFunctionId) });
+    newJobRows.push({ id: newId, ...jobInsertFromNormalized(normalized, qualityScore, jobFunctionId, source.storage_restrictions) });
     newJobSources.push({ job_id: newId, source_id: source.id, source_job_id: sourceJobId, source_url: item.link, is_primary: true });
 
     if (tier === "review" && bestMatch) {

@@ -50,6 +50,12 @@ export default function AdminDashboard() {
   const gap = biggestGap();
   const maxMembers = Math.max(...INDUSTRY_INTEREST.map((i) => i.members));
 
+  // US-09 -- duplicate_tier/duplicate_best_job_id are written by
+  // score-submission-duplicate right after a member submits (see that
+  // function's header comment), so the queue can show the signal before an
+  // admin clicks Approve, not only after. Same batched-lookup enrichment
+  // pattern as loadDuplicates() below, for the same reason (one extra
+  // query instead of N+1).
   async function loadQueue() {
     setQueueLoading(true);
     const { data, error } = await supabase
@@ -57,8 +63,17 @@ export default function AdminDashboard() {
       .select("*")
       .in("status", ["needs_review", "live"])
       .order("created_at", { ascending: false });
-    if (error) setQueueError(error.message);
-    else setQueue(data);
+    if (error) {
+      setQueueError(error.message);
+      setQueueLoading(false);
+      return;
+    }
+    const matchedJobIds = [...new Set((data ?? []).map((o) => o.duplicate_best_job_id).filter(Boolean))];
+    const { data: matchedJobs } = matchedJobIds.length > 0
+      ? await supabase.from("jobs").select("id, title, company").in("id", matchedJobIds)
+      : { data: [] };
+    const jobById = Object.fromEntries((matchedJobs ?? []).map((j) => [j.id, j]));
+    setQueue((data ?? []).map((o) => ({ ...o, duplicateMatchJob: o.duplicate_best_job_id ? jobById[o.duplicate_best_job_id] : null })));
     setQueueLoading(false);
   }
 
@@ -307,7 +322,16 @@ export default function AdminDashboard() {
               <tbody>
                 {queue.map((o) => (
                   <tr key={o.id}>
-                    <td>{o.company}</td>
+                    <td>
+                      {o.company}
+                      {o.duplicate_tier && o.duplicate_tier !== "distinct" && (
+                        <div className="meta" style={{ color: "#B3261E" }}>
+                          {o.duplicate_tier === "auto_merge" ? "Likely duplicate" : "Possible duplicate"} of{" "}
+                          {o.duplicateMatchJob ? `"${o.duplicateMatchJob.title}" (${o.duplicateMatchJob.company})` : "an existing listing"}
+                          {" "}· {Math.round(o.duplicate_best_score)}% match
+                        </div>
+                      )}
+                    </td>
                     <td>{o.role}</td>
                     <td>{new Date(o.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</td>
                     <td>

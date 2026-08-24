@@ -48,12 +48,16 @@ export default function PostOpportunityModal({ onClose }) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const { error } = await supabase.from("opportunity_submissions").insert({
-      submitted_by: user.id,
-      company,
-      role,
-      raw_payload: { company, role, type, classYears, location, workMode, comp, deadline, link, description, industries },
-    });
+    const { data: inserted, error } = await supabase
+      .from("opportunity_submissions")
+      .insert({
+        submitted_by: user.id,
+        company,
+        role,
+        raw_payload: { company, role, type, classYears, location, workMode, comp, deadline, link, description, industries },
+      })
+      .select("id")
+      .single();
 
     setSubmitting(false);
     if (error) {
@@ -62,6 +66,13 @@ export default function PostOpportunityModal({ onClose }) {
     }
     setSubmitted(true);
     setTimeout(onClose, 1200);
+
+    // US-09 -- score for duplicates now, not only at Approve time, so the
+    // admin queue can show the signal before a human reviews it. Fire-and-
+    // forget: this is informational for the queue display (see that
+    // function's own header comment for why it doesn't gate anything) and
+    // shouldn't hold up the submitter's own confirmation.
+    supabase.functions.invoke("score-submission-duplicate", { body: { submissionId: inserted.id } });
   }
 
   const canSubmit = company.trim() && role.trim() && location.trim() && link.trim() && !submitting;

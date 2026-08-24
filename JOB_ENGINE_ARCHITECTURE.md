@@ -1861,3 +1861,63 @@ terms are now actually affecting sort order. Deadline/Newest sorts
 (unrelated code paths) reverified unaffected. All 44 existing tests still
 pass, including `rank.test.ts`'s 4 tests against the untouched server-side
 formula.
+
+**Same pass, two more real gaps fixed: US-56 (storage-restrictions
+enforcement) and US-09 (submission dedup runs after the queue, not
+before).**
+
+US-56: `enforceStorageRestrictions()` existed but only `approve-submission`
+called it -- confirmed live that `fetch-greenhouse-companies` and
+`fetch-deloitte-jobs` never imported it at all, relying purely on each
+adapter author remembering never to populate `description`. Fixed by
+folding the check *into* `jobInsertFromNormalized()` itself (`_shared/
+dedupeHelpers.ts`) -- the one function every adapter already calls to
+build its insert row, given a required (not optional) `storageRestrictions`
+parameter so a caller can't silently omit it either. Deployed all three
+adapters and reverified live: idempotent re-fetch on an already-tracked
+source (IMC Trading) still correct, and two genuinely new inserts (2 on
+Deloitte, 11 on Stripe) succeeded cleanly through the new required
+parameter with no regression.
+
+US-09: confirmed live (empty queue, so no urgent user-facing bug, but a
+real structural one) that dedup only ever ran inside `approve-submission`,
+at Approve time -- the admin queue itself showed a submission as a plain
+new opportunity with no indication it might be a duplicate until *after*
+clicking Approve. Fixed with a new Edge Function,
+`score-submission-duplicate`, called by `PostOpportunityModal.jsx`
+immediately after a member's own insert (fire-and-forget, any
+authenticated member may call it but only for their own submission --
+ownership re-derived server-side, same principle `requireAdmin.ts`'s
+callers already follow). It runs the identical normalize + `scoreDuplicate`
+pipeline `approve-submission` does and writes the verdict onto three new
+columns on `opportunity_submissions` (`duplicate_tier`,
+`duplicate_best_job_id`, `duplicate_best_score`) -- informational for the
+queue display only, **not** a replacement for `approve-submission`'s own
+dedup check at approval time, which still runs fresh every time since the
+active-jobs set can change between submission and review.
+`rawJobFromSubmission()`/`SOURCE_NAME_BY_ROLE`/the grad-year-override logic
+were extracted from `approve-submission`'s own private copy into a new
+`_shared/submissionMapping.ts` so both functions stay in sync by
+construction rather than by two authors remembering to update both files
+in step -- the exact failure mode US-56 above just came from.
+
+`pages/AdminDashboard.jsx`'s opportunity queue table now shows a
+"Likely duplicate of X · N% match" (auto-merge tier) or "Possible
+duplicate" (review tier) note under the company name, using the same
+batched-lookup enrichment pattern (`loadDuplicates()`) the existing
+duplicate-review-queue already uses for the same reason (one extra query,
+not N+1).
+
+Verified live end-to-end with a real deliberate duplicate: submitted an
+exact copy of a real, currently-active Stripe posting (identical company/
+title/URL). `score-submission-duplicate` correctly wrote `duplicate_tier:
+"auto_merge"`, `duplicate_best_score: 100`, and the matched job's real id
+-- visible in the admin queue as "Likely duplicate" *before* Approve was
+clicked, closing the actual gap this fix targets. Clicking Approve then
+correctly attached the submission as an additional `job_sources` row on
+the existing job rather than creating a second listing (unchanged
+`approve-submission` behavior, confirmed still correct after its
+`submissionMapping.ts` refactor). Test submission and its job_sources
+attachment removed afterward via migration -- the app is never granted
+DELETE on any of these tables, so cleanup goes through a migration like
+every other test-data removal this session.

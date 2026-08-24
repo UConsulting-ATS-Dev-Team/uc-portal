@@ -88,7 +88,11 @@ export function comparableFromExistingJob(row: Record<string, unknown>): Normali
 // §8.3 / US-56 -- an actual enforcement point, not just a recorded column.
 // A source with e.g. "do not store full description text" in its
 // storage_restrictions gets that field stripped here, unconditionally --
-// no caller can accidentally skip it.
+// no caller can accidentally skip it. Exported on its own (in addition to
+// being called inside jobInsertFromNormalized below) only so it stays
+// independently testable/inspectable, not as an invitation to call it
+// separately -- see that function's own comment for why the enforcement
+// itself lives there instead.
 export function enforceStorageRestrictions(normalized: NormalizedJob, storageRestrictions: string | null): NormalizedJob {
   if (storageRestrictions && /description/i.test(storageRestrictions)) {
     return { ...normalized, description: null };
@@ -96,11 +100,31 @@ export function enforceStorageRestrictions(normalized: NormalizedJob, storageRes
   return normalized;
 }
 
-// Base field mapping from a NormalizedJob to a `jobs` table insert row.
-// Callers may spread additional overrides on top (approve-submission
-// prefers a human submitter's own industry tags over the occupation stub's
-// inferred ones, which fetch-greenhouse-stripe has no equivalent of).
-export function jobInsertFromNormalized(normalized: NormalizedJob, qualityScore: number, jobFunctionId: string | null) {
+// Base field mapping from a NormalizedJob to a `jobs` table insert row --
+// the one function every adapter (approve-submission, fetch-greenhouse-
+// companies, fetch-deloitte-jobs, and any future one) already calls to
+// build its insert row, which is exactly why storage-restriction
+// enforcement (US-56/§8.3) lives *inside* it rather than as a separate
+// step callers have to remember: fetch-greenhouse-companies and
+// fetch-deloitte-jobs never called enforceStorageRestrictions() on their
+// own (confirmed live -- neither file even imported it), relying purely
+// on each adapter author remembering never to populate `description` in
+// the first place. Folding the check in here makes it structurally
+// impossible to insert a row that skips it, not just documented
+// convention. `storageRestrictions` is required, not optional, so a
+// caller can't silently pass nothing either -- pass the source row's own
+// `storage_restrictions` (null is a valid, meaningful "no restriction").
+// Callers may spread additional overrides on top of the return value
+// (approve-submission prefers a human submitter's own industry tags over
+// the occupation stub's inferred ones, which the other adapters have no
+// equivalent of).
+export function jobInsertFromNormalized(
+  normalizedInput: NormalizedJob,
+  qualityScore: number,
+  jobFunctionId: string | null,
+  storageRestrictions: string | null
+) {
+  const normalized = enforceStorageRestrictions(normalizedInput, storageRestrictions);
   return {
     company: normalized.company,
     title: normalized.title,
