@@ -96,9 +96,11 @@ Notifications (`2f`), Global search (`3b`), Messages (`3f`), all five
 empty/first-run states (`3e`), and all 5 action modals (`3c`) are also
 now built. **All P1 and P2 scope from the Feature priorities list below
 is complete** — every wireframe screen is built and clickable against
-mock data. Remaining work is P3/stretch only: mobile responsive pass,
-bear-icon logo asset, real company logos — none required for the
-Sept 8 MVP or Sept 25 production-ready bar.
+mock data. All P3/stretch items are now done too (Messages, the bear-icon
+logo, real company logos, and a real responsive pass down to 640px
+replacing the earlier zoom stopgap) — see the P3 checklist below.
+Nothing here was required for the Sept 8 MVP or Sept 25 production-ready
+bar, but there was time to finish it anyway.
 
 ## MVP plan
 
@@ -170,7 +172,12 @@ stretch / beyond this initiative's timeline.
 
 **P3 — Stretch / beyond this initiative**
 - [x] Messages (`3f`)
-- [ ] Mobile/responsive pass (explicitly deprioritized for now)
+- [x] Responsive pass — real breakpoint reflow (1100/900/640px, see
+      CLAUDE.md's Design conventions) across every page and the 6 action
+      modals, replacing the earlier `zoom`-based scale-to-fit stopgap.
+      Phones below ~640px specifically are still lower-priority per the
+      initiative's own steer — this makes the app usable down to laptop/
+      tablet widths without breaking, not a phone-first redesign.
 - [x] Bear-icon logo asset wired into the brandmark
 - [x] Real company logos — all 8 companies in the mock data now show
       their real logo (sourced from Wikimedia Commons), wired into

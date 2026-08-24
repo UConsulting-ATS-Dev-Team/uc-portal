@@ -54,24 +54,34 @@ exported, so treat every "UC Career" in design/handoff/ as this product.
 - **Content area**: main column + fixed-width right rail (250–300px) on
   most screens; Jobs/Companies add a second fixed filter column
   (230–248px) between nav rail and main content.
-- **Responsive**: the wireframes design for 1280px+ only, and every page's
-  CSS is genuinely fixed-width for that canvas (nav rail 206px, filter
-  columns 230–248px, right rails 250–300px, no reflow) — there was no
-  breakpoint handling at all until a real bug forced the issue: resizing
-  the browser below ~1280px overlapped/cut off content (e.g. Jobs' header
-  action row alone needing 279px in a 194px-wide column at 720px). Fixed
-  globally in `styles/global.css` with `zoom: clamp(0.55, 100vw / 1280px, 1)`
-  on `html` — the whole rendered page scales down smoothly as the window
-  narrows rather than reflowing, so nothing overlaps or gets cut off down
-  to a floor of 55% scale (roughly 700px). `zoom`, not `transform: scale`,
-  because zoom actually shrinks the element's layout box (so overflow/
-  scrollbar math sees the scaled size), where transform only repaints
-  smaller and leaves the underlying overflow untouched. Below the floor,
-  the page reverts to normal horizontal scroll rather than shrinking text
-  past legibility. This is a stopgap, not a real mobile layout — nothing
-  reflows, restructures, or gets a touch-friendly nav; true mobile support
-  (collapsing the rail, stacking columns, touch targets) is still
-  unscoped future work.
+- **Responsive**: the wireframes design for 1280px+ only, but every page
+  now has real breakpoint reflow rather than the `zoom`-based scale-to-fit
+  stopgap this section used to describe (that rule is gone from
+  `styles/global.css` entirely). One consistent breakpoint scale, defined
+  once in `styles/shell.css`'s own comment and referenced by name in every
+  other stylesheet that adds responsive rules:
+  - **1280px+** — desktop, the design's native/unmodified width.
+  - **1100px** — the nav rail collapses to icon-only
+    (`--nav-rail-width-collapsed` in `styles/tokens.css`), using
+    `lucide-react` icons (stroke-width 1.5, the system CLAUDE.md's Icons
+    line already named as the target) since the wireframes only ever had
+    text-label placeholders.
+  - **900px** — multi-column layouts (filter columns, right rails,
+    detail-page sidebars) stop sitting beside main content and stack
+    below it instead.
+  - **640px** — phone-width tightening: padding shrinks, grids drop to
+    fewer columns, the top bar sheds its wordmark/search placeholder.
+  Wide tables (tracker, certifications, admin queues) scroll horizontally
+  within their own container instead of widening the page, matching the
+  pattern the Board/Timeline tracker views already used. Verified live
+  page-by-page at both the 900px and 640px tiers (zero
+  `document.documentElement.scrollWidth` overflow, no console errors);
+  Messages' fixed two-pane layout is the one deliberate exception, since
+  stacking it needed a capped-height scrollable list rather than a real
+  show-list/show-thread toggle (no state for that exists). Nothing here
+  is phone-first — touch targets, gesture nav, and true mobile UX are
+  still unscoped — but the app now reflows correctly at laptop/tablet
+  widths and doesn't break down to phone width either.
 
 ## Page inventory & flow
 
@@ -230,14 +240,14 @@ UConsulting Drive > Committees > Marketing > Branding, accessed read-only).
 
 ## Still open / to confirm as we build
 
-1. **Mobile** — lower priority for now per your steer, but planned for
-   eventually. Prototype targets desktop (1280px+, matching the
-   wireframes) first. A real responsive redesign (reflowing layout,
-   collapsing the nav rail, touch targets) is still future work, not
-   unscoped — but the narrow-window breakage that motivated this is
-   already fixed as a stopgap (see the Responsive note above): the whole
-   page scales down via CSS `zoom` rather than reflowing, so nothing
-   overlaps/cuts off between ~700–1280px, it just renders smaller.
+1. **Mobile** — the real responsive redesign is done (see the Responsive
+   note above): every page and all 6 action modals reflow at 1100/900/
+   640px instead of scaling via the old `zoom` stopgap. What's still
+   genuinely unscoped is phone-first UX proper — touch targets, gesture
+   nav, a real show-list/show-thread toggle for Messages instead of its
+   capped-height stacked fallback — none of that was in scope for this
+   pass, which targeted "doesn't break down to phone width," not "designed
+   for phone first."
 2. **People avatars** — still text-initials placeholders, intentionally,
    for both `mockPeople.js`'s fictional entries and the real UConsulting
    Directory import (Progress below) — the latter are real people, so
@@ -707,6 +717,39 @@ the whole page wider), Network, and a modal. This is a stopgap, not the
 mobile/responsive pass itself — nothing reflows or restructures, so a real
 mobile layout (collapsed rail, stacked columns, touch targets) is still
 open work.
+
+**Superseded by the real responsive pass below** — the `zoom` rule
+described above has since been removed entirely from `styles/global.css`.
+
+**Real responsive redesign built** — replaces the `zoom` stopgap above
+with genuine breakpoint reflow (1100/900/640px, see the Responsive note
+under Navigation shell for the full scale) across every page and all 6
+action modals. `lucide-react` added as a new dependency so the
+now-collapsible nav rail (below 1100px) has real icons instead of the
+wireframes' text-label placeholders — CLAUDE.md's Icons line already
+named Lucide/1.5 stroke-width as the target system, so this was adopting
+it, not choosing something new. Shared layout classes (`.detail-layout`,
+`.jobs-layout`) were fixed once at the shared-stylesheet level and
+cascade correctly to every page that reuses them (fixing `jobDetail.css`
+alone covers Job detail, Company page, and both Member profile variants).
+Wide tables (tracker, certifications, admin queues) each scroll within
+their own wrapper instead of widening the page, matching the pattern the
+Board/Timeline tracker views already had. Auth (`3a`) and most of
+onboarding (`2i`/`2j`) needed no changes at all — both were already a
+single centered column with `max-width: 100%` — the one real fix there
+was the onboarding completion screen's 4-column stat grid, which
+squeezed to unreadable ~70px columns on phone width. Messages (`3f`) is
+the one deliberate exception to "reflow in place": its fixed two-pane
+layout narrows the conversation list at 900px, then stacks list-above-
+thread at 640px with the list capped to a scrollable height, since no
+show-list/show-thread toggle state exists to swap panes outright.
+Verified live page-by-page (`document.documentElement.scrollWidth -
+window.innerWidth` at zero, no console errors) at both the 900px and
+640px tiers, including all 4 sign-in states, all 5 onboarding steps,
+all 3 Applications tracker views, and 4 of the 6 action modals opened
+from their real trigger points. This is still not a phone-first
+redesign — touch targets and gesture nav are unscoped — but the app no
+longer breaks down to phone width either.
 
 Run locally:
 ```bash
