@@ -54,9 +54,24 @@ exported, so treat every "UC Career" in design/handoff/ as this product.
 - **Content area**: main column + fixed-width right rail (250–300px) on
   most screens; Jobs/Companies add a second fixed filter column
   (230–248px) between nav rail and main content.
-- **Responsive**: desktop/laptop only (1280px+ designed; collapses rail to
-  icons below ~1100px). Below ~900px is explicitly undefined in the
-  wireframes — treat this prototype as desktop-only.
+- **Responsive**: the wireframes design for 1280px+ only, and every page's
+  CSS is genuinely fixed-width for that canvas (nav rail 206px, filter
+  columns 230–248px, right rails 250–300px, no reflow) — there was no
+  breakpoint handling at all until a real bug forced the issue: resizing
+  the browser below ~1280px overlapped/cut off content (e.g. Jobs' header
+  action row alone needing 279px in a 194px-wide column at 720px). Fixed
+  globally in `styles/global.css` with `zoom: clamp(0.55, 100vw / 1280px, 1)`
+  on `html` — the whole rendered page scales down smoothly as the window
+  narrows rather than reflowing, so nothing overlaps or gets cut off down
+  to a floor of 55% scale (roughly 700px). `zoom`, not `transform: scale`,
+  because zoom actually shrinks the element's layout box (so overflow/
+  scrollbar math sees the scaled size), where transform only repaints
+  smaller and leaves the underlying overflow untouched. Below the floor,
+  the page reverts to normal horizontal scroll rather than shrinking text
+  past legibility. This is a stopgap, not a real mobile layout — nothing
+  reflows, restructures, or gets a touch-friendly nav; true mobile support
+  (collapsing the rail, stacking columns, touch targets) is still
+  unscoped future work.
 
 ## Page inventory & flow
 
@@ -217,11 +232,18 @@ UConsulting Drive > Committees > Marketing > Branding, accessed read-only).
 
 1. **Mobile** — lower priority for now per your steer, but planned for
    eventually. Prototype targets desktop (1280px+, matching the
-   wireframes) first; a responsive pass is future work, not unscoped.
-2. **People avatars** — still text-initials placeholders, intentionally.
-   `mockPeople.js` entries are fictional, so there's no real photo to use
-   and none should be sourced for them. Only companies got real logos
-   (see Progress below).
+   wireframes) first. A real responsive redesign (reflowing layout,
+   collapsing the nav rail, touch targets) is still future work, not
+   unscoped — but the narrow-window breakage that motivated this is
+   already fixed as a stopgap (see the Responsive note above): the whole
+   page scales down via CSS `zoom` rather than reflowing, so nothing
+   overlaps/cuts off between ~700–1280px, it just renders smaller.
+2. **People avatars** — still text-initials placeholders, intentionally,
+   for both `mockPeople.js`'s fictional entries and the real UConsulting
+   Directory import (Progress below) — the latter are real people, so
+   sourcing photos for them without consent would be worse than not
+   having one, not just a mock-data convenience. Only companies got real
+   logos (see Progress below).
 
 ## Stack
 
@@ -669,7 +691,22 @@ priorities (P1/P2/P3) — kept in sync with this section as we go.
 **All P1/P2/P3 work that doesn't require a real backend is now done.**
 Remaining is the mobile/responsive pass only (explicitly deprioritized,
 not unscoped) — see PROJECT_PLAN.md's Feature priorities for the full
-breakdown.
+breakdown. (Real backend/job-engine/CRM work has continued since, tracked
+in `JOB_ENGINE_ARCHITECTURE.md` rather than here.)
+
+**Narrow-window breakage fixed as a stopgap** — resizing below ~1280px
+used to genuinely overlap/cut off content (every page's CSS is fixed-width
+for the 1280px+ desktop canvas, no breakpoints existed at all). Fixed
+globally via `zoom: clamp(0.55, 100vw / 1280px, 1)` on `html` in
+`styles/global.css` (see the Responsive note above for why `zoom` over
+`transform: scale`) — the whole page scales down smoothly as the window
+narrows instead of reflowing, verified with zero horizontal overflow from
+1280px down to its 55%-scale floor across Jobs, Applications' 7-column
+board (which correctly keeps its own internal scroll rather than pushing
+the whole page wider), Network, and a modal. This is a stopgap, not the
+mobile/responsive pass itself — nothing reflows or restructures, so a real
+mobile layout (collapsed rail, stacked columns, touch targets) is still
+open work.
 
 Run locally:
 ```bash

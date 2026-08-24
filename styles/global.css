@@ -2,6 +2,31 @@
   box-sizing: border-box;
 }
 
+/* This prototype's layout is built for the wireframes' 1280px+ desktop
+   canvas (CLAUDE.md's Responsive note) -- every page uses fixed-width
+   columns (nav rail 206px, filter columns 230-248px, right rails
+   250-300px) with no per-breakpoint reflow. Below ~1280px those columns
+   stop leaving enough room for their siblings and the page breaks --
+   confirmed directly: at 720px wide, Jobs' header action row alone
+   (sort dropdown + two buttons) needs 279px in a 194px-wide column.
+   Rather than a full responsive redesign of ~15 page stylesheets (real
+   future work, not this fix), this scales the whole rendered page down
+   as the viewport narrows, so the same 1280px layout always fits without
+   overlapping or cutting anything off -- everything gets proportionally
+   smaller instead of breaking. `zoom` (not `transform: scale`) is used
+   deliberately: transform doesn't shrink the element's own layout box,
+   so scrollbars/overflow calculations would still see the full-size
+   content and the page would still measure as too wide. Floored at 0.55
+   (never shrinks past that, falls back to horizontal scroll below
+   ~700px) rather than continuing to shrink toward genuine phone widths,
+   where text would become illegible -- true mobile support means
+   actually redesigning the layout, not scaling it smaller.
+   min(1, ...) keeps this a no-op at the 1280px+ width this app is
+   actually designed for. */
+html {
+  zoom: clamp(0.55, calc(100vw / 1280px), 1);
+}
+
 html,
 body,
 #root {
