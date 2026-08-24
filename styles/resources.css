@@ -102,12 +102,17 @@
   font-size: var(--text-meta);
 }
 
+.cert-table__scroll {
+  overflow-x: auto;
+  margin-bottom: var(--space-7);
+}
+
 .cert-table {
   width: 100%;
+  min-width: 600px;
   border-collapse: collapse;
   background: var(--color-surface);
   border: var(--border-hairline);
-  margin-bottom: var(--space-7);
 }
 
 .cert-table th {
@@ -232,4 +237,28 @@
   color: var(--color-text-muted);
   font-size: var(--text-secondary);
   margin-bottom: var(--space-5);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 899px) {
+  .resources-layout {
+    flex-direction: column;
+  }
+
+  .resources-nav {
+    width: 100%;
+  }
+
+  .resource-tile-grid,
+  .track-card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 639px) {
+  .resource-tile-grid,
+  .track-card-grid,
+  .resource-card-grid {
+    grid-template-columns: 1fr;
+  }
 }

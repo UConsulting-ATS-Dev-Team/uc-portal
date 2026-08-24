@@ -142,34 +142,36 @@ export default function CareerResources() {
 
             <h2>Free certifications — vetted by the Careers Committee</h2>
             <p className="meta">{CERTIFICATIONS.length} free · browse all</p>
-            <table className="cert-table">
-              <thead>
-                <tr>
-                  <th>Certification</th>
-                  <th>Provider</th>
-                  <th>Cost</th>
-                  <th>Time</th>
-                  <th>Counts for</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {CERTIFICATIONS.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.title}</td>
-                    <td>{c.provider}</td>
-                    <td>
-                      <span className="chip chip-accent">{c.cost}</span>
-                    </td>
-                    <td>{c.hours} hrs</td>
-                    <td>{c.countsFor.join(", ")}</td>
-                    <td>
-                      <button className="btn btn-secondary">Start</button>
-                    </td>
+            <div className="cert-table__scroll">
+              <table className="cert-table">
+                <thead>
+                  <tr>
+                    <th>Certification</th>
+                    <th>Provider</th>
+                    <th>Cost</th>
+                    <th>Time</th>
+                    <th>Counts for</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {CERTIFICATIONS.map((c) => (
+                    <tr key={c.id}>
+                      <td>{c.title}</td>
+                      <td>{c.provider}</td>
+                      <td>
+                        <span className="chip chip-accent">{c.cost}</span>
+                      </td>
+                      <td>{c.hours} hrs</td>
+                      <td>{c.countsFor.join(", ")}</td>
+                      <td>
+                        <button className="btn btn-secondary">Start</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             <h2>Most used in UC</h2>
             <div className="resource-card-grid">
