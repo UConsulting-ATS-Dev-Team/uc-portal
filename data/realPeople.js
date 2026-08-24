@@ -36,3 +36,21 @@ export async function fetchRealPersonById(id) {
   const rows = await fetchAllRows("people", "*", (q) => q.eq("id", id));
   return rows.length > 0 ? realPersonToCardShape(rows[0]) : null;
 }
+
+// Global Search's own substring matching (data/searchUtils.js), just
+// against real people instead of the mock roster -- at 150 rows, a proper
+// indexed search (like jobs' search_vector column, data/jobSearch.js)
+// isn't warranted yet. Client-side filtering after one small fetch is
+// "good enough at this data scale," same call searchUtils.js's own
+// comment already makes for the rest of the mock-data search.
+export async function searchRealPeople(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const people = await fetchRealPeople();
+  return people.filter(
+    (p) =>
+      p.name.toLowerCase().includes(q) ||
+      (p.company && p.company.toLowerCase().includes(q)) ||
+      (p.role && p.role.toLowerCase().includes(q))
+  );
+}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { searchAll } from "../data/searchUtils.js";
 import { searchJobs } from "../data/jobSearch.js";
+import { searchRealPeople } from "../data/realPeople.js";
 import { COMPANIES } from "../data/mockCompanies.js";
 import { useAppState } from "../data/store.jsx";
 import "../styles/jobs.css";
@@ -22,15 +23,19 @@ export default function GlobalSearch() {
   const [onlyRecent, setOnlyRecent] = useState(false);
   const { savedConnections, savedResourceIds, preferences, recentSearches, addRecentSearch } = useAppState();
 
-  // Jobs come from the real jobs table (Stage 2, data/jobSearch.js) --
-  // everything else here (people/companies/resources/feed) still reads the
-  // mock-data layer via searchAll(). Real jobs link to /jobs/:id same as
-  // mock jobs -- JobDetail.jsx dispatches to pages/RealJobDetail.jsx for a
-  // UUID id vs. the existing mock-job render for a slug id (see that file's
-  // header comment). The full Jobs.jsx board swap is still deliberately
-  // deferred -- see JOB_ENGINE_ARCHITECTURE.md's Stage 2 notes on why.
+  // Jobs come from the real jobs table (Stage 2, data/jobSearch.js) and
+  // people from the real UConsulting Directory import (Stage 5, data/
+  // realPeople.js) -- companies/resources/feed still read the mock-data
+  // layer via searchAll(). Real jobs link to /jobs/:id same as mock jobs --
+  // JobDetail.jsx dispatches to pages/RealJobDetail.jsx for a UUID id vs.
+  // the existing mock-job render for a slug id (see that file's header
+  // comment); MemberProfile.jsx does the same UUID-vs-slug dispatch for
+  // people. The full Jobs.jsx board swap is still deliberately deferred --
+  // see JOB_ENGINE_ARCHITECTURE.md's Stage 2 notes on why.
   const [realJobs, setRealJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(false);
+  const [realPeople, setRealPeople] = useState([]);
+  const [peopleLoading, setPeopleLoading] = useState(false);
 
   useEffect(() => {
     if (query) addRecentSearch(query);
@@ -40,8 +45,9 @@ export default function GlobalSearch() {
   useEffect(() => {
     if (!query.trim()) {
       // Matches searchAll()'s own "no query -> no results" behavior, rather
-      // than surprising a blank search with every active job.
+      // than surprising a blank search with every active job/person.
       setRealJobs([]);
+      setRealPeople([]);
       return;
     }
     let cancelled = false;
@@ -52,6 +58,13 @@ export default function GlobalSearch() {
         setJobsLoading(false);
       }
     });
+    setPeopleLoading(true);
+    searchRealPeople(query).then((data) => {
+      if (!cancelled) {
+        setRealPeople(data);
+        setPeopleLoading(false);
+      }
+    });
     return () => {
       cancelled = true;
     };
@@ -60,8 +73,9 @@ export default function GlobalSearch() {
   const raw = useMemo(() => searchAll(query), [query]);
 
   const results = useMemo(() => {
-    let { people, companies, resources, posts } = raw;
+    let { companies, resources, posts } = raw;
     let jobs = realJobs;
+    let people = realPeople;
     if (onlyActionable) {
       resources = [];
       posts = [];
@@ -78,7 +92,7 @@ export default function GlobalSearch() {
       resources = resources.filter((r) => (new Date() - new Date(r.updated)) / 86400000 <= 30);
     }
     return { jobs, people, companies, resources, posts };
-  }, [raw, realJobs, onlyActionable, onlySaved, onlyRecent, savedConnections, savedResourceIds, preferences]);
+  }, [raw, realJobs, realPeople, onlyActionable, onlySaved, onlyRecent, savedConnections, savedResourceIds, preferences]);
 
   const total = results.jobs.length + results.people.length + results.companies.length + results.resources.length + results.posts.length;
 
@@ -181,7 +195,7 @@ export default function GlobalSearch() {
                 </div>
               )}
 
-              {shown.people?.length > 0 && (
+              {(shown.people?.length > 0 || (tab !== "All" && peopleLoading)) && (
                 <div className="search-group">
                   <div className="search-group__header">
                     <h2 style={{ margin: 0 }}>People</h2>
@@ -191,6 +205,7 @@ export default function GlobalSearch() {
                       </button>
                     )}
                   </div>
+                  {peopleLoading && shown.people?.length === 0 && <p className="meta">Searching…</p>}
                   {(tab === "All" ? shown.people.slice(0, 3) : shown.people).map((p) => (
                     <div className="search-result-row" key={p.id}>
                       <div>
