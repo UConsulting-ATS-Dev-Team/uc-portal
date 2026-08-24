@@ -4,9 +4,12 @@ import { supabase } from "../data/supabaseClient.js";
 import { matchJob } from "../data/jobMatch.js";
 import { useAppState } from "../data/store.jsx";
 import { currentUser } from "../data/mockUser.js";
+import { fetchRealPeopleAtCompany } from "../data/realPeople.js";
+import { COMPANIES } from "../data/mockCompanies.js";
 import CompanyLogo from "../components/CompanyLogo.jsx";
 import Placeholder from "./Placeholder.jsx";
 import "../styles/jobDetail.css";
+import "../styles/network.css";
 
 const EMPLOYMENT_TYPE_LABEL = {
   internship: "Internship",
@@ -21,16 +24,24 @@ const REMOTE_TYPE_LABEL = { remote: "Remote", hybrid: "Hybrid", in_person: "In-p
 
 // Detail view for a real job (a UUID id, see JobDetail.jsx's dispatch at the
 // top of its component). Deliberately much simpler than the mock JobDetail:
-// no odds model, no UC connections, no interview write-ups -- those need
-// CRM/application-tracker data this job record doesn't have and won't
+// no odds model, no past-cycle outcomes, no interview write-ups -- those
+// need application-tracker data this job record doesn't have and won't
 // fabricate. What IS real here: the job's actual fields from the jobs
-// table, and a genuine match explanation via data/jobMatch.js against the
-// member's real local preferences -- same principle as the mock page's
-// match checklist, just honestly scoped to what's actually available for a
-// real job right now.
+// table, a genuine match explanation via data/jobMatch.js against the
+// member's real local preferences, and (since the real people import --
+// see JOB_ENGINE_ARCHITECTURE.md's Stage 5 entry) real UC members at this
+// company, matched the same way CompanyPage.jsx does (the directory's
+// company text doesn't match this app's canonical names, so it's a
+// starts-with match on the first token, not an exact one).
 export default function RealJobDetail({ jobId }) {
   const [job, setJob] = useState(undefined); // undefined = loading, null = not found
   const { preferences } = useAppState();
+
+  // Real UConsulting Directory people at this company (see JOB_ENGINE_
+  // ARCHITECTURE.md's Stage 5 entry) -- undefined while loading, kept
+  // separate from [] so the rail doesn't flash "no UC members" before the
+  // fetch resolves.
+  const [people, setPeople] = useState(undefined);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,8 +58,26 @@ export default function RealJobDetail({ jobId }) {
     };
   }, [jobId]);
 
+  useEffect(() => {
+    if (!job) return;
+    let cancelled = false;
+    setPeople(undefined);
+    fetchRealPeopleAtCompany(job.company)
+      .then((rows) => {
+        if (!cancelled) setPeople(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setPeople([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [job?.company]);
+
   if (job === undefined) return <Placeholder title="Loading…" />;
   if (job === null) return <Placeholder title="Job not found" />;
+
+  const companyPage = COMPANIES.find((c) => c.name === job.company);
 
   const match = matchJob(job, preferences, currentUser.classYear);
   const compLabel = job.compensation_text || (job.salary_min ? `$${job.salary_min}${job.salary_max && job.salary_max !== job.salary_min ? `-${job.salary_max}` : ""}` : "Not listed");
@@ -132,13 +161,43 @@ export default function RealJobDetail({ jobId }) {
         </div>
 
         <div className="detail-rail">
+          <div className="rail-card is-accent">
+            <div className="rail-card__title">UC members at {job.company}</div>
+            {people === undefined && <p className="meta" style={{ margin: 0 }}>Loading…</p>}
+            {people?.length === 0 && (
+              <p className="meta" style={{ margin: 0 }}>
+                No UC members on record at {job.company} yet.
+              </p>
+            )}
+            {people?.slice(0, 3).map((p) => (
+              <div className="person-row" key={p.id}>
+                <div>
+                  <div className="person-row__name">{p.name}</div>
+                  <div className="person-row__meta">{p.role || p.status}</div>
+                </div>
+                <Link to={`/network/${p.id}`} className="btn btn-secondary">
+                  Profile
+                </Link>
+              </div>
+            ))}
+            {people?.length > 3 && (
+              <button className="btn-link" style={{ marginTop: "var(--space-3)" }}>
+                See all {people.length} UC members
+              </button>
+            )}
+            {companyPage && (
+              <Link to={`/companies/${companyPage.id}`} className="btn-link" style={{ display: "block", marginTop: "var(--space-3)" }}>
+                See {job.company}'s full company page →
+              </Link>
+            )}
+          </div>
+
           <div className="rail-card">
             <div className="rail-card__title">About this listing</div>
             <p className="meta" style={{ margin: 0 }}>
               This is a real posting (admin/member-submitted or from an automated source) -- not yet
-              enriched with UC recruiting intelligence (alumni connections, past-cycle outcomes, interview
-              write-ups). That data comes from the application tracker and CRM integration, which don't yet
-              cover real jobs.
+              enriched with UC recruiting intelligence beyond who's here (past-cycle outcomes, interview
+              write-ups). That data comes from the application tracker, which doesn't yet cover real jobs.
             </p>
           </div>
         </div>

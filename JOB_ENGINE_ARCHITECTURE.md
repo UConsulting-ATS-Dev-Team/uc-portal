@@ -1156,10 +1156,109 @@ Stage 4 (started) Additional ATS adapters for other UC-target companies;
                  20260824110000) now that real search/sourcing no longer
                  needs synthetic data to prove itself against.
 
-Stage 5          LLM-assisted classification fallback for the long tail;
+Stage 5 (started) LLM-assisted classification fallback for the long tail;
                  natural-language search; ranking-weight tuning from real
                  engagement data; real CRM integration replacing the
                  mocked alumni/connection data.
+
+                 First piece: real member/alumni data replacing data/
+                 mockPeople.js's 13 fictional people as the primary
+                 Network/Member-profile source. Source: the club's own
+                 "UConsulting Directory" Google Sheet (Drive, read-only
+                 access) -- its Active + Alumni tabs specifically; the
+                 sheet's other 3 tabs are stale duplicates from earlier
+                 schema migrations the club went through and were excluded
+                 by direct instruction. One-time snapshot import (not a
+                 live sync -- re-running later, e.g. once pre-2020 alumni
+                 get added to the sheet, means asking for another import,
+                 not new infrastructure), 150 real people (46 active + 104
+                 alumni) into a new `people` table, RLS-gated the same as
+                 jobs/industries/job_functions (authenticated members only,
+                 not the public anon role -- appropriate for real names and
+                 emails).
+
+                 Only fields with an actual product use case were
+                 extracted: name, status, class year (alumni: from
+                 graduating/admitted class text; active members: no fixed
+                 grad year exists in the sheet, left null rather than
+                 guessed), major, company, role/committee position,
+                 LinkedIn, email, mentor. Phone numbers and Venmo handles
+                 exist in the source sheet but have no current or planned
+                 feature that needs them and are meaningfully more
+                 sensitive than the rest -- deliberately never extracted,
+                 not just hidden by RLS. openToCoffeeChats and
+                 mutualConnections default to false/0 for every real
+                 person rather than fabricating a specific consent or
+                 relationship claim about someone real.
+
+                 The real "company" text (however each person typed it in
+                 -- "Bain", "Bain & Co", "Deloitte Human Capital") doesn't
+                 match data/mockCompanies.js's canonical names ("Bain &
+                 Company", "Goldman Sachs"), so CompanyPage's people-at-
+                 company lookup matches on the canonical name's first
+                 token as a starts-with pattern rather than requiring an
+                 exact match (data/realPeople.js's companyMatchToken()) --
+                 confirmed necessary live: an exact match returned 0 alumni
+                 for every one of the 8 companies until this was added.
+
+                 The harder problem than the fetch: MemberProfile.jsx's
+                 rich sections (Experience with specific invented date
+                 ranges, Education with a randomly-picked major, a
+                 "Happy to help with" checklist, Contributions stats) are
+                 all synthetically generated per data/peopleUtils.js for
+                 the fictional mock people -- appropriate for 13 characters
+                 explicitly documented as fictional, not appropriate to
+                 render for a real, named person (inventing a specific
+                 employment history or a consent checklist someone never
+                 provided). Rather than thread isReal conditionals through
+                 that component, real people get their own
+                 RealMemberProfile.jsx -- shows only fields that trace
+                 directly to the source spreadsheet, says so explicitly
+                 when something isn't known instead of inventing it. Same
+                 dispatch pattern as JobDetail.jsx/RealJobDetail.jsx:
+                 MemberProfile.jsx checks whether the id is a UUID (real)
+                 or a mock slug like "sana-liu", same
+                 network-card-level fix applied to Network.jsx (skips
+                 peopleUtils.js's capabilitiesFor() chips for real people,
+                 same fabrication concern).
+
+                 Real PII handling: the data-loading migration was
+                 deliberately never committed to this repo, unlike every
+                 other migration this session -- applied directly via
+                 `supabase db push` then removed locally (with `supabase
+                 migration repair --status reverted` to keep the remote
+                 ledger consistent with local files afterward). A committed
+                 SQL file with 150 real names/emails/majors/mentors would
+                 become permanent, widely-readable git history the moment
+                 this repo gets a remote, in a way the database itself
+                 (behind RLS) isn't -- an explicit decision, not an
+                 oversight, given this repo has no settled hosting plan
+                 yet. The table schema and grants (no PII) are committed
+                 normally.
+
+                 Second piece, same day: RealJobDetail.jsx (the page real
+                 job postings actually use, 1,355 of them) got a "UC
+                 members at {company}" rail -- previously had none at all
+                 (a genuinely new capability this data enables, not a
+                 swap), where the mock JobDetail.jsx has always had one.
+                 Same starts-with company-name matching as CompanyPage's
+                 (data/realPeople.js's fetchRealPeopleAtCompany() -- one
+                 shared function, not reimplemented per caller), plus a
+                 "See {company}'s full company page" link that only
+                 renders when a matching data/mockCompanies.js entry
+                 actually exists (Stripe, Deloitte) -- the 6 companies with
+                 no company-page entry (Databricks, Coinbase, Airbnb, Brex,
+                 Figma, Robinhood) correctly show real people with no dead
+                 link. Verified live against a real Deloitte posting (3
+                 real names shown, "See all 10 UC members") and a real
+                 Databricks one (honest "No UC members on record... yet",
+                 no crash, no company-page link).
+
+                 Not yet done: JobDetail.jsx's (the mock-job-only page,
+                 now a secondary path since real jobs are the default) own
+                 people rail and Global Search still read
+                 data/mockPeople.js -- left as follow-up rather than
+                 further scope on this pass.
 ```
 
 ---
