@@ -14,9 +14,15 @@ import {
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
 import Placeholder from "./Placeholder.jsx";
+import RealMemberProfile from "./RealMemberProfile.jsx";
 import RequestCoffeeChatModal from "../components/modals/RequestCoffeeChatModal.jsx";
 import "../styles/jobDetail.css";
 import "../styles/memberProfile.css";
+
+// Real people (the UConsulting Directory import) have a UUID id; mock
+// people (data/mockPeople.js) use a readable slug like "sana-liu" -- same
+// dispatch-by-id-shape pattern as JobDetail.jsx/RealJobDetail.jsx.
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function initials(name) {
   return name.split(" ").map((p) => p[0]).join("");
@@ -29,7 +35,7 @@ export default function MemberProfile() {
   const [showChatModal, setShowChatModal] = useState(false);
 
   if (!person) {
-    return <Placeholder title="Member not found" />;
+    return UUID_PATTERN.test(personId) ? <RealMemberProfile personId={personId} /> : <Placeholder title="Member not found" />;
   }
 
   const isMember = person.status === "Current member";

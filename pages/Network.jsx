@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { PEOPLE, findPerson } from "../data/mockPeople.js";
+import { findPerson as findMockPerson } from "../data/mockPeople.js";
+import { fetchRealPeople } from "../data/realPeople.js";
 import { capabilitiesFor } from "../data/peopleUtils.js";
 import { useAppState } from "../data/store.jsx";
 import RequestCoffeeChatModal from "../components/modals/RequestCoffeeChatModal.jsx";
@@ -14,8 +15,8 @@ function initials(name) {
   return name.split(" ").map((p) => p[0]).join("");
 }
 
-function uniqueValues(key) {
-  return ["All", ...new Set(PEOPLE.map((p) => p[key]).filter(Boolean))];
+function uniqueValues(people, key) {
+  return ["All", ...new Set(people.map((p) => p[key]).filter(Boolean))];
 }
 
 export default function Network() {
@@ -29,9 +30,26 @@ export default function Network() {
   const [browseAnyway, setBrowseAnyway] = useState(false);
   const [chatModalPerson, setChatModalPerson] = useState(null);
 
+  // Real UConsulting Directory data (150 active members + alumni) replaces
+  // the 13 fictional mock people as of this integration -- see
+  // JOB_ENGINE_ARCHITECTURE.md's Stage 5 entry. findPerson still checks the
+  // mock roster too (below) since a few other still-mock screens link to
+  // those ids and shouldn't 404.
+  const [PEOPLE, setPeople] = useState([]);
+  const [peopleLoading, setPeopleLoading] = useState(true);
+
+  useEffect(() => {
+    fetchRealPeople()
+      .then(setPeople)
+      .finally(() => setPeopleLoading(false));
+  }, []);
+
+  function findPerson(id) {
+    return PEOPLE.find((p) => p.id === id) ?? findMockPerson(id);
+  }
+
   const alumniCount = PEOPLE.filter((p) => p.status !== "Current member").length;
   const memberCount = PEOPLE.filter((p) => p.status === "Current member").length;
-  const openCount = PEOPLE.filter((p) => p.openToCoffeeChats).length;
   const pendingRequests = Object.values(coffeeChatStatus).filter((s) => s === "Request sent").length;
 
   const filtered = useMemo(() => {
@@ -48,7 +66,7 @@ export default function Network() {
       }
       return true;
     });
-  }, [search, industry, company, location, gradYear, audience]);
+  }, [PEOPLE, search, industry, company, location, gradYear, audience]);
 
   const suggested = useMemo(() => {
     return PEOPLE.filter((p) => !savedConnections.includes(p.id))
@@ -59,7 +77,7 @@ export default function Network() {
         return { ...p, reason };
       })
       .slice(0, 3);
-  }, [savedConnections, preferences]);
+  }, [PEOPLE, savedConnections, preferences]);
 
   const companyCounts = useMemo(() => {
     const counts = {};
@@ -67,7 +85,11 @@ export default function Network() {
       if (p.company) counts[p.company] = (counts[p.company] || 0) + 1;
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  }, []);
+  }, [PEOPLE]);
+
+  if (peopleLoading) {
+    return <p className="meta">Loading the UC network…</p>;
+  }
 
   return (
     <div>
@@ -75,7 +97,7 @@ export default function Network() {
         <div>
           <h1>Network</h1>
           <p className="network-header__stat">
-            {alumniCount} alumni · {memberCount} current members · {openCount} open to coffee chats this month
+            {alumniCount} alumni · {memberCount} current members
           </p>
         </div>
         <div className="network-header__counts">
@@ -87,23 +109,23 @@ export default function Network() {
       <div className="network-filters">
         <input type="text" placeholder="Search name or company" value={search} onChange={(e) => setSearch(e.target.value)} />
         <select value={industry} onChange={(e) => setIndustry(e.target.value)}>
-          {uniqueValues("industry").map((v) => (
+          {uniqueValues(PEOPLE, "industry").map((v) => (
             <option key={v}>{v}</option>
           ))}
         </select>
         <select value={company} onChange={(e) => setCompany(e.target.value)}>
-          {uniqueValues("company").map((v) => (
+          {uniqueValues(PEOPLE, "company").map((v) => (
             <option key={v}>{v}</option>
           ))}
         </select>
         <select value={location} onChange={(e) => setLocation(e.target.value)}>
-          {uniqueValues("location").map((v) => (
+          {uniqueValues(PEOPLE, "location").map((v) => (
             <option key={v}>{v}</option>
           ))}
         </select>
         <select value={gradYear} onChange={(e) => setGradYear(e.target.value)}>
           <option>All</option>
-          {[...new Set(PEOPLE.map((p) => p.classYear))].sort().map((y) => (
+          {[...new Set(PEOPLE.map((p) => p.classYear).filter(Boolean))].sort().map((y) => (
             <option key={y}>{y}</option>
           ))}
         </select>
@@ -123,8 +145,8 @@ export default function Network() {
             <div className="empty-state">
               <h1 style={{ fontSize: "var(--text-title-min)" }}>You haven't met anyone here yet</h1>
               <p>
-                {openCount} alumni are open to coffee chats this month — the Networking track walks you through
-                sending your first message if that feels intimidating.
+                {alumniCount} UC alumni are in the directory — the Networking track walks you through sending your
+                first message if that feels intimidating.
               </p>
               <div style={{ display: "flex", gap: "var(--space-3)", justifyContent: "center", marginTop: "var(--space-5)" }}>
                 <button className="btn btn-primary" onClick={() => setBrowseAnyway(true)}>
@@ -154,13 +176,19 @@ export default function Network() {
                   <div className="person-card__meta">
                     {p.location} · {p.industry}
                   </div>
-                  <div className="chip-row" style={{ marginBottom: "var(--space-3)" }}>
-                    {capabilitiesFor(p).map((c) => (
-                      <span className="chip" key={c}>
-                        {c}
-                      </span>
-                    ))}
-                  </div>
+                  {/* capabilitiesFor() is generated/seeded, not a real claim
+                      about this person -- fine for the remaining fictional
+                      mock people, not appropriate to show as fact on a real,
+                      named member or alum. */}
+                  {!p.isReal && (
+                    <div className="chip-row" style={{ marginBottom: "var(--space-3)" }}>
+                      {capabilitiesFor(p).map((c) => (
+                        <span className="chip" key={c}>
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className="person-card__actions">
                     {isMember ? (
                       <Link to="/messages" className="btn btn-primary">Message</Link>

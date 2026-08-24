@@ -5,7 +5,7 @@ import { statsFor, quotesFor, activityFor } from "../data/companyUtils.js";
 import { deadlineLabel } from "../data/jobUtils.js";
 import { fetchLiveJobsByCompany } from "../data/companyLiveJobs.js";
 import { realJobToCardShape } from "../data/realJobAdapter.js";
-import { peopleAt } from "../data/mockPeople.js";
+import { fetchRealPeopleAtCompany } from "../data/realPeople.js";
 import { COMPANIES } from "../data/mockCompanies.js";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
@@ -40,6 +40,12 @@ export default function CompanyPage() {
   // both get the same honest "no live feed" panel rather than a guess).
   const [liveJobs, setLiveJobs] = useState(undefined);
 
+  // Real UConsulting Directory people at this company, not data/mockPeople.js's
+  // peopleAt() -- see JOB_ENGINE_ARCHITECTURE.md's Stage 5 entry. undefined
+  // while loading (kept separate from [] so ucAlumni/officeCounts below don't
+  // flash "0" before the real fetch resolves).
+  const [realPeople, setRealPeople] = useState(undefined);
+
   useEffect(() => {
     if (!company) return;
     let cancelled = false;
@@ -51,6 +57,14 @@ export default function CompanyPage() {
       .catch(() => {
         if (!cancelled) setLiveJobs([]);
       });
+    setRealPeople(undefined);
+    fetchRealPeopleAtCompany(company.name)
+      .then((people) => {
+        if (!cancelled) setRealPeople(people);
+      })
+      .catch(() => {
+        if (!cancelled) setRealPeople([]);
+      });
     return () => {
       cancelled = true;
     };
@@ -60,11 +74,11 @@ export default function CompanyPage() {
     return <Placeholder title="Company not found" />;
   }
 
-  const stats = statsFor(company);
+  const people = realPeople ?? [];
+  const stats = { ...statsFor(company), ucAlumni: realPeople === undefined ? "…" : people.length };
   const hasLiveFeed = Array.isArray(liveJobs) && liveJobs.length > 0;
   const openRolesDisplay = liveJobs === undefined ? "…" : hasLiveFeed ? String(liveJobs.length) : "—";
   const openRolesLabel = liveJobs !== undefined && !hasLiveFeed ? "No live feed" : "Open roles";
-  const people = peopleAt(company.name);
   const isWatched = preferences.followedCompanies.includes(company.name);
   const stageCount = stats.offers > 0 ? 5 : stats.ucApplicants >= 5 ? 3 : stats.ucApplicants > 0 ? 2 : 1;
   const quotes = quotesFor(company);
