@@ -145,8 +145,21 @@
 }
 
 /* Table */
+/* .board and .timeline-container (styles/timeline.css) already scroll
+   horizontally within themselves rather than reflowing -- a kanban board
+   and a Gantt chart genuinely can't become a single column without
+   becoming a different UI, same reasoning Trello/Jira/Linear use. The
+   table needs the same treatment: reflowing 7 columns into stacked cards
+   is a bigger redesign than this pass calls for, so it scrolls instead of
+   overflowing the whole page (its own container, not the page, so the
+   view-toggle/controls above it stay put while only the table scrolls). */
+.tracker-table__scroll {
+  overflow-x: auto;
+}
+
 .tracker-table {
   width: 100%;
+  min-width: 700px;
   border-collapse: collapse;
   background: var(--color-surface);
   border: var(--border-hairline);
@@ -196,4 +209,12 @@
 .tracker-table__footer-actions {
   display: flex;
   gap: var(--space-3);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 639px) {
+  .tracker-table__footer {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
 }
