@@ -31,3 +31,12 @@
   background: var(--color-surface);
   text-align: center;
 }
+
+/* ---- Responsive ---- */
+/* .detail-layout/.detail-rail (styles/jobDetail.css) already stack below
+   900px -- this only needs its own result rows to wrap on phone width. */
+@media (max-width: 639px) {
+  .search-result-row {
+    flex-wrap: wrap;
+  }
+}

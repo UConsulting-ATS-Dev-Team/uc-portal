@@ -67,3 +67,20 @@
   padding: var(--space-2) 0;
   font-size: var(--text-secondary);
 }
+
+/* ---- Responsive ---- */
+/* .detail-layout/.detail-rail (styles/jobDetail.css) already stack below
+   900px -- this only needs its own narrower flex rows handled. */
+@media (max-width: 639px) {
+  .notif-needs-action__actions {
+    flex-wrap: wrap;
+  }
+
+  .notif-earlier-row {
+    flex-wrap: wrap;
+  }
+
+  .notif-earlier-row__source {
+    margin-left: 0;
+  }
+}

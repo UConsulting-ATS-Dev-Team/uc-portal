@@ -195,3 +195,50 @@
   display: flex;
   gap: var(--space-2);
 }
+
+/* ---- Responsive ---- */
+/* No "show list vs. thread" toggle state exists, so rather than invent one
+   for this pass, the two-pane layout narrows its fixed list column at
+   900px, then stacks list-above-thread at 640px with the list capped to a
+   scrollable height instead of an unbounded page. */
+@media (max-width: 899px) {
+  .conversation-list {
+    width: 220px;
+  }
+}
+
+@media (max-width: 639px) {
+  .messages-layout {
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+  }
+
+  .conversation-list {
+    width: 100%;
+    height: 240px;
+    border-right: none;
+    border-bottom: var(--border-hairline);
+  }
+
+  .thread-pane {
+    min-height: 420px;
+  }
+
+  .thread-pane__header {
+    flex-wrap: wrap;
+  }
+
+  .thread-pane__header-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .composer-row {
+    flex-wrap: wrap;
+  }
+
+  .composer-row__tools {
+    flex-wrap: wrap;
+  }
+}
