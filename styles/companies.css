@@ -180,3 +180,25 @@
   font-size: var(--text-meta);
   flex: 0 0 auto;
 }
+
+/* ---- Responsive ---- */
+@media (max-width: 899px) {
+  .companies-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 639px) {
+  .company-card__stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .opportunity-row {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .company-header {
+    flex-wrap: wrap;
+  }
+}

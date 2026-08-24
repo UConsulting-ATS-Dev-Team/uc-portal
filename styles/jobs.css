@@ -325,3 +325,49 @@
   font-size: var(--text-secondary);
   padding: 0;
 }
+
+/* ---- Responsive ---- */
+/* Shared by Jobs.jsx and Companies.jsx (both use .jobs-layout/.filters).
+   Breakpoints match styles/shell.css's documented scale. */
+@media (max-width: 899px) {
+  .jobs-layout {
+    flex-direction: column;
+  }
+
+  .filters {
+    width: 100%;
+  }
+
+  .jobs-header {
+    flex-wrap: wrap;
+    gap: var(--space-4);
+  }
+
+  .jobs-tabs__list {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 639px) {
+  .jobs-header__actions {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .jobs-header__actions select {
+    flex: 1 1 auto;
+  }
+
+  .job-card {
+    flex-wrap: wrap;
+  }
+
+  .job-card__actions {
+    width: 100%;
+    flex-direction: row;
+  }
+
+  .job-card__actions > * {
+    flex: 1 1 auto;
+  }
+}
