@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { fetchRemotePreferences, syncPreferencesToRemote } from "./memberPreferencesSync.js";
+import { fetchRemoteTrackedApplications, syncTrackedApplicationToRemote } from "./trackerSync.js";
 
 // Prototype-wide shared state (career preferences, onboarding progress,
 // and later: saved jobs, tracker stage, etc.) -- persisted to
@@ -206,6 +207,30 @@ export function AppStateProvider({ children }) {
     syncPreferencesToRemote(state.preferences);
   }, [state.preferences, hydratedFromRemote]);
 
+  // Real applications tracker (Stage 5) -- same one-time-hydrate-on-mount
+  // shape as preferences above, except merged into local state rather than
+  // replacing it outright: trackedJobs/prepLogged/timelineShiftDays also
+  // hold the seeded demo applications (SEED_TRACKED_JOBS), which are
+  // deliberately never synced to Supabase (see below), so a member with no
+  // real tracked applications yet should keep seeing them, not an empty
+  // board. Merging (remote entries win per-jobId, anything local-only is
+  // preserved) gets that for free and also closes a narrow race: if a
+  // member interacts with the tracker in the brief window before this
+  // fetch resolves, an outright replace would wipe that action the moment
+  // hydration completes.
+  useEffect(() => {
+    fetchRemoteTrackedApplications().then((remote) => {
+      if (remote) {
+        setState((prev) => ({
+          ...prev,
+          trackedJobs: { ...prev.trackedJobs, ...remote.trackedJobs },
+          prepLogged: { ...prev.prepLogged, ...remote.prepLogged },
+          timelineShiftDays: { ...prev.timelineShiftDays, ...remote.timelineShiftDays },
+        }));
+      }
+    });
+  }, []);
+
   function updatePreferences(patch) {
     setState((prev) => ({ ...prev, preferences: { ...prev.preferences, ...patch } }));
   }
@@ -256,43 +281,61 @@ export function AppStateProvider({ children }) {
     }));
   }
 
+  // Each mutation below computes the full post-update application record
+  // into a closure variable (syncPayload) *inside* the setState updater --
+  // cheap, pure, and safe under StrictMode's double-invoke -- then fires
+  // the actual network sync *after* setState returns, never from inside
+  // the updater itself (that would run the fire-and-forget upsert twice in
+  // dev, once for each StrictMode invocation of an impure updater).
+
   function addToTracker(jobId, stage = "Interested") {
+    let syncPayload = null;
     setState((prev) => {
       if (prev.trackedJobs[jobId]) return prev; // don't downgrade an existing stage
       const now = new Date().toISOString();
-      return {
-        ...prev,
-        trackedJobs: { ...prev.trackedJobs, [jobId]: { stage, addedAt: now, stageHistory: [{ stage, date: now }] } },
-      };
+      const record = { stage, addedAt: now, stageHistory: [{ stage, date: now }] };
+      syncPayload = { ...record, prepLoggedHours: 0, timelineShiftDays: 0 };
+      return { ...prev, trackedJobs: { ...prev.trackedJobs, [jobId]: record } };
     });
+    if (syncPayload) syncTrackedApplicationToRemote(jobId, syncPayload);
   }
 
   function logPrep(jobId, hours = 2) {
-    setState((prev) => ({
-      ...prev,
-      prepLogged: { ...prev.prepLogged, [jobId]: (prev.prepLogged[jobId] || 0) + hours },
-    }));
+    let syncPayload = null;
+    setState((prev) => {
+      const newHours = (prev.prepLogged[jobId] || 0) + hours;
+      const tracked = prev.trackedJobs[jobId];
+      if (tracked) {
+        syncPayload = { ...tracked, prepLoggedHours: newHours, timelineShiftDays: prev.timelineShiftDays[jobId] ?? 0 };
+      }
+      return { ...prev, prepLogged: { ...prev.prepLogged, [jobId]: newHours } };
+    });
+    if (syncPayload) syncTrackedApplicationToRemote(jobId, syncPayload);
   }
 
   function updateApplicationStage(jobId, stage) {
+    let syncPayload = null;
     setState((prev) => {
       const existing = prev.trackedJobs[jobId];
       const history = existing.stageHistory || [];
-      return {
-        ...prev,
-        trackedJobs: {
-          ...prev.trackedJobs,
-          [jobId]: { ...existing, stage, stageHistory: [...history, { stage, date: new Date().toISOString() }] },
-        },
-      };
+      const record = { ...existing, stage, stageHistory: [...history, { stage, date: new Date().toISOString() }] };
+      syncPayload = { ...record, prepLoggedHours: prev.prepLogged[jobId] ?? 0, timelineShiftDays: prev.timelineShiftDays[jobId] ?? 0 };
+      return { ...prev, trackedJobs: { ...prev.trackedJobs, [jobId]: record } };
     });
+    if (syncPayload) syncTrackedApplicationToRemote(jobId, syncPayload);
   }
 
   function shiftTimeline(jobId, deltaDays) {
-    setState((prev) => ({
-      ...prev,
-      timelineShiftDays: { ...prev.timelineShiftDays, [jobId]: (prev.timelineShiftDays[jobId] || 0) + deltaDays },
-    }));
+    let syncPayload = null;
+    setState((prev) => {
+      const newShift = (prev.timelineShiftDays[jobId] || 0) + deltaDays;
+      const tracked = prev.trackedJobs[jobId];
+      if (tracked) {
+        syncPayload = { ...tracked, prepLoggedHours: prev.prepLogged[jobId] ?? 0, timelineShiftDays: newShift };
+      }
+      return { ...prev, timelineShiftDays: { ...prev.timelineShiftDays, [jobId]: newShift } };
+    });
+    if (syncPayload) syncTrackedApplicationToRemote(jobId, syncPayload);
   }
 
   function requestCoffeeChat(personId) {

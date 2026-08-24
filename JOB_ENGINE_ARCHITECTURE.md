@@ -1254,11 +1254,75 @@ Stage 5 (started) LLM-assisted classification fallback for the long tail;
                  Databricks one (honest "No UC members on record... yet",
                  no crash, no company-page link).
 
-                 Not yet done: JobDetail.jsx's (the mock-job-only page,
-                 now a secondary path since real jobs are the default) own
-                 people rail and Global Search still read
-                 data/mockPeople.js -- left as follow-up rather than
-                 further scope on this pass.
+                 Both since closed: JobDetail.jsx's (the mock-job-only
+                 page) own people rail now uses fetchRealPeopleAtCompany()
+                 too (a mock job at Bain shows the same 5 real alumni the
+                 real pages do), and Global Search's people results now
+                 come from searchRealPeople() (data/realPeople.js) instead
+                 of the mock roster -- both were the last surfaces still
+                 showing fictional people after the rest of this stage
+                 went real.
+
+                 Third piece: the Applications tracker itself, the last
+                 core surface still fully local-only after jobs and people
+                 both went real. `trackedJobs`/`prepLogged`/
+                 `timelineShiftDays` (data/store.jsx) previously lived only
+                 in localStorage -- lost on a new device, invisible to
+                 anything server-side. New `tracked_applications` table (one
+                 row per member+job, not per member -- a member tracks many
+                 applications, member_preferences' one-row-per-member shape
+                 doesn't fit here), RLS'd to `member_id = auth.uid()` with
+                 deliberately no `is_admin()` bypass -- CLAUDE.md's Admin
+                 Dashboard section is explicit that admins see aggregate
+                 recruiting data only, never an individual's own
+                 application list, and this table is exactly the data that
+                 boundary protects.
+
+                 Same background-sync shape memberPreferencesSync.js
+                 already established for preferences (data/trackerSync.js):
+                 local state stays authoritative for rendering (so the
+                 Board's drag-and-drop and the Timeline's drag-to-reschedule
+                 stay instant, no round-trip before the UI updates), a
+                 one-time hydration fetch on mount, and a fire-and-forget
+                 upsert on every mutation. Two differences from the
+                 preferences version, both because this data is per-
+                 application rather than one blob: hydration *merges*
+                 remote into local rather than replacing it (so the seeded
+                 demo applications -- SEED_TRACKED_JOBS, never themselves
+                 synced -- survive for a member with no real tracked
+                 applications yet, and so a mutation made in the brief
+                 window before hydration resolves can't be wiped by it
+                 landing afterward); and each of the four mutation
+                 functions (addToTracker/updateApplicationStage/logPrep/
+                 shiftTimeline) computes the complete post-update record
+                 into a closure variable *inside* the setState updater, then
+                 fires the actual sync call *after* setState returns rather
+                 than from inside the updater -- an updater is supposed to
+                 be pure, and calling a network side effect from inside one
+                 would fire twice under StrictMode's double-invoke.
+
+                 Verified live end-to-end (real authenticated test session):
+                 logging prep time on an already-tracked seeded application
+                 wrote a complete real row (correct member_id, correct
+                 stage_history carried over from the seed even though the
+                 seed itself was never synced -- confirming "interacting
+                 with a demo item makes it real from that point" works as
+                 designed); adding a previously-untracked job created a
+                 second row correctly; clearing localStorage entirely and
+                 reloading correctly restored the real prep hours from
+                 Supabase while the merge preserved all 6 still-unsynced
+                 seed applications alongside it (7 tracked, as before).
+                 Test rows deleted afterward. Not verified live: the Board's
+                 drag-and-drop and Timeline's drag-to-reschedule paths
+                 specifically -- this session's browser pane couldn't
+                 composite for a real mouse drag, and (matching this
+                 project's own prior note that synthetic events are
+                 unreliable for this Board) dispatched DragEvents didn't
+                 reach the React handler either. updateApplicationStage()
+                 and shiftTimeline() use the identical closure-then-sync
+                 pattern already proven correct by the other two functions,
+                 so this is a real but narrow gap in interactive
+                 verification, not an untested code path.
 ```
 
 ---
