@@ -1817,3 +1817,47 @@ Part 5's original cut list.
 Still nothing implemented. This supersedes none of Parts 1–7 — it's the
 same architecture, now checked against a much more detailed backlog and
 adjusted in the two places (8.3) it actually needed to change.
+
+**2026-08-24 update — audited this list against the actual live codebase
+(Stage 2-5 having since happened) and found a real gap in US-40/41/42/43,
+now fixed.** `server/src/rank.ts` has always implemented the real §3.9
+weighted formula correctly, tested (`server/tests/rank.test.ts`) -- but it
+runs server-side only, and the frontend's own port of it
+(`data/jobMatch.js`'s old `rankJobs()`) was **never actually called from
+anywhere** (confirmed via a repo-wide grep). `pages/Jobs.jsx`'s "Best
+match" sort was instead just `matchScore` (the pure preference-fit
+percentage) with no freshness/deadline-urgency/quality/UC-relevance
+blended in at all -- so two jobs tied on preference fit (a common case:
+most real postings score 0% against any one member's specific industry/
+role preferences) sorted in arbitrary insertion order, not by any real
+secondary signal.
+
+Fixed by replacing the dead `rankJobs()` with `finalScore()` (data/
+jobMatch.js), a faithful per-job port of all six §3.9 terms operating on
+the adapted card shape rather than a raw Supabase row (`quality_score`
+added to `data/realJobAdapter.js`'s output to make that possible; the
+other terms -- `deadlineDate`, `postedDaysAgo`, `company` -- already
+existed on the card shape). Wired into `pages/Jobs.jsx`'s `sortJobs()`
+"Best match" branch specifically -- `matchScore` itself, and everywhere
+it's *displayed* (card badges, the match checklist), is deliberately
+untouched, since US-34's "explain the match score" story means that
+number should keep meaning exactly "how well this fits your stated
+preferences," not a blended ranking score. Text relevance (the 6th term)
+reads `filters.keyword` when a search is active rather than a literal
+port of rank.ts's own query handling, since Jobs.jsx already has a
+*harder* keyword filter (excludes non-matches outright) that rank.ts's
+design never assumed existed -- this only differentiates among jobs that
+already survived that filter, not a substitute for it. Company anti-
+domination (US-43) was left to Jobs.jsx's own existing `capPerCompany()`
+rather than porting rank.ts's separate top-20 cap mechanism too, since
+both already serve the same goal and Jobs.jsx's version (hard display cap
+everywhere) is the one actually in effect.
+
+Verified live: with an active search where most results tie at 0% match
+(a real, common case), "Best match" now visibly surfaces the ones with
+the most urgent deadlines first, rather than an arbitrary tied order --
+confirms the previously-inert deadline/freshness/quality/UC-relevance
+terms are now actually affecting sort order. Deadline/Newest sorts
+(unrelated code paths) reverified unaffected. All 44 existing tests still
+pass, including `rank.test.ts`'s 4 tests against the untouched server-side
+formula.

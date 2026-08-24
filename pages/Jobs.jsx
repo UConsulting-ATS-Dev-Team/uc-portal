@@ -7,7 +7,7 @@ import { INDUSTRIES, LOCATIONS } from "../data/careerOptions.js";
 import { daysUntil, matchesDeadlineBucket } from "../data/jobUtils.js";
 import { useAppState } from "../data/store.jsx";
 import { fetchAllRows } from "../data/fetchAllRows.js";
-import { matchJob } from "../data/jobMatch.js";
+import { matchJob, finalScore } from "../data/jobMatch.js";
 import { realJobToCardShape } from "../data/realJobAdapter.js";
 import { currentUser } from "../data/mockUser.js";
 import { parseJobQuery } from "../data/nlSearchParser.js";
@@ -138,10 +138,16 @@ function matchesTab(job, tab, savedJobIds) {
   return true;
 }
 
-function sortJobs(jobs, sortBy) {
+function sortJobs(jobs, sortBy, preferences, keyword) {
   const copy = [...jobs];
-  if (sortBy === "bestMatch") copy.sort((a, b) => b.matchScore - a.matchScore);
-  else if (sortBy === "deadline")
+  if (sortBy === "bestMatch") {
+    // US-40/41/42/43's real weighted formula (data/jobMatch.js's
+    // finalScore) -- blends in freshness/deadline urgency/quality/UC
+    // relevance on top of the pure preference-fit percentage, so "Best
+    // match" isn't just re-sorting by matchScore alone. matchScore itself
+    // (the displayed "94% match" badge) is untouched by this.
+    copy.sort((a, b) => finalScore(b, preferences, keyword) - finalScore(a, preferences, keyword));
+  } else if (sortBy === "deadline")
     copy.sort((a, b) => (daysUntil(a.deadlineDate) ?? Infinity) - (daysUntil(b.deadlineDate) ?? Infinity));
   else if (sortBy === "newest") copy.sort((a, b) => a.postedDaysAgo - b.postedDaysAgo);
   return copy;
@@ -222,7 +228,10 @@ export default function Jobs() {
     () => filteredForCount.filter((j) => matchesTab(j, tab, savedJobIds)),
     [filteredForCount, tab, savedJobIds]
   );
-  const sorted = useMemo(() => sortJobs(tabbed, sortBy), [tabbed, sortBy]);
+  const sorted = useMemo(
+    () => sortJobs(tabbed, sortBy, preferences, filters.keyword),
+    [tabbed, sortBy, preferences, filters.keyword]
+  );
   // Skip capping once a keyword search is active -- "View N more at
   // Company" works by setting the keyword filter to that company's name,
   // and re-capping on top of an already-explicit narrowing would show the

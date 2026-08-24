@@ -36,6 +36,7 @@ export function realJobToCardShape(job, matchResult) {
     role: job.title,
     matchScore: matchResult?.score ?? 0,
     matchEligible: matchResult?.eligible ?? true,
+    qualityScore: job.quality_score,
     ucPosted: false,
     referralAvailable: false,
     location: job.city ?? (job.remote_type === "remote" ? "Remote" : ""),

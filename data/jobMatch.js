@@ -1,5 +1,5 @@
 // Real hard-constraint + soft-preference matching (US-32/33/34) and ranking
-// (US-40/41/43) against real Supabase jobs rows. Ports the logic already
+// (US-40/41/42/43) against real Supabase jobs rows. Ports the logic already
 // proven in server/src/match.ts + rank.ts to plain JS, since the frontend
 // can't directly import those TS/Deno-oriented modules -- the two should be
 // kept in sync by hand if the scoring approach changes. Reads the same
@@ -8,7 +8,13 @@
 // match checklist does for mock jobs -- this is the same logic, now able to
 // run against a real job row's field names (city/remote_type/
 // relevant_industries instead of location/workMode/industry).
-// Standalone, like jobSearch.js -- doesn't touch Jobs.jsx's UI yet.
+//
+// matchJob() is used directly (RealJobDetail.jsx's checklist, and
+// pages/Jobs.jsx to compute each card's matchScore). finalScore() below is
+// the actual §3.9 ranking formula -- wired into pages/Jobs.jsx's "Best
+// match" sort, not just present in the file; a from-scratch, never-called
+// version of this used to live here with a different, simpler formula
+// than server/src/rank.ts's real one -- see finalScore()'s own comment.
 
 // --- Hard constraints (US-33): filter out entirely, never just down-rank ---
 function isEligible(job, preferences, classYear) {
@@ -60,41 +66,83 @@ export function matchJob(job, preferences, classYear) {
   return { eligible: true, score: Math.round(score), factors };
 }
 
-// US-40/41/43 -- weighted by member-match + freshness, with the same
-// per-company anti-domination cap server/src/rank.ts uses (max 3 per
-// company in the top 20), so one employer's posting volume can't crowd out
-// everything else.
-const MAX_PER_COMPANY_IN_TOP_WINDOW = 3;
-const TOP_WINDOW_SIZE = 20;
+// US-40/41/42/43 -- the real §3.9 weighted formula:
+//   Final Score = w1*Relevance + w2*MemberMatch + w3*Freshness
+//               + w4*Quality + w5*DeadlineUrgency + w6*UCRelevance
+// This used to be a dead, never-imported `rankJobs()` here that both (a)
+// nobody called -- pages/Jobs.jsx's "Best match" sort used raw matchScore
+// alone, no freshness/deadline/UC-relevance/quality at all -- and (b) used
+// a different, simpler ad-hoc blend than server/src/rank.ts's real,
+// tested formula even if it had been wired in. This is the actual port,
+// now imported by pages/Jobs.jsx's sortJobs(). Operates on the adapted
+// card shape (data/realJobAdapter.js's output), not the raw Supabase row,
+// since that's what's available where sorting happens; every field this
+// reads (deadlineDate, postedDaysAgo, qualityScore, company) already
+// exists on that shape or was added alongside this fix (qualityScore).
+const DEFAULT_WEIGHTS = {
+  relevance: 0.3,
+  memberMatch: 0.3,
+  ucRelevance: 0.15,
+  deadlineUrgency: 0.15,
+  freshness: 0.05,
+  quality: 0.05,
+};
 
-function freshnessScore(job, now) {
-  if (!job.posted_date) return 0.5;
-  const days = (now - new Date(job.posted_date)) / 86400000;
-  return Math.max(0, Math.min(1, 1 - days / 90));
+// Same mild decay as server/src/rank.ts's freshnessScore: full score at
+// <=7 days, tapering to 0 by 90 days. Reads the already-derived
+// postedDaysAgo instead of re-diffing posted_date, since that's what the
+// adapted card shape carries.
+function freshnessScore(job) {
+  if (job.postedDaysAgo == null) return 0.5;
+  return Math.max(0, Math.min(1, 1 - job.postedDaysAgo / 90));
 }
 
-export function rankJobs(jobs, preferences, classYear, now = new Date()) {
-  const ranked = jobs
-    .map((job) => {
-      const match = matchJob(job, preferences, classYear);
-      if (!match.eligible) return null;
-      const finalScore = 0.7 * (match.score / 100) + 0.3 * freshnessScore(job, now);
-      return { job, match, finalScore };
-    })
-    .filter(Boolean)
-    .sort((a, b) => b.finalScore - a.finalScore);
+// Same shape as server/src/rank.ts's deadlineUrgencyScore. `deadlineDate`
+// is null exactly when the card's own `rolling` flag is true (data/
+// realJobAdapter.js), so this needs no separate rolling check.
+function deadlineUrgencyScore(job, now) {
+  if (!job.deadlineDate) return 0.3; // no deadline listed -- mildly deprioritized vs. a real one, never 0
+  const days = (new Date(job.deadlineDate) - now) / 86400000;
+  if (days < 0) return 0;
+  return Math.max(0, Math.min(1, 1 - days / 30));
+}
 
-  const counts = new Map();
-  const primary = [];
-  const demoted = [];
-  for (const item of ranked) {
-    const count = counts.get(item.job.company) ?? 0;
-    if (primary.length < TOP_WINDOW_SIZE && count < MAX_PER_COMPANY_IN_TOP_WINDOW) {
-      primary.push(item);
-      counts.set(item.job.company, count + 1);
-    } else {
-      demoted.push(item);
-    }
-  }
-  return [...primary, ...demoted];
+// US-42 -- same Stage-1 stand-in server/src/rank.ts uses (§3.6's real CRM-
+// backed signal isn't available at the per-job ranking layer yet): reads
+// whatever's already on the member's own profile.
+function ucRelevanceScore(job, preferences) {
+  return preferences.followedCompanies?.includes(job.company) ? 1 : 0.3;
+}
+
+// US-38/§3.8 -- when a keyword query is active, score how many of its
+// tokens actually appear in the role/company text; neutral (0.5) when
+// browsing without one, same as server/src/rank.ts's default. Jobs.jsx's
+// own keyword filter already *excludes* non-matching jobs outright (a
+// harder guarantee than a soft score), so this only differentiates among
+// jobs that already passed that filter -- it's not a substitute for it.
+function textRelevanceScore(job, query) {
+  const q = query?.trim().toLowerCase();
+  if (!q) return 0.5;
+  const tokens = q.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return 0.5;
+  const haystack = `${job.role} ${job.company}`.toLowerCase();
+  const hits = tokens.filter((t) => haystack.includes(t)).length;
+  return hits / tokens.length;
+}
+
+// Per-job final score (0-1) for ranking/sort order -- distinct from
+// job.matchScore (0-100), which stays the pure preference-fit percentage
+// shown on cards/checklists per US-34 and is deliberately left unchanged
+// by this. Only sort order should reflect freshness/deadline/quality/UC-
+// relevance too; what's *displayed* as "this member's % match" should
+// keep meaning exactly what it says.
+export function finalScore(job, preferences, query, now = new Date(), weights = DEFAULT_WEIGHTS) {
+  return (
+    weights.relevance * textRelevanceScore(job, query) +
+    weights.memberMatch * (job.matchScore / 100) +
+    weights.ucRelevance * ucRelevanceScore(job, preferences) +
+    weights.deadlineUrgency * deadlineUrgencyScore(job, now) +
+    weights.freshness * freshnessScore(job) +
+    weights.quality * (job.qualityScore ?? 0.5)
+  );
 }
