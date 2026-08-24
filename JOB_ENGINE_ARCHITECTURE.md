@@ -1125,13 +1125,19 @@ Stage 4 (started) Additional ATS adapters for other UC-target companies;
                      postings (43%) if applied retroactively -- substantial,
                      but 1,356 would still remain, confirming the display
                      cap is a genuinely separate fix, not redundant with the
-                     filter. Retroactive cleanup of the already-ingested
-                     1,018 was deliberately left as an open decision rather
-                     than auto-deleted -- unlike the demo-job/test-row
-                     cleanups below, these are real fetched postings, and
-                     the exact denylist boundary is a judgment call worth a
-                     human look before permanently removing that much real
-                     data.
+                     filter. Retroactive cleanup was raised as an explicit
+                     decision rather than auto-deleted -- unlike the demo-
+                     job/test-row cleanups below, these are real fetched
+                     postings, and the exact denylist boundary is a
+                     judgment call. Decision: clean up now (migration
+                     20260824120000). Job IDs were computed client-side
+                     using the exact same regex as the deployed
+                     isLikelySeniorRole(), rather than reimplemented in
+                     Postgres' own regex dialect (word-boundary syntax
+                     differs: `\y` vs `\b`) and risking a mismatch between
+                     what was reviewed and what actually got deleted.
+                     Verified: active job count went from 2,373 to 1,355,
+                     an exact match.
 
                  Separately, verifying the "no live feed" panel (a UC-wide
                  feature request, not Stage-4-specific -- see this doc's own
