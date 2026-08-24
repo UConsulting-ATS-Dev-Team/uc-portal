@@ -1323,6 +1323,53 @@ Stage 5 (started) LLM-assisted classification fallback for the long tail;
                  pattern already proven correct by the other two functions,
                  so this is a real but narrow gap in interactive
                  verification, not an untested code path.
+
+                 Fourth piece, same day: the three remaining local-only
+                 pieces of data/store.jsx -- savedConnections/
+                 coffeeChatStatus (Network) and savedJobIds (Jobs board).
+                 Same background-sync shape again, two tables this time:
+                 network_connections (one row per member+person, folding
+                 "did I save them" and "my coffee-chat status with them"
+                 together -- both are just "this member's relationship to
+                 that person," same reasoning that folded trackedJobs/
+                 prepLogged/timelineShiftDays into one tracked_applications
+                 row) and saved_jobs (member+job, presence-only -- insert on
+                 save, delete on unsave, no update column needed since
+                 there's nothing else to carry per saved job).
+
+                 Two real bugs found and fixed while verifying live, both
+                 the same root cause class as 20260824150000_people_grants.sql
+                 found for the people table earlier this session -- RLS
+                 alone doesn't grant table-level access, Postgres still
+                 needs the underlying GRANT, and this time upsert()
+                 specifically needs both an UPDATE grant *and* a matching
+                 UPDATE policy for its ON CONFLICT DO UPDATE path, even on
+                 a table (saved_jobs) that conceptually never updates a row
+                 once written -- the original migration had reasoned "no
+                 update semantics needed" and omitted both, which was true
+                 for the table's actual data shape but not for how upsert()
+                 is implemented under the hood. Fixed via a follow-up
+                 migration (20260824190000) adding both.
+
+                 Verified live end-to-end (real authenticated test session,
+                 test rows deleted afterward via migration since the app
+                 itself is never granted DELETE on network_connections --
+                 intentional, it never needs to remove a row, only
+                 upsert): toggleSavedJob's save path wrote a correct row;
+                 its unsave path, once properly isolated from a test-
+                 methodology mistake (clicking a button query that never
+                 actually matched an element, so an earlier "it didn't
+                 work" result was a false negative, not a real bug) deleted
+                 it correctly. requestCoffeeChat and toggleSavedConnection
+                 both correctly preserved the *other* field on the same
+                 network_connections row when only one changed -- saving a
+                 connection, then separately requesting a coffee chat with
+                 them, left both `saved: true` and `coffee_chat_status:
+                 "Request sent"` on the single row rather than one
+                 clobbering the other back to its default. Clearing
+                 localStorage and reloading correctly restored both real
+                 synced values while the merge preserved the still-unsynced
+                 SEED_COFFEE_CHATS entries alongside them.
 ```
 
 ---

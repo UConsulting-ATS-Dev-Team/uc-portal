@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { fetchRemotePreferences, syncPreferencesToRemote } from "./memberPreferencesSync.js";
 import { fetchRemoteTrackedApplications, syncTrackedApplicationToRemote } from "./trackerSync.js";
+import { fetchRemoteNetworkConnections, syncNetworkConnectionToRemote } from "./networkSync.js";
+import { fetchRemoteSavedJobs, syncSavedJobToRemote } from "./savedJobsSync.js";
 
 // Prototype-wide shared state (career preferences, onboarding progress,
 // and later: saved jobs, tracker stage, etc.) -- persisted to
@@ -231,6 +233,31 @@ export function AppStateProvider({ children }) {
     });
   }, []);
 
+  // Real savedConnections/coffeeChatStatus (Network) and savedJobIds (Jobs
+  // board) -- same one-time-hydrate-and-merge shape as the tracker above,
+  // for the same reason (SEED_COFFEE_CHATS should survive until a member
+  // has real synced data, and a merge can't clobber a pre-hydration local
+  // action the way a replace could).
+  useEffect(() => {
+    fetchRemoteNetworkConnections().then((remote) => {
+      if (remote) {
+        setState((prev) => ({
+          ...prev,
+          savedConnections: [...new Set([...prev.savedConnections, ...remote.savedConnections])],
+          coffeeChatStatus: { ...prev.coffeeChatStatus, ...remote.coffeeChatStatus },
+        }));
+      }
+    });
+    fetchRemoteSavedJobs().then((remote) => {
+      if (remote) {
+        setState((prev) => ({
+          ...prev,
+          savedJobIds: [...new Set([...prev.savedJobIds, ...remote])],
+        }));
+      }
+    });
+  }, []);
+
   function updatePreferences(patch) {
     setState((prev) => ({ ...prev, preferences: { ...prev.preferences, ...patch } }));
   }
@@ -273,12 +300,15 @@ export function AppStateProvider({ children }) {
   }
 
   function toggleSavedJob(jobId) {
-    setState((prev) => ({
-      ...prev,
-      savedJobIds: prev.savedJobIds.includes(jobId)
-        ? prev.savedJobIds.filter((id) => id !== jobId)
-        : [...prev.savedJobIds, jobId],
-    }));
+    let nowSaved = null;
+    setState((prev) => {
+      nowSaved = !prev.savedJobIds.includes(jobId);
+      return {
+        ...prev,
+        savedJobIds: nowSaved ? [...prev.savedJobIds, jobId] : prev.savedJobIds.filter((id) => id !== jobId),
+      };
+    });
+    if (nowSaved !== null) syncSavedJobToRemote(jobId, nowSaved);
   }
 
   // Each mutation below computes the full post-update application record
@@ -339,19 +369,26 @@ export function AppStateProvider({ children }) {
   }
 
   function requestCoffeeChat(personId) {
+    let syncPayload = null;
     setState((prev) => {
       if (prev.coffeeChatStatus[personId]) return prev; // don't overwrite an existing status
+      syncPayload = { saved: prev.savedConnections.includes(personId), coffeeChatStatus: "Request sent" };
       return { ...prev, coffeeChatStatus: { ...prev.coffeeChatStatus, [personId]: "Request sent" } };
     });
+    if (syncPayload) syncNetworkConnectionToRemote(personId, syncPayload);
   }
 
   function toggleSavedConnection(personId) {
-    setState((prev) => ({
-      ...prev,
-      savedConnections: prev.savedConnections.includes(personId)
-        ? prev.savedConnections.filter((id) => id !== personId)
-        : [...prev.savedConnections, personId],
-    }));
+    let syncPayload = null;
+    setState((prev) => {
+      const nowSaved = !prev.savedConnections.includes(personId);
+      syncPayload = { saved: nowSaved, coffeeChatStatus: prev.coffeeChatStatus[personId] ?? null };
+      return {
+        ...prev,
+        savedConnections: nowSaved ? [...prev.savedConnections, personId] : prev.savedConnections.filter((id) => id !== personId),
+      };
+    });
+    if (syncPayload) syncNetworkConnectionToRemote(personId, syncPayload);
   }
 
   function toggleSavedResource(resourceId) {
