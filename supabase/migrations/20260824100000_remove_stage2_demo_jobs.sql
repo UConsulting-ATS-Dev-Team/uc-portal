@@ -1,0 +1,26 @@
+-- Removes the 10 Stage 2 demo/seed jobs (20260821190000_seed_demo_jobs.sql)
+-- from the real jobs table. They were explicitly seeded to prove real
+-- search/matching worked before any real automated source existed, and
+-- always used a placeholder https://example.com/careers/... application_url
+-- for exactly that reason. They were never linked to a job_sources row
+-- either (that migration only inserts into jobs), unlike every job that's
+-- come from a real adapter or approve-submission since.
+--
+-- Now that real search/matching is proven against real Greenhouse/Deloitte
+-- data (2,380+ real active jobs), these rows are pure liability: they made
+-- pages/CompanyPage.jsx's and pages/Companies.jsx's new "does this company
+-- have a real live feed" check (added alongside the airtight no-live-feed
+-- panel -- see data/companyLiveJobs.js) come back true for Bain, McKinsey,
+-- Goldman Sachs, BCG, EY-Parthenon, and Accenture, none of which have ever
+-- had a real automated source. Without this cleanup, those companies would
+-- show "1-2 open roles" sourced from a fake example.com URL, presented
+-- identically to a real Databricks or Deloitte posting -- precisely the
+-- fabrication risk that feature exists to eliminate. Stripe/Deloitte's two
+-- extra fake rows are redundant now anyway (both have real automated
+-- sourcing that already covers them).
+--
+-- Matched by the placeholder URL prefix specifically, not by company name --
+-- this can never accidentally delete a real posting, since no real adapter
+-- (Greenhouse, Deloitte's RSS feed, or a member/admin submission through
+-- approve-submission) ever produces an example.com application_url.
+delete from jobs where application_url like 'https://example.com/careers/%';

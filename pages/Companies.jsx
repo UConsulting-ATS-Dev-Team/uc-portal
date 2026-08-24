@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { COMPANIES } from "../data/mockCompanies.js";
 import { statsFor } from "../data/companyUtils.js";
+import { fetchLiveJobsByCompany } from "../data/companyLiveJobs.js";
 import { useAppState } from "../data/store.jsx";
 import CompanyLogo from "../components/CompanyLogo.jsx";
 import "../styles/jobs.css";
@@ -36,7 +37,34 @@ export default function Companies() {
     });
   }
 
-  const withStats = useMemo(() => COMPANIES.map((c) => ({ ...c, stats: statsFor(c) })), []);
+  // Real per-company job counts, not statsFor()'s mock-derived openRoles --
+  // several companies here (Bain, McKinsey, Goldman Sachs, BCG, EY-Parthenon,
+  // Accenture) have never had a real automated source, so that mock number
+  // was a fabricated count of fabricated postings rendered as if it were a
+  // real fact on every card in this grid. undefined = still loading (cards
+  // show "…" rather than flash a fake number first); a company absent from
+  // the map, or present with an empty array, means no live feed -- see
+  // data/companyLiveJobs.js's header comment for why those two cases are
+  // deliberately treated the same.
+  const [liveJobsByCompany, setLiveJobsByCompany] = useState(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchLiveJobsByCompany(COMPANIES.map((c) => c.name)).then((byCompany) => {
+      if (!cancelled) setLiveJobsByCompany(byCompany);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const withStats = useMemo(() => {
+    return COMPANIES.map((c) => {
+      const stats = statsFor(c);
+      const liveCount = liveJobsByCompany?.get(c.name)?.length;
+      return { ...c, stats: { ...stats, openRoles: liveJobsByCompany === undefined ? undefined : liveCount ?? 0 } };
+    });
+  }, [liveJobsByCompany]);
 
   const filtered = useMemo(() => {
     const minConn = connectionsMin === "Any" ? 0 : Number(connectionsMin.replace("+", ""));
@@ -54,7 +82,7 @@ export default function Companies() {
   const sorted = useMemo(() => {
     const copy = [...filtered];
     if (sortBy === "alumni") copy.sort((a, b) => b.stats.ucAlumni - a.stats.ucAlumni);
-    else if (sortBy === "roles") copy.sort((a, b) => b.stats.openRoles - a.stats.openRoles);
+    else if (sortBy === "roles") copy.sort((a, b) => (b.stats.openRoles ?? 0) - (a.stats.openRoles ?? 0));
     return copy;
   }, [filtered, sortBy]);
 
@@ -197,8 +225,12 @@ export default function Companies() {
                     <div className="company-card__stat-label">UC alumni</div>
                   </div>
                   <div className="company-card__stat">
-                    <div className="company-card__stat-number">{c.stats.openRoles}</div>
-                    <div className="company-card__stat-label">Open roles</div>
+                    <div className="company-card__stat-number">
+                      {c.stats.openRoles === undefined ? "…" : c.stats.openRoles > 0 ? c.stats.openRoles : "—"}
+                    </div>
+                    <div className="company-card__stat-label">
+                      {c.stats.openRoles === undefined || c.stats.openRoles > 0 ? "Open roles" : "No live feed"}
+                    </div>
                   </div>
                   <div className="company-card__stat">
                     <div className="company-card__stat-number">{c.stats.ucApplicants}</div>

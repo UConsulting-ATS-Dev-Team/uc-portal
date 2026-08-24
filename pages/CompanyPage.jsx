@@ -1,10 +1,13 @@
-import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { findCompany } from "../data/mockCompanies.js";
 import { statsFor, quotesFor, activityFor } from "../data/companyUtils.js";
-import { jobsAt, deadlineLabel } from "../data/jobUtils.js";
+import { deadlineLabel } from "../data/jobUtils.js";
+import { fetchLiveJobsByCompany } from "../data/companyLiveJobs.js";
+import { realJobToCardShape } from "../data/realJobAdapter.js";
 import { peopleAt } from "../data/mockPeople.js";
 import { COMPANIES } from "../data/mockCompanies.js";
+import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
 import Placeholder from "./Placeholder.jsx";
 import CompanyLogo from "../components/CompanyLogo.jsx";
@@ -12,6 +15,7 @@ import "../styles/jobs.css";
 import "../styles/jobDetail.css";
 import "../styles/network.css";
 import "../styles/companies.css";
+import "../styles/home.css"; // .empty-state, reused by the "no live feed" panel below
 
 const TABS = ["Overview", "Opportunities", "UC connections", "Recruiting intelligence", "Activity"];
 const TIMELINE_STAGES = ["Interested", "Preparing", "Applied", "Interviews", "Offer"];
@@ -21,14 +25,45 @@ export default function CompanyPage() {
   const { companyId } = useParams();
   const company = findCompany(companyId);
   const { preferences, updatePreferences } = useAppState();
+  const navigate = useNavigate();
   const [tab, setTab] = useState("Overview");
+
+  // Real jobs for this company, not data/mockJobs.js's jobsAt() -- see this
+  // file's header comment (well, data/companyLiveJobs.js's) for why: several
+  // of the companies here (Bain, McKinsey, Goldman Sachs, BCG, EY-Parthenon,
+  // Accenture) have never had a real automated source, so their old mock
+  // "open opportunities" list was fabricated data rendered exactly like a
+  // real found posting -- specific role/location/deadline/match-score, an
+  // Apply-adjacent "View" button, no visual distinction from Stripe's or
+  // Deloitte's real ones. undefined = loading, [] = loaded with zero (either
+  // genuinely no live feed, or a real feed with nothing active right now --
+  // both get the same honest "no live feed" panel rather than a guess).
+  const [liveJobs, setLiveJobs] = useState(undefined);
+
+  useEffect(() => {
+    if (!company) return;
+    let cancelled = false;
+    setLiveJobs(undefined);
+    fetchLiveJobsByCompany([company.name])
+      .then((byCompany) => {
+        if (!cancelled) setLiveJobs(byCompany.get(company.name) ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setLiveJobs([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [company]);
 
   if (!company) {
     return <Placeholder title="Company not found" />;
   }
 
   const stats = statsFor(company);
-  const jobs = jobsAt(company.name);
+  const hasLiveFeed = Array.isArray(liveJobs) && liveJobs.length > 0;
+  const openRolesDisplay = liveJobs === undefined ? "…" : hasLiveFeed ? String(liveJobs.length) : "—";
+  const openRolesLabel = liveJobs !== undefined && !hasLiveFeed ? "No live feed" : "Open roles";
   const people = peopleAt(company.name);
   const isWatched = preferences.followedCompanies.includes(company.name);
   const stageCount = stats.offers > 0 ? 5 : stats.ucApplicants >= 5 ? 3 : stats.ucApplicants > 0 ? 2 : 1;
@@ -64,7 +99,7 @@ export default function CompanyPage() {
               {isWatched ? "Watching ✓" : "Add to watchlist"}
             </button>
             <button className="btn btn-secondary" onClick={() => setTab("Opportunities")}>
-              See {stats.openRoles} open roles
+              {liveJobs === undefined ? "See open roles" : hasLiveFeed ? `See ${liveJobs.length} open roles` : "See careers page"}
             </button>
             <button className="btn btn-secondary">Request an intro</button>
           </div>
@@ -96,8 +131,8 @@ export default function CompanyPage() {
                   <div className="stat-strip__label">UC offer rate</div>
                 </div>
                 <div className="stat-strip__cell">
-                  <div className="stat-strip__number">{stats.openRoles}</div>
-                  <div className="stat-strip__label">Open roles</div>
+                  <div className="stat-strip__number">{openRolesDisplay}</div>
+                  <div className="stat-strip__label">{openRolesLabel}</div>
                 </div>
                 <div className="stat-strip__cell">
                   <div className="stat-strip__number">{stats.ucAlumni}</div>
@@ -111,28 +146,81 @@ export default function CompanyPage() {
           {tab === "Opportunities" && (
             <div className="detail-section">
               <h2 className="detail-section__title">Open opportunities</h2>
-              {jobs.length === 0 && <p className="meta">No open roles posted right now.</p>}
-              {jobs.map((j) => {
-                const isYourYear = j.classYears.includes(2027);
-                return (
-                  <div className="opportunity-row" key={j.id}>
-                    <div>
-                      <div style={{ fontWeight: 700 }}>{j.role}</div>
-                      <div className="opportunity-row__meta">
-                        {j.location} · {j.type} · {deadlineLabel(j)}
+
+              {liveJobs === undefined && <p className="meta">Loading…</p>}
+
+              {liveJobs !== undefined && hasLiveFeed &&
+                liveJobs.map((rawJob) => {
+                  const j = realJobToCardShape(rawJob);
+                  const isYourYear = j.classYears.includes(currentUser.classYear);
+                  return (
+                    <div className="opportunity-row" key={j.id}>
+                      <div>
+                        <div style={{ fontWeight: 700 }}>{j.role}</div>
+                        <div className="opportunity-row__meta">
+                          {j.location || j.workMode} · {j.type} · {deadlineLabel(j)}
+                        </div>
                       </div>
+                      {j.classYears.length > 0 && (
+                        <span className={`chip${isYourYear ? " chip-accent" : ""}`}>
+                          {isYourYear ? "Your grad year" : "Different grad year"}
+                        </span>
+                      )}
+                      <Link to={`/jobs/${j.id}`} className="btn btn-secondary">
+                        View
+                      </Link>
                     </div>
-                    {isYourYear ? (
-                      <span className="chip chip-accent">{j.matchScore}% match</span>
-                    ) : (
-                      <span className="chip">Not your year</span>
-                    )}
-                    <Link to={`/jobs/${j.id}`} className="btn btn-secondary">
-                      View
-                    </Link>
+                  );
+                })}
+
+              {/* "No live feed" panel -- deliberately not a job list. Several
+                  of this app's companies (Bain, McKinsey, Goldman Sachs, BCG,
+                  EY-Parthenon, Accenture) have no automated source UC can
+                  legally pull postings from (no public API, no syndicated
+                  feed -- see JOB_ENGINE_ARCHITECTURE.md's Stage 3/4 source
+                  research). Rather than fabricate role/comp/deadline details
+                  that would render identically to a real found posting, this
+                  states the situation honestly, links straight to the
+                  company's own real careers page, and surfaces only facts
+                  the app can already trace elsewhere (UC's own historical
+                  track record) -- never an invented specific opening. */}
+              {liveJobs !== undefined && !hasLiveFeed && (
+                <div className="empty-state" style={{ textAlign: "left" }}>
+                  <h3 style={{ marginTop: 0 }}>We don't have a live jobs feed for {company.name}</h3>
+                  <p className="meta">
+                    {company.name} doesn't publish postings through a source UC can pull from automatically yet — no
+                    public API or syndicated feed we've verified. Rather than guess at specific openings, here's
+                    their own careers page directly.
+                  </p>
+                  <div style={{ display: "flex", gap: "var(--space-3)", margin: "var(--space-5) 0" }}>
+                    <a className="btn btn-primary" href={company.careersUrl} target="_blank" rel="noreferrer">
+                      Open {company.name}'s careers page ↗
+                    </a>
+                    <button
+                      className="btn-link"
+                      onClick={() =>
+                        navigate("/feed", { state: { prefill: `Does anyone know of open roles at ${company.name} right now?` } })
+                      }
+                    >
+                      Ask the network
+                    </button>
                   </div>
-                );
-              })}
+                  {quotes.length > 0 && (
+                    <>
+                      <p style={{ fontWeight: 700, marginBottom: "var(--space-3)" }}>What UC members have said about recruiting here</p>
+                      {quotes.map((q) => (
+                        <div className="writeup-card" key={q.author}>
+                          <div className="writeup-card__meta">
+                            <strong>{q.author}</strong>
+                            <span className="meta">'{String(q.classYear).slice(2)}</span>
+                          </div>
+                          <p style={{ margin: 0 }}>"{q.body}"</p>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

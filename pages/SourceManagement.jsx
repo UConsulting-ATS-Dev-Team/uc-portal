@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../data/supabaseClient.js";
+import { fetchAllRows } from "../data/fetchAllRows.js";
 import { COMPANIES } from "../data/careerOptions.js";
 import "../styles/jobs.css";
 import "../styles/admin.css";
@@ -72,10 +73,14 @@ export default function SourceManagement() {
 
     // "Active jobs" per source -- how many currently-live listings trace
     // back to it, via job_sources. One query for all rows rather than one
-    // count query per source.
-    const { data: jobSourceRows } = await supabase.from("job_sources").select("source_id, jobs!inner(active)");
+    // count query per source. Paginated via fetchAllRows() -- job_sources
+    // passed PostgREST's default 1000-row page once the Greenhouse
+    // expansion landed, and a bare .select() here would silently undercount
+    // exactly the sources with the most jobs, which is the opposite of what
+    // a source-health dashboard should ever do.
+    const jobSourceRows = await fetchAllRows("job_sources", "source_id, jobs!inner(active)");
     const activeCountBySource = {};
-    for (const row of jobSourceRows ?? []) {
+    for (const row of jobSourceRows) {
       if (row.jobs?.active) activeCountBySource[row.source_id] = (activeCountBySource[row.source_id] ?? 0) + 1;
     }
 
