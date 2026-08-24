@@ -358,3 +358,49 @@
   font-size: 9px;
   font-weight: 700;
 }
+
+/* ---- Responsive ---- */
+/* Shared by every page using this main+right-rail pattern: both job
+   detail pages, both member profile pages, and CompanyPage. Breakpoints
+   match styles/shell.css's documented scale. */
+@media (max-width: 899px) {
+  .detail-layout {
+    flex-direction: column;
+  }
+
+  .detail-rail {
+    width: 100%;
+  }
+
+  .odds-layout {
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+
+  .odds-left {
+    width: 100%;
+  }
+}
+
+@media (max-width: 639px) {
+  .checklist-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .detail-header {
+    flex-wrap: wrap;
+  }
+
+  .detail-header__deadline {
+    margin-left: 0;
+    text-align: left;
+  }
+
+  .factor-table__signal {
+    display: block;
+  }
+}

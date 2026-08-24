@@ -221,6 +221,10 @@
   text-align: center;
 }
 
+.rail__icon {
+  flex: 0 0 auto;
+}
+
 /* Content */
 .content {
   flex: 1 1 auto;
@@ -231,4 +235,90 @@
 .meta {
   color: var(--color-text-muted);
   font-size: var(--text-secondary);
+}
+
+/* ---- Responsive ---- */
+/* Breakpoints used consistently across every page's CSS in this pass:
+   1280px+  desktop, the design's native width -- everything above is the
+            unmodified base rules already in this file.
+   1100px   nav rail collapses to icon-only (--nav-rail-width-collapsed,
+            56px) -- CLAUDE.md's own original design note for this exact
+            threshold, never actually implemented until now.
+   900px    multi-column page layouts (filter columns, right rails) stop
+            sitting beside main content and stack below it instead -- see
+            each page's own stylesheet for its specific pattern.
+   640px    tightened spacing/type for genuinely narrow (phone-width)
+            viewports -- content padding shrinks, topbar sheds its
+            wordmark and search placeholder further. */
+
+@media (max-width: 1099px) {
+  .rail {
+    width: var(--nav-rail-width-collapsed);
+  }
+
+  .rail__link {
+    justify-content: center;
+    padding: var(--space-4) var(--space-2);
+  }
+
+  .rail__label,
+  .rail__kicker,
+  .rail__stats {
+    display: none;
+  }
+
+  /* The badge (e.g. Applications' tracked-count) has no room next to a
+     centered icon anymore -- a small corner dot still signals "something
+     here" without needing the actual number to fit. */
+  .rail__badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 6px;
+    height: 6px;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 50%;
+    background: var(--color-accent);
+    font-size: 0;
+  }
+
+  .rail__link {
+    position: relative;
+  }
+}
+
+@media (max-width: 899px) {
+  .topbar {
+    gap: var(--space-4);
+    padding: 0 var(--space-5);
+  }
+
+  .topbar__wordmark {
+    display: none;
+  }
+
+  .topbar__search {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .content {
+    padding: var(--space-6);
+  }
+}
+
+@media (max-width: 639px) {
+  .topbar {
+    gap: var(--space-3);
+    padding: 0 var(--space-4);
+  }
+
+  .topbar__actions {
+    gap: var(--space-4);
+  }
+
+  .content {
+    padding: var(--space-5);
+  }
 }
