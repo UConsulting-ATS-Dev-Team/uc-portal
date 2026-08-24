@@ -1,7 +1,6 @@
 # UC Portal
 
-Clickable prototype of **UC Portal**, a private career/professional-
-development platform for a university consulting club. See
+Clickable prototype of **UC Portal**, a private career/professional-development platform for UConsulting. See
 [CLAUDE.md](CLAUDE.md) for the full page inventory, design conventions,
 and open decisions, sourced from the wireframe handoff in
 [design/handoff/](design/handoff), and [PROJECT_PLAN.md](PROJECT_PLAN.md)
