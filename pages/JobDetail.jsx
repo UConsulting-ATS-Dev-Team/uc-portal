@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { JOBS } from "../data/mockJobs.js";
 import { deadlineLabel, descriptionFor, qualificationsFor, writeupsFor } from "../data/jobUtils.js";
-import { peopleAt } from "../data/mockPeople.js";
+import { fetchRealPeopleAtCompany } from "../data/realPeople.js";
 import { useAppState } from "../data/store.jsx";
 import OddsModel from "../components/OddsModel.jsx";
 import LogPrepModal from "../components/modals/LogPrepModal.jsx";
@@ -30,6 +30,25 @@ export default function JobDetail() {
   const job = JOBS.find((j) => j.id === jobId);
   const { preferences, savedJobIds, toggleSavedJob, trackedJobs, addToTracker, prepLogged } = useAppState();
   const [showLogPrepModal, setShowLogPrepModal] = useState(false);
+
+  // Real UConsulting Directory people at this company (see JOB_ENGINE_
+  // ARCHITECTURE.md's Stage 5 entry), not data/mockPeople.js's peopleAt() --
+  // same real data RealJobDetail.jsx and CompanyPage.jsx already show,
+  // just also wired into this legacy mock-job-only page for consistency.
+  // Called unconditionally (Rules of Hooks) even though it's a no-op
+  // whenever `job` is undefined, i.e. whenever this route is actually
+  // serving a real job via RealJobDetail below instead.
+  const [people, setPeople] = useState([]);
+  useEffect(() => {
+    if (!job) return;
+    let cancelled = false;
+    fetchRealPeopleAtCompany(job.company).then((rows) => {
+      if (!cancelled) setPeople(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [job?.company]);
 
   if (!job) {
     return UUID_PATTERN.test(jobId) ? <RealJobDetail jobId={jobId} /> : <Placeholder title="Job not found" />;
@@ -72,7 +91,6 @@ export default function JobDetail() {
 
   const stageCount = completedStageCount(job);
   const writeups = writeupsFor(job);
-  const people = peopleAt(job.company);
   const similar = JOBS.filter((j) => j.industry === job.industry && j.id !== job.id).slice(0, 2);
 
   return (
@@ -191,14 +209,14 @@ export default function JobDetail() {
             <div className="rail-card__title">UC members at {job.company}</div>
             {people.length === 0 && <p className="meta" style={{ margin: 0 }}>No UC members on record here yet.</p>}
             {people.slice(0, 3).map((p) => (
-              <div className="person-row" key={p.name}>
+              <div className="person-row" key={p.id}>
                 <div>
                   <div className="person-row__name">{p.name}</div>
-                  <div className="person-row__meta">
-                    {p.role} · {p.office}
-                  </div>
+                  <div className="person-row__meta">{p.role || p.status}{p.office ? ` · ${p.office}` : ""}</div>
                 </div>
-                <button className="btn btn-secondary">Coffee chat</button>
+                <Link to={`/network/${p.id}`} className="btn btn-secondary">
+                  Profile
+                </Link>
               </div>
             ))}
             {people.length > 3 && (
