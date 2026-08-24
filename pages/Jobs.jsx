@@ -10,6 +10,7 @@ import { fetchAllRows } from "../data/fetchAllRows.js";
 import { matchJob } from "../data/jobMatch.js";
 import { realJobToCardShape } from "../data/realJobAdapter.js";
 import { currentUser } from "../data/mockUser.js";
+import { parseJobQuery } from "../data/nlSearchParser.js";
 import "../styles/jobs.css";
 import "../styles/search.css";
 import "../styles/home.css";
@@ -73,6 +74,22 @@ const DEFAULT_FILTERS = {
   compMin: 25,
   compMax: 60,
   deadlines: ["This month"],
+};
+
+// A blank slate for natural-language search to build on -- unlike
+// DEFAULT_FILTERS above (a seeded demo default with a few chips
+// preselected, what "Clear all" resets to), a described search should
+// start from nothing and apply only what the query actually said.
+const NEUTRAL_FILTERS = {
+  keyword: "",
+  recommendedForMe: false,
+  types: [],
+  gradYears: [],
+  industries: [],
+  locations: [],
+  compMin: 15,
+  compMax: 60,
+  deadlines: [],
 };
 
 const LOCATION_CHIPS = [...new Set([...LOCATIONS, "Los Angeles", "San Francisco"])];
@@ -142,6 +159,8 @@ export default function Jobs() {
   const [page, setPage] = useState(1);
   const [showMoreIndustries, setShowMoreIndustries] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
+  const [nlQuery, setNlQuery] = useState("");
+  const [nlResult, setNlResult] = useState(null);
   const { savedJobIds, toggleSavedJob, preferences } = useAppState();
 
   const [rawJobs, setRawJobs] = useState([]);
@@ -173,6 +192,19 @@ export default function Jobs() {
 
   function toggleChip(key, value) {
     patchFilters({ [key]: toggleInArray(filters[key], value) });
+  }
+
+  // §3.8's staged plan for natural-language search: parse into the exact
+  // same filter object the chip UI produces, then just set that -- every
+  // existing active-chip/diagnostic/matching code path below already
+  // handles it unchanged, nothing NL-specific to render downstream.
+  function handleNlSearch(event) {
+    event.preventDefault();
+    if (!nlQuery.trim()) return;
+    const { patch, matchedLabels, understood } = parseJobQuery(nlQuery);
+    setFilters({ ...NEUTRAL_FILTERS, ...patch });
+    setTab("all");
+    setNlResult({ understood, matchedLabels });
   }
 
   const typeCounts = useMemo(() => {
@@ -244,6 +276,28 @@ export default function Jobs() {
             Clear all
           </button>
         </div>
+
+        <form className="filters__group nl-search" onSubmit={handleNlSearch}>
+          <div className="filters__group-title">Describe what you're looking for</div>
+          <div className="nl-search__row">
+            <input
+              type="text"
+              placeholder="e.g. consulting internships in Chicago for juniors"
+              value={nlQuery}
+              onChange={(e) => setNlQuery(e.target.value)}
+            />
+            <button type="submit" className="btn btn-secondary" disabled={!nlQuery.trim()}>
+              Search
+            </button>
+          </div>
+          {nlResult && (
+            <p className="nl-search__feedback">
+              {nlResult.understood
+                ? `Searched for: ${nlResult.matchedLabels.join(", ")}`
+                : "Didn't recognize anything specific in that — searching it as plain keywords instead."}
+            </p>
+          )}
+        </form>
 
         <div className="filters__group">
           <input

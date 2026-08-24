@@ -1157,9 +1157,12 @@ Stage 4 (started) Additional ATS adapters for other UC-target companies;
                  needs synthetic data to prove itself against.
 
 Stage 5 (started) LLM-assisted classification fallback for the long tail;
-                 natural-language search; ranking-weight tuning from real
-                 engagement data; real CRM integration replacing the
-                 mocked alumni/connection data.
+                 natural-language search (deterministic layer done, see
+                 "Fifth piece" below -- an LLM-parse fallback for queries
+                 it can't confidently map is still open, same as the
+                 classification item above); ranking-weight tuning from
+                 real engagement data; real CRM integration replacing the
+                 mocked alumni/connection data (done, see below).
 
                  First piece: real member/alumni data replacing data/
                  mockPeople.js's 13 fictional people as the primary
@@ -1370,6 +1373,53 @@ Stage 5 (started) LLM-assisted classification fallback for the long tail;
                  localStorage and reloading correctly restored both real
                  synced values while the merge preserved the still-unsynced
                  SEED_COFFEE_CHATS entries alongside them.
+
+                 Fifth piece: natural-language search on the Jobs board,
+                 per §3.8's own staged plan -- "parse query -> extract
+                 known entities into the exact same filter object the UI
+                 already produces from clicking chips... start with
+                 keyword/pattern extraction; only reach for an LLM parse
+                 on queries the extractor can't confidently map." Built
+                 exactly that first layer and nothing beyond it yet: a new
+                 data/nlSearchParser.js does deterministic synonym-group
+                 matching (industry/location/type/deadline phrasings,
+                 grad-year both as named synonyms -- "junior" -> 2028 --
+                 and a `class of \d{4}` regex capture) against
+                 pages/Jobs.jsx's exact filter shape and option lists, so
+                 nothing downstream (active-chip rendering, the zero-
+                 result diagnostic, matchesFilters itself) needed to
+                 change at all -- a parsed query just becomes the same
+                 filters object a member clicking chips would produce.
+                 Whatever isn't recognized becomes the existing free-text
+                 keyword filter rather than being dropped, so an
+                 unconfident parse still does something useful; there is
+                 no LLM fallback wired in (this prototype has no LLM API
+                 configured), so "can't confidently map" here just means
+                 "falls through to keyword search," which is an honest
+                 outcome, not a stub.
+
+                 One real bug caught by testing multi-entity queries
+                 live: term-matching took the first synonym in a group
+                 that matched via `\bterm\b`, but a shorter phrase's word
+                 boundary still matches when it's embedded in a longer
+                 one -- "closing this week" would match on "this week"
+                 alone (listed first), stripping only that and leaving
+                 "closing" behind as stray leftover keyword text. Fixed by
+                 ordering every synonym group's terms longest-phrase-first.
+                 Verified live against five real queries against the real
+                 jobs table: "consulting internships in Chicago for
+                 juniors" correctly extracted all four entities and
+                 correctly hit the existing zero-result diagnostic (real
+                 Chicago consulting internships for the class of 2028 are
+                 genuinely sparse); "tech roles in New York" returned a
+                 real Figma posting; "anything at Stripe" (after adding
+                 "anything"/"any"/"something" to the stop-word list)
+                 correctly reduced to the free-text keyword "Stripe"; the
+                 fixed deadline-phrase query above produced a clean
+                 three-entity match with no stray leftover; and an empty
+                 submission is now a no-op (guarded both by disabling the
+                 Search button and an early return in the handler) rather
+                 than resetting every filter to neutral for nothing.
 ```
 
 ---
