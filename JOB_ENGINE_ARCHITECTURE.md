@@ -1072,6 +1072,84 @@ Stage 4 (started) Additional ATS adapters for other UC-target companies;
                  (which also covers Stripe via the same config row) took
                  over.
 
+                 Third addition: no new source, but two follow-on fixes the
+                 6-company expansion exposed as live, user-facing problems,
+                 not just ingestion-pipeline ones.
+
+                 (1) pages/Jobs.jsx and pages/SourceManagement.jsx had the
+                 exact same unbounded .select() pagination bug as the
+                 ingestion pipeline (see the second addition above) --
+                 confirmed live: the real Jobs board was silently showing
+                 only ~1000 of 2,384 active jobs, an arbitrary Postgres-
+                 default-ordered slice with no error surfaced to members,
+                 and the admin Source Management page was undercounting
+                 active-jobs-per-source for exactly the sources with the
+                 most jobs. Fixed with the same fetchAllRows() pattern,
+                 ported to the frontend (data/fetchAllRows.js) since the
+                 Edge Function version lives in a different runtime/module
+                 graph. Confirmed fixed live: the board's count went from
+                 capped to the correct 2,384 immediately after the fix.
+
+                 (2) A member correctly pointed out that Databricks alone
+                 (820 postings) dominating the board while MBB/Goldman have
+                 zero isn't a capacity problem (Postgres handles millions of
+                 rows trivially -- this is what LinkedIn/Handshake actually
+                 do) but a relevance one: Greenhouse returns a company's
+                 *entire* public board, not just entry-level roles, so most
+                 of what a large tech employer returns is senior/management
+                 positions no UC undergrad would apply to. Two-part fix,
+                 not one -- a title filter alone still leaves a lot of
+                 volume, and a display cap alone still wastes ingestion
+                 compute on roles that will never be shown:
+                   - _shared/pipeline/relevance.ts's isLikelySeniorRole(): a
+                     conservative denylist (senior/staff/principal/director/
+                     vp/chief/etc.), not an allowlist, so an ambiguous
+                     title (no seniority marker either way) is kept rather
+                     than dropped -- the same asymmetry as the odds model's
+                     sparse-data handling. Applied in both
+                     fetch-greenhouse-companies and fetch-deloitte-jobs,
+                     gating brand-new postings only (forward-looking, not
+                     retroactive -- see below).
+                   - pages/Jobs.jsx caps how many cards from one company can
+                     appear in the results at once (3), computed after
+                     sorting so the cap keeps each company's best matches;
+                     the rest surface via a "View N more at Company" link
+                     that narrows the existing keyword filter to that
+                     company rather than linking to a company profile page
+                     that may not exist for it. The cap is skipped once a
+                     keyword search is active, otherwise "view more" would
+                     re-cap on top of itself and never show more than 3.
+                   - A real dry-run against live data (computed in-browser
+                     against the actual jobs table) found the title filter
+                     alone would exclude 1,018 of 2,374 currently-active
+                     postings (43%) if applied retroactively -- substantial,
+                     but 1,356 would still remain, confirming the display
+                     cap is a genuinely separate fix, not redundant with the
+                     filter. Retroactive cleanup of the already-ingested
+                     1,018 was deliberately left as an open decision rather
+                     than auto-deleted -- unlike the demo-job/test-row
+                     cleanups below, these are real fetched postings, and
+                     the exact denylist boundary is a judgment call worth a
+                     human look before permanently removing that much real
+                     data.
+
+                 Separately, verifying the "no live feed" panel (a UC-wide
+                 feature request, not Stage-4-specific -- see this doc's own
+                 change history for that write-up) surfaced two stale-data
+                 problems worth recording here since both lived in the real
+                 `jobs` table this stage's adapters write to: a Stage 2 demo
+                 seed migration (20260821190000) had inserted 10 mock jobs
+                 for Bain/McKinsey/Deloitte/Stripe/Goldman/BCG/EY-Parthenon/
+                 Accenture directly into the real table with placeholder
+                 example.com URLs and no job_sources link, which made the
+                 six companies with no real automated source (Bain,
+                 McKinsey, Goldman Sachs, BCG, EY-Parthenon, Accenture)
+                 incorrectly appear to have a live feed; and a single stray
+                 "Test Company Inc" row from earlier approve-submission
+                 testing. Both cleaned up via migration (20260824100000,
+                 20260824110000) now that real search/sourcing no longer
+                 needs synthetic data to prove itself against.
+
 Stage 5          LLM-assisted classification fallback for the long tail;
                  natural-language search; ranking-weight tuning from real
                  engagement data; real CRM integration replacing the
