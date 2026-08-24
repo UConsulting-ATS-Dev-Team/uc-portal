@@ -293,6 +293,7 @@ export default function AdminDashboard() {
             <h2 className="detail-section__title">Opportunity queue</h2>
             {queueError && <p className="meta" style={{ color: "#B3261E" }}>{queueError}</p>}
             {queueNote && <p className="meta">{queueNote}</p>}
+            <div className="queue-table__scroll">
             <table className="queue-table">
               <thead>
                 <tr>
@@ -344,6 +345,7 @@ export default function AdminDashboard() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
 
           <div className="detail-section">
@@ -354,6 +356,7 @@ export default function AdminDashboard() {
             </p>
             {duplicatesError && <p className="meta" style={{ color: "#B3261E" }}>{duplicatesError}</p>}
             {duplicatesNote && <p className="meta">{duplicatesNote}</p>}
+            <div className="queue-table__scroll">
             <table className="queue-table">
               <thead>
                 <tr>
@@ -420,11 +423,13 @@ export default function AdminDashboard() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
 
           <div className="detail-section">
             <h2 className="detail-section__title">Feature requests</h2>
             {featureRequestsError && <p className="meta" style={{ color: "#B3261E" }}>{featureRequestsError}</p>}
+            <div className="queue-table__scroll">
             <table className="queue-table">
               <thead>
                 <tr>
@@ -495,6 +500,7 @@ export default function AdminDashboard() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
 

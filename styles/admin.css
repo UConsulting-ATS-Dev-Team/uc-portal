@@ -79,8 +79,13 @@
   margin-bottom: var(--space-3);
 }
 
+.queue-table__scroll {
+  overflow-x: auto;
+}
+
 .queue-table {
   width: 100%;
+  min-width: 600px;
   border-collapse: collapse;
   background: var(--color-surface);
   border: var(--border-hairline);
@@ -136,4 +141,25 @@
 
 .content-mgmt-link:last-child {
   border-bottom: none;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 899px) {
+  .admin-kpi-strip {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .class-year-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 639px) {
+  .admin-kpi-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .industry-bar-row {
+    grid-template-columns: 120px 1fr 40px;
+  }
 }

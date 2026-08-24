@@ -142,6 +142,7 @@ export default function SourceManagement() {
           which company to research next, aggregated so no individual member's preferences are exposed.
         </p>
         {demandError && <p className="meta" style={{ color: "#B3261E" }}>{demandError}</p>}
+        <div className="queue-table__scroll">
         <table className="queue-table">
           <thead>
             <tr>
@@ -172,10 +173,12 @@ export default function SourceManagement() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {error && <p className="meta" style={{ color: "#B3261E" }}>{error}</p>}
 
+      <div className="queue-table__scroll">
       <table className="queue-table">
         <thead>
           <tr>
@@ -243,6 +246,7 @@ export default function SourceManagement() {
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
