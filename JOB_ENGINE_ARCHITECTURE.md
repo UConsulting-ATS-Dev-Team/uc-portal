@@ -975,6 +975,103 @@ Stage 4 (started) Additional ATS adapters for other UC-target companies;
                  rendered as a literal "?" until renamed to match the
                  common shape.
 
+                 Second addition: 6 more companies on the same Greenhouse
+                 mechanism already vetted for Stripe -- Databricks, Coinbase,
+                 Airbnb, Brex, Figma, Robinhood. Generalized the one-company
+                 fetch-greenhouse-stripe into a config-driven
+                 fetch-greenhouse-companies that reads {platform, slug,
+                 company} per row from sources.config jsonb, so adding a
+                 company is now a migration insert, not a new Edge Function.
+                 Candidates were sourced with scripts/check-company-source.mjs
+                 against a broader list (Notion, DoorDash, Plaid, Ramp,
+                 Oliver Wyman, L.E.K., Evercore, Moelis among them); the same
+                 company-identity verification that caught "Bohen Consulting
+                 Group" squatting the "bcg" slug (Stage 3) caught "Oliver
+                 Wyman Labs" here -- a real but different company on a
+                 similar-sounding Lever slug -- and excluded it before it
+                 was ever added.
+
+                 This expansion surfaced a chain of four real bugs, each
+                 only visible once the previous was fixed:
+
+                 (1) O(n^2) redundancy -- scoreDuplicate() re-tokenized the
+                 same new job's title from scratch on every one of N
+                 comparisons in the per-company dedup loop. Fixed with a
+                 module-level tokenize() memo cache (both server/src/
+                 dedupe.ts and the Edge Function's ported copy).
+
+                 (2) Even memoized, Databricks alone (820 postings, 0
+                 pre-existing) still tripped Supabase's Edge Function
+                 compute limit -- jaccardSimilarity()'s own per-comparison
+                 Set operations are real O(n^2) cost at that scale, not just
+                 avoidable redundancy. Fixed structurally with
+                 MAX_NEW_JOBS_PER_RUN (150): brand-new postings beyond the
+                 cap are marked "deferred" (seen, not fully processed) and
+                 picked up on the next invocation -- safe because the
+                 adapter's insert/update path is already idempotent, so a
+                 large first backfill just completes over several runs
+                 instead of one.
+
+                 (3) A batched refresh-timestamp update against ~600
+                 already-tracked Databricks jobs failed with "Bad Request"
+                 -- PostgREST encodes .in() filters into the request URL,
+                 which has a real length limit. Fixed with
+                 updateInBatches(), chunking any ID-list update into groups
+                 of 200.
+
+                 (4) The deepest one: intermittent "duplicate key value
+                 violates ... job_sources_source_id_source_job_id_key"
+                 errors on job_sources inserts. First mitigation --
+                 switching to .upsert(..., { ignoreDuplicates: true }) --
+                 was wrong: it silenced the error without fixing the cause,
+                 which let real corruption accumulate silently (orphaned
+                 duplicate jobs rows, no error surfaced, every run). Root
+                 cause, found by comparing Coinbase's job_sources count
+                 (173, correct) against its jobs count (293, ~120 orphans)
+                 directly: a plain .select() on jobs/job_sources silently
+                 truncates at PostgREST's default 1000-row page once
+                 combined volume across all 7 companies passed that mark,
+                 so the adapter's own existingJobIdBySourceJobId map was
+                 missing entries for jobs that genuinely already had a
+                 job_sources row -- every run that hit this re-processed
+                 those jobs as "new." Real fix: fetchAllRows(), a
+                 .range()-paginated wrapper used for every potentially-large
+                 lookup, plus reverting job_sources back to a plain
+                 .insert() -- a genuine constraint conflict should fail
+                 loudly, not be swallowed the same way it was already
+                 masking this bug. Databricks, Coinbase, Airbnb, and Brex
+                 (all four confirmed corrupted; Figma/Robinhood/Stripe
+                 confirmed clean throughout) were wiped and cleanly
+                 re-backfilled from scratch under the fixed code, then
+                 re-verified: identical counts to the first clean attempt,
+                 and previously-inserted jobs correctly took the
+                 "refreshed" path on the next run instead of being
+                 reprocessed as new.
+
+                 fetchAllRows() was then moved out of
+                 fetch-greenhouse-companies and into the shared
+                 _shared/dedupeHelpers.ts, because approve-submission and
+                 fetch-deloitte-jobs turned out to have the exact same
+                 unbounded .select() against jobs/job_sources -- a latent
+                 version of the same bug, not yet triggered only because
+                 nothing had pushed total active jobs past 1000 until this
+                 expansion did. Both were switched to the shared paginated
+                 helper and redeployed; each re-verified against live data
+                 afterward (approve-submission's dedup check now genuinely
+                 scans every active job again; fetch-deloitte-jobs still
+                 shows a clean 47 refreshed / 0 inserted on rerun).
+
+                 Verified end-to-end: all 7 Greenhouse sources run together
+                 in one invocation (the actual daily-cron path) with every
+                 source reporting deferred:0 and zero job_sources conflicts
+                 -- Stripe 578, Databricks 820, Coinbase 173, Airbnb 189,
+                 Brex 294, Figma 162, Robinhood 130 postings, all correctly
+                 recognized as already-tracked rather than reinserted. The
+                 superseded fetch-greenhouse-stripe Edge Function and its
+                 cron entry were removed once fetch-greenhouse-companies
+                 (which also covers Stripe via the same config row) took
+                 over.
+
 Stage 5          LLM-assisted classification fallback for the long tail;
                  natural-language search; ranking-weight tuning from real
                  engagement data; real CRM integration replacing the
