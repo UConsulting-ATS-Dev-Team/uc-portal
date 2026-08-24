@@ -75,3 +75,23 @@
   font-size: var(--text-display-min);
   color: var(--color-primary);
 }
+
+/* ---- Responsive ---- */
+/* .profile-layout's own rail reuses .detail-rail (styles/jobDetail.css),
+   which already goes full-width below 900px -- this just needs the
+   matching flex-direction change on its own container class. */
+@media (max-width: 899px) {
+  .profile-layout {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 639px) {
+  .profile-fields-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quarterly-banner {
+    flex-wrap: wrap;
+  }
+}
