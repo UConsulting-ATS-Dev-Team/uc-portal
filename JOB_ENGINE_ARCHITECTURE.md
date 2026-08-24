@@ -1156,6 +1156,70 @@ Stage 4 (started) Additional ATS adapters for other UC-target companies;
                  20260824110000) now that real search/sourcing no longer
                  needs synthetic data to prove itself against.
 
+                 Fourth addition: two more companies (IMC Trading, Charlie
+                 Health), sourced differently than every prior addition --
+                 by cross-referencing scripts/check-company-source.mjs
+                 against the *real* UC alumni-by-company counts (data/
+                 realPeople.js, the real CRM import from Stage 5) instead
+                 of another guessed candidate list. Every consulting/IB/PE
+                 firm actually checked this pass (L.E.K. Consulting, FTI
+                 Consulting, KPMG, PwC, Lazard, Nous Group, Cornerstone
+                 Research, Huron Consulting, Morgan Stanley, Deutsche Bank,
+                 JP Morgan, Barclays) came back with no usable public
+                 board -- confirms the pattern already found for the 6
+                 "no live feed" companies extends to established
+                 consulting/banking firms generally, not just those 6.
+                 IMC Trading (prop trading/quant finance, real UC alumnus
+                 on record) and Charlie Health (mental-health provider,
+                 maps to the Healthcare interest category) were the two
+                 real hits, added via migration 20260824210000 onto the
+                 same config-driven mechanism as the second addition
+                 above.
+
+                 One real bug caught on first invocation: IMC Trading's
+                 source config used `company: "IMC Trading"` (the natural
+                 display name), but the adapter's company-name-mismatch
+                 safeguard -- the same check that caught "bcg" being a
+                 squatted slug in Stage 3 -- compares each posting's own
+                 company_name field with a case-insensitive *exact* match,
+                 not substring, and Greenhouse's actual field for this
+                 board is the short form "IMC". Result: all 166 fetched
+                 postings rejected as a mismatch, 0 inserted, on the first
+                 run. Fixed via a follow-up migration (20260824220000)
+                 changing only the match value to "IMC" -- safe here
+                 specifically because identity was already independently
+                 confirmed (a posting's own location field spells out
+                 "IMC Trading", and the live office list -- Chicago, Zug,
+                 Sydney, London -- matches IMC Trading's real offices)
+                 before the source was ever added, not a case of trusting
+                 a short name at face value. Charlie Health's company_name
+                 matched exactly on the first try.
+
+                 Verified end-to-end same as every prior addition: first
+                 invocation after the fix correctly inserted (158 IMC, 140
+                 Charlie Health, hitting the 150-per-run cap and correctly
+                 deferring the rest), a second invocation drained the
+                 remainder (deferred: 0 for both), and a third invocation
+                 confirmed idempotency (0 inserted, 158/261 refreshed, 0
+                 company mismatches). Noted honestly rather than silently:
+                 roughly half of Charlie Health's 281 postings are
+                 clinical/care-delivery roles (Care Coach, Crisis
+                 Intervention Specialist, licensed-clinician positions) no
+                 business-track UC member would apply to, but a real,
+                 non-trivial slice (Commercial Strategy Associate/Manager,
+                 several Growth Strategy Analyst variants, Director of
+                 Revenue Operations, Director of Admissions Strategy) are
+                 genuinely relevant -- the same "some of this board is
+                 relevant, most isn't" situation the senior-role denylist
+                 and per-company display cap already exist to handle for
+                 every high-volume source, so it didn't need special-
+                 casing. Also surfaced a new job.type value ("Part-time",
+                 from Charlie Health's part-time clinical postings) that
+                 pages/Jobs.jsx's Opportunity Type filter picked up
+                 automatically, since that filter's checkboxes are already
+                 generated from whatever types exist in the live data
+                 rather than a hardcoded list.
+
 Stage 5 (started) LLM-assisted classification fallback for the long tail;
                  natural-language search (deterministic layer done, see
                  "Fifth piece" below -- an LLM-parse fallback for queries
