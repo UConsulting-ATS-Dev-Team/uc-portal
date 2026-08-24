@@ -151,3 +151,35 @@
   color: var(--color-primary);
   font-weight: 700;
 }
+
+/* ---- Responsive ---- */
+/* .modal already goes max-width: 100% inside a centered, padded backdrop,
+   so it never causes horizontal overflow on its own -- this only needs to
+   ease its internal grids/rows on phone width, matching the 1-column and
+   flex-wrap treatment used for every other 2-column grid/row in the app. */
+@media (max-width: 639px) {
+  .modal__body .field-row {
+    grid-template-columns: 1fr;
+  }
+
+  .time-slot-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .modal__footer {
+    flex-wrap: wrap;
+  }
+
+  .modal__footer-note {
+    margin-right: 0;
+    width: 100%;
+  }
+
+  .entry-tabs {
+    flex-wrap: wrap;
+  }
+
+  .modal-context-card {
+    flex-wrap: wrap;
+  }
+}
