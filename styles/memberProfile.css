@@ -146,3 +146,20 @@
 .checklist-simple li:not(.is-checked) {
   color: var(--color-text-muted);
 }
+
+/* ---- Responsive ---- */
+@media (max-width: 899px) {
+  .profile-header {
+    flex-direction: column;
+  }
+
+  .profile-shared-context {
+    width: 100%;
+  }
+}
+
+@media (max-width: 639px) {
+  .profile-header__top {
+    flex-wrap: wrap;
+  }
+}

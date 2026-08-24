@@ -180,3 +180,24 @@
   padding: var(--space-2) 0;
   font-size: var(--text-secondary);
 }
+
+/* ---- Responsive ---- */
+@media (max-width: 899px) {
+  .network-layout {
+    flex-direction: column;
+  }
+
+  .network-rail {
+    width: 100%;
+  }
+
+  .network-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 639px) {
+  .network-grid {
+    grid-template-columns: 1fr;
+  }
+}
