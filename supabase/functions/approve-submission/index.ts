@@ -36,6 +36,7 @@ import type { RawJob } from "../_shared/pipeline/types.ts";
 import {
   comparableFromExistingJob,
   enforceStorageRestrictions,
+  fetchAllRows,
   jobInsertFromNormalized,
   resolveJobFunctionId,
 } from "../_shared/dedupeHelpers.ts";
@@ -182,14 +183,23 @@ Deno.serve(async (req) => {
   normalized = enforceStorageRestrictions(normalized, source.storage_restrictions);
   const qualityScore = scoreQuality(normalized);
 
-  const { data: activeJobs, error: activeJobsError } = await adminClient
-    .from("jobs")
-    .select("id, company, title, application_url, remote_type, city, posted_date, salary_min")
-    .eq("active", true);
-  if (activeJobsError) return jsonResponse({ error: activeJobsError.message }, 500);
+  // Paginated via fetchAllRows() -- a bare .select() here silently truncates
+  // at PostgREST's default 1000-row page (the exact bug fetch-greenhouse-
+  // companies hit), which by this point in the app's growth is a real risk,
+  // not hypothetical: total active jobs across the Greenhouse sources alone
+  // already exceed 1000. An admin approving a submission deserves a dedup
+  // check against every active job, not just whichever ~1000 happened to
+  // come back first.
+  let activeJobs: Array<Record<string, unknown>>;
+  try {
+    activeJobs = await fetchAllRows(adminClient, "jobs", "id, company, title, application_url, remote_type, city, posted_date, salary_min", (q) => q.eq("active", true));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return jsonResponse({ error: message }, 500);
+  }
 
   let bestMatch: { jobId: string; score: number } | null = null;
-  for (const row of activeJobs ?? []) {
+  for (const row of activeJobs) {
     const { score } = scoreDuplicate(normalized, comparableFromExistingJob(row));
     if (!bestMatch || score > bestMatch.score) bestMatch = { jobId: row.id as string, score };
   }

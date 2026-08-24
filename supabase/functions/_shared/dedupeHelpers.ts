@@ -1,10 +1,45 @@
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import type { NormalizedJob } from "./pipeline/types.ts";
 
-// Shared between approve-submission (Stage 2) and fetch-greenhouse-stripe
-// (Stage 3) -- both run the same normalize -> dedup -> insert flow against
-// the same `jobs` table, so the glue between the pure pipeline modules
-// (pipeline/) and each function's own Supabase calls lives here rather than
-// being copy-pasted per function.
+// Shared between approve-submission (Stage 2), fetch-deloitte-jobs, and
+// fetch-greenhouse-companies (Stage 3/4) -- all run the same normalize ->
+// dedup -> insert flow against the same `jobs` table, so the glue between
+// the pure pipeline modules (pipeline/) and each function's own Supabase
+// calls lives here rather than being copy-pasted per function.
+
+const PAGE_SIZE = 1000;
+
+// PostgREST caps a plain .select() at a default page size (1000 rows) --
+// confirmed the hard way in fetch-greenhouse-companies that this silently
+// truncates rather than erroring, which caused real data corruption: an
+// incomplete `activeJobs`/`existingSources` lookup made already-tracked
+// jobs look brand-new on every run, creating a fresh orphaned duplicate
+// each time. Moved here (rather than left as a local copy in that one
+// function) once it became clear every function doing an unbounded
+// .select() against `jobs` or `job_sources` has the same latent bug --
+// active jobs alone crossed 1000 rows once the Greenhouse expansion
+// landed, so this isn't a hypothetical for the other callers either.
+export async function fetchAllRows(
+  adminClient: SupabaseClient,
+  table: string,
+  columns: string,
+  // deno-lint-ignore no-explicit-any
+  applyFilters?: (query: any) => any,
+  // deno-lint-ignore no-explicit-any
+): Promise<any[]> {
+  const rows: Record<string, unknown>[] = [];
+  let from = 0;
+  while (true) {
+    let query = adminClient.from(table).select(columns).range(from, from + PAGE_SIZE - 1);
+    if (applyFilters) query = applyFilters(query);
+    const { data, error } = await query;
+    if (error) throw new Error(`Fetching ${table} failed: ${error.message}`);
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return rows;
+}
 
 // Only the fields dedupe.ts's scoreDuplicate() actually reads are populated
 // from the real row; everything else is a type-satisfying placeholder --

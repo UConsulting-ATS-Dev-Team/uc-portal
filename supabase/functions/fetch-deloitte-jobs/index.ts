@@ -49,7 +49,7 @@ import { normalizeJob } from "../_shared/pipeline/normalize.ts";
 import { validateJob, scoreQuality } from "../_shared/pipeline/quality.ts";
 import { scoreDuplicate, classifyDuplicateTier } from "../_shared/pipeline/dedupe.ts";
 import type { RawJob } from "../_shared/pipeline/types.ts";
-import { comparableFromExistingJob, jobInsertFromNormalized } from "../_shared/dedupeHelpers.ts";
+import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows } from "../_shared/dedupeHelpers.ts";
 
 const SOURCE_NAME = "Deloitte (Careers RSS Feed)";
 const KEYWORDS = ["consultant", "strategy", "analyst"];
@@ -159,17 +159,29 @@ async function runFetch(adminClient: SupabaseClient, source: any): Promise<Fetch
   }
 
   // ---- Load every lookup once, up front ----
-  const [{ data: rawActiveJobs, error: activeJobsError }, { data: existingSources, error: existingSourcesError }, { data: jobFunctions }] = await Promise.all([
-    adminClient.from("jobs").select("id, company, title, application_url, remote_type, city, posted_date, salary_min").eq("active", true),
-    adminClient.from("job_sources").select("job_id, source_job_id").eq("source_id", source.id),
-    adminClient.from("job_functions").select("id, name"),
-  ]);
-  if (activeJobsError) return failed(`Loading active jobs failed: ${activeJobsError.message}`);
-  if (existingSourcesError) return failed(`Loading existing sources failed: ${existingSourcesError.message}`);
+  // Paginated via fetchAllRows() -- fetch-greenhouse-companies hit a real
+  // silent-truncation bug on these exact two queries (a bare .select() caps
+  // at PostgREST's default 1000-row page) once total active jobs across all
+  // sources grew past that mark, which the Greenhouse expansion already did.
+  // Deloitte's own job_sources slice is small today but has no reason to
+  // stay that way, so it gets the same treatment rather than leaving a
+  // second copy of the same landmine for later.
+  let activeJobs: Array<Record<string, unknown>>;
+  let existingSources: Array<Record<string, unknown>>;
+  let jobFunctions: Array<Record<string, unknown>>;
+  try {
+    [activeJobs, existingSources, jobFunctions] = await Promise.all([
+      fetchAllRows(adminClient, "jobs", "id, company, title, application_url, remote_type, city, posted_date, salary_min", (q) => q.eq("active", true)),
+      fetchAllRows(adminClient, "job_sources", "job_id, source_job_id", (q) => q.eq("source_id", source.id)),
+      fetchAllRows(adminClient, "job_functions", "id, name"),
+    ]);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return failed(`Loading lookups failed: ${message}`);
+  }
 
-  const activeJobs = rawActiveJobs ?? [];
-  const jobFunctionIdByName = new Map<string, string>((jobFunctions ?? []).map((f) => [f.name as string, f.id as string]));
-  const existingJobIdBySourceJobId = new Map<string, string>((existingSources ?? []).map((r) => [r.source_job_id as string, r.job_id as string]));
+  const jobFunctionIdByName = new Map<string, string>(jobFunctions.map((f) => [f.name as string, f.id as string]));
+  const existingJobIdBySourceJobId = new Map<string, string>(existingSources.map((r) => [r.source_job_id as string, r.job_id as string]));
 
   // ---- Only fetch detail pages for items not already tracked ----
   const toFetch = rssItems.filter((item) => {

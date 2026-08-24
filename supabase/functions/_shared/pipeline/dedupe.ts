@@ -12,14 +12,31 @@ import type { DuplicateCandidate, DuplicateSignal, NormalizedJob } from "./types
 
 const STOPWORDS = new Set(["a", "an", "the", "and", "or", "of", "for", "to", "in", "at", "on", "with"]);
 
+// Memoized by exact title string -- found necessary running this against a
+// real 820-posting single-company backfill (fetch-greenhouse-companies):
+// an adapter's own dedup loop calls scoreDuplicate(new, existing) once per
+// existing job, and `new`'s title is identical across every one of those
+// calls, so re-tokenizing it from scratch every time (regex replace +
+// split + Set construction) was pure redundant work at O(n) repetitions
+// for what should be O(1). This alone was enough to trip Supabase's Edge
+// Function compute limit on a single large company, before even
+// considering cross-company volume. Safe to cache indefinitely within an
+// invocation's lifetime -- the input vocabulary (real job titles) is
+// bounded in practice, nowhere near large enough to matter memory-wise.
+const tokenizeCache = new Map<string, Set<string>>();
+
 function tokenize(text: string): Set<string> {
-  return new Set(
+  const cached = tokenizeCache.get(text);
+  if (cached) return cached;
+  const tokens = new Set(
     text
       .toLowerCase()
       .replace(/[^a-z0-9\s]/g, " ")
       .split(/\s+/)
       .filter((t) => t && !STOPWORDS.has(t))
   );
+  tokenizeCache.set(text, tokens);
+  return tokens;
 }
 
 function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
