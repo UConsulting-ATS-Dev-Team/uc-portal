@@ -6,7 +6,7 @@ import PostOpportunityModal from "../components/modals/PostOpportunityModal.jsx"
 import { INDUSTRIES, LOCATIONS } from "../data/careerOptions.js";
 import { daysUntil, matchesDeadlineBucket } from "../data/jobUtils.js";
 import { useAppState } from "../data/store.jsx";
-import { supabase } from "../data/supabaseClient.js";
+import { fetchAllRows } from "../data/fetchAllRows.js";
 import { matchJob } from "../data/jobMatch.js";
 import { realJobToCardShape } from "../data/realJobAdapter.js";
 import { currentUser } from "../data/mockUser.js";
@@ -33,6 +33,35 @@ const TABS = [
   { key: "saved", label: "Saved" },
 ];
 const PAGE_SIZE = 5;
+
+// One company having a public ATS API shouldn't mean it fills the board:
+// Databricks alone has 800+ real postings, most other target companies have
+// none at all (see JOB_ENGINE_ARCHITECTURE.md's Stage 4 relevance-filter
+// entry). Capping how many of one company's cards can appear at once keeps
+// the board diverse across companies instead of exhaustive within one --
+// the rest are one click away via "View N more at Company", not hidden.
+const CAP_PER_COMPANY = 3;
+
+// Applied to the already-sorted list, so which 3 "win" respects whatever
+// sort is active (bestMatch keeps each company's top 3 matches, etc.).
+// Global across the whole result set, not per-page -- otherwise a company
+// could still dominate by spilling its 4th+ card onto page 2 instead of
+// being deferred to the explicit "view more" link.
+function capPerCompany(jobs, cap) {
+  const countByCompany = {};
+  const kept = [];
+  const overflowByCompany = {};
+  for (const job of jobs) {
+    countByCompany[job.company] = (countByCompany[job.company] || 0) + 1;
+    if (countByCompany[job.company] <= cap) kept.push(job);
+    else overflowByCompany[job.company] = (overflowByCompany[job.company] || 0) + 1;
+  }
+  const lastKeptIdByCompany = {};
+  kept.forEach((j) => {
+    lastKeptIdByCompany[j.company] = j.id;
+  });
+  return { kept, overflowByCompany, lastKeptIdByCompany };
+}
 
 const DEFAULT_FILTERS = {
   keyword: "",
@@ -120,15 +149,13 @@ export default function Jobs() {
   const [jobsError, setJobsError] = useState(null);
 
   useEffect(() => {
-    supabase
-      .from("jobs")
-      .select("*")
-      .eq("active", true)
-      .then(({ data, error }) => {
-        if (error) setJobsError(error.message);
-        else setRawJobs(data);
-        setJobsLoading(false);
-      });
+    // fetchAllRows(), not a bare .select() -- a plain select silently
+    // truncates at PostgREST's default 1000-row page, which real active-job
+    // volume now exceeds (see data/fetchAllRows.js's header comment).
+    fetchAllRows("jobs", "*", (q) => q.eq("active", true))
+      .then((data) => setRawJobs(data))
+      .catch((err) => setJobsError(err.message))
+      .finally(() => setJobsLoading(false));
   }, []);
 
   const JOBS = useMemo(
@@ -164,9 +191,23 @@ export default function Jobs() {
     [filteredForCount, tab, savedJobIds]
   );
   const sorted = useMemo(() => sortJobs(tabbed, sortBy), [tabbed, sortBy]);
+  // Skip capping once a keyword search is active -- "View N more at
+  // Company" works by setting the keyword filter to that company's name,
+  // and re-capping on top of an already-explicit narrowing would show the
+  // same 3 cards every time, making "view more" a dead end.
+  const { kept: displayJobs, overflowByCompany, lastKeptIdByCompany } = useMemo(
+    () => (filters.keyword ? { kept: sorted, overflowByCompany: {}, lastKeptIdByCompany: {} } : capPerCompany(sorted, CAP_PER_COMPANY)),
+    [sorted, filters.keyword]
+  );
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
-  const pageJobs = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(displayJobs.length / PAGE_SIZE));
+  const pageJobs = displayJobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  function viewMoreAtCompany(company) {
+    setFilters((prev) => ({ ...prev, keyword: company }));
+    setTab("all");
+    setPage(1);
+  }
   const diagnostics = useMemo(
     () => (sorted.length === 0 ? diagnoseEmptyFilters(filters, JOBS) : []),
     [sorted.length, filters, JOBS]
@@ -421,7 +462,18 @@ export default function Jobs() {
         )}
 
         {pageJobs.map((job) => (
-          <JobCard key={job.id} job={job} saved={savedJobIds.includes(job.id)} onToggleSave={toggleSavedJob} />
+          <div key={job.id}>
+            <JobCard job={job} saved={savedJobIds.includes(job.id)} onToggleSave={toggleSavedJob} />
+            {lastKeptIdByCompany[job.company] === job.id && overflowByCompany[job.company] > 0 && (
+              <button
+                className="btn-link"
+                style={{ display: "block", marginBottom: "var(--space-6)" }}
+                onClick={() => viewMoreAtCompany(job.company)}
+              >
+                View {overflowByCompany[job.company]} more at {job.company} →
+              </button>
+            )}
+          </div>
         ))}
 
         {totalPages > 1 && (

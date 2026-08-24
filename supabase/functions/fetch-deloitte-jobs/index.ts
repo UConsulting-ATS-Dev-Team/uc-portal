@@ -48,6 +48,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { normalizeJob } from "../_shared/pipeline/normalize.ts";
 import { validateJob, scoreQuality } from "../_shared/pipeline/quality.ts";
 import { scoreDuplicate, classifyDuplicateTier } from "../_shared/pipeline/dedupe.ts";
+import { isLikelySeniorRole } from "../_shared/pipeline/relevance.ts";
 import type { RawJob } from "../_shared/pipeline/types.ts";
 import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows } from "../_shared/dedupeHelpers.ts";
 
@@ -218,6 +219,7 @@ async function runFetch(adminClient: SupabaseClient, source: any): Promise<Fetch
   let skippedInvalid = 0;
   let skippedNoSchema = 0;
   let skippedCompanyMismatch = 0;
+  let skippedNotRelevant = 0;
 
   for (const result of detailPages) {
     if (result.error || !result.posting) {
@@ -239,13 +241,26 @@ async function runFetch(adminClient: SupabaseClient, source: any): Promise<Fetch
       continue;
     }
 
+    // Same relevance filter as fetch-greenhouse-companies (see
+    // _shared/pipeline/relevance.ts) -- less urgent here since the
+    // consultant/strategy/analyst keyword search already scopes the feed
+    // reasonably well, but a "Senior Manager, Strategy Consulting" or
+    // similar can still surface under those same keywords, and applying
+    // this everywhere consistently is simpler than deciding per-adapter
+    // whether it's needed.
+    const rawTitle = (posting.title ?? item.title).trim();
+    if (isLikelySeniorRole(rawTitle)) {
+      skippedNotRelevant++;
+      continue;
+    }
+
     const addr = posting.jobLocation?.address ?? {};
     const locationText = [addr.addressLocality, addr.addressRegion].filter(Boolean).join(", ") || undefined;
 
     const raw: RawJob = {
       source: { sourceId: source.id, sourceJobId, sourceUrl: item.link, isPrimary: true },
       company: "Deloitte",
-      title: (posting.title ?? item.title).trim(),
+      title: rawTitle,
       locationText,
       applicationUrl: item.link,
       applicationDeadlineText: typeof posting.validThrough === "string" ? posting.validThrough.slice(0, 10) : undefined,
@@ -353,6 +368,7 @@ async function runFetch(adminClient: SupabaseClient, source: any): Promise<Fetch
     skippedInvalid,
     skippedNoSchema,
     skippedCompanyMismatch,
+    skippedNotRelevant,
     expirationSweep: "skipped -- capped/partial feed, see header comment",
   };
   return { httpStatus: 200, body: summary, logStatus: "success", logSummary: summary };

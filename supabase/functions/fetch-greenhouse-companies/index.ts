@@ -34,6 +34,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { normalizeJob } from "../_shared/pipeline/normalize.ts";
 import { validateJob, scoreQuality } from "../_shared/pipeline/quality.ts";
 import { scoreDuplicate, classifyDuplicateTier } from "../_shared/pipeline/dedupe.ts";
+import { isLikelySeniorRole } from "../_shared/pipeline/relevance.ts";
 import type { RawJob } from "../_shared/pipeline/types.ts";
 import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows } from "../_shared/dedupeHelpers.ts";
 
@@ -135,6 +136,7 @@ async function runFetchForCompany(
   const newDuplicateCandidates: Array<{ job_id_a: string; job_id_b: string; score: number; signals: unknown }> = [];
   let skippedInvalid = 0;
   let skippedCompanyMismatch = 0;
+  let skippedNotRelevant = 0;
   let deferred = 0;
 
   for (const ghJob of ghJobs) {
@@ -144,6 +146,22 @@ async function runFetchForCompany(
     const existingJobId = existingJobIdBySourceJobId.get(sourceJobId);
     if (existingJobId) {
       refreshJobIds.push(existingJobId);
+      continue;
+    }
+
+    // Relevance filter -- see _shared/pipeline/relevance.ts's header comment
+    // for the full rationale (Greenhouse returns a company's entire board,
+    // not just entry-level roles, so most of what comes back for a large
+    // tech employer is senior/management roles no UC undergrad would apply
+    // to). Checked before the MAX_NEW_JOBS_PER_RUN deferral below so a
+    // company's per-day budget of "new postings actually processed" isn't
+    // spent scoring/inserting roles that were never going to be kept
+    // anyway. Only gates brand-new postings, not already-tracked ones --
+    // this is forward-looking, not a retroactive cleanup of what's already
+    // in the table (see JOB_ENGINE_ARCHITECTURE.md's Stage 4 entry for why
+    // that's a separate, deliberately-reviewed decision).
+    if (isLikelySeniorRole(ghJob.title)) {
+      skippedNotRelevant++;
       continue;
     }
 
@@ -289,6 +307,7 @@ async function runFetchForCompany(
     refreshed: refreshJobIds.length,
     skippedInvalid,
     skippedCompanyMismatch,
+    skippedNotRelevant,
     deferred,
     markedExpired,
     suspiciouslyEmpty,
