@@ -245,3 +245,13 @@
   border: var(--border-hairline);
   margin-bottom: var(--space-3);
 }
+
+/* ---- Responsive ---- */
+/* Everything else in this file is already a single centered column
+   (max-width: 100% on header/content/footer), so the only fixed-column
+   layout that needs a breakpoint is the completion screen's stat grid. */
+@media (max-width: 639px) {
+  .completion__stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
