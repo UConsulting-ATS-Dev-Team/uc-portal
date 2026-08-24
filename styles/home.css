@@ -170,3 +170,32 @@
   border: var(--border-hairline);
   padding: var(--space-5);
 }
+
+/* ---- Responsive ---- */
+@media (max-width: 899px) {
+  .home-layout {
+    flex-direction: column;
+  }
+
+  .home-rail {
+    width: 100%;
+  }
+
+  .empty-state__tiles {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 639px) {
+  .recommended-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .welcome-card {
+    flex-wrap: wrap;
+  }
+
+  .empty-state__tiles {
+    grid-template-columns: 1fr;
+  }
+}

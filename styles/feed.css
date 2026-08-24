@@ -183,3 +183,25 @@
 .active-alumni-row:last-child {
   border-bottom: none;
 }
+
+/* ---- Responsive ---- */
+@media (max-width: 899px) {
+  .feed-layout {
+    flex-direction: column;
+  }
+
+  .feed-main {
+    width: 100%;
+  }
+
+  .feed-rail {
+    width: 100%;
+  }
+}
+
+@media (max-width: 639px) {
+  .composer__bottom {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+}
