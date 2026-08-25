@@ -290,7 +290,7 @@ export default function Jobs() {
       <aside className="filters">
         <div className="filters__header">
           <span>Filters</span>
-          <button className="btn-link" onClick={() => setFilters(DEFAULT_FILTERS)}>
+          <button className="btn-link" onClick={() => setFilters(NEUTRAL_FILTERS)}>
             Clear all
           </button>
         </div>
@@ -532,7 +532,7 @@ export default function Jobs() {
                   <button className="btn btn-primary" onClick={() => setFilters(diagnostics[0].clear(filters))}>
                     Drop "{diagnostics[0].currentLabel}"
                   </button>
-                  <button className="btn btn-secondary" onClick={() => setFilters(DEFAULT_FILTERS)}>
+                  <button className="btn btn-secondary" onClick={() => setFilters(NEUTRAL_FILTERS)}>
                     Clear all filters
                   </button>
                   <button className="btn btn-secondary">Save as an alert</button>
@@ -542,7 +542,7 @@ export default function Jobs() {
                 </p>
               </>
             ) : (
-              <button className="btn btn-secondary" onClick={() => setFilters(DEFAULT_FILTERS)}>
+              <button className="btn btn-secondary" onClick={() => setFilters(NEUTRAL_FILTERS)}>
                 Clear all filters
               </button>
             )}
