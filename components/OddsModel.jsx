@@ -5,6 +5,25 @@ const LEVER_COPY = {
   networking: "Chat with more UC connections here",
 };
 
+// 11/12/13 always take "th" (eleventh/twelfth/thirteenth), everything else
+// keys off the last digit -- the plain `${n}th` this replaces rendered every
+// percentile as "Nth", including the very common case of a number ending in
+// 1/2/3 (e.g. "53th" instead of "53rd").
+function ordinal(n) {
+  const rem100 = n % 100;
+  if (rem100 >= 11 && rem100 <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1:
+      return `${n}st`;
+    case 2:
+      return `${n}nd`;
+    case 3:
+      return `${n}rd`;
+    default:
+      return `${n}th`;
+  }
+}
+
 export default function OddsModel({ job, extraPrepHours, onLogPrep }) {
   const odds = computeOdds(job, { extraPrepHours });
 
@@ -25,7 +44,7 @@ export default function OddsModel({ job, extraPrepHours, onLogPrep }) {
           </div>
           <div className="odds-comparison">
             <span>Your percentile in UC</span>
-            <span>{odds.percentile}th</span>
+            <span>{ordinal(odds.percentile)}</span>
           </div>
         </div>
 
