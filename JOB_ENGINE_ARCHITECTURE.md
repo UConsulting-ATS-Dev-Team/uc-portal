@@ -2430,7 +2430,10 @@ matching rows remain). Admin Dashboard's new "Broken links" panel
 queries `quality_score` -- same RLS (`jobs_select_admin`), same
 `queue-table`/`queue-table__scroll` classes, so it inherits the same
 verified horizontal-scroll behavior at the 900px/640px breakpoints with no
-new CSS. `SourceManagement.jsx`'s fetch-log summary line got a small
+new CSS -- inferred from the shared classes at the time, then directly
+confirmed afterward: the user opened `/admin` themselves and visually
+confirmed the panel renders correctly. `SourceManagement.jsx`'s fetch-log
+summary line got a small
 branch for this function's `checked`/`ok`/`failed`/`newlyFlaggedBroken`
 shape, since it has no insert/merge/dedup concept to report the way every
 job-listing fetcher's summary does. `npm run test:server` -- 47/47 green,
