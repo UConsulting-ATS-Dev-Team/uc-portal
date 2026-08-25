@@ -268,34 +268,42 @@ async function runFetchForCompany(
     if (error) return failed(`Merge freshness update failed: ${error}`);
   }
   if (refreshJobIds.length > 0) {
+    // missed_fetches resets to 0 the moment a job reappears -- the counter
+    // tracks *consecutive* absences (US-22), not a lifetime total, so one
+    // clean fetch fully clears whatever streak of misses came before it.
     const error = await updateInBatches(adminClient, refreshJobIds, {
       last_seen_at: nowIso,
       last_verified_at: nowIso,
       status: "active",
       active: true,
+      missed_fetches: 0,
       updated_at: nowIso,
     });
     if (error) return failed(`Refresh update failed: ${error}`);
   }
 
-  // Freshness (§3.4): each company's Greenhouse board is exhaustive (every
-  // current posting, one call), so "tracked before, absent today" is a
-  // real "this posting closed" signal here -- unlike Deloitte's capped
-  // RSS feed, where the same inference would be dishonest.
-  let markedExpired = 0;
+  // Freshness (§3.4/US-22/23): each company's Greenhouse board is
+  // exhaustive (every current posting, one call), so "tracked before,
+  // absent today" is a real "this posting closed" signal here -- unlike
+  // Deloitte's capped RSS feed, where the same inference would be
+  // dishonest. mark_jobs_missed() (20260824270000) does the actual
+  // increment-then-conditionally-transition atomically per row -- a single
+  // absence no longer immediately flags a job (a real fix: one transient
+  // scrape hiccup used to flip status on the spot), and enough consecutive
+  // absences now genuinely excludes it (active -> false), not just labels
+  // it -- see that migration's own comment for the exact thresholds.
+  let markedPotentiallyExpired = 0;
+  let markedFullyExpired = 0;
   if (!suspiciouslyEmpty) {
     const expiredJobIds = [...existingJobIdBySourceJobId.entries()]
       .filter(([sourceJobId]) => !seenSourceJobIds.has(sourceJobId))
       .map(([, jobId]) => jobId);
     if (expiredJobIds.length > 0) {
-      const { data, error } = await adminClient
-        .from("jobs")
-        .update({ status: "potentially_expired" })
-        .in("id", expiredJobIds)
-        .eq("active", true)
-        .eq("status", "active")
-        .select("id");
-      if (!error) markedExpired = data?.length ?? 0;
+      const { data, error } = await adminClient.rpc("mark_jobs_missed", { job_ids: expiredJobIds });
+      if (!error) {
+        markedPotentiallyExpired = (data ?? []).filter((r: { new_status: string }) => r.new_status === "potentially_expired").length;
+        markedFullyExpired = (data ?? []).filter((r: { new_status: string }) => r.new_status === "expired").length;
+      }
     }
   }
 
@@ -309,7 +317,8 @@ async function runFetchForCompany(
     skippedCompanyMismatch,
     skippedNotRelevant,
     deferred,
-    markedExpired,
+    markedPotentiallyExpired,
+    markedFullyExpired,
     suspiciouslyEmpty,
   };
   return { logStatus: "success", logSummary: summary };

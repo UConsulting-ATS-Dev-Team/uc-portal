@@ -118,6 +118,9 @@ export default function RealJobDetail({ jobId }) {
               <div className="detail-header__title-row">
                 <h1 className="detail-header__role">{job.title}</h1>
                 {!job.active && <span className="chip">No longer active</span>}
+                {job.active && job.status === "potentially_expired" && (
+                  <span className="chip">Possibly no longer open</span>
+                )}
               </div>
               <p className="detail-header__detail-line">
                 {job.company} · {locationLabel} · {compLabel}

@@ -14,6 +14,7 @@ export default function JobCard({ job, saved, onToggleSave }) {
           <span className="job-card__role">{job.role}</span>
           <span className="job-card__match">{job.matchScore}% match</span>
           {job.ucPosted && <span className="chip chip-accent">UC-posted</span>}
+          {job.possiblyClosed && <span className="chip">Possibly no longer open</span>}
         </div>
         <p className="job-card__detail-line">
           {job.company} · {job.location} · {job.workMode} · {job.compDisplay}

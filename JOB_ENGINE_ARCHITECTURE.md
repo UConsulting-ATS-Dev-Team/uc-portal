@@ -2022,3 +2022,52 @@ match. Confirmed the real Supabase round-trip too: queried
 `member_preferences` directly after selecting skills (synced correctly)
 and again after reverting the test selection back to empty (synced back
 down correctly, no residue left in the real table).
+
+**Same pass, US-22/23 -- hardened the expiration state machine.**
+
+Confirmed live (this doc's own earlier audit note) that
+`fetch-greenhouse-companies` flipped a job to `potentially_expired` on a
+*single* missed fetch (one transient scrape hiccup could falsely flag a
+still-open posting) and never actually flipped `active` to `false` on real
+expiry -- `pages/Jobs.jsx`'s `.eq("active", true)` query kept showing
+"expired" jobs indefinitely with no distinguishing badge anywhere. The
+status existed; nothing enforced it.
+
+Added a `missed_fetches` counter (migration 20260824270000) and a new
+`mark_jobs_missed(job_ids)` RPC that increments it and conditionally
+transitions status/active atomically per row -- PostgREST's `.update()`
+can only set absolute values, not "increment, then conditionally
+transition based on the new total," so this genuinely needed a SQL
+function (same reasoning `company_demand_report` already established),
+not a workaround. Explicitly revoked from `anon`/`authenticated` -- only
+ever called by an Edge Function's service_role client, never something a
+signed-in member should be able to invoke directly. Two thresholds, walked
+through gradually: 1 miss is invisible (still plausibly transient), 2
+consecutive misses flips to `potentially_expired` (visible on the board
+with a new "Possibly no longer open" badge -- `components/JobCard.jsx`,
+`pages/RealJobDetail.jsx` -- but not excluded, a member can still decide
+it's worth trying), 5 consecutive misses flips to `expired` **and**
+`active = false` -- the actual archive transition (US-23): excluded from
+every active-jobs query, but the row itself is never deleted, so
+history/provenance survives. Refreshing a job that reappears resets the
+counter to 0, not just its status -- a `missed_fetches` counter that only
+ever incremented would eventually expire *every* job that ever had one bad
+day, which isn't what "consecutive" is supposed to mean. Deloitte's
+adapter deliberately still runs no expiration sweep at all (unchanged,
+correct, per its own existing header comment) -- its capped 20-result-per-
+keyword feed makes "absent today" meaningless there, a different situation
+from Greenhouse's exhaustive one.
+
+Verified live against a real, currently-active job (not a fabricated
+test row) by calling the RPC directly through temporary migrations, since
+the real trigger condition -- a live company's feed genuinely dropping a
+posting -- can't be produced on demand: confirmed 2 calls correctly
+produced `missed_fetches: 2, status: "potentially_expired", active: true`
+and the new badge rendered on both the job card and detail page; 3 more
+calls (5 total) correctly produced `status: "expired", active: false`,
+the job disappeared from a live board search that previously found it,
+and the detail page correctly showed the *existing* "No longer active"
+badge instead (confirming the two badges don't overlap). Reset the test
+job back to its genuine original state afterward via a final migration --
+verified `missed_fetches: 0, status: "active", active: true` restored
+exactly.

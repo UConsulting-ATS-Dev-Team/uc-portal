@@ -37,6 +37,7 @@ export function realJobToCardShape(job, matchResult) {
     matchScore: matchResult?.score ?? 0,
     matchEligible: matchResult?.eligible ?? true,
     qualityScore: job.quality_score,
+    possiblyClosed: job.status === "potentially_expired", // US-22/23 -- still active, but the source has missed it 2+ consecutive fetches
     ucPosted: false,
     referralAvailable: false,
     location: job.city ?? (job.remote_type === "remote" ? "Remote" : ""),
