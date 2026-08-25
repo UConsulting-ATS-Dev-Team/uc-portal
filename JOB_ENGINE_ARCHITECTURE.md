@@ -1826,7 +1826,7 @@ mock-data-feasible? — needs a real authorized source?
 - US-57 **P0** — `Requires review` blocks ingestion by default (§3.7); duplicate review queue (US-18) and submission review queue (US-08) are the two other "send to a human" paths — mock: yes
 
 **17. Future / Advanced (explicitly not MVP, per your instruction)**
-- US-58 **P2** — personalized continuous feed — depends on US-32/40
+- US-58 **P2** — *(done, see Part 7's dated entry)* — personalized continuous feed — depends on US-32/40
 - US-59 **P2** — next-recommended-action — pattern already prototyped on Home, see 8.1
 - US-60 **P2** — interview-prep recommendation — pattern already prototyped on Career Resources, see 8.1
 - US-61 **P2** — job-trend insights over time — depends on historical data existing (needs Stage 2+ running for a while first, not just an engineering dependency)
@@ -2436,3 +2436,37 @@ shape, since it has no insert/merge/dedup concept to report the way every
 job-listing fetcher's summary does. `npm run test:server` -- 47/47 green,
 unaffected (this feature has no `server/`-side logic, it's Edge
 Function + schema only).
+
+**Same day, US-58 -- personalized continuous feed, closing the last
+open P2 story with an actual engineering dependency (US-32/40, both
+already live).** Added as a new "Continuous feed" tab on the existing
+Jobs board (`pages/Jobs.jsx`) rather than a new nav destination -- close
+enough to the existing board that a separate top-level rail item would
+have duplicated IA CLAUDE.md already treats as finalized. When active,
+the filter sidebar is replaced with a short explanatory line rather than
+shown-but-inert, since the whole point of the tab is that it isn't
+filter-driven.
+
+`components/ContinuousJobFeed.jsx` loads in cursor-based batches of 60
+(`.range()`, ordered `quality_score desc, id asc` for a stable tiebreak)
+against the real ~3,284-row `jobs` table -- never `fetchAllRows()`, the
+exact over-fetch pattern that caused the PostgREST 1000-row cap incident
+and the Databricks/Coinbase compute-limit incidents earlier in Part 7.
+Each batch is scored with the same `matchJob()`/`finalScore()`
+(`data/jobMatch.js`) the board's own "Best match" sort already uses --
+no parallel scoring path -- hard-ineligible jobs (grad year/employment
+type) are dropped per US-33 before scoring, and a running per-company
+counter enforces the same 3-per-company cap Jobs.jsx's own
+`capPerCompany()` already uses (hoisted into a shared `CAP_PER_COMPANY`
+constant in `data/jobUtils.js` so the two surfaces can't drift out of
+sync on the number). An `IntersectionObserver` sentinel triggers the next
+batch on scroll; loading state reuses the existing `Skeleton` component,
+never a spinner.
+
+Verified live by the user directly (not just build/test-suite proof):
+`npm run build` and `npm run test:server` (47/47, untouched -- this
+feature never touches `server/src` or any migration) were green before
+handoff, then the user ran the real dev server against the real
+Supabase project, signed in with a real confirmed test account, and
+confirmed the tab loads incrementally rather than all at once, ranking
+looks sane, and no single company dominates the scroll.
