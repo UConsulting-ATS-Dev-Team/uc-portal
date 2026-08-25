@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import JobCard from "../components/JobCard.jsx";
 import ErrorState from "../components/ErrorState.jsx";
+import ContinuousJobFeed from "../components/ContinuousJobFeed.jsx";
 import PostOpportunityModal from "../components/modals/PostOpportunityModal.jsx";
 import { INDUSTRIES, LOCATIONS } from "../data/careerOptions.js";
-import { daysUntil, matchesDeadlineBucket } from "../data/jobUtils.js";
+import { daysUntil, matchesDeadlineBucket, CAP_PER_COMPANY } from "../data/jobUtils.js";
 import { useAppState } from "../data/store.jsx";
 import { fetchAllRows } from "../data/fetchAllRows.js";
 import { matchJob, finalScore } from "../data/jobMatch.js";
@@ -30,6 +31,7 @@ const GRAD_YEARS = ["2026", "2027", "2028", "2029"];
 const DEADLINE_BUCKETS = ["This week", "This month", "Rolling"];
 const TABS = [
   { key: "recommended", label: "Recommended for you" },
+  { key: "continuous", label: "Continuous feed" },
   { key: "all", label: "All jobs" },
   { key: "saved", label: "Saved" },
 ];
@@ -41,7 +43,8 @@ const PAGE_SIZE = 5;
 // entry). Capping how many of one company's cards can appear at once keeps
 // the board diverse across companies instead of exhaustive within one --
 // the rest are one click away via "View N more at Company", not hidden.
-const CAP_PER_COMPANY = 3;
+// (CAP_PER_COMPANY itself now lives in data/jobUtils.js, shared with
+// components/ContinuousJobFeed.jsx below, so both enforce the same number.)
 
 // Applied to the already-sorted list, so which 3 "win" respects whatever
 // sort is active (bestMatch keeps each company's top 3 matches, etc.).
@@ -287,6 +290,7 @@ export default function Jobs() {
 
   return (
     <div className="jobs-layout">
+      {tab !== "continuous" && (
       <aside className="filters">
         <div className="filters__header">
           <span>Filters</span>
@@ -463,22 +467,31 @@ export default function Jobs() {
           </div>
         </div>
       </aside>
+      )}
 
       <div className="jobs-main">
         <div className="jobs-header">
           <div>
             <h1>Jobs</h1>
             <p className="jobs-header__count">
-              {jobsLoading ? "Loading…" : `${JOBS.length} opportunities · ${matchedCount} matched to your profile`}
+              {tab === "continuous"
+                ? "A live, ranked stream — keep scrolling for more"
+                : jobsLoading
+                ? "Loading…"
+                : `${JOBS.length} opportunities · ${matchedCount} matched to your profile`}
             </p>
           </div>
           <div className="jobs-header__actions">
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-              <option value="bestMatch">Best match</option>
-              <option value="deadline">Deadline</option>
-              <option value="newest">Newest</option>
-            </select>
-            <button className="btn btn-secondary" onClick={handleSaveSearch}>Save this search</button>
+            {tab !== "continuous" && (
+              <>
+                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                  <option value="bestMatch">Best match</option>
+                  <option value="deadline">Deadline</option>
+                  <option value="newest">Newest</option>
+                </select>
+                <button className="btn btn-secondary" onClick={handleSaveSearch}>Save this search</button>
+              </>
+            )}
             <button className="btn btn-primary" onClick={() => setShowPostModal(true)}>Post a job</button>
           </div>
         </div>
@@ -491,13 +504,23 @@ export default function Jobs() {
                 className={`jobs-tabs__tab${tab === t.key ? " is-active" : ""}`}
                 onClick={() => setTab(t.key)}
               >
-                {t.label} ({t.key === "recommended" ? matchedCount : t.key === "saved" ? savedJobIds.length : JOBS.length})
+                {t.label}
+                {t.key !== "continuous" &&
+                  ` (${t.key === "recommended" ? matchedCount : t.key === "saved" ? savedJobIds.length : JOBS.length})`}
               </button>
             ))}
           </div>
         </div>
 
-        {activeChips.length > 0 && (
+        {tab === "continuous" && (
+          <p className="meta" style={{ marginBottom: "var(--space-6)" }}>
+            Ranked by the same match formula as "Best match" sort, blended with freshness, deadline urgency and UC
+            relevance — ranked for you personally, so the sidebar filters don't apply here. Use "All jobs" to filter
+            manually.
+          </p>
+        )}
+
+        {tab !== "continuous" && activeChips.length > 0 && (
           <div className="active-filter-chips" style={{ marginBottom: "var(--space-6)" }}>
             {activeChips.map((chip, i) => (
               <span className="active-filter-chip" key={i}>
@@ -516,9 +539,18 @@ export default function Jobs() {
           <button className="btn-link">Learn more</button>
         </div>
 
-        {jobsLoading && <p className="meta">Loading opportunities…</p>}
+        {tab === "continuous" && (
+          <ContinuousJobFeed
+            preferences={preferences}
+            classYear={currentUser.classYear}
+            savedJobIds={savedJobIds}
+            onToggleSave={toggleSavedJob}
+          />
+        )}
 
-        {!jobsLoading && pageJobs.length === 0 && (
+        {tab !== "continuous" && jobsLoading && <p className="meta">Loading opportunities…</p>}
+
+        {tab !== "continuous" && !jobsLoading && pageJobs.length === 0 && (
           <div className="no-results">
             <p style={{ fontWeight: 700 }}>0 results with these filters</p>
             {diagnostics.length > 0 ? (
@@ -549,7 +581,7 @@ export default function Jobs() {
           </div>
         )}
 
-        {pageJobs.map((job) => (
+        {tab !== "continuous" && pageJobs.map((job) => (
           <div key={job.id}>
             <JobCard job={job} saved={savedJobIds.includes(job.id)} onToggleSave={toggleSavedJob} />
             {lastKeptIdByCompany[job.company] === job.id && overflowByCompany[job.company] > 0 && (
@@ -564,7 +596,7 @@ export default function Jobs() {
           </div>
         ))}
 
-        {totalPages > 1 && (
+        {tab !== "continuous" && totalPages > 1 && (
           <div className="pagination">
             {Array.from({ length: totalPages }).map((_, i) => (
               <button key={i} className={page === i + 1 ? "is-active" : ""} onClick={() => setPage(i + 1)}>
