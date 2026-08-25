@@ -65,11 +65,13 @@ export function matchJob(job, preferences, classYear) {
 
   // Part 10/US-26 -- exact-string match against the member's own Skills
   // picker (My Profile), same as server/src/match.ts's identical factor.
-  // preferred_skills is always empty in practice today (a separate,
-  // pre-existing gap: jobInsertFromNormalized() never maps it from
-  // NormalizedJob.preferredSkills even though the column exists) -- reading
-  // it here anyway costs nothing and picks it up automatically if that gets
-  // fixed later.
+  // preferred_skills used to be always empty in practice (jobInsertFrom
+  // Normalized() never mapped it from NormalizedJob.preferredSkills even
+  // though the column existed) -- fixed as part of Part 7 Stage 5, so this
+  // is now materially non-empty for any job whose title classified to a
+  // known O*NET occupation. No logic change needed here: this already read
+  // preferred_skills defensively and picks the newly-populated values up
+  // automatically.
   const relevantSkills = [...(job.required_skills ?? []), ...(job.preferred_skills ?? [])];
   const matchedSkills = relevantSkills.filter((skill) => preferences.skills.some((s) => s.toLowerCase() === skill.toLowerCase()));
   factors.push({

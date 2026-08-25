@@ -114,3 +114,10 @@ export function classifyTitleToOccupation(title: string): OnetOccupation | null 
 export function skillsForOccupation(occupation: OnetOccupation): string[] {
   return [...occupation.skills, ...occupation.technologySkills];
 }
+
+// Ported unchanged from server/src/taxonomy/occupationTaxonomy.ts -- see
+// that file for the full rationale (Part 7 Stage 5's preferred_skills fix).
+export function preferredSkillsForOccupation(occupation: OnetOccupation): string[] {
+  const required = new Set(skillsForOccupation(occupation).map((s) => s.toLowerCase()));
+  return occupation.knowledge.filter((k) => !required.has(k.toLowerCase()));
+}

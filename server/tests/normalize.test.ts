@@ -78,7 +78,31 @@ describe("normalizeJob", () => {
     const job = normalizeJob(rawJob({ title: "Assistant to the Regional Manager" }));
     expect(job.jobFunction).toBeNull();
     expect(job.requiredSkills).toBeNull();
+    expect(job.preferredSkills).toBeNull();
     expect(job.classificationMethod).toBe("rule");
+  });
+
+  it("populates preferredSkills from the occupation's Knowledge domains, distinct from requiredSkills (Part 7 Stage 5)", () => {
+    const job = normalizeJob(rawJob({ title: "Summer Business Analyst" }));
+    expect(job.preferredSkills).toContain("Administration and Management");
+    expect(job.preferredSkills).toContain("Economics and Accounting");
+    // No overlap for this occupation, but the general invariant matters:
+    // nothing in preferredSkills should also appear in requiredSkills, since
+    // match.ts concatenates the two and an overlap would double-count a
+    // single member skill.
+    for (const skill of job.preferredSkills ?? []) {
+      expect(job.requiredSkills ?? []).not.toContain(skill);
+    }
+  });
+
+  it("dedupes preferredSkills against requiredSkills when an occupation's Knowledge and Skills genuinely overlap", () => {
+    // Investment banking's stub lists "Mathematics" in both `skills` and
+    // `knowledge` -- confirms that overlap doesn't leak "Mathematics" into
+    // preferredSkills as well as requiredSkills for the same job.
+    const job = normalizeJob(rawJob({ title: "Investment Banking Summer Analyst", locationText: "New York, NY" }));
+    expect(job.requiredSkills).toContain("Mathematics");
+    expect(job.preferredSkills).not.toContain("Mathematics");
+    expect(job.preferredSkills).toContain("Economics and Accounting");
   });
 
   it("keeps exactly one source per job at normalization time (merging happens later)", () => {

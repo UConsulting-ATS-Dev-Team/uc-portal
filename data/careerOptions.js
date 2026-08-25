@@ -36,6 +36,15 @@ export const LOCATIONS = ["Chicago", "New York", "Los Angeles", "San Francisco",
 // member typing "excel" instead of "Microsoft Excel" would never match
 // anything. If the taxonomy above ever grows, this list needs the same
 // additions to stay matchable.
+//
+// The last 6 entries (Administration and Management through Engineering
+// and Technology) were added for Part 7 Stage 5's preferred_skills fix --
+// occupationTaxonomy.ts's `knowledge` field, mapped onto preferred_skills
+// via the taxonomy's new preferredSkillsForOccupation(). Same closed-list
+// reasoning applies: populating preferred_skills with terms outside this
+// list would mean a member could never actually select them, so
+// preferred_skills would stay functionally unmatchable regardless of what
+// the database holds.
 export const SKILLS = [
   "Critical Thinking",
   "Complex Problem Solving",
@@ -59,6 +68,12 @@ export const SKILLS = [
   "Adobe Creative Suite",
   "Marketing analytics platforms",
   "Statistical analysis software",
+  "Administration and Management",
+  "Economics and Accounting",
+  "Sales and Marketing",
+  "Communications and Media",
+  "Computers and Electronics",
+  "Engineering and Technology",
 ];
 
 export const COMPANIES = [

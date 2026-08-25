@@ -2,7 +2,7 @@ import type { NormalizedJob, RawJob } from "./types.ts";
 import { normalizeEmploymentType } from "./taxonomy/employmentTypes.ts";
 import { normalizeLocation } from "./taxonomy/locations.ts";
 import { normalizeCompensation } from "./taxonomy/compensation.ts";
-import { classifyTitleToOccupation, skillsForOccupation } from "./taxonomy/occupationTaxonomy.ts";
+import { classifyTitleToOccupation, skillsForOccupation, preferredSkillsForOccupation } from "./taxonomy/occupationTaxonomy.ts";
 import { extractGraduationYears } from "./taxonomy/eligibility.ts";
 
 // Ported from server/src/normalize.ts (Stage 1), with one deliberate change:
@@ -55,7 +55,11 @@ export function normalizeJob(raw: RawJob, now: Date = new Date()): NormalizedJob
     // the posting itself stated -- there's no source-stated skills field
     // being merged in here, since RawJob doesn't carry one at this stage.
     requiredSkills: occupation ? skillsForOccupation(occupation) : null,
-    preferredSkills: null,
+    // Part 7 Stage 5 fix: occupation's Knowledge domains, a secondary/
+    // lower-weight signal alongside requiredSkills -- see
+    // preferredSkillsForOccupation()'s own comment for why this used to be
+    // hardcoded null.
+    preferredSkills: occupation ? preferredSkillsForOccupation(occupation) : null,
     qualificationsText: raw.qualificationsText?.trim() || null,
 
     relevantIndustries: occupation?.relevantIndustries ?? [],

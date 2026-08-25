@@ -85,4 +85,20 @@ describe("matchJob — soft preferences and explainability (US-34)", () => {
     const weakResult = matchJob(weakMatch, profile());
     expect(strongResult.score).toBeGreaterThan(weakResult.score);
   });
+
+  it("counts a preferred (not just required) skill toward the skills factor (Part 7 Stage 5)", () => {
+    // "Business Analyst" classifies to the consulting occupation, whose
+    // preferredSkills includes "Administration and Management" (a Knowledge
+    // domain) but not any of its requiredSkills.
+    const job = normalizeJob(rawJob());
+    expect(job.preferredSkills).toContain("Administration and Management");
+    expect(job.requiredSkills ?? []).not.toContain("Administration and Management");
+
+    const withoutPreferredMatch = matchJob(job, profile({ skills: ["Critical Thinking"] }));
+    const withPreferredMatch = matchJob(job, profile({ skills: ["Critical Thinking", "Administration and Management"] }));
+
+    const skillsFactor = (result: typeof withPreferredMatch) => result.factors.find((f) => f.key === "skills")!;
+    expect(skillsFactor(withPreferredMatch).detail).toContain("Administration and Management");
+    expect(withPreferredMatch.score).toBeGreaterThan(withoutPreferredMatch.score);
+  });
 });

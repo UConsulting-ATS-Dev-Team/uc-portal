@@ -128,3 +128,23 @@ export function classifyTitleToOccupation(title: string): OnetOccupation | null 
 export function skillsForOccupation(occupation: OnetOccupation): string[] {
   return [...occupation.skills, ...occupation.technologySkills];
 }
+
+// Member-side skill matching's other half (JOB_ENGINE_ARCHITECTURE.md Part
+// 7 Stage 5) -- `preferred_skills`, a secondary/lower-weight signal
+// alongside required_skills (match.ts's skills factor already reads both).
+// Real O*NET occupations carry Skills, Knowledge, and Technology Skills as
+// three distinct categories; skillsForOccupation() above only ever folded
+// Skills + Technology Skills into required_skills, leaving `knowledge`
+// (broader disciplinary areas, e.g. "Economics and Accounting") completely
+// unused even though every occupation entry already carries it -- this is
+// that overflow, not an invented new source. Deduped (case-insensitive)
+// against the occupation's own required list: a couple of occupations'
+// knowledge entries genuinely overlap their own skills (IB and Operations
+// both list "Mathematics" in both arrays) -- left undeduped, the same
+// skill would appear in both required_skills and preferred_skills for the
+// same job, double-counting a member's single matching skill in match.ts's
+// concatenated requiredSkills+preferredSkills list.
+export function preferredSkillsForOccupation(occupation: OnetOccupation): string[] {
+  const required = new Set(skillsForOccupation(occupation).map((s) => s.toLowerCase()));
+  return occupation.knowledge.filter((k) => !required.has(k.toLowerCase()));
+}

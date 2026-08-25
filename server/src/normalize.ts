@@ -3,7 +3,7 @@ import type { NormalizedJob, RawJob } from "./types.js";
 import { normalizeEmploymentType } from "./taxonomy/employmentTypes.js";
 import { normalizeLocation } from "./taxonomy/locations.js";
 import { normalizeCompensation } from "./taxonomy/compensation.js";
-import { classifyTitleToOccupation, skillsForOccupation } from "./taxonomy/occupationTaxonomy.js";
+import { classifyTitleToOccupation, skillsForOccupation, preferredSkillsForOccupation } from "./taxonomy/occupationTaxonomy.js";
 import { extractGraduationYears } from "./taxonomy/eligibility.js";
 
 // US-10/11/12/13/24/25/27/28 -- turns one as-fetched RawJob into a
@@ -48,7 +48,11 @@ export function normalizeJob(raw: RawJob, now: Date = new Date()): NormalizedJob
     // the posting itself stated -- there's no source-stated skills field
     // being merged in here, since RawJob doesn't carry one at this stage.
     requiredSkills: occupation ? skillsForOccupation(occupation) : null,
-    preferredSkills: null,
+    // Part 7 Stage 5 fix: occupation's Knowledge domains, a secondary/
+    // lower-weight signal alongside requiredSkills -- see
+    // preferredSkillsForOccupation()'s own comment for why this used to be
+    // hardcoded null.
+    preferredSkills: occupation ? preferredSkillsForOccupation(occupation) : null,
     qualificationsText: raw.qualificationsText?.trim() || null,
 
     relevantIndustries: occupation?.relevantIndustries ?? [],

@@ -146,6 +146,7 @@ export function jobInsertFromNormalized(
     application_deadline: normalized.applicationDeadline,
     graduation_years: normalized.graduationYears,
     required_skills: normalized.requiredSkills,
+    preferred_skills: normalized.preferredSkills,
     qualifications_text: normalized.qualificationsText,
     relevant_industries: normalized.relevantIndustries,
     relevant_roles: normalized.relevantRoles,

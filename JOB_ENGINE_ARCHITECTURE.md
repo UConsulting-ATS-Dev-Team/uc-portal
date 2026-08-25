@@ -2199,3 +2199,113 @@ the three changed fields accurately. Verified the *existing* pending
 duplicate queue (real Charlie Health territory-manager candidates) still
 renders correctly, unaffected. Test fixture fully removed afterward via
 migration.
+
+**Separate pass, closing this same Part 7 Stage 5 entry's own noted gap:
+`preferred_skills` never got mapped from `NormalizedJob.preferredSkills`.**
+
+Confirmed live before touching anything: `preferred_skills` was `null` on
+all 3,281 jobs in the real table, while `required_skills` was populated on
+481 (`select count(*) filter (where preferred_skills is not null and
+array_length(preferred_skills,1)>0) from jobs` → 0). Root cause was two
+layers deep, not just the insert mapping the task's own framing assumed:
+
+1. `normalizeJob()` (`server/src/normalize.ts` /
+   `supabase/functions/_shared/pipeline/normalize.ts`) hardcoded
+   `preferredSkills: null` unconditionally -- the field was never computed
+   in the first place, so there was nothing for the insert layer to map
+   even if it had tried.
+2. `jobInsertFromNormalized()` (`supabase/functions/_shared/dedupeHelpers.ts`
+   -- this one has no `server/src/` mirror; it's Edge-Function-only glue,
+   unlike normalize.ts/occupationTaxonomy.ts which do have real mirrored
+   copies) then compounded that by never mapping `preferred_skills` onto
+   the insert row at all, the same way `required_skills` already was.
+
+Fixed both. `occupationTaxonomy.ts`'s `OnetOccupation` shape already
+carried a third field, `knowledge` (O*NET's real Skills/Knowledge/
+Technology-Skills three-way split), that nothing had ever read --
+`skillsForOccupation()` only ever folded `skills` + `technologySkills`
+into `required_skills`. Added `preferredSkillsForOccupation()` alongside
+it (both `server/src/taxonomy/occupationTaxonomy.ts` and its Edge Function
+mirror) returning that occupation's `knowledge` entries, deduplicated
+case-insensitively against its own `skillsForOccupation()` output -- two of
+the six stub occupations (Investment Banking, Operations) genuinely list
+"Mathematics" in both `skills` and `knowledge`, and left undeduped that
+would double-count a single member skill selection across match.ts's
+concatenated `requiredSkills`/`preferredSkills` list. `normalizeJob()` now
+calls it (`preferredSkills: occupation ? preferredSkillsForOccupation(occupation)
+: null`) instead of hardcoding null, and `jobInsertFromNormalized()` now
+maps `preferred_skills: normalized.preferredSkills` onto the insert row,
+matching `required_skills`'s existing shape exactly (array of strings, no
+extra casing/normalization).
+
+Closed-vocabulary consequence, not a side quest: `data/careerOptions.js`'s
+`SKILLS` list (the closed picker vocabulary My Profile's Skills chips and
+`matchJob()`'s exact-string matching both depend on) previously covered
+only `skillsForOccupation()`'s output. Populating `preferred_skills` with
+`knowledge` terms outside that vocabulary would have meant the column held
+real data a member could *never actually select*, leaving it functionally
+dead regardless of what the database said -- so the same six new Knowledge
+terms (Administration and Management, Economics and Accounting, Sales and
+Marketing, Communications and Media, Computers and Electronics,
+Engineering and Technology) were added to `SKILLS`, 22 → 28 entries.
+`data/jobMatch.js`'s skills-factor comment (which had accurately said
+"always empty in practice today") was updated to reflect that it no
+longer is; no logic change was needed there or in `server/src/match.ts` --
+both already read `preferred_skills` defensively and concatenate it with
+`required_skills`.
+
+Test coverage added (`server/tests/normalize.test.ts`,
+`server/tests/match.test.ts`): a classified job now gets non-empty, non-
+overlapping `preferredSkills`; the IB-occupation case specifically proves
+"Mathematics" lands in `requiredSkills` only, never duplicated into
+`preferredSkills`; and `matchJob()` now has a test proving a member
+selecting a preferred-only skill (not just a required one) measurably
+raises the score and appears in the skills factor's detail string.
+`npm run test:server` -- 47/47 green (44 previous + 3 new).
+
+Deployed `fetch-greenhouse-companies`, `fetch-deloitte-jobs`, and
+`approve-submission` (the three functions that import
+`_shared/pipeline/normalize.ts` and `_shared/dedupeHelpers.ts`) via
+`npx supabase functions deploy <name> --use-api`. Verified the deployed
+code against real production data, not just tests: triggered a real
+`fetch-greenhouse-companies` run across all 11 configured companies (one
+genuine new insert, Stripe's "Credit Risk Team Lead" -- correctly left
+both `required_skills` and `preferred_skills` null since its title doesn't
+match any of the six stub occupations, proving the null path stayed
+correct) and a real `fetch-deloitte-jobs` run (0 new inserts that day) --
+both completed with zero errors against live company data.
+
+Backfill decision: fixed going forward *and* backfilled existing rows,
+via a one-off script (not a migration -- this is derived from application
+classification logic, not a schema change, so hardcoding it into permanent
+migration history seemed worse than a documented one-time run). The script
+reused the exact same `classifyTitleToOccupation`/
+`preferredSkillsForOccupation` functions the now-deployed code calls (no
+reimplementation, no drift risk), read every job with a non-null
+`required_skills` via `npx supabase db query --linked`, and generated one
+SQL file of per-row `UPDATE ... SET preferred_skills = ARRAY[...]`
+statements, executed inside a single `BEGIN`/`COMMIT`. Verified before/
+after directly against Postgres: before, 481 jobs had non-empty
+`required_skills` and 0 had non-empty `preferred_skills`; after, both read
+481 -- every previously-classified job now has a non-empty
+`preferred_skills` (expected, since none of the six occupations' deduped
+`knowledge` list is ever empty). Spot-checked the dedup logic against real
+rows, not just the synthetic test: every real job with `'Mathematics' =
+any(required_skills)` (Coinbase/Brex/Robinhood/Carvana operations-titled
+postings) correctly has `preferred_skills = ['Administration and
+Management']` only, with "Mathematics" correctly excluded. Idempotency
+verified by literally re-running the generator against the now-backfilled
+table and diffing the two generated SQL files (order-independent, since
+Postgres doesn't guarantee row order without `ORDER BY`) -- byte-identical
+statement sets both times, confirming a second run would be a true no-op.
+Script and generated SQL were scratch files, not committed.
+
+Not touched, and deliberately so: `server/src/dedupe.ts`'s `mergeJobs()`
+still only merges `requiredSkills`, not `preferredSkills` -- but that
+function has no live caller (the real merge path is
+`resolve-duplicate-candidate`'s own `UNION_ARRAY_FIELDS`, which already
+included `preferred_skills` before this fix, apparently anticipating the
+column). `supabase/functions/_shared/pipeline/dedupe.ts`'s own header
+comment already documents `mergeJobs()` as intentionally omitted from that
+port, so this divergence is pre-existing and out of this fix's scope, not
+a new gap introduced here.
