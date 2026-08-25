@@ -1220,6 +1220,91 @@ Stage 4 (started) Additional ATS adapters for other UC-target companies;
                  generated from whatever types exist in the live data
                  rather than a hardcoded list.
 
+                 Fifth addition: two more companies (Carvana, Guild),
+                 sourced the same way as the Fourth addition above --
+                 ranking real UC alumni-by-company counts (the `people`
+                 table) descending and cross-referencing each against
+                 scripts/check-company-source.mjs -- run a cycle later
+                 against the live data rather than a fresh guessed list.
+                 Checked this pass, skipping everything already live or
+                 already rejected: Microsoft, NASA JPL, Visa, Ares
+                 Management, Disney, Meta, PIMCO, Google, Amazon, Apple,
+                 Capital One, Cisco, Intel, PayPal, KKR, Sequoia Capital,
+                 Boeing, CBRE, Aon, BDO, Indeed, Guild Education, Standard
+                 Chartered -- plus a fresh re-check of the five candidates
+                 this doc had flagged as sourced-but-never-confirmed
+                 (Notion, Plaid, Ramp, Evercore, Moelis). All but two came
+                 back with no usable board: Microsoft/Meta/Visa/Intel/
+                 Boeing/NASA JPL/Moelis carry only a Workday hint, the
+                 same non-buildable signal already documented for
+                 Accenture; Disney's Greenhouse slug ("disney") resolves
+                 to an unrelated company ("Sgt. Pepper's Lonely Hearts
+                 Club Band") -- the same slug-squatting pattern already
+                 caught for "bcg" (Stage 3) and "Oliver Wyman Labs"
+                 (Stage 4); Indeed's Greenhouse slug is real but reports 0
+                 postings, and Plaid's Lever slug is likewise real but
+                 empty -- neither is a usable source regardless of
+                 authenticity; Capital One's Lever slug ("capital")
+                 resolves to 41 real postings, but sampling the actual
+                 job data (offices in Limassol/Cyprus, Sofia/Bulgaria,
+                 Warsaw/Poland, Dubai, Nassau/Bahamas; roles like "Back
+                 Office Payments and AML Officer (Crypto Operations)")
+                 makes clear this is an unrelated crypto/CFD trading
+                 company, not the real, US-only Capital One -- another
+                 slug collision, caught the same way as Disney's above;
+                 and Ares Management, PIMCO, Google, Amazon, Apple,
+                 Cisco, PayPal, KKR, Sequoia Capital, CBRE, Aon, BDO,
+                 DoorDash, Notion, Ramp, Evercore, and Standard Chartered
+                 had no checkable signal at all.
+
+                 Carvana (real used-car retailer, NYSE: CVNA, one real UC
+                 alumnus on record): Greenhouse slug "carvana", 1,698
+                 postings, company_name "Carvana" on every posting, and
+                 every sampled application URL resolves to Carvana's own
+                 domain (carvana.com/careers/apply?gh_jid=...) --
+                 confirmed identity, not just a slug match. Guild (real
+                 workforce-education/tuition-benefits company, one real
+                 UC alumnus on record under its former name "Guild
+                 Education" -- the company itself rebranded to "Guild" in
+                 2023, which is why the source research started from the
+                 older name but the source config uses the new one, same
+                 as it must to satisfy the adapter's own company-name
+                 safeguard): Greenhouse slug "guild", 5 postings,
+                 company_name "Guild" on every posting, and sampled
+                 application URLs resolve to
+                 guild.com/open-positions-at-guild. Both added via
+                 migration 20260825100000, using "Guild" (not "Guild
+                 Education") as the config's match value to agree with
+                 Greenhouse's actual field -- the same IMC-Trading lesson
+                 (20260824220000) applied proactively this time instead
+                 of needing a follow-up fix.
+
+                 Both backfilled and verified the same way as every prior
+                 addition: Carvana's first run hit MAX_NEW_JOBS_PER_RUN
+                 and deferred the rest (145 inserted, 1,478 deferred);
+                 one of the later drain runs failed outright with a real
+                 job_sources unique-constraint violation -- a clean, loud
+                 failure (no silent swallowing) rather than the masked
+                 corruption Stage 4's chain-of-four bugs originally found
+                 for Databricks/Coinbase/Airbnb/Brex, consistent with
+                 that fix still holding. Verified directly against
+                 Postgres rather than assumed: 0 orphaned jobs rows (a
+                 job with no job_sources link) for Carvana after the
+                 failed run, and job_sources row count (1,628) exactly
+                 equals fetched minus filtered (1,698 - 70
+                 skippedNotRelevant), so nothing was lost or duplicated
+                 by the failure. Continuing to drain fully cleared it
+                 (deferred: 0, 1,628 refreshed on the next call, 0
+                 company mismatches). Guild's small 5-posting board
+                 completed in one run (2 inserted, 3 filtered as
+                 senior-role noise -- "VP, Software Engineering" among
+                 them) and was idempotent immediately. A final combined
+                 invocation of all 10 Greenhouse sources together (the
+                 real daily-cron path) confirmed every source, old and
+                 new, reports deferred: 0 and 0 conflicts in the same
+                 run; server test suite (44 tests) still green throughout
+                 since nothing in the shared pipeline changed.
+
 Stage 5 (started) LLM-assisted classification fallback for the long tail;
                  natural-language search (deterministic layer done, see
                  "Fifth piece" below -- an LLM-parse fallback for queries
