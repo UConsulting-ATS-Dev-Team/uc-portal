@@ -2071,3 +2071,46 @@ badge instead (confirming the two badges don't overlap). Reset the test
 job back to its genuine original state afterward via a final migration --
 verified `missed_fetches: 0, status: "active", active: true` restored
 exactly.
+
+**Same pass, US-19 -- real field-level merge on duplicate resolution,
+closing the last item from Part 8's audit.**
+
+`resolve-duplicate-candidate`'s "Keep A / Keep B" previously kept the
+chosen job's fields exactly as-is and discarded the other record's data
+entirely once its `job_sources` rows were reassigned -- correct enough to
+stop a redundant listing from being visible (which is what actually
+mattered for shipping US-18's queue), but not the "keep best field per
+source" merge US-19 actually asks for. Fixed with a deliberately simple
+policy, not a scored "which value is more accurate" system: plain fields
+(description, city, salary, deadline, etc.) only **fill a gap** -- the
+kept job's own non-null value is never overwritten, a genuinely missing
+field gets backfilled from the removed job; array fields (skills,
+industries, roles, grad years) are **unioned** instead, since a value
+present on both sides is two real, non-conflicting facts, not a
+disagreement to resolve. Identity fields (company/title/employment_type/
+application_url) and computed/meta fields (quality_score,
+classification_method) are deliberately untouched -- the admin's
+`keepJobId` choice already picked which record's identity and
+classification the merged listing keeps, and provenance for both
+contributing sources was already fully retained via the existing
+`job_sources` reassignment (unchanged). The response now reports exactly
+which fields the merge actually changed (`mergedFields`), and Admin
+Dashboard's confirmation note surfaces it ("Merged in from the duplicate:
+description, salary_min, required_skills").
+
+Verified live through the real Edge Function as an authenticated admin,
+not a unit test in isolation: no naturally-pending duplicate candidate had
+meaningfully different fields to merge (near-duplicates from the same
+company/source tend to classify identically), so this used a fabricated
+pair of test jobs with deliberately differing fields (job A: has a city,
+missing salary/description/skill overlap; job B: missing city, has a
+salary and description and a different skill) linked by a real
+`duplicate_candidates` row. Clicking "Keep A" in the real admin UI
+produced exactly the expected result: A's own `city: "Chicago"` was left
+untouched (not overwritten by B's null), `salary_min`/`description` were
+correctly backfilled from B, `required_skills` correctly unioned to both
+skills, job B was correctly deactivated, and the confirmation note listed
+the three changed fields accurately. Verified the *existing* pending
+duplicate queue (real Charlie Health territory-manager candidates) still
+renders correctly, unaffected. Test fixture fully removed afterward via
+migration.

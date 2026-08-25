@@ -191,7 +191,8 @@ export default function AdminDashboard() {
       setDuplicatesError(detail?.error ?? error.message);
     } else if (data?.outcome === "confirmed_duplicate") {
       const kept = keepJobId === candidate.job_id_a ? candidate.jobA : candidate.jobB;
-      setDuplicatesNote(`Kept "${kept?.title ?? "the selected listing"}" -- the duplicate was deactivated and its sources reassigned.`);
+      const mergedNote = data.mergedFields?.length > 0 ? ` Merged in from the duplicate: ${data.mergedFields.join(", ")}.` : "";
+      setDuplicatesNote(`Kept "${kept?.title ?? "the selected listing"}" -- the duplicate was deactivated and its sources reassigned.${mergedNote}`);
     } else {
       setDuplicatesNote("Marked as not a duplicate.");
     }
