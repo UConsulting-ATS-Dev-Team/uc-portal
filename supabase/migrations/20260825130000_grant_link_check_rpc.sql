@@ -1,0 +1,34 @@
+-- Real bug, found live while deploying check-job-links: invoking the
+-- function immediately failed with "permission denied for function
+-- mark_link_check_results" from the service_role client -- functions
+-- created by a migration default to EXECUTE granted only to the migration
+-- runner (`postgres`) plus whatever's implicitly inherited via PUBLIC,
+-- and 20260825110000's own `revoke all ... from public, anon,
+-- authenticated` (copied from mark_jobs_missed's pattern) revokes the
+-- PUBLIC grant service_role was actually relying on -- same root cause
+-- class as 20260822110000's table-grant fix (service_role is not
+-- superuser in this project; it bypasses RLS, not GRANTs), just for a
+-- function instead of a table.
+grant execute on function mark_link_check_results(uuid[], uuid[]) to service_role;
+
+-- While tracking that down, found the identical gap already live in
+-- mark_jobs_missed (20260824270000) -- its own proacl is
+-- `{postgres=X/postgres}`, meaning service_role has never actually been
+-- able to call it. fetch-greenhouse-companies' own call site
+-- (`if (!error) { markedPotentiallyExpired = ... }`) silently swallows
+-- that failure and still logs the run as "success" with both counts at 0
+-- -- exactly the silent-failure category US-51's source_fetch_log exists
+-- to catch, defeated here because the RPC error itself was never
+-- surfaced. Every prior "verified live" pass for US-22/23
+-- (20260824270000/20260824280000) called the RPC directly via a temporary
+-- migration, i.e. as the `postgres` role, which is why this was never
+-- caught -- that path bypasses grants entirely, so it never exercised the
+-- real service_role code path fetch-greenhouse-companies actually uses in
+-- production. Net effect until this fix: any real Greenhouse posting that
+-- genuinely stopped being returned by its feed would never have
+-- transitioned to potentially_expired/expired at all -- the expiration
+-- state machine was silently inert for every source using it, in
+-- production, since it shipped. Fixed alongside this migration's own
+-- (identical, one-line) grant rather than filed separately, since it's
+-- the exact same root cause found by the exact same check.
+grant execute on function mark_jobs_missed(uuid[]) to service_role;

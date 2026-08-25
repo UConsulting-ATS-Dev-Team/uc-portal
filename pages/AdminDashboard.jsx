@@ -46,6 +46,9 @@ export default function AdminDashboard() {
   const [lowQualityJobs, setLowQualityJobs] = useState([]);
   const [lowQualityLoading, setLowQualityLoading] = useState(true);
   const [lowQualityError, setLowQualityError] = useState(null);
+  const [brokenLinkJobs, setBrokenLinkJobs] = useState([]);
+  const [brokenLinkLoading, setBrokenLinkLoading] = useState(true);
+  const [brokenLinkError, setBrokenLinkError] = useState(null);
   const [featureRequests, setFeatureRequests] = useState([]);
   const [featureRequestsLoading, setFeatureRequestsLoading] = useState(true);
   const [featureRequestsError, setFeatureRequestsError] = useState(null);
@@ -142,11 +145,35 @@ export default function AdminDashboard() {
     setLowQualityLoading(false);
   }
 
+  // The other real half of US-52 -- deferred at the time the Job quality
+  // panel above was built because "live application-URL health checks
+  // aren't meaningful yet with no real automated source running" (see
+  // quality.ts's own header comment, and JOB_ENGINE_ARCHITECTURE.md's
+  // matching note). That's no longer true: check-job-links now runs daily
+  // against every active job's application_url and writes link_health
+  // (20260825110000). Direct client query, same reasoning as
+  // loadLowQualityJobs -- read-only, jobs_select_admin's RLS already
+  // covers it, no Edge Function needed.
+  async function loadBrokenLinkJobs() {
+    setBrokenLinkLoading(true);
+    const { data, error } = await supabase
+      .from("jobs")
+      .select("id, company, title, application_url, link_check_failures, last_link_checked_at")
+      .eq("active", true)
+      .eq("link_health", "broken")
+      .order("last_link_checked_at", { ascending: false })
+      .limit(25);
+    if (error) setBrokenLinkError(error.message);
+    else setBrokenLinkJobs(data ?? []);
+    setBrokenLinkLoading(false);
+  }
+
   useEffect(() => {
     loadQueue();
     loadDuplicates();
     loadFeatureRequests();
     loadLowQualityJobs();
+    loadBrokenLinkJobs();
   }, []);
 
   // feature_requests grants admins direct update access via RLS (unlike
@@ -481,8 +508,8 @@ export default function AdminDashboard() {
             <h2 className="detail-section__title">Job quality</h2>
             <p className="meta" style={{ marginTop: 0 }}>
               Active postings scoring below 0.5 on completeness/confidence (computed at ingestion) --
-              missing fields worth checking, not necessarily broken. Live application-URL health checks
-              aren't run yet (no automated re-verification exists), so this doesn't catch dead links.
+              missing fields worth checking, not necessarily broken. Dead application links are a
+              separate, live signal now -- see "Broken links" below.
             </p>
             {lowQualityError && <p className="meta" style={{ color: "#B3261E" }}>{lowQualityError}</p>}
             <div className="queue-table__scroll">
@@ -516,6 +543,65 @@ export default function AdminDashboard() {
                 {lowQualityLoading && (
                   <tr>
                     <td colSpan={4} className="meta">
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            </div>
+          </div>
+
+          <div className="detail-section">
+            <h2 className="detail-section__title">Broken links</h2>
+            <p className="meta" style={{ marginTop: 0 }}>
+              Active postings whose application_url has failed 3+ consecutive daily checks (check-job-links,
+              scheduled via pg_cron) -- HEAD, falling back to GET, plus a redirect check that catches a real
+              gap plain status codes miss: several ATS-hosted job pages return HTTP 200 but silently redirect
+              a removed posting's URL to the company's generic careers page. A single failed check never
+              flags anything here -- one transient timeout is still plausibly a blip, not a dead link. Jobs
+              behind bot/CAPTCHA challenges that block automated requests entirely (confirmed live: Carvana)
+              are deliberately left out of this list rather than mass-flagged -- there's no reliable way to
+              tell a blocked-but-live posting apart from a genuinely dead one from the response alone.
+            </p>
+            {brokenLinkError && <p className="meta" style={{ color: "#B3261E" }}>{brokenLinkError}</p>}
+            <div className="queue-table__scroll">
+            <table className="queue-table">
+              <thead>
+                <tr>
+                  <th>Company</th>
+                  <th>Role</th>
+                  <th>Consecutive failures</th>
+                  <th>Last checked</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {brokenLinkJobs.map((j) => (
+                  <tr key={j.id}>
+                    <td>{j.company}</td>
+                    <td>{j.title}</td>
+                    <td>{j.link_check_failures}</td>
+                    <td className="meta">
+                      {j.last_link_checked_at
+                        ? new Date(j.last_link_checked_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+                        : "Never"}
+                    </td>
+                    <td>
+                      <Link to={`/jobs/${j.id}`} className="btn btn-secondary">View</Link>
+                    </td>
+                  </tr>
+                ))}
+                {!brokenLinkLoading && brokenLinkJobs.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="meta">
+                      No active postings currently flagged with a broken application link.
+                    </td>
+                  </tr>
+                )}
+                {brokenLinkLoading && (
+                  <tr>
+                    <td colSpan={5} className="meta">
                       Loading…
                     </td>
                   </tr>

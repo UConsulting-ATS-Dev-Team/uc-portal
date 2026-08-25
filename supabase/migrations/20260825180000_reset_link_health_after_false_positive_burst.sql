@@ -1,0 +1,34 @@
+-- Resets every job's link_health state to pristine ('unchecked', 0
+-- failures, never checked) after a real false-positive burst caught
+-- during this feature's own live verification, not a hypothetical.
+--
+-- What happened: verifying check-job-links live meant invoking it ~15
+-- times within roughly 10 minutes -- far more aggressive than the
+-- once-daily production cadence this function is designed for. That
+-- volume of repeated requests to the same hosts in a short window
+-- triggered what all evidence points to as transient rate-limiting on
+-- Stripe's side: ~95 real, completely healthy Stripe postings failed
+-- three checks in a row (in wall-clock minutes, not the three separate
+-- days BROKEN_THRESHOLD is meant to represent) and crossed the threshold
+-- into 'broken'. Manually re-verified immediately after: every sampled
+-- URL returned a real 200 and the correct listing page. This was self-
+-- inflicted by the pace of manual verification, not a flaw a real daily
+-- cron schedule would hit -- but it left real rows in a wrong state, so
+-- it gets a real cleanup migration rather than being left as-is.
+--
+-- Fixed at the code level too (this migration doesn't paper over it):
+-- check-job-links now treats 429/5xx the same as persistent-403 --
+-- 'inconclusive' rather than 'broken', since a rate-limited or momentarily
+-- overloaded server is exactly as ambiguous evidence as bot-blocking, not
+-- proof the specific posting is gone.
+--
+-- Full reset (not a surgical per-row fix) because dozens of rapid-fire
+-- runs during verification touched a large, hard-to-cleanly-separate
+-- fraction of the active set (~2,000 of ~3,300 rows) before the fix
+-- landed -- safer to start every row from a known-clean state and let the
+-- corrected code re-establish real signal on a normal cadence than to try
+-- to guess which specific rows were contaminated by the rate-limit burst
+-- versus genuinely checked correctly.
+update jobs
+set link_health = 'unchecked', link_check_failures = 0, last_link_checked_at = null
+where link_health != 'unchecked' or link_check_failures != 0 or last_link_checked_at is not null;

@@ -2309,3 +2309,130 @@ column). `supabase/functions/_shared/pipeline/dedupe.ts`'s own header
 comment already documents `mergeJobs()` as intentionally omitted from that
 port, so this divergence is pre-existing and out of this fix's scope, not
 a new gap introduced here.
+
+**Separate pass: closed US-52's other real half -- live application-URL
+health checks, deferred at Job-quality panel build time (quality.ts's own
+header comment) as "not meaningful yet with no real automated source
+running." That's no longer true: 12 real automated sources are live with
+~3,300 real active postings.**
+
+Built `check-job-links` (new Edge Function) + `link_health`/
+`link_check_failures`/`last_link_checked_at` columns on `jobs`
+(`20260825110000`), scheduled daily via the same pg_cron/pg_net pattern
+`fetch-deloitte-jobs`/`fetch-greenhouse-companies` already use
+(`20260825160000`, offset an hour past `fetch-deloitte-jobs` so the three
+scheduled jobs don't collide). HEAD-checks every active job's
+`application_url` (falling back to GET when HEAD alone isn't trustworthy),
+flags a job `broken` after 3 consecutive failed daily checks --
+`mark_link_check_results()` mirrors `mark_jobs_missed`'s atomic-increment
+shape for the same reason (PostgREST can't do a conditional
+read-then-write in one round trip). Reuses the `sources`/
+`source_fetch_log` registry (new `system` source_type) rather than a
+parallel admin surface, so `SourceManagement.jsx`'s existing
+Approved/Disabled toggle is the real kill switch.
+
+Two real findings from checking live URLs before writing any detection
+logic, not assumed: (1) Coinbase's site rejects HEAD specifically (403)
+while GET on the identical URL returns 200, so no non-ok HEAD is trusted
+without a GET fallback; (2) a deliberately-invalid Greenhouse job id
+redirects to the company's *generic* careers page with HTTP 200, not a
+404 -- status code alone would miss this entirely. Fixed with
+`redirectedToGenericPage()`: compares the long numeric id token(s) in the
+original `application_url` against the ones in the final URL after
+redirects; none surviving is treated as a failure despite the 2xx. This
+heuristic is exactly what caught 4 of the 5 real broken links below.
+
+Also found live: Carvana's site (Cloudflare bot-challenge) returns 403 to
+*every* automated request, HEAD and GET alike, for real, currently-open
+postings (~1,474 of ~3,300 active jobs at the time). There is no way to
+tell that apart from a genuinely dead/blocked link from the HTTP response
+alone, so persistent-403 is classified `inconclusive` -- logged, but
+`link_health` left untouched -- rather than mass-flagging ~45% of active
+jobs broken. Documented as a deliberate, known detection gap (a genuinely
+dead Carvana-style posting behind bot protection would never get caught)
+rather than silently guessed at.
+
+**A real false-positive burst happened during this feature's own live
+verification, root-caused and fixed, not papered over.** Verifying
+`check-job-links` live meant invoking it roughly 15 times within about 10
+minutes -- far more aggressive than the once-daily production cadence it's
+designed for. That volume of repeated requests to the same hosts in a
+short window triggered transient rate-limiting on Stripe's side: ~95 real,
+completely healthy Stripe postings failed three checks in a row (in
+wall-clock minutes, not the three separate days `BROKEN_THRESHOLD` is
+meant to represent) and crossed the threshold into `broken`. Manually
+re-verified immediately after: every sampled URL returned a real 200 and
+the correct listing page -- confirmed self-inflicted by verification pace,
+not a flaw the real daily cron would hit. Root cause: the original
+`checkOne()` treated any non-ok, non-403 status (including 429 and 5xx)
+as a hard failure, with nothing distinguishing "server is temporarily
+struggling" from "this posting is gone." Fixed at the code level
+(`isTransientServerStatus()`, treats 429 and any 5xx the same as
+persistent-403 -- `inconclusive`, not `broken`) and separately reset every
+contaminated row back to a clean `unchecked`/0/`null` state via a full
+reset migration (`20260825180000`) rather than trying to surgically
+untangle which of the ~2,000 touched rows were real signal versus
+rate-limit noise. While fixing this, a second, unrelated real bug
+surfaced in `mark_link_check_results`' candidate-selection query: it
+prioritized `link_check_failures desc, last_link_checked_at asc
+nulls-first`, so an inconclusive result (which never touches
+`last_link_checked_at`) stayed indistinguishable from a never-checked row
+forever -- confirmed live as `inconclusiveBlocked` climbing 26 → 167 → 182
+→ 225 across three runs as Carvana's ~1,474 bot-blocked jobs kept winning
+the same priority tier every single run. Fixed (`20260825170000`) by
+having an inconclusive result still stamp `last_link_checked_at` (a third
+array on `mark_link_check_results`, never touching `link_health`/
+`link_check_failures`) so it counts as "we attempted a check" without
+counting as evidence either way.
+
+While chasing the RPC permission error hit deploying this feature
+(`grant execute ... to service_role` was missing -- functions created by a
+migration don't inherit an implicit PUBLIC-execute grant service_role can
+use, same root-cause class as `20260822110000`'s table-grant fix, just for
+a function), found the *identical* gap already live and unnoticed in
+`mark_jobs_missed` (`20260824270000`): its own grant to `service_role` had
+never actually been applied, meaning `fetch-greenhouse-companies`' calls to
+it had been silently failing (swallowed, logged as success with 0 counts)
+in production since it shipped -- the entire potentially-expired/expired
+state machine for every Greenhouse-sourced job was inert. Every prior
+"verified live" pass for that feature had called the RPC directly as the
+`postgres` role (bypassing grants entirely), which is why it was never
+caught. Fixed alongside this migration (`20260825130000`) since it's the
+exact same root cause found by the exact same check, not filed separately.
+
+**Real verified numbers, post-fix.** Live query against the linked
+project: 5 jobs currently `broken` out of ~3,284 active (2,568
+`unchecked`, 711 `ok`, 5 `broken`) -- 2 Databricks, 2 Robinhood, 1 Brex,
+all with `link_check_failures = 4` and all last checked by the real
+scheduled cron run at 15:17 UTC (`source_fetch_log`: `checked: 300, ok:
+205, failed: 24, inconclusiveBlocked: 71, newlyFlaggedBroken: 0,
+stillBroken: 5` -- zero new flags, zero recoveries, ~6.5 hours after the
+last manual verification run, confirming the cron is actually firing on
+its own schedule and these 5 are stable, not another burst). Manually
+spot-checked all 5 with a real `curl -IL` outside the Edge Function
+entirely: both Databricks URLs and both Robinhood URLs return HTTP 200 but
+redirect to the company's generic careers page with no job-id token
+surviving (exactly the `redirectedToGenericPage()` case); Brex returns a
+literal 404. All 5 independently confirmed genuinely dead, diverse across
+3 companies and both failure modes -- not a repeat of the Stripe
+rate-limit pattern.
+
+Verified end to end, not just unit-tested: `npx supabase migration list`
+shows all 9 migrations applied remotely; `check-job-links` is deployed
+(`ACTIVE`, version 4) and its deployed behavior matches the fixed source
+(the false-positive-era runs and the corrected runs are both visible,
+distinctly, in `source_fetch_log`'s real history); `cron.job` shows
+`check-job-links-daily` registered and active on `17 15 * * *`; the test
+fixture (`20260825140000`/`20260825150000`) both ran and cleaned up (0
+matching rows remain). Admin Dashboard's new "Broken links" panel
+(`pages/AdminDashboard.jsx`) queries `jobs` directly for `link_health =
+'broken'` the same way the existing "Job quality" panel above it already
+queries `quality_score` -- same RLS (`jobs_select_admin`), same
+`queue-table`/`queue-table__scroll` classes, so it inherits the same
+verified horizontal-scroll behavior at the 900px/640px breakpoints with no
+new CSS. `SourceManagement.jsx`'s fetch-log summary line got a small
+branch for this function's `checked`/`ok`/`failed`/`newlyFlaggedBroken`
+shape, since it has no insert/merge/dedup concept to report the way every
+job-listing fetcher's summary does. `npm run test:server` -- 47/47 green,
+unaffected (this feature has no `server/`-side logic, it's Edge
+Function + schema only).

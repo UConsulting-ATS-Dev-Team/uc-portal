@@ -1,0 +1,16 @@
+-- Removes 20260825140000's test fixture now that both state transitions it
+-- existed to prove have been verified live: mark_link_check_results(),
+-- called directly against the real fixture row (same "call the RPC
+-- directly" verification style 20260824270000/20260824280000 already used
+-- for mark_jobs_missed), correctly took it unchecked -> failures 1 -> 2
+-- (both invisible, link_health untouched) -> failures 3 -> link_health
+-- 'broken' on the third consecutive failed check, then correctly reset to
+-- failures 0 / link_health 'ok' on the next check once treated as
+-- succeeding -- the "reactivate cleanly" recovery path §3.4 already
+-- established for the analogous missed_fetches counter. The Edge
+-- Function's own HTTP-check + classification logic (HEAD/GET fallback,
+-- the redirect-to-generic-page heuristic) was separately proven against
+-- real application_urls, not this fixture -- see JOB_ENGINE_ARCHITECTURE.md's
+-- entry for the real numbers (9 genuinely dead Databricks/Figma/Robinhood
+-- postings caught naturally across three real invocations).
+delete from jobs where company = 'UC Portal Test Fixture';

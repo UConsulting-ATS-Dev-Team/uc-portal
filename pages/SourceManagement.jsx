@@ -22,6 +22,14 @@ function summarizeFetchLog(log) {
   if (log.status === "failed") return log.summary?.error ?? "Unknown error";
   if (log.status === "skipped") return log.summary?.reason ?? "Skipped";
   const s = log.summary ?? {};
+  // check-job-links' summary shape (checked/ok/failed/newlyFlaggedBroken)
+  // has no honest analog in the fetched/inserted/merged/flagged shape every
+  // job-listing fetcher uses -- it doesn't insert or merge anything, so
+  // branching here is the right call, same reasoning fetch-deloitte-jobs'
+  // rssItemsFound -> fetched rename used when the shapes *did* line up.
+  if (s.checked !== undefined) {
+    return `${s.checked} checked, ${s.ok ?? 0} ok, ${s.failed ?? 0} unreachable, ${s.newlyFlaggedBroken ?? 0} newly broken, ${s.inconclusiveBlocked ?? 0} inconclusive`;
+  }
   return `${s.fetched ?? "?"} fetched, ${s.inserted ?? 0} new, ${s.merged ?? 0} merged, ${s.flaggedDuplicate ?? 0} flagged`;
 }
 
