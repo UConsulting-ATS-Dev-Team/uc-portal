@@ -1575,12 +1575,13 @@ deploy/config concerns, not a per-record governance flag.
    — this is US-28's fact-vs-inferred distinction in practice: "typical
    for this role type" (O*NET), never presented as "this employer's
    stated requirements."
-4. **Match against member-reported skills.** This is the piece that
+4. **Match against member-reported skills.** ~~This is the piece that
    makes US-32's matching actually use skill data — requires adding a
-   `skills` field to the member profile, which doesn't exist yet in the
-   prototype's `preferences` object (industries/roles/locations/
-   compTarget/recruitingCycle are there; skills isn't). Small addition,
-   same shape as the existing fields.
+   `skills` field to the member profile, which doesn't exist yet~~ **Done**
+   — see Part 7's Stage 5 entry (2026-08-24 update) for the build: a
+   closed-list Skills picker on My Profile, `skills text[]` on
+   `member_preferences`, and `data/jobMatch.js`'s skills factor wired in
+   with the real weights.
 
 **Two honest limitations, worth designing around rather than ignoring:**
 - **Occupation-level, not posting-level.** O*NET says what's typical for
@@ -1975,3 +1976,49 @@ by name rather than silently left off the list. Verified live: the panel
 correctly lists real low-scoring postings (several genuine IMC/Brex/
 Robinhood jobs at 0.2), and the "View" link routes to the real job detail
 page.
+
+**Same pass, the member-side half of US-26 (skill matching) -- Part 10's
+own "small addition, same shape as the existing fields" note, now built.**
+
+Job-side skill inference has existed since Stage 1
+(`occupationTaxonomy.ts`'s `skillsForOccupation()`, `required_skills`), but
+nothing existed on the member profile to match it against --
+`server/src/match.ts`'s skills factor (weight 15/100) has always read
+`profile.skills` against a field the real `preferences` object never had.
+Added `skills: []` to `data/store.jsx`'s preferences default (covered
+automatically by the existing one-level-deep merge fix, so an existing
+saved session doesn't lose the field), a `skills text[]` column on
+`member_preferences` (migration 20260824260000, same table-level grants as
+every other column there), and a new "Skills" chip picker on My Profile's
+Career preferences tab -- placed there, not onboarding, matching how
+`opportunityType`/`compTarget` were added. Deliberately a **closed list**
+(`data/careerOptions.js`'s new `SKILLS`, 22 entries), sourced by
+extracting the exact vocabulary `occupationTaxonomy.ts` actually populates
+on real jobs, not invented -- skill matching (both here and in
+`server/src/match.ts`) is an exact case-insensitive string match, so free
+text would silently never match anything real.
+
+`data/jobMatch.js`'s `matchJob()` gained the same skills factor
+`server/src/match.ts` already has, and its weights were rebalanced to
+match exactly (industry 30 / role 25 / location 20 / **comp 10** / skills
+15 -- comp had been silently absorbing skills' 15 points as 25 since there
+was nothing to spend them on before this). Noted, not fixed: `preferred_
+skills` is read defensively but is always empty in practice today --
+`jobInsertFromNormalized()` never maps `NormalizedJob.preferredSkills`
+even though the column exists, a separate pre-existing gap outside this
+pass's scope.
+
+Verified live end-to-end with a real job (IMC's "Trading Strategy Software
+Engineer," `required_skills` = 7 real O*NET-derived skills): selected 3
+matching skills on My Profile (one at a time -- a rapid-fire multi-click
+test script first exposed a stale-closure artifact from firing synchronous
+clicks without letting React re-render between them, not a real bug, since
+every chip-toggle function in this file already works this way and a real
+user's clicks are never that close together), confirmed the checklist
+showed "3 relevant skills: Critical Thinking, Microsoft Excel, SQL," and
+independently recomputed the exact score by hand (25 role + 3/7×15≈6.4
+skills = 31.4 → 31) against what `matchJob()` actually returned -- exact
+match. Confirmed the real Supabase round-trip too: queried
+`member_preferences` directly after selecting skills (synced correctly)
+and again after reverting the test selection back to empty (synced back
+down correctly, no residue left in the real table).

@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
-import { INDUSTRIES, ROLES, LOCATIONS, COMPANIES, RECRUITING_CYCLES } from "../data/careerOptions.js";
+import { INDUSTRIES, ROLES, SKILLS, LOCATIONS, COMPANIES, RECRUITING_CYCLES } from "../data/careerOptions.js";
 import { computeProfileStrength } from "../data/profileUtils.js";
 import "../styles/jobDetail.css";
 import "../styles/onboarding.css";
@@ -77,6 +77,11 @@ export default function MyProfile() {
     const already = preferences.roles.includes(role);
     if (already) updatePreferences({ roles: preferences.roles.filter((r) => r !== role) });
     else if (preferences.roles.length < 5) updatePreferences({ roles: [...preferences.roles, role] });
+  }
+
+  function toggleSkill(skill) {
+    const already = preferences.skills.includes(skill);
+    updatePreferences({ skills: already ? preferences.skills.filter((s) => s !== skill) : [...preferences.skills, skill] });
   }
 
   function toggleLocation(loc) {
@@ -236,6 +241,23 @@ export default function MyProfile() {
                     onClick={() => toggleRole(role)}
                   >
                     {role}
+                  </button>
+                ))}
+              </div>
+
+              <p style={{ fontWeight: 700 }}>Skills</p>
+              <p className="meta" style={{ marginTop: "calc(-1 * var(--space-3))" }}>
+                Matched against each job's inferred skill profile -- feeds the "relevant skills" line on
+                the match checklist.
+              </p>
+              <div className="chip-row">
+                {SKILLS.map((skill) => (
+                  <button
+                    key={skill}
+                    className={`chip-toggle${preferences.skills.includes(skill) ? " is-selected" : ""}`}
+                    onClick={() => toggleSkill(skill)}
+                  >
+                    {skill}
                   </button>
                 ))}
               </div>

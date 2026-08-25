@@ -15,6 +15,7 @@ function rowToPreferences(row) {
   return {
     industries: row.industries,
     roles: row.roles,
+    skills: row.skills,
     locations: row.locations,
     openToRelocating: row.open_to_relocating,
     remoteOrHybridOnly: row.remote_or_hybrid_only,
@@ -34,6 +35,7 @@ function preferencesToRow(userId, preferences) {
     id: userId,
     industries: preferences.industries,
     roles: preferences.roles,
+    skills: preferences.skills,
     locations: preferences.locations,
     open_to_relocating: preferences.openToRelocating,
     remote_or_hybrid_only: preferences.remoteOrHybridOnly,

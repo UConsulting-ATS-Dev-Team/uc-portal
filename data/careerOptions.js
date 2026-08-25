@@ -27,6 +27,40 @@ export const ROLES = [
 
 export const LOCATIONS = ["Chicago", "New York", "Los Angeles", "San Francisco", "Remote", "Hybrid"];
 
+// Part 10 / US-26 -- the exact vocabulary supabase/functions/_shared/
+// pipeline/taxonomy/occupationTaxonomy.ts's skillsForOccupation() actually
+// populates on real jobs (required_skills), deduplicated across all 6
+// occupation buckets there. Deliberately a closed list matching that
+// taxonomy, not free text -- data/jobMatch.js's skill matching (like
+// server/src/match.ts's) is an exact case-insensitive string match, so a
+// member typing "excel" instead of "Microsoft Excel" would never match
+// anything. If the taxonomy above ever grows, this list needs the same
+// additions to stay matchable.
+export const SKILLS = [
+  "Critical Thinking",
+  "Complex Problem Solving",
+  "Active Listening",
+  "Judgment and Decision Making",
+  "Mathematics",
+  "Coordination",
+  "Systems Analysis",
+  "Systems Evaluation",
+  "Persuasion",
+  "Social Perceptiveness",
+  "Programming",
+  "Microsoft Excel",
+  "Microsoft PowerPoint",
+  "SQL",
+  "Bloomberg Terminal",
+  "Financial modeling software",
+  "Project management software",
+  "Python",
+  "Git",
+  "Adobe Creative Suite",
+  "Marketing analytics platforms",
+  "Statistical analysis software",
+];
+
 export const COMPANIES = [
   { name: "Bain & Company", alumni: 22, openRoles: 6 },
   { name: "McKinsey & Company", alumni: 19, openRoles: 5 },

@@ -107,6 +107,7 @@ const DEFAULT_STATE = {
   preferences: {
     industries: [], // ranked array of industry names, max 3
     roles: [], // max 5
+    skills: [], // Part 10/US-26 -- set on My Profile (2g), not collected in onboarding, same as opportunityType/compTarget below
     locations: [],
     openToRelocating: false,
     remoteOrHybridOnly: false,

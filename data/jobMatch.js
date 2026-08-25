@@ -61,7 +61,23 @@ export function matchJob(job, preferences, classYear) {
 
   const compMatch = preferences.compTarget == null || (job.salary_min != null && job.salary_min >= preferences.compTarget);
   factors.push({ key: "compensation", match: compMatch, label: job.compensation_text ?? "Not listed" });
-  score += compMatch ? 25 : 0;
+  score += compMatch ? 10 : 0;
+
+  // Part 10/US-26 -- exact-string match against the member's own Skills
+  // picker (My Profile), same as server/src/match.ts's identical factor.
+  // preferred_skills is always empty in practice today (a separate,
+  // pre-existing gap: jobInsertFromNormalized() never maps it from
+  // NormalizedJob.preferredSkills even though the column exists) -- reading
+  // it here anyway costs nothing and picks it up automatically if that gets
+  // fixed later.
+  const relevantSkills = [...(job.required_skills ?? []), ...(job.preferred_skills ?? [])];
+  const matchedSkills = relevantSkills.filter((skill) => preferences.skills.some((s) => s.toLowerCase() === skill.toLowerCase()));
+  factors.push({
+    key: "skills",
+    match: matchedSkills.length > 0,
+    label: matchedSkills.length > 0 ? `${matchedSkills.length} relevant skill${matchedSkills.length === 1 ? "" : "s"}: ${matchedSkills.join(", ")}` : "No relevant skills listed on your profile",
+  });
+  score += relevantSkills.length > 0 ? (matchedSkills.length / relevantSkills.length) * 15 : 0;
 
   return { eligible: true, score: Math.round(score), factors };
 }
