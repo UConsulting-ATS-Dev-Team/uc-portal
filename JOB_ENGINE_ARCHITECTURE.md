@@ -1921,3 +1921,57 @@ the existing job rather than creating a second listing (unchanged
 attachment removed afterward via migration -- the app is never granted
 DELETE on any of these tables, so cleanup goes through a migration like
 every other test-data removal this session.
+
+**Same pass, three quick UI wins -- data that already existed server-side
+but was never surfaced (US-28, US-39), plus half of US-52 (the half that's
+actually a UI gap, not new infrastructure).**
+
+US-28: `classification_method` exists on every job row but rendered
+nowhere. Added a small note under the "Target industry" checklist row on
+`pages/RealJobDetail.jsx` -- the one field the column actually describes
+(`normalize.ts` always tags it `onet_occupation`/`rule`, since occupation/
+industry classification is always inferred, never literally employer-
+stated) -- reading "our estimate, from the role title (O*NET)" rather than
+presenting an inferred category as if the employer wrote it. Known,
+undisguised gap: a submitted job whose industries came from the
+submitter's own chip selection (`approve-submission`'s
+`submitterIndustries` override) still carries whatever
+`classification_method` the occupation stub produced, since that override
+was never reflected back into the column -- rare enough in practice
+(industries usually agree) not to block this, but a real inaccuracy if it
+ever diverges. Verified live (temporarily switching a test profile's
+`opportunityType` to "Both" to make a real classified job eligible, then
+reverting it afterward) -- confirmed the badge renders correctly and only
+on the industry row, not the others matchJob() computes.
+
+US-39: `data/store.jsx` gained `savedSearches` (same shape/pattern as
+`recentSearches`) and `saveSearch`/`removeSavedSearch`. "Save this search"
+on `pages/Jobs.jsx` now writes the current filter object under an auto-
+generated label (built from the same `activeChips` the UI already renders
+-- no name-entry form exists, so labeling it honestly from what's actually
+active beats a placeholder like "Untitled search"). A new "Saved searches"
+group in the filter column lists them; clicking one calls `setFilters()`
+with the saved object directly, reusing 100% of the existing filter/sort/
+diagnostic machinery. Verified live: saved a 5-chip filter combination,
+changed filters via natural-language search, clicked the saved entry, and
+confirmed the exact original 5 chips came back; removal correctly hides
+the section when the list is empty.
+
+US-52 (partial): `quality_score` is computed at ingestion for every job
+but no admin panel showed it (the "pending duplicates" third of this story
+was already done -- the existing duplicate review queue). Added a "Job
+quality" section to `pages/AdminDashboard.jsx`: active jobs scoring below
+0.5, worst first, direct client query (`jobs_select_admin`'s RLS already
+grants this, no Edge Function needed for a read). Deliberately threshold-
+gated, not an unconditional "bottom 10" -- an always-populated table would
+misrepresent a genuinely healthy board as having a standing problem.
+**Broken-link detection (the other real half of US-52) is explicitly not
+included here** -- `quality.ts`'s own header comment already says why:
+"live application-URL health checks aren't meaningful yet with no real
+automated source running." That's real new infrastructure (a scheduled
+job hitting every active `application_url` and recording the result), not
+a UI-surfacing task like the other three items in this batch -- called out
+by name rather than silently left off the list. Verified live: the panel
+correctly lists real low-scoring postings (several genuine IMC/Brex/
+Robinhood jobs at 0.2), and the "View" link routes to the real job detail
+page.

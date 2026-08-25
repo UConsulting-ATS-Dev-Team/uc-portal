@@ -43,6 +43,9 @@ export default function AdminDashboard() {
   const [duplicatesError, setDuplicatesError] = useState(null);
   const [duplicatesNote, setDuplicatesNote] = useState(null);
   const [resolvingId, setResolvingId] = useState(null);
+  const [lowQualityJobs, setLowQualityJobs] = useState([]);
+  const [lowQualityLoading, setLowQualityLoading] = useState(true);
+  const [lowQualityError, setLowQualityError] = useState(null);
   const [featureRequests, setFeatureRequests] = useState([]);
   const [featureRequestsLoading, setFeatureRequestsLoading] = useState(true);
   const [featureRequestsError, setFeatureRequestsError] = useState(null);
@@ -117,10 +120,33 @@ export default function AdminDashboard() {
     setFeatureRequestsLoading(false);
   }
 
+  // US-52 -- quality_score is computed and stored at ingestion time
+  // (_shared/pipeline/quality.ts) for every job, but nothing surfaced it
+  // before this. Threshold (<0.5) rather than an unconditional "bottom N"
+  // list -- an always-populated table would misrepresent a genuinely
+  // healthy board as having a standing quality problem. Direct client
+  // query, not an Edge Function: read-only, and jobs_select_admin's RLS
+  // policy already grants admins full read access (unlike the write paths
+  // elsewhere on this page, which do need service_role).
+  async function loadLowQualityJobs() {
+    setLowQualityLoading(true);
+    const { data, error } = await supabase
+      .from("jobs")
+      .select("id, company, title, quality_score, application_url")
+      .eq("active", true)
+      .lt("quality_score", 0.5)
+      .order("quality_score", { ascending: true })
+      .limit(15);
+    if (error) setLowQualityError(error.message);
+    else setLowQualityJobs(data ?? []);
+    setLowQualityLoading(false);
+  }
+
   useEffect(() => {
     loadQueue();
     loadDuplicates();
     loadFeatureRequests();
+    loadLowQualityJobs();
   }, []);
 
   // feature_requests grants admins direct update access via RLS (unlike
@@ -441,6 +467,54 @@ export default function AdminDashboard() {
                 {duplicatesLoading && (
                   <tr>
                     <td colSpan={5} className="meta">
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            </div>
+          </div>
+
+          <div className="detail-section">
+            <h2 className="detail-section__title">Job quality</h2>
+            <p className="meta" style={{ marginTop: 0 }}>
+              Active postings scoring below 0.5 on completeness/confidence (computed at ingestion) --
+              missing fields worth checking, not necessarily broken. Live application-URL health checks
+              aren't run yet (no automated re-verification exists), so this doesn't catch dead links.
+            </p>
+            {lowQualityError && <p className="meta" style={{ color: "#B3261E" }}>{lowQualityError}</p>}
+            <div className="queue-table__scroll">
+            <table className="queue-table">
+              <thead>
+                <tr>
+                  <th>Company</th>
+                  <th>Role</th>
+                  <th>Quality score</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lowQualityJobs.map((j) => (
+                  <tr key={j.id}>
+                    <td>{j.company}</td>
+                    <td>{j.title}</td>
+                    <td>{j.quality_score}</td>
+                    <td>
+                      <Link to={`/jobs/${j.id}`} className="btn btn-secondary">View</Link>
+                    </td>
+                  </tr>
+                ))}
+                {!lowQualityLoading && lowQualityJobs.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="meta">
+                      No active postings currently score below 0.5 -- nothing needs a closer look.
+                    </td>
+                  </tr>
+                )}
+                {lowQualityLoading && (
+                  <tr>
+                    <td colSpan={4} className="meta">
                       Loading…
                     </td>
                   </tr>

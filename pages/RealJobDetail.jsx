@@ -22,6 +22,27 @@ const EMPLOYMENT_TYPE_LABEL = {
 };
 const REMOTE_TYPE_LABEL = { remote: "Remote", hybrid: "Hybrid", in_person: "In-person" };
 
+// US-28 -- classification_method exists on every real job row (§3.2/Part
+// 10) but was never surfaced anywhere in the frontend before this. Only
+// covers the "Target industry" checklist row since that's the one field
+// classification_method actually describes (normalize.ts always tags it
+// "onet_occupation" or "rule" -- the industry/function classification,
+// never the whole job) -- not a general-purpose "is this field a fact"
+// label for every row. Known gap, not silently papered over: a submitted
+// job whose industries came from the submitter's own chip selection
+// (approve-submission's submitterIndustries override) still carries
+// whatever classification_method the occupation stub produced, since that
+// override isn't reflected back into the column -- rare enough in
+// practice (industries usually agree) not to block shipping the common
+// case, but worth fixing if it turns out to matter.
+const CLASSIFICATION_METHOD_LABEL = {
+  source_stated: "as stated by the employer",
+  human: "confirmed by a UC admin",
+  onet_occupation: "our estimate, from the role title (O*NET)",
+  rule: "our estimate, from the role title",
+  llm: "our estimate (AI-assisted)",
+};
+
 // Detail view for a real job (a UUID id, see JobDetail.jsx's dispatch at the
 // top of its component). Deliberately much simpler than the mock JobDetail:
 // no odds model, no past-cycle outcomes, no interview write-ups -- those
@@ -120,7 +141,14 @@ export default function RealJobDetail({ jobId }) {
               {match.factors.map((f) => (
                 <div className={`checklist-item ${f.match ? "is-match" : "is-mismatch"}`} key={f.key}>
                   <span className="checklist-item__icon">{f.match ? "✓" : "✕"}</span>
-                  <span>{f.label}</span>
+                  <span>
+                    {f.label}
+                    {f.key === "industry" && job.classification_method && (
+                      <span className="meta" style={{ display: "block" }}>
+                        {CLASSIFICATION_METHOD_LABEL[job.classification_method] ?? job.classification_method}
+                      </span>
+                    )}
+                  </span>
                 </div>
               ))}
             </div>

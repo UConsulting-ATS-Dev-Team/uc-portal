@@ -94,6 +94,7 @@ const SEED_COFFEE_CHATS = {
 const DEFAULT_STATE = {
   onboardingComplete: false,
   recentSearches: [], // Global search (3b) -- most recent first, capped at 5
+  savedSearches: [], // Jobs board (1d) "Save this search" -- { id, label, filters, savedAt }[], most recent first
   savedJobIds: [],
   trackedJobs: SEED_TRACKED_JOBS, // { [jobId]: { stage, addedAt, stageHistory } } -- stage taxonomy matches the Applications tracker (1f/1g/1j)
   timelineShiftDays: {}, // { [jobId]: days } -- manual reschedule from dragging a projected bar on the Timeline view (1j)
@@ -295,6 +296,19 @@ export function AppStateProvider({ children }) {
     }));
   }
 
+  // US-39 -- "save a named filter set." No name-entry UI exists for this
+  // yet (the button is a single click, not a form), so the label is
+  // auto-generated from whatever's actually active -- honest about what
+  // was saved rather than a placeholder like "Untitled search."
+  function saveSearch(filters, label) {
+    const search = { id: crypto.randomUUID(), label: label || "All jobs", filters, savedAt: new Date().toISOString() };
+    setState((prev) => ({ ...prev, savedSearches: [search, ...prev.savedSearches].slice(0, 10) }));
+  }
+
+  function removeSavedSearch(id) {
+    setState((prev) => ({ ...prev, savedSearches: prev.savedSearches.filter((s) => s.id !== id) }));
+  }
+
   function completeOnboarding() {
     setState((prev) => ({ ...prev, onboardingComplete: true }));
   }
@@ -426,6 +440,8 @@ export function AppStateProvider({ children }) {
         touchProfileUpdated,
         updateNotificationSetting,
         addRecentSearch,
+        saveSearch,
+        removeSavedSearch,
         completeOnboarding,
         toggleSavedJob,
         addToTracker,

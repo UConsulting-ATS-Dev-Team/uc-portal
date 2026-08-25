@@ -167,7 +167,7 @@ export default function Jobs() {
   const [showPostModal, setShowPostModal] = useState(false);
   const [nlQuery, setNlQuery] = useState("");
   const [nlResult, setNlResult] = useState(null);
-  const { savedJobIds, toggleSavedJob, preferences } = useAppState();
+  const { savedJobIds, toggleSavedJob, preferences, savedSearches, saveSearch, removeSavedSearch } = useAppState();
 
   const [rawJobs, setRawJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(true);
@@ -272,6 +272,15 @@ export default function Jobs() {
   filters.locations.forEach((l) => activeChips.push({ label: l, onRemove: () => toggleChip("locations", l) }));
   filters.deadlines.forEach((d) => activeChips.push({ label: d, onRemove: () => toggleChip("deadlines", d) }));
 
+  function handleSaveSearch() {
+    saveSearch(filters, activeChips.length > 0 ? activeChips.map((c) => c.label).join(", ") : "All jobs");
+  }
+
+  function applySavedSearch(search) {
+    setFilters(search.filters);
+    setTab("all");
+  }
+
   if (jobsError) {
     return <ErrorState what="jobs" onRetry={() => window.location.reload()} />;
   }
@@ -285,6 +294,22 @@ export default function Jobs() {
             Clear all
           </button>
         </div>
+
+        {savedSearches.length > 0 && (
+          <div className="filters__group">
+            <div className="filters__group-title">Saved searches</div>
+            {savedSearches.map((s) => (
+              <div className="filters__checkbox" key={s.id}>
+                <button type="button" className="btn-link" style={{ textAlign: "left" }} onClick={() => applySavedSearch(s)}>
+                  {s.label}
+                </button>
+                <button type="button" className="btn-link" aria-label={`Remove saved search "${s.label}"`} onClick={() => removeSavedSearch(s.id)}>
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         <form className="filters__group nl-search" onSubmit={handleNlSearch}>
           <div className="filters__group-title">Describe what you're looking for</div>
@@ -453,7 +478,7 @@ export default function Jobs() {
               <option value="deadline">Deadline</option>
               <option value="newest">Newest</option>
             </select>
-            <button className="btn btn-secondary">Save this search</button>
+            <button className="btn btn-secondary" onClick={handleSaveSearch}>Save this search</button>
             <button className="btn btn-primary" onClick={() => setShowPostModal(true)}>Post a job</button>
           </div>
         </div>
