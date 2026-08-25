@@ -21,6 +21,7 @@ import Home from "./pages/Home.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import GlobalSearch from "./pages/GlobalSearch.jsx";
 import Messages from "./pages/Messages.jsx";
+import NotFound from "./pages/NotFound.jsx";
 
 // Each route below is a stub until it's built for real, per the build
 // order in CLAUDE.md (shell → auth → onboarding → jobs → job detail →
@@ -157,6 +158,12 @@ export default function App() {
         }
       />
       <Route path="/sign-in" element={<SignIn />} />
+      {/* Alias for the natural, unhyphenated spelling -- every other route
+          in the app is a single word (/jobs, /network, /profile, ...);
+          /sign-in is the one outlier, so this covers the typo/muscle-memory
+          case rather than renaming the canonical route out from under
+          anything that already links to it. */}
+      <Route path="/signin" element={<SignIn />} />
       <Route path="/onboarding" element={<Onboarding />} />
 
       {/* Leadership only — see components/NavRail.jsx for the visibility gate */}
@@ -192,6 +199,8 @@ export default function App() {
           </NavShell>
         }
       />
+
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
