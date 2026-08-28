@@ -1,3 +1,12 @@
+// Mirror of supabase/functions/_shared/pipeline/relevance.ts -- keep both
+// copies in sync (this codebase has been bitten twice by two copies of the
+// same pipeline logic drifting apart; see JOB_ENGINE_ARCHITECTURE.md's
+// US-56/US-09 writeup). This file has no test-only purpose of its own: it
+// exists so server/tests/relevance.test.ts can exercise the exact same
+// regexes the deployed Edge Functions run, the same way normalize.ts and
+// occupationTaxonomy.ts already have real server/src/ mirrors alongside
+// their Edge Function copies.
+
 // Title-based relevance filter for ATS adapters (fetch-greenhouse-companies,
 // fetch-deloitte-jobs) that pull a company's *entire* public job board
 // rather than a pre-scoped feed. Greenhouse in particular has no way to ask

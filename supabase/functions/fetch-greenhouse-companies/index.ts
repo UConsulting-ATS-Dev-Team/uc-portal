@@ -34,7 +34,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { normalizeJob } from "../_shared/pipeline/normalize.ts";
 import { validateJob, scoreQuality } from "../_shared/pipeline/quality.ts";
 import { scoreDuplicate, classifyDuplicateTier } from "../_shared/pipeline/dedupe.ts";
-import { isLikelySeniorRole } from "../_shared/pipeline/relevance.ts";
+import { isLikelySeniorRole, isLikelyNonCorporateRole } from "../_shared/pipeline/relevance.ts";
 import type { RawJob } from "../_shared/pipeline/types.ts";
 import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows } from "../_shared/dedupeHelpers.ts";
 
@@ -160,7 +160,14 @@ async function runFetchForCompany(
     // this is forward-looking, not a retroactive cleanup of what's already
     // in the table (see JOB_ENGINE_ARCHITECTURE.md's Stage 4 entry for why
     // that's a separate, deliberately-reviewed decision).
-    if (isLikelySeniorRole(ghJob.title)) {
+    //
+    // isLikelyNonCorporateRole() is the same idea on a different axis: not
+    // "too senior" but "not the kind of job UC Portal exists for" (manual
+    // trade/hourly operations, direct clinical/patient care). Added after
+    // Carvana (45% of the live table) turned out to be overwhelmingly
+    // automotive-operations roles, not senior ones -- isLikelySeniorRole()
+    // alone let all of that through.
+    if (isLikelySeniorRole(ghJob.title) || isLikelyNonCorporateRole(ghJob.title)) {
       skippedNotRelevant++;
       continue;
     }

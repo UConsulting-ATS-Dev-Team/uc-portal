@@ -48,7 +48,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { normalizeJob } from "../_shared/pipeline/normalize.ts";
 import { validateJob, scoreQuality } from "../_shared/pipeline/quality.ts";
 import { scoreDuplicate, classifyDuplicateTier } from "../_shared/pipeline/dedupe.ts";
-import { isLikelySeniorRole } from "../_shared/pipeline/relevance.ts";
+import { isLikelySeniorRole, isLikelyNonCorporateRole } from "../_shared/pipeline/relevance.ts";
 import type { RawJob } from "../_shared/pipeline/types.ts";
 import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows } from "../_shared/dedupeHelpers.ts";
 
@@ -241,15 +241,17 @@ async function runFetch(adminClient: SupabaseClient, source: any): Promise<Fetch
       continue;
     }
 
-    // Same relevance filter as fetch-greenhouse-companies (see
+    // Same relevance filters as fetch-greenhouse-companies (see
     // _shared/pipeline/relevance.ts) -- less urgent here since the
     // consultant/strategy/analyst keyword search already scopes the feed
     // reasonably well, but a "Senior Manager, Strategy Consulting" or
     // similar can still surface under those same keywords, and applying
     // this everywhere consistently is simpler than deciding per-adapter
-    // whether it's needed.
+    // whether it's needed. isLikelyNonCorporateRole() is unlikely to ever
+    // fire against a consultant/strategy/analyst-keyword feed, but it costs
+    // nothing to gate here too rather than special-case this adapter out.
     const rawTitle = (posting.title ?? item.title).trim();
-    if (isLikelySeniorRole(rawTitle)) {
+    if (isLikelySeniorRole(rawTitle) || isLikelyNonCorporateRole(rawTitle)) {
       skippedNotRelevant++;
       continue;
     }

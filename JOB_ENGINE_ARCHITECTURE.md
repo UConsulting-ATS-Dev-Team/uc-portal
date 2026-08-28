@@ -1213,7 +1213,20 @@ Stage 4 (started) Additional ATS adapters for other UC-target companies;
                  relevant, most isn't" situation the senior-role denylist
                  and per-company display cap already exist to handle for
                  every high-volume source, so it didn't need special-
-                 casing. Also surfaced a new job.type value ("Part-time",
+                 casing.
+
+                 **Superseded 2026-08-25** -- see this doc's dated entry
+                 below ("isLikelyNonCorporateRole() -- manual trade + direct
+                 clinical/patient-care denylist"). The user explicitly
+                 rescoped UC Portal to white-collar corporate roles only
+                 (finance/consulting/tech/IB/general corporate-office), so
+                 "didn't need special-casing" is no longer the right call --
+                 Charlie Health's clinical/care-delivery half (Care Coach,
+                 Crisis Intervention Specialist, licensed-clinician
+                 positions, etc.) is now filtered out by the same mechanism
+                 as Carvana's manual-trade half, both retroactively (81 of
+                 Charlie Health's 251 active postings removed) and at
+                 ingestion going forward. Also surfaced a new job.type value ("Part-time",
                  from Charlie Health's part-time clinical postings) that
                  pages/Jobs.jsx's Opportunity Type filter picked up
                  automatically, since that filter's checkboxes are already
@@ -2473,3 +2486,204 @@ handoff, then the user ran the real dev server against the real
 Supabase project, signed in with a real confirmed test account, and
 confirmed the tab loads incrementally rather than all at once, ranking
 looks sane, and no single company dominates the scroll.
+
+**2026-08-25 -- `isLikelyNonCorporateRole()`: manual trade + direct
+clinical/patient-care denylist, retroactive cleanup + ingestion gate.**
+Explicit rescope, not a bug fix: UC Portal serves UCLA business-club
+students seeking white-collar corporate roles -- finance, consulting,
+tech, investment banking, general corporate-office work -- and nothing
+else, regardless of how well-classified or "entry-level" a posting is.
+Prompted by Carvana turning out to be 1,474 of the live table's ~3,283
+active jobs (45%) once its Greenhouse board was live for a while --
+overwhelmingly manual/hourly automotive-operations work (Automotive
+Parts Associate, Experienced Auto Painter, Customer Delivery Driver,
+Security Guard II, CDL A Local Truck Driver, Car Detailer, Auto
+Mechanic, Title Administrator) that `isLikelySeniorRole()` correctly let
+through, since none of it is senior, it's just the wrong *kind* of job.
+Only 101 of Carvana's 1,474 (7%) had a real O*NET `job_function_id`
+classification, and classification rate turned out to be low across
+every company (Stripe 26%, Databricks 7.5%, Charlie Health 2.8%), which
+ruled out `job_function_id is not null` as a hard allowlist gate before
+any code was written -- it would have wrongly excluded huge numbers of
+legitimate Stripe/Databricks/Figma engineering and business postings
+whose titles just don't match today's limited O*NET crosswalk
+vocabulary. Second axis, same finding: Charlie Health mixes genuine
+corporate roles (Commercial Strategy Associate, Growth Strategy Analyst)
+with direct clinical/patient-care postings (Licensed Mental Health
+Therapist, Crisis Intervention Specialist, SUD/Mental Health Group
+Facilitators) -- previously a deliberate "keep both halves" call (see
+this doc's Stage 4 entry above, now marked superseded), no longer
+correct once the user rescoped the product to white-collar-only.
+
+Same template as `isLikelySeniorRole()`, deliberately: a conservative,
+keyword-based denylist in `_shared/pipeline/relevance.ts`, not a
+classifier, with the same asymmetry (an ambiguous title -- no clear
+manual-trade or clinical-care marker -- is kept, not dropped). New this
+time: `_shared/pipeline/relevance.ts` now has a real `server/src/`
+mirror (`server/src/relevance.ts`), which it never had before (only
+`isLikelySeniorRole()` existed, Edge-Function-only) -- added so
+`server/tests/relevance.test.ts` can exercise the exact regexes the
+deployed functions run, matching the pattern `normalize.ts` and
+`occupationTaxonomy.ts` already use, and per this doc's own repeated
+warning (US-56/US-09) about two copies of the same pipeline logic
+drifting apart. `isLikelyNonCorporateRole()` combines two patterns:
+
+- `MANUAL_TRADE_TITLE_PATTERN`: technician(s), mechanic(s), painter(s),
+  detailer(s), prepper(s), airbrush, inspector(s), CDL, lot attendant/
+  assistant, auto body, upholstery, security guard(s), data entry, wheel/
+  dent/rim/glass/interior repair, parts associate(s), line/machine
+  operator(s), warehouse associate/worker/supervisor/technician, delivery
+  driver/ambassador/advocate/specialist, vehicle/customer delivery,
+  driver(s), forklift, custodian(s), housekeeping, cashier(s), PDR, lube,
+  refinish\*, heavy body, body tech(s), restoration, brake(s), combo/
+  diagnostic/auto tech(s).
+- `CLINICAL_CARE_TITLE_PATTERN`: therapist(s), clinician(s), counselor(s),
+  nurse(s)/nursing, physician(s), psychiatr\*, social worker(s), care
+  coach(es), crisis intervention, behavioral health (specialist(s)),
+  clinical, facilitator(s), mental health, substance use disorder, LCSW,
+  LMFT, LPC, RN, care navigator(s), clinical/patient case manager(s).
+
+Both were built by querying the live `jobs` table directly (not
+guessing from the user's starter list) and validating every candidate
+word against every active company's real titles -- Stripe, Databricks,
+Brex, IMC, Figma, Airbnb, Coinbase, Robinhood, Deloitte, Guild, in
+addition to Carvana and Charlie Health -- specifically to catch false
+positives before they could ever reach production. That process caught
+several real near-misses the starter list alone would have introduced:
+
+- Bare `security` was dropped -- Databricks/Figma/Stripe/IMC/Airbnb/
+  Deloitte all have real "Security Engineer"/"Information Security"
+  titles. Only the unambiguous "security guard" phrase made it in
+  (Carvana's own "Security Associate"/"Security Lead" are left
+  un-caught, a deliberate conservative gap, not an oversight).
+- Bare `delivery` was dropped -- Databricks has 14 real "Delivery
+  Solutions Architect" postings and Deloitte has a "Tech Delivery"
+  consultant role. Scoped to "delivery driver/ambassador/advocate/
+  specialist" and "vehicle/customer delivery" instead.
+- Bare `tech` was dropped -- "Tech Lead", "Tech Ops", "Tech Delivery",
+  "High Tech" all appear as real titles at Airbnb/Databricks/Deloitte/
+  Stripe/IMC. Carvana's many "___ Tech" abbreviations (PDR Tech, Lube
+  Tech, Heavy Body Tech, Combo Tech, Diagnostic Tech, Auto Tech, Body
+  Tech) are instead caught by their specific trade-word prefixes --
+  a real, deliberately accepted coverage gap: a live re-fetch after
+  deploy surfaced a brand-new, never-before-seen Carvana title
+  ("Master Collision Repair/Recon Tech") this doesn't catch, kept
+  intentionally rather than reaching for a bare "tech" match.
+- `warehouse` and `operator` were scoped to compound phrases ("warehouse
+  associate/worker/supervisor/technician", "line/machine operator")
+  rather than left bare, since "Data Warehouse" is a plausible legitimate
+  title fragment at data/analytics employers and Stripe has a real
+  "Engineering Manager, Operator Tooling" role, even though neither
+  currently collides.
+- `counselor` is spelled out in full, not a substring match on `counsel`
+  -- the substring would have wrongly caught every real "Counsel"/"Legal
+  Counsel"/"Assistant General Counsel" attorney title (Brex, Coinbase,
+  Databricks, Figma, IMC, Robinhood, Stripe all have them).
+- Bare `sud` was tried and dropped after validation surfaced a genuine
+  false positive: Charlie Health also posts ~130 "Territory Manager, SUD
+  (...)" field-sales/business-development postings, not clinical roles,
+  and every genuinely clinical SUD posting already contains "Facilitator"
+  and is caught by that branch instead. `patient` was dropped for the
+  same reason -- it only ever matched "Patient Finance Collector/
+  Specialist", which are billing/collections roles, not direct patient
+  care.
+- A word-boundary bug (`care\s+coaches?` matches "coache"/"coaches", not
+  bare "coach" -- the `?` only makes the trailing `s` optional, not an
+  `es` pluralization) was caught by `server/tests/relevance.test.ts`
+  itself before anything was deployed or deleted, not after: "Care Coach
+  (Part-Time)" failed an early test run, fixed to `care\s+coach(es)?`,
+  and the dry-run counts were regenerated from scratch before writing
+  the migration.
+- "Data Entry Specialist" (Carvana, 6 postings) is included per an
+  explicit human judgment call: not manual trade in the literal sense,
+  but not a business/finance/consulting/tech role either.
+
+Dry-run validated against the real table before any deletion: 1,207 of
+3,284 active postings matched (1,126 Carvana, 81 Charlie Health, **0**
+across all 10 other active companies). Cross-checked against
+`job_function_id is not null` specifically to confirm the previously-
+identified relevant postings survive: 99 of Carvana's 101 classified
+postings kept (the 2 removed are both "Technician I/II, Facilities,
+Property Operations" -- a building-facilities maintenance role, correctly
+excluded despite carrying an O*NET classification, since classification
+was never a relevance proxy -- see above) and all 7 of Charlie Health's
+classified postings kept (Commercial Strategy Associate/Manager, Growth
+Strategy Analyst x2, Strategy & Operations Analyst x2, Care Strategy &
+Operations Analyst/Associate), plus all ~130 Territory Manager postings
+at Charlie Health, per the `sud` finding above.
+
+Deleted via migration `20260825190000_remove_non_corporate_role_postings.sql`,
+same precedent as `20260824120000_remove_senior_role_postings.sql`: job
+IDs listed explicitly, computed client-side with the exact deployed
+regex rather than reimplemented in Postgres' own regex dialect
+(word-boundary syntax differs: `\y` vs `\b`), avoiding any risk of a
+mismatch between what was reviewed and what actually got deleted.
+`job_sources` and `duplicate_candidates` both carry `ON DELETE CASCADE`
+FKs to `jobs.id` (confirmed via `information_schema` before writing the
+migration), so a plain `delete from jobs` would have cascaded correctly
+on its own; the migration explicitly pre-deletes both anyway for
+auditability, matching the prior migration's pattern, extended here to
+also cover `duplicate_candidates.job_id_b` (the prior migration only
+handled `job_id_a`). `opportunity_submissions` has `NO ACTION` FKs to
+`jobs.id` and `saved_jobs`/`tracked_applications` store `job_id` as
+unconstrained `text` with no FK at all -- confirmed all three tables
+were empty in the live database before deleting, so neither posed a
+constraint-violation nor an orphaned-reference risk this time.
+
+Verified live, real Postgres counts before/after, not estimated:
+Carvana 1,474 → 348 active, Charlie Health 251 → 170 active, all 10
+other companies unchanged, table total 3,284 → 2,077. Zero orphaned
+`job_sources`/`duplicate_candidates` rows after the cascade. Wired into
+both `fetch-greenhouse-companies` and `fetch-deloitte-jobs` (same
+`if (isLikelySeniorRole(title) || isLikelyNonCorporateRole(title))` gate)
+and deployed via `--use-api`; re-invoked both functions live afterward
+specifically to check idempotency, not just that they still run.
+`fetch-greenhouse-companies` (`skippedNotRelevant: 1310` for Carvana,
+`111` for Charlie Health on that single run) confirmed none of the
+1,207 deleted titles came back -- spot-checked directly with `ilike`
+queries for "Car Detailer", "CDL A Local Truck Driver", "Licensed Mental
+Health Therapist", "Crisis Intervention Specialist", "Customer Delivery
+Driver", and "Auto Mechanic" against the post-re-fetch table: zero rows.
+The re-fetch did insert a
+handful of new Carvana/Charlie Health postings (37 and 4 respectively)
+whose titles fall into the deliberately-conservative-keep gaps above
+(ambiguous Manager/Supervisor/Lead/Coordinator titles, "Security
+Associate" without "guard", the new "Collision Repair/Recon Tech"
+variant) -- expected given the design, not a regression, since every one
+of those title *shapes* was already present in the kept set before
+deletion.
+
+`npm run test:server`: 90/90 green (43 new in `relevance.test.ts`, 47
+pre-existing untouched), `npm run typecheck:server` clean.
+
+**2026-08-27 -- independent re-verification (this work had been left
+uncommitted across two prior interrupted sessions, so it was re-checked
+from scratch rather than trusted).** Confirmed live via direct Postgres
+query (`npx supabase db query --linked`) that the migration above had in
+fact applied against the real table (Carvana 407 active at the time,
+consistent with 348 post-migration plus organic new postings since, none
+matching the denylist -- see below), and that both Edge Functions'
+`updated_at` already reflected an 2026-08-26 deploy -- i.e. the prior
+session's deploy step had actually succeeded before it was interrupted,
+it just never got committed. Rather than trust that, redeployed both
+functions again (`--use-api`, both succeeded) and independently checked
+correctness a different way than the original writeup: pulled every
+currently-active job's `id`/`company`/`title` (2,198 rows across all 12
+companies) and ran the exact `MANUAL_TRADE_TITLE_PATTERN`/
+`CLINICAL_CARE_TITLE_PATTERN`/`SENIOR_TITLE_PATTERN` regexes from the
+working tree against every title client-side -- zero matches anywhere,
+including Carvana and Charlie Health. Then live-invoked both functions
+directly via `curl` against the deployed HTTPS endpoints (not just
+re-reading old logs): `fetch-greenhouse-companies` returned
+`skippedNotRelevant: 1318` for Carvana and `110` for Charlie Health on
+this run, `fetch-deloitte-jobs` returned `skippedNotRelevant: 12`, and
+re-ran the full active-jobs pull afterward (2,225 rows) -- still zero
+denylist matches. Manually eyeballed 40 random Carvana and 40 random
+Charlie Health titles for anything the keyword patterns might have
+missed (e.g. "Automotive Shop Foreman", "Reconditioning Manager",
+repeated "Territory Manager" at Charlie Health) -- all fall into the
+same deliberately-conservative ambiguous-manager/field-sales "keep" zone
+already reasoned through above, nothing egregious slipped through. This
+confirms Part 1 was correctly finished and deployed before the session
+loss; the redeploy and re-checks here are belt-and-suspenders, not a
+fix. `npm run test:server` re-run clean at 90/90 before committing.

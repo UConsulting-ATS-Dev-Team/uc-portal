@@ -19,6 +19,10 @@ server/
     quality.ts               -- US-14/15: required-field validation + quality score
     match.ts                  -- US-32/33/34: hard-constraint eligibility + explainable soft-preference score
     rank.ts                    -- US-40/41/42/43: weighted ranking formula + anti-domination cap
+    relevance.ts                -- mirror of the Edge Function ATS-adapter title
+                                    denylists (isLikelySeniorRole,
+                                    isLikelyNonCorporateRole); exists only so
+                                    tests can exercise the exact deployed regexes
     taxonomy/
       employmentTypes.ts        -- exact-match lookup
       locations.ts                -- known-city lookup + "City, ST" regex fallback
@@ -33,7 +37,7 @@ server/
 ## Running it
 
 ```bash
-npm run test:server       # 44 tests, ~6-8s (the two full-dataset pipeline
+npm run test:server       # 90 tests, ~5-7s (the two full-dataset pipeline
                            # tests are the slow part -- O(n^2) dedup over
                            # ~250 synthetic jobs, repeated per merge; fine
                            # for a test suite, not yet optimized for a hot
