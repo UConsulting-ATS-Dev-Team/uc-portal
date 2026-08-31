@@ -3735,3 +3735,153 @@ the live `sources` table, not assumed from migration history alone.
 Migration pushed via `npx supabase db push --linked` after checking
 `supabase/migrations` immediately beforehand for the next available
 timestamp. Committed and pushed per standing permission for this repo.
+
+**2026-08-31 -- New platform: a Lever ingestion adapter
+(`fetch-lever-companies`), onboarding Wealthfront and Belvedere Trading --
+the two real, identity-verified boards the Eighth addition entry above
+flagged as "found and deliberately not added, this codebase has no Lever
+adapter at all." This entry closes that gap. Config-driven the same way as
+`fetch-greenhouse-companies` (`sources.config` rows with
+`{platform: "lever", slug, company}`), reusing the exact same shared
+pipeline (`_shared/dedupeHelpers.ts`, `_shared/pipeline/normalize.ts`,
+`relevance.ts`, `companyCap.ts`, `quality.ts`) rather than duplicating any
+of it -- the two adapters differ only in how they map one ATS's raw JSON
+shape into a `RawJob`, not in anything downstream of that.
+
+**Real API shape, verified live against both companies' actual boards
+before writing any code** (`https://api.lever.co/v0/postings/{slug}?mode=json`):
+the endpoint returns a **JSON array directly**, not wrapped in `{ jobs:
+[...] }` the way Greenhouse is -- confirmed for both Wealthfront (23
+postings) and Belvedere Trading (14 postings). Every posting carries
+`text` (title), `categories.commitment` (employment type, e.g.
+"Full-time"/"Full-Time"/"Intern" -- present on **100% of postings across
+both real boards**, a materially stronger signal than Greenhouse's ~90%
+title-only blank rate that adapter had to paper over with a default),
+`categories.location` (bare place text, e.g. "Palo Alto, CA", "Chicago,
+Illinois" -- present on 100% of postings), a separate structured
+`workplaceType` field (verified all three real values occur: "remote",
+"hybrid", "onsite" -- unlike Greenhouse, which sometimes bakes "(Remote)"
+into the location string itself, Lever reports this out-of-band), `country`,
+`createdAt` (unix milliseconds, verified via `new Date(createdAt)`, e.g.
+`1694463796009` -> `2023-09-11`), `hostedUrl` (the canonical public
+posting page, `https://jobs.lever.co/{slug}/{id}`, present on 100% of
+postings), and `applyUrl` (`hostedUrl` + `/apply`, an apply-form-specific
+deep link). Used `hostedUrl` as `applicationUrl` -- the same role
+Greenhouse's `absolute_url` plays -- not `applyUrl`, which points at a
+form rather than the page a member would actually want to land on. Lever
+has **no separate "last updated" timestamp at all** in this response
+(confirmed by inspecting the full real key set) -- only `createdAt`
+(first-posted date), used to populate `RawJob.postedDate` (which
+`scoreQuality`'s completeness check reads) rather than inventing an
+`updatedDate` Lever doesn't actually provide.
+
+**The identity-safeguard limitation, stated honestly.** Confirmed by
+inspecting the real response's complete key set: **a Lever posting
+carries no self-reported company name field at all** -- no equivalent of
+Greenhouse's `company_name`, which is what lets `fetch-greenhouse-companies`
+catch a squatted or reassigned slug outright (the "bcg" -> Oliver Wyman
+Labs and Capital One Lever-slug-collision catches earlier in this doc both
+depended on exactly that kind of self-reported signal). Mitigation built
+instead: `hostedUrlMatchesSlug()` (`server/src/leverAdapter.ts`, ported by
+hand into the Edge Function the same way `normalize.ts` is) confirms every
+posting's own `hostedUrl` is actually scoped to
+`https://jobs.lever.co/{configured-slug}/...` before it's ingested. This
+*does* catch a posting appearing under a different slug than the one
+requested -- a config typo, or a Lever-side data-integrity anomaly -- which
+would otherwise silently attribute an unrelated posting to the wrong
+company. It does **not** catch a genuine future slug reassignment to an
+unrelated org: if "wealthfront" ever lapsed and a different company later
+registered that same slug, that company's own real postings would
+legitimately carry matching `jobs.lever.co/wealthfront/...` URLs too, so
+this check alone cannot distinguish "still the real Wealthfront" from "a
+new tenant of the same slug." This is a real, permanent gap relative to
+Greenhouse's safeguard -- Lever gives this adapter no automated signal
+that could close it, and this repo has no automated recurring
+re-verification loop for either platform (only the one-time manual check
+`scripts/check-company-source.mjs` already does at onboarding). Identity
+for both Wealthfront and Belvedere Trading was instead established
+manually before this migration, the same rigor as every prior addition in
+this doc: every sampled `hostedUrl` resolves to the expected
+`jobs.lever.co/{slug}/...` path, real office locations match (Wealthfront:
+Palo Alto/Seattle/San Francisco/New York City; Belvedere Trading:
+Chicago plus a Singapore office), and posting content is unambiguous
+(Wealthfront postings reference real products -- Cash Account, tax-loss
+harvesting; Belvedere Trading's reference real trading venues -- MIAX/AMEX).
+
+**Never fetches or stores full description text**, enforced two ways
+here, not just one: Lever's response bundles full description text
+(`description`/`descriptionPlain`/`lists`/`additional`) inline with every
+posting (there's no separate description-fetch call to skip the way some
+ATSs allow, so "never fetch" isn't literally possible over the wire --
+only "never store" is), so (1) the adapter's own `LeverPosting`
+TypeScript interface and `RawJob` construction never reference any of
+those fields at all -- structurally impossible for a description to reach
+the pipeline from this adapter, stronger than relying on a runtime gate
+alone -- and (2) `enforceStorageRestrictions()` still runs as defense in
+depth via the shared `jobInsertFromNormalized()`, exactly as every other
+adapter already goes through, per each source's own
+`storage_restrictions` value set in the migration below.
+
+Added via migration `20260831280000_lever_sources_wealthfront_belvedere.sql`
+(the two `sources` rows) and
+`20260831290000_schedule_lever_fetch.sql` (daily cron, `17 17 * * *` UTC --
+the next open slot after the four existing daily jobs: 13:17 greenhouse,
+14:17 deloitte, 15:17 check-job-links, 16:17 snapshot-job-board).
+
+**Verified live end-to-end via direct `curl` against the deployed HTTPS
+endpoint** (anon key), same pattern as every prior direct-invocation
+verification in this doc. First invocation: Wealthfront 23 fetched / 17
+inserted / 6 `skippedNotRelevant` / 0 deferred / 0
+`skippedCompanyMismatch`; Belvedere Trading 14 fetched / 12 inserted / 2
+`skippedNotRelevant` / 0 deferred / 0 `skippedCompanyMismatch` -- neither
+came close to `MAX_NEW_JOBS_PER_RUN` (150), so no multi-run drain was
+needed. A second invocation confirmed idempotency exactly: `inserted: 0`
+for both, `refreshed: 17`/`refreshed: 12` matching the first run's
+post-filter insert counts, `0` conflicts.
+
+Cross-checked directly against Postgres, not just the fetch summaries.
+Active-job counts: Wealthfront 17/17, Belvedere Trading 12/12 -- both well
+under the 30-job cap (`capDeactivated: 0` for both, expected since total
+relevant volume from a 23- and 14-posting board doesn't reach it, the same
+small-board behavior already documented for SoundCloud/Guild/Marqeta).
+Pulled and read all 29 real active titles directly: **zero manual-trade or
+clinical-care matches** (expected -- a fintech and a prop-trading firm),
+all genuinely white-collar finance/tech/corporate roles (Backend Engineer,
+FP&A Analyst, Fraud Operations Specialist, Payroll Manager, Quantitative
+Trading Intern, Experienced Options Trader, FPGA Engineer, among them).
+Diffed the filtered titles against the relevance filter's own logic to
+confirm it wasn't over- or under-filtering: Wealthfront's 6 exclusions
+were exactly "Director of Product Marketing, Investing" plus five distinct
+"Senior ..." titles; Belvedere Trading's 2 were "Senior Data Engineer" and
+"Senior Trading Software Engineer" -- every exclusion traces to
+`SENIOR_TITLE_PATTERN`, nothing unexpected dropped or kept ("Engineering
+Manager," "Program Manager," and "Lead Product Marketing Manager, Cash"
+correctly survived, same "Manager"/"Lead" exclusion from the denylist
+already documented). Also confirmed directly: `application_url` is
+`hostedUrl` (not `applyUrl`), `description` is `null` on every inserted
+row, and `source_fetch_log` entries for both sources carry the same
+`{status, summary}` shape every other fetcher already logs.
+
+**`npm run test:server`: 123/123 green** (108 existing + 15 new). New
+coverage lives in `server/tests/leverAdapter.test.ts` against a new pure
+module, `server/src/leverAdapter.ts` (`buildLeverLocationText`,
+`leverPostedDate`, `hostedUrlMatchesSlug`) -- pulled out into its own
+tested module, unlike Greenhouse's adapter (which only does straightforward
+field renames inline, nothing worth a separate module), because this
+adapter's mapping genuinely needed real-API verification and its identity
+safeguard is exactly the kind of logic a live-only integration check
+wouldn't catch a regression in. The Edge Function itself hand-ports the
+same two functions inline (documented in-code as such) rather than
+importing across the Deno/Node runtime boundary, the same constraint
+`normalize.ts`'s own header comment already establishes for the wider
+pipeline port.
+
+Migrations pushed via `npx supabase db push` after checking
+`supabase/migrations` for the next available timestamp immediately
+beforehand. Function deployed via
+`npx supabase functions deploy fetch-lever-companies --use-api`. Committed
+and pushed per standing permission for this repo.
+
+Deliberately out of scope for this pass, per explicit direction: finding
+more Lever companies beyond these first two. A natural follow-on, not
+attempted here.**
