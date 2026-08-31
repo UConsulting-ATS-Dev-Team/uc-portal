@@ -3566,3 +3566,172 @@ with the concurrent agent's own work (per this task's coordination note --
 confirmed clear both before writing the migration and again immediately
 before pushing). Committed and pushed per standing permission for this
 repo.
+
+**2026-08-31 -- Eighth addition: thirteen more companies (Tower Research
+Capital, Virtu Financial, Old Mission Capital, DV Trading, Flow Traders,
+Marqeta, Carta, Betterment, Upstart, Block, Charles River Associates,
+Guidepoint, General Atlantic), the largest single source-discovery pass
+this doc has recorded, surpassing the Seventh.** Same standing direction:
+prioritize finding new companies over adding volume, weighted toward
+consulting/investment banking/tech/finance; real UC alumni presence
+checked first and weighted highest, then adjacent companies to already-
+successful categories.
+
+**Alumni-backed pass.** Queried the live `people` table directly
+(`npx supabase db query --linked`, grouping every non-null `company` value)
+-- every distinct value came back already checked (live or rejected) in a
+prior pass except two, both checked this pass and rejected (no usable
+board): McKenna Labs, Paladin Protocol. Several rows aren't real,
+checkable companies at all and were correctly skipped rather than
+guessed at: role strings ("Full-Stack Software Engineer"), institutions
+("Georgetown School of Foreign Service", "Harvard Development"), a
+nonprofit ("Girls Who Invest"), a garbled entry ("Fly by Jing (AMASS"),
+and "Stealth Startup".
+
+**Adjacent-company pass**, weighted toward the three verticals the task
+brief called out: more quant/prop-trading firms alongside IMC
+Trading/Jane Street/Jump Trading/Akuna Capital/XTX Markets, more fintechs
+alongside Stripe/Brex/Affirm/Chime/SoFi/Mercury, more consulting/advisory
+firms alongside Accordion/AlixPartners, and (a vertical flagged but not
+deeply searched before this pass) private equity/asset management.
+Checked and rejected (no usable board or signal): Wolverine Trading, GTS,
+Five Rings (a real Greenhouse hint on its own careers page, but none of
+the guessed slug variants resolved -- token not found), Cutler Group,
+Radix Trading, HC Technologies, Vatic Investments, Kearney, Slalom, Grant
+Thornton, Simon-Kucher, RSM, ICF International, Analysis Group, NERA
+Economic Consulting, Kroll, Exponent, Blackstone, Carlyle Group, Vista
+Equity Partners, Insight Partners, Silver Lake, Advent International,
+Warburg Pincus, Hellman & Friedman, Summit Partners, Francisco Partners,
+Providence Equity. Workday-hint-only (same non-buildable signal already
+documented for Accenture/Microsoft/Pacific Life/Zendesk/Guidehouse/
+Pumpkin): Protiviti, Bain Capital, Booz Allen Hamilton. Real-but-empty
+boards (same class as Plaid/Indeed/Narmi/Candidly/Optiver): Apollo Global
+Management ("apollo", 0 postings, null company_name), American
+Securities ("americansecurities", 0 postings, null company_name).
+
+Two real identity rejections, same rigor as prior passes' "bcg"/
+"Disney"/Capital One catches: **Wise** (Greenhouse slug "wise" resolves,
+21 postings, but `company_name` is "Wise Worksite Field Sales" and every
+title is a "Supplemental Sales Agent - {city}" role -- a voluntary-
+benefits sales company, not the international-transfer fintech Wise) and
+**Current** (slug "current" resolves, 7 postings, `company_name`
+"Current", but titles -- "Business Development Lead, Digital Agency,"
+"Lead Engineer (Drupal/Web Platforms)," "Senior Paid Media Strategist" --
+read as a digital marketing/creative agency, not the neobank Current).
+Both excluded on identity grounds, not a claim the real Wise/Current
+don't exist.
+
+Two real, legitimate boards found and deliberately **not** added:
+**Wealthfront** (Lever slug "wealthfront", 23 postings, Palo Alto
+locations -- matches the real fintech) and **Belvedere Trading** (Lever
+slug "belvederetrading", 14 postings). This codebase has no Lever
+adapter at all -- confirmed by inspection, `fetch-greenhouse-companies`
+only ever reads `config->>platform = 'greenhouse'`, and the only Lever
+code anywhere in this repo is `check-company-source.mjs`'s own detection
+logic, never wired into an actual fetcher. Adding either would need new
+Edge Function code, out of scope for this config-only pass -- flagged as
+real candidates for a future Lever adapter, not rejected on authorization
+or identity grounds. (Thoma Bravo's Lever slug also resolves but reports
+0 postings, so it would be excluded either way.)
+
+**Thirteen real hits**, all Greenhouse, each verified the same way as
+every prior addition -- `company_name` checked for an exact match (not
+substring), plus a sampled application URL or office footprint
+cross-checked against the real company:
+
+- **Tower Research Capital** (quant/HFT, adjacent to the prop-trading
+  cluster): slug "towerresearchcapital", 83 postings, company_name exact,
+  application URLs resolve to tower-research.com (own domain), offices
+  Montreal/New York/Gurgaon/Amsterdam/Singapore match the real firm.
+- **Virtu Financial** (publicly-traded market maker, NASDAQ: VIRT): slug
+  "virtu", 47 postings, company_name exact, offices
+  Singapore/Dublin/New York/Austin match.
+- **Old Mission Capital**: slug "oldmissioncapital", 36 postings,
+  company_name is "Old Mission" (not "Old Mission Capital" -- same IMC-
+  Trading-style lesson, confirmed via a sampled application URL resolving
+  to oldmissioncapital.com/careers/... before trusting the shorter name),
+  offices Chicago/New York match.
+- **DV Trading**: slug "dvtrading", 62 postings, company_name exact,
+  titles reference real internal desks ("DV Equities", "DV Commodities"),
+  offices London/Hong Kong/New York match.
+- **Flow Traders** (Amsterdam ETF/digital-assets market maker): slug
+  "flowtraders", 42 postings, company_name exact, offices
+  Amsterdam/New York/Hong Kong match.
+- **Marqeta** (publicly-traded card-issuing fintech, NASDAQ: MQ): slug
+  "marqeta", a small board (2 postings), company_name exact on both --
+  genuine finance/ops titles (FP&A Manager, Manager Disputes/Chargebacks),
+  not a squatter; small size alone isn't disqualifying (SoundCloud/XTX
+  Markets/Guild were added at a similar scale).
+- **Carta**: slug "carta", 60 postings, company_name exact, titles match
+  the real company's actual product lines (cap tables, PE, tax delivery).
+- **Betterment**: slug "betterment", 31 postings, company_name exact,
+  application URLs resolve to betterment.com/careers (own domain),
+  location "Betterment HQ - New York City" matches.
+- **Upstart** (publicly-traded AI-lending fintech, NASDAQ: UPST): slug
+  "upstart", 100 postings, company_name exact, application URLs resolve
+  to careers.upstart.com (own domain).
+- **Block** (publicly-traded fintech, NYSE: XYZ, formerly Square): slug
+  "block", 193 postings, company_name exact, application URLs resolve to
+  block.xyz/careers (own domain), offices
+  Sydney/Brisbane/Melbourne/Bay Area/Toronto match.
+- **Charles River Associates** (economics/litigation consulting): slug
+  "charlesriverassociates", 78 postings, company_name exact, offices
+  Boston/Chicago/New York/Oakland/Toronto/Dallas/Washington DC/Los
+  Angeles/Tallahassee match the real firm.
+- **Guidepoint** (expert-network/investment-research firm): slug
+  "guidepoint", 122 postings, company_name exact, offices
+  Shanghai/Mumbai/Toronto match.
+- **General Atlantic** (global growth-equity firm -- the PE/asset-
+  management vertical flagged but not deeply searched before this pass):
+  slug "generalatlantic", 14 postings, company_name "General Atlantic"
+  after trimming a trailing space in the raw field (harmless, the
+  adapter's own match already does `.trim().toLowerCase()`), location
+  "New York - Park Avenue" plus Mexico City/London offices match.
+
+Added via migration `20260831270000_greenhouse_eighth_addition.sql` onto
+the same config-driven `fetch-greenhouse-companies` mechanism as every
+prior Greenhouse addition -- no adapter code changes needed, all thirteen
+inherit Part 1's white-collar relevance filter and Part 2's
+30-active-jobs-per-company cap automatically, verified rather than
+assumed.
+
+Verified live end-to-end via direct `curl` against the deployed HTTPS
+endpoint (anon key). First invocation picked up all thirteen new config
+rows alongside the 23 existing Greenhouse/RSS sources in one run, `status:
+"success"` and `skippedCompanyMismatch: 0`/`deferred: 0` for every one of
+the thirteen (none hit `MAX_NEW_JOBS_PER_RUN`) -- Tower Research Capital
+72 inserted, Virtu Financial 47, Old Mission Capital 30, DV Trading 51,
+Flow Traders 26, Marqeta 2, Carta 39, Betterment 11, Upstart 38, Block
+126, Charles River Associates 36, Guidepoint 87, General Atlantic 10. A
+second invocation confirmed idempotency for all thirteen: `inserted: 0`,
+correct `refreshed` counts matching the first run's post-cap active
+count, `0` conflicts.
+
+Cross-checked directly against Postgres, not just the fetch summaries:
+every one of the thirteen sits at or under the 30-job cap exactly as
+designed -- Block/Carta/Charles River Associates/DV Trading/Guidepoint/Old
+Mission/Tower Research Capital/Upstart/Virtu Financial all at exactly 30
+active (their fetched volume exceeds the cap), Flow Traders 26/26,
+Betterment 11/11, General Atlantic 10/10, Marqeta 2/2 (all four under 30
+because total relevant volume doesn't reach the cap, `capDeactivated: 0`
+for all four, consistent with how Accordion/SoundCloud/Guild/Mercury/
+Chime/SoFi/XTX Markets behaved when first added). Pulled 40 random active
+titles across all thirteen companies directly: zero manual-trade or
+clinical-care matches (expected -- trading firms, fintechs, consulting/
+research firms, and a growth-equity firm, not the retail/healthcare
+profile that produced Carvana/Charlie Health's denylist hits), all
+genuinely white-collar corporate/finance/tech/consulting roles (Quantitative
+Trading Intern, C++ Software Engineer, Compliance Officer, Portfolio
+Manager, Client Service Associate/Coordinator, Finance and Equity Analyst,
+Cybersecurity & Incident Response Associate, among them).
+
+`npm run test:server`: **108/108 green**, unchanged (config-only addition,
+no adapter/pipeline code touched this pass).
+
+Total company job-listing sources after this addition: **37** (36
+Greenhouse + 1 Deloitte RSS feed), confirmed via a direct count against
+the live `sources` table, not assumed from migration history alone.
+
+Migration pushed via `npx supabase db push --linked` after checking
+`supabase/migrations` immediately beforehand for the next available
+timestamp. Committed and pushed per standing permission for this repo.
