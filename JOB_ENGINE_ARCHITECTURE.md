@@ -2830,3 +2830,91 @@ assumed:
 
 `npm run test:server`: 103/103 green (13 new in `companyCap.test.ts`, 90
 pre-existing untouched). `npm run typecheck:server` clean.
+
+**2026-08-31 -- Sixth addition: two more companies (Accordion, SoundCloud),
+sourced by cross-referencing `scripts/check-company-source.mjs` against
+real UC alumni/member-by-company counts in the live `people` table
+(queried directly via `npx supabase db query --linked`, both the Alumni
+rows and current-member rows -- 68 distinct alumni companies plus the
+active-member roster), per the user's explicit direction this pass:
+prioritize finding new companies over adding volume to existing ones, and
+weight toward consulting/investment banking/tech/finance specifically.
+
+Every company actually checked this pass, skipping everything already
+live or already rejected in a prior pass: Wavestone (no usable board),
+Veritas Capital (no usable board), Narmi (Lever slug real but 0 postings
+-- same "real but empty" case already documented for Plaid/Indeed), LIDD
+Consultants (no usable board), Konrad Group (no usable board), Pacific
+Life (Workday hint only, same non-buildable signal already documented for
+Accenture/Microsoft/Meta/etc.), Candidly (Greenhouse slug real but 0
+postings, same empty-board case), BetterUp (no usable board), Zendesk
+(Workday hint only), Cart.com (no usable board), nference (no usable
+board), Twitter (no usable board -- X Corp's careers presence returns no
+checkable API/schema signal), RS Investments (no usable board), Contend
+(no usable board), Invenergy (no usable board). One additional candidate,
+Aura, was found and then excluded after identity verification failed:
+Greenhouse slug "aura" reports company_name "Aura" and 5 postings, but
+every sampled application URL resolves to `auraframes.com` (Aura Frames,
+a digital-picture-frame company), while the real "Aura" a UC alumnus's
+record most plausibly refers to is `aura.com` ("Aura | Intelligent
+Digital Safety for the Whole Family", a digital-security company) -- two
+distinct real companies sharing the name "Aura," not a squatter this
+time, but identity can't be confirmed either way from the ATS data alone,
+so it's excluded per this project's established rigor on company-identity
+verification (the same bar that caught "bcg"/"Oliver Wyman Labs"/
+"Disney"/Capital One's Lever slug in prior passes).
+
+**Accordion**: real financial-consulting firm (interim management/finance
+transformation for PE-backed companies, headquartered NYC), one real UC
+alumnus on record (listed as "Accordian," a misspelling of the real
+name). Greenhouse slug "accordion", 46 postings, company_name "Accordion"
+on every posting (exact match), roles (Associate, Adaptive Planning
+Consultant, Associate/Exit Planning and Transaction Support,
+Associate/Operational & Technical Accounting) and office footprint
+(Atlanta/Boston/Charlotte/Chicago/Dallas/New York/San Francisco/London)
+consistent with the real Accordion -- directly relevant to the
+consulting/finance vertical this pass was weighted toward.
+
+**SoundCloud**: real music-streaming company, one real UC alumnus on
+record. No guessed slug resolved directly ("soundcloud" 404s on
+Greenhouse), but `soundcloud.com/jobs`'s own page source sets a
+`ghSlug = "soundcloud71"` JS variable used to build its own Greenhouse
+API calls -- the real token, pulled from the company's own careers page,
+not guessed. `boards-api.greenhouse.io/v1/boards/soundcloud71/jobs`
+returns 15 postings, company_name "SoundCloud" on every posting (exact
+match), application URLs on `job-boards.greenhouse.io/soundcloud71/jobs/...`
+-- the same canonical Greenhouse-hosted board `soundcloud.com/jobs` itself
+links to, confirming identity.
+
+Added via migration `20260831210000_greenhouse_accordion_soundcloud.sql`
+onto the same config-driven `fetch-greenhouse-companies` mechanism as
+every prior Greenhouse addition -- no adapter code changes needed, both
+already inherit Part 1's white-collar relevance filter and Part 2's
+30-active-jobs-per-company cap automatically, verified rather than
+assumed (see below).
+
+Verified live end-to-end: first invocation of `fetch-greenhouse-companies`
+(via `curl` against the deployed HTTPS endpoint, anon key, same pattern
+as this doc's other direct-invocation verifications) correctly picked up
+both new config rows alongside all 11 existing companies in the same run
+-- Accordion: fetched 46, inserted 17, skippedNotRelevant 29,
+skippedCompanyMismatch 0, deferred 0; SoundCloud: fetched 15, inserted 7,
+flaggedDuplicate 1, skippedNotRelevant 8, skippedCompanyMismatch 0,
+deferred 0. A second invocation confirmed idempotency: both sources
+correctly showed `inserted: 0`, `refreshed: 17`/`refreshed: 7`, `deferred:
+0`. Cross-checked directly against Postgres: `jobs` table shows Accordion
+at 17/17 active and SoundCloud at 7/7 active -- both comfortably under the
+30-job cap, so `capDeactivated: 0` for both on every run, as expected for
+boards this small. Spot-checked every active title from both companies
+directly: Accordion's 17 are all finance-consulting/tech-consulting roles
+(Associate, AI Product Manager, Cloud DevOps Engineer, ERP Architect,
+CPM Solution Lead, Technical Architect, Finance & Strategy Associate,
+etc.); SoundCloud's 7 are engineering, artist/label relations, ops
+management, and an IT working-student role -- zero manual-trade or
+clinical-care titles in either, confirming Part 1's `isLikelyNonCorporateRole()`
+gate (which runs before any insert, not after) correctly had nothing to
+filter for these two companies rather than merely appearing to pass by
+accident.
+
+`npm run test:server`: 103/103 green, unaffected (config-only addition,
+no adapter/pipeline code touched this pass).
