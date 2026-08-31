@@ -2918,3 +2918,161 @@ accident.
 
 `npm run test:server`: 103/103 green, unaffected (config-only addition,
 no adapter/pipeline code touched this pass).
+
+**2026-08-31 -- closed the stale §3.5 gap: `scoreQuality()` now factors in
+real `link_health` (US-52's other real half, wired all the way through).**
+`quality.ts`'s own header comment had said "live application-URL health
+checks aren't meaningful yet with no real automated source running" since
+before Stage 3 shipped -- no longer true once `check-job-links` went live
+(this doc's own entry above it) with 12+ real automated sources and a real
+`link_health` column being populated daily. Flagged explicitly as a known,
+deliberately-deferred gap at the time; closing it now.
+
+**Weighting chosen, and why not a literal third weighted term.** The
+existing formula (`0.6 * completeness + 0.4 * confidence`) is left
+completely unchanged as the base; `link_health` is folded in as a
+post-hoc multiplier on that base, not a reweighted three-factor average:
+
+- `unchecked` (still the majority state -- `check-job-links` rotates
+  through the active set gradually, not all at once) applies no multiplier
+  at all (x1) -- a job that simply hasn't been checked yet must never score
+  worse than an identical one that has, and a fixed "neutral" value plugged
+  into a genuine three-factor weighted average can't guarantee that for
+  every combination of completeness/confidence the way a true no-op branch
+  can.
+- `ok` multiplies by **x1.1** (capped at 1) -- a small, deliberately minor
+  reward. §3.5 is explicit that quality is a tie-breaker/floor, never a
+  primary ranking signal, so a verified-working link should nudge a score
+  up, not dominate it.
+- `broken` multiplies by **x0.5** -- a real, meaningfully harsh penalty (a
+  dead application link is nearly useless to a member) that still stops
+  short of `validateJob()`'s floor-to-0 treatment for structural failures.
+  The reasoning asked for explicitly: floor-to-0 means "structurally
+  unusable, can't even be displayed" (missing company/title/employment
+  type/URL/source); a broken link is a *live-health* signal about an
+  otherwise well-formed record that can and does recover (`check-job-links`
+  has its own `recovered` counter for exactly this). A flat-point
+  subtraction was considered and rejected -- against this app's real score
+  range (observed live: ~0.2-0.59 pre-change) a flat penalty large enough
+  to feel "meaningful" would have clustered nearly every broken job at the
+  literal 0 floor, making the two cases indistinguishable in practice even
+  though the formula never says `return 0`. Multiplicative halving instead
+  scales with the job's own underlying completeness/confidence -- a broken
+  link on an otherwise-complete listing still outranks a broken link on a
+  sparse one -- and, since a job that passes `validateJob()` can never have
+  a completeness/confidence base of exactly 0 (confidence alone floors at
+  0.5, see `normalize.ts`), a halved score can mathematically never land on
+  the exact 0 `validateJob()` uses. That floor stays a distinct,
+  unambiguous signal from this one.
+
+Implementation kept byte-for-byte in sync across both copies as always
+(`server/src/quality.ts` / `supabase/functions/_shared/pipeline/quality.ts`)
+-- diffed after editing to confirm only the pre-existing, unrelated
+header-comment/lint-comment differences remain. Added an optional
+`linkHealth?: "unchecked" | "ok" | "broken" | null` field to `NormalizedJob`
+(both `types.ts` copies) rather than changing `scoreQuality()`'s signature
+-- every real call site (`fetch-greenhouse-companies`, `fetch-deloitte-jobs`,
+`approve-submission`) calls it once, at insert time, on a brand-new record
+that has no link-health history yet, so this field is simply absent/
+`undefined` (= neutral, x1) on every one of them today; it exists purely so
+the retroactive-recompute path below (and any future caller with a real
+`link_health` in hand) can pass it through.
+
+**Comment updated.** `quality.ts`'s stale "aren't meaningful yet... not
+simulated here" line is gone, replaced with the weighting rationale above.
+
+**Tests** (`server/tests/quality.test.ts`): 5 new cases under a
+`describe("link health (US-52)")` block -- unchecked (both omitted-field
+and explicit `"unchecked"`) produces an identical score to the pre-change
+formula; `ok` scores strictly higher than the same job without it; the
+`ok` multiplier clamps at 1 rather than exceeding it; `broken` scores
+strictly lower and matches the x0.5 halving to 2 decimals; and a broken
+link on an otherwise-valid sparse job never reaches the exact 0 floor,
+while a genuinely invalid job stays at exactly 0 regardless of link
+health. `npm run test:server`: **108/108 green** (103 pre-existing + 5
+new, all pre-existing suites untouched). `npm run typecheck:server`:
+clean.
+
+**Deployed.** Checked which Edge Functions actually call `scoreQuality()`
+before deploying anything, rather than assuming: `fetch-greenhouse-
+companies`, `fetch-deloitte-jobs`, and `approve-submission` all import and
+call it (each once, at insert time, per above). `check-job-links` does
+**not** call it at all -- confirmed by inspection, it only ever calls
+`mark_link_check_results` -- so it was deliberately left undeployed this
+pass; nothing in its own code path changed. All three redeployed
+`--use-api`; `fetch-deloitte-jobs` was invoked live afterward as a smoke
+test (`fetched: 44, inserted: 0, refreshed: 34, ...`) to confirm the
+deploy runs clean end-to-end, not just that the deploy command succeeded.
+
+**Retroactive recompute, done.** `quality_score` is only ever computed at
+insert time (none of the three callers above recompute it on a refresh),
+so every job `check-job-links` had already checked before this change was
+carrying a score from the old formula -- a real gap, closed with a
+one-time recompute rather than left to drift back into sync slowly as
+jobs happen to get re-inserted (they mostly don't; refreshes update
+`active`/`status`, not `quality_score`). Live query before any change
+confirmed the shape of the problem and why a blanket recompute is safe:
+`quality_score` is never `0` or `null` for any real row in the table today
+(`validateJob()` floors invalid records to 0, and nothing invalid actually
+gets inserted) -- so every `link_health != 'unchecked'` row's stored score
+is a legitimate pre-change formula output, safe to scale directly by the
+same multiplier `scoreQuality()` now applies, with no need to reconstruct
+a full `NormalizedJob` per row.
+
+Computed client-side in Node (same avoid-a-Postgres-dialect-mismatch
+precedent as the company-cap migration above) against a live pull of every
+job's `id`/`link_health`/`quality_score` where `link_health != 'unchecked'`
+(1,542 rows: 1,529 `ok`, 13 `broken`; 788 `unchecked` rows correctly left
+untouched, confirmed still exactly x1/no-op by design). Written as
+migration `20260831220000_recompute_quality_score_link_health.sql` -- a
+single `update jobs ... from (values (id, new_score), ...)` join over all
+1,542 rows, applied via `npx supabase db push --linked`.
+
+**Real live before/after, verified by direct query after the push, not
+assumed:**
+
+| Job | Company | link_health | Before | After |
+|---|---|---|---|---|
+| `ba4595d8...` (Lead Architect FY27) | Deloitte | broken | 0.52 | **0.26** |
+| `408114d3...` (Regional Workplace Ops Manager) | Airbnb | broken | 0.45 | **0.23** |
+| `3a8b1108...` (Enterprise AE - Public Sector) | Databricks | broken | 0.27 | **0.14** |
+| `11df45ef...` | Robinhood | ok | 0.59 | **0.65** |
+| `afdc8928...` | Stripe | ok | 0.59 | **0.65** |
+| `52908e54...` | Charlie Health | ok | 0.59 | **0.65** |
+
+Every broken-link example lands below its pre-change score by almost
+exactly half (matching the x0.5 multiplier, small rounding aside); every
+ok example ticks up by the expected ~10%, capped well under 1. Aggregate
+`link_health`-grouped stats before/after (live queries):
+
+| link_health | Before: avg / min / max | After: avg / min / max |
+|---|---|---|
+| unchecked | 0.348 / 0.20 / 0.59 | 0.346 / 0.20 / 0.59 (unchanged by design; small count drift is the daily cron rotating jobs through, not this migration) |
+| ok | 0.277 / 0.20 / 0.59 | 0.305 / **0.22** / **0.65** |
+| broken | 0.255 / 0.20 / 0.52 | 0.128 / **0.10** / **0.26** |
+
+No negative scores, nothing above 1, no `null`s introduced, no errors
+during the push -- confirmed via the same aggregate query run before and
+after. `unchecked` group's avg staying flat (0.348 -> 0.346, not exactly
+identical only because the live active set itself shifted slightly
+between the two queries, not because any unchecked row's score moved) is
+the clearest confirmation the neutral-multiplier design is doing exactly
+what it was meant to: the 788-815 jobs nobody has checked yet were never
+touched.
+
+**Known, narrow, accepted gap, named rather than silently left:** a job
+link-checked for the *first time* after this deploy still won't have its
+`quality_score` recomputed by that check alone, since `check-job-links`
+never calls `scoreQuality()` (confirmed above) -- only this one-time
+migration closed the backlog that existed *before* the code change. In
+practice this stays a narrow gap: a job's completeness/confidence base
+never changes after insert, so the only value that can go stale is the
+small link-health adjustment on top of it, and it self-heals the moment
+that job is genuinely re-inserted by a future fetch run. Re-running this
+same style of one-time recompute is the correct fix if that staleness
+ever becomes a real problem -- not a reason to add a `scoreQuality()` call
+to `check-job-links`'s daily run today, which would cost an extra
+per-row round trip for a cosmetic/tie-break-only field on every one of
+~3,300+ active jobs, every single day, for no real product benefit.
+
+Committed and pushed per standing permission for this repo.

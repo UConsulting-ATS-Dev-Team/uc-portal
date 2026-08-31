@@ -102,6 +102,16 @@ export interface NormalizedJob {
   preferredSkills: string[] | null;
   qualificationsText: string | null;
 
+  // Mirrors jobs.link_health (20260825110000_link_health_schema.sql). Always
+  // "unchecked"/absent on a freshly-normalized job at insert time -- nothing
+  // in the pipeline sets this before scoreQuality() runs on a brand-new
+  // record, since check-job-links only ever examines already-inserted rows.
+  // Present so scoreQuality() can factor in a real health result for the
+  // retroactive-recompute path (server/scripts/recomputeLinkHealthQuality.ts),
+  // which reads the real column off an existing row. See quality.ts (US-15/
+  // US-52) for how it's used.
+  linkHealth?: "unchecked" | "ok" | "broken" | null;
+
   relevantIndustries: string[];
   relevantRoles: string[];
   ucRecruitingNotes: string | null;

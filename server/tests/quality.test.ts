@@ -59,4 +59,53 @@ describe("scoreQuality", () => {
     );
     expect(scoreQuality(complete)).toBeGreaterThan(scoreQuality(sparse));
   });
+
+  describe("link health (US-52)", () => {
+    it("does not change the score when link health is unchecked (default)", () => {
+      const job = normalizeJob(rawJob());
+      const withoutField = { ...job };
+      delete (withoutField as { linkHealth?: unknown }).linkHealth;
+      const withUnchecked = { ...job, linkHealth: "unchecked" as const };
+      expect(scoreQuality(withoutField)).toBe(scoreQuality(job));
+      expect(scoreQuality(withUnchecked)).toBe(scoreQuality(job));
+    });
+
+    it("rewards a confirmed-ok link with a small positive bump", () => {
+      const base = normalizeJob(rawJob());
+      const ok = { ...base, linkHealth: "ok" as const };
+      expect(scoreQuality(ok)).toBeGreaterThan(scoreQuality(base));
+    });
+
+    it("caps the ok bonus at 1 rather than exceeding it", () => {
+      const job = normalizeJob(rawJob());
+      const ok = { ...job, confidenceScore: 1, linkHealth: "ok" as const };
+      expect(scoreQuality(ok)).toBeLessThanOrEqual(1);
+    });
+
+    it("meaningfully depresses the score for a confirmed-broken link", () => {
+      const base = normalizeJob(rawJob());
+      const broken = { ...base, linkHealth: "broken" as const };
+      const baseScore = scoreQuality(base);
+      const brokenScore = scoreQuality(broken);
+      expect(brokenScore).toBeLessThan(baseScore);
+      expect(brokenScore).toBeCloseTo(baseScore * 0.5, 2);
+    });
+
+    it("never floors a broken-but-structurally-valid job all the way to 0, unlike a real validation failure", () => {
+      const sparse = normalizeJob(
+        rawJob({
+          locationText: undefined,
+          compensationText: undefined,
+          qualificationsText: undefined,
+          applicationDeadlineText: undefined,
+          postedDate: undefined,
+        })
+      );
+      const broken = { ...sparse, linkHealth: "broken" as const };
+      expect(scoreQuality(broken)).toBeGreaterThan(0);
+
+      const invalid = normalizeJob(rawJob({ company: "" }));
+      expect(scoreQuality({ ...invalid, linkHealth: "broken" as const })).toBe(0);
+    });
+  });
 });
