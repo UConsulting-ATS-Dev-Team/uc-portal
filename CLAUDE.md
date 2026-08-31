@@ -751,6 +751,26 @@ from their real trigger points. This is still not a phone-first
 redesign — touch targets and gesture nav are unscoped — but the app no
 longer breaks down to phone width either.
 
+- **The odds model, on real jobs** — `pages/RealJobDetail.jsx` (the real,
+  live job postings) now has the full odds-model feature described above,
+  not just the mock `pages/JobDetail.jsx`'s 8 demo jobs. New
+  `data/realOddsModel.js` sources all 5 factors from real data (profile
+  fit/timing reuse existing real match/deadline logic; prep logged reuses
+  the real tracker with no fabricated baseline; networking depth reuses
+  the real "UC members at company" + saved-connections data; UC track
+  record — the hard one — is a new privacy-safe `security definer`
+  aggregate, `job_track_record_report()`, following the same pattern as
+  `company_demand_report`, falling back from job-level to company-level
+  when a specific posting has no tracked applicants yet, and honestly
+  measuring "reached an interview" rather than a fabricated "offer" rate,
+  since the tracker records no offer outcome). The sparse-data rule above
+  renders exactly as specified — see
+  [JOB_ENGINE_ARCHITECTURE.md](JOB_ENGINE_ARCHITECTURE.md)'s dated entry
+  for the full design writeup, the SQL/pure-function verification done,
+  and the one open item (a live authenticated-browser pass, not performed
+  this session — no test credentials were available and this agent
+  doesn't authenticate as a user regardless).
+
 Run locally:
 ```bash
 npm install

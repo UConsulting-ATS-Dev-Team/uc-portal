@@ -2,11 +2,15 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../data/supabaseClient.js";
 import { matchJob } from "../data/jobMatch.js";
+import { fetchRealOddsInputs, computeRealOdds } from "../data/realOddsModel.js";
 import { useAppState } from "../data/store.jsx";
 import { currentUser } from "../data/mockUser.js";
 import { fetchRealPeopleAtCompany } from "../data/realPeople.js";
 import { COMPANIES } from "../data/mockCompanies.js";
 import CompanyLogo from "../components/CompanyLogo.jsx";
+import OddsModel from "../components/OddsModel.jsx";
+import LogPrepModal from "../components/modals/LogPrepModal.jsx";
+import Skeleton from "../components/Skeleton.jsx";
 import Placeholder from "./Placeholder.jsx";
 import "../styles/jobDetail.css";
 import "../styles/network.css";
@@ -44,19 +48,25 @@ const CLASSIFICATION_METHOD_LABEL = {
 };
 
 // Detail view for a real job (a UUID id, see JobDetail.jsx's dispatch at the
-// top of its component). Deliberately much simpler than the mock JobDetail:
-// no odds model, no past-cycle outcomes, no interview write-ups -- those
-// need application-tracker data this job record doesn't have and won't
-// fabricate. What IS real here: the job's actual fields from the jobs
+// top of its component). Still simpler than the mock JobDetail -- no
+// past-cycle stage timeline, no interview write-ups, since those need
+// content someone actually contributed and nothing exists yet for real
+// postings. What IS real here: the job's actual fields from the jobs
 // table, a genuine match explanation via data/jobMatch.js against the
-// member's real local preferences, and (since the real people import --
-// see JOB_ENGINE_ARCHITECTURE.md's Stage 5 entry) real UC members at this
-// company, matched the same way CompanyPage.jsx does (the directory's
+// member's real local preferences, real UC members at this company (since
+// the real people import -- see JOB_ENGINE_ARCHITECTURE.md's Stage 5
+// entry), matched the same way CompanyPage.jsx does (the directory's
 // company text doesn't match this app's canonical names, so it's a
-// starts-with match on the first token, not an exact one).
+// starts-with match on the first token, not an exact one) -- and now the
+// odds model too (data/realOddsModel.js), the last piece of the mock
+// JobDetail this page didn't have a real-data equivalent for. See that
+// module's own header for how each factor is sourced from real data and
+// why "UC track record" measures interview-stage progress rather than
+// offers (tracked_applications has no offer outcome to read).
 export default function RealJobDetail({ jobId }) {
   const [job, setJob] = useState(undefined); // undefined = loading, null = not found
-  const { preferences } = useAppState();
+  const { preferences, savedConnections, coffeeChatStatus, prepLogged } = useAppState();
+  const [showLogPrepModal, setShowLogPrepModal] = useState(false);
 
   // Real UConsulting Directory people at this company (see JOB_ENGINE_
   // ARCHITECTURE.md's Stage 5 entry) -- undefined while loading, kept
@@ -95,12 +105,41 @@ export default function RealJobDetail({ jobId }) {
     };
   }, [job?.company]);
 
+  // The odds model's real signals (see data/realOddsModel.js): the one
+  // async piece is the UC track record RPC, so this waits for `people` to
+  // resolve too (networking depth reuses the exact same "UC members at
+  // {company}" fetch the rail above already made, rather than re-querying).
+  // undefined = loading, null = the RPC failed (rare -- rendered as an
+  // honest unavailable note rather than crashing or silently hiding the
+  // whole section).
+  const [oddsInputs, setOddsInputs] = useState(undefined);
+  useEffect(() => {
+    if (!job || people === undefined) return;
+    let cancelled = false;
+    setOddsInputs(undefined);
+    const matchScore = matchJob(job, preferences, currentUser.classYear).score;
+    fetchRealOddsInputs(job, { matchScore, people, savedConnections, coffeeChatStatus })
+      .then((inputs) => {
+        if (!cancelled) setOddsInputs(inputs);
+      })
+      .catch(() => {
+        if (!cancelled) setOddsInputs(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job?.id, people]);
+
   if (job === undefined) return <Placeholder title="Loading…" />;
   if (job === null) return <Placeholder title="Job not found" />;
 
   const companyPage = COMPANIES.find((c) => c.name === job.company);
 
   const match = matchJob(job, preferences, currentUser.classYear);
+  const extraPrepHours = prepLogged[job.id] || 0;
+  const odds = oddsInputs ? computeRealOdds(oddsInputs, { extraPrepHours }) : null;
+  const oddsComputeFn = (_j, opts) => computeRealOdds(oddsInputs, opts);
   const compLabel = job.compensation_text || (job.salary_min ? `$${job.salary_min}${job.salary_max && job.salary_max !== job.salary_min ? `-${job.salary_max}` : ""}` : "Not listed");
   const locationLabel = job.city ? `${job.city}${job.remote_type && job.remote_type !== "in_person" ? ` · ${REMOTE_TYPE_LABEL[job.remote_type]}` : ""}` : REMOTE_TYPE_LABEL[job.remote_type] ?? "Not listed";
 
@@ -161,6 +200,20 @@ export default function RealJobDetail({ jobId }) {
               </p>
             )}
           </div>
+
+          {odds ? (
+            <OddsModel odds={odds} onLogPrep={() => setShowLogPrepModal(true)} />
+          ) : oddsInputs === null ? (
+            <div className="detail-section">
+              <h2 className="detail-section__title">Your realistic odds</h2>
+              <p className="meta">Couldn't load the odds model for this posting right now.</p>
+            </div>
+          ) : (
+            <div className="detail-section">
+              <h2 className="detail-section__title">Your realistic odds</h2>
+              <Skeleton lines={4} />
+            </div>
+          )}
 
           <div className="detail-section">
             <h2 className="detail-section__title">Role details</h2>
@@ -226,13 +279,16 @@ export default function RealJobDetail({ jobId }) {
           <div className="rail-card">
             <div className="rail-card__title">About this listing</div>
             <p className="meta" style={{ margin: 0 }}>
-              This is a real posting (admin/member-submitted or from an automated source) -- not yet
-              enriched with UC recruiting intelligence beyond who's here (past-cycle outcomes, interview
-              write-ups). That data comes from the application tracker, which doesn't yet cover real jobs.
+              This is a real posting (admin/member-submitted or from an automated source). The odds
+              model above and profile-fit checklist are real, computed from your own preferences and
+              the real application tracker -- interview write-ups and past-cycle stage timelines still
+              don't exist for real postings, since no one has contributed one yet.
             </p>
           </div>
         </div>
       </div>
+
+      {showLogPrepModal && <LogPrepModal job={job} computeOddsFn={oddsComputeFn} onClose={() => setShowLogPrepModal(false)} />}
     </div>
   );
 }

@@ -7,8 +7,14 @@ import { useAppState } from "../../data/store.jsx";
 const ACTIVITIES = ["Case practice", "Behavioral prep", "Technical / skills drill", "Mock interview with a peer", "Resource reading"];
 
 // job: optional -- when opened from Job detail, pre-selects that job and
-// hides the picker. onClose: () => void.
-export default function LogPrepModal({ job, onClose }) {
+// hides the picker. onClose: () => void. computeOddsFn: optional, defaults
+// to the mock data/oddsModel.js's computeOdds -- pages/RealJobDetail.jsx
+// passes a real-odds-backed function instead (bound to that job's already-
+// fetched data/realOddsModel.js inputs) so this same modal/effect-preview
+// works for a real job without duplicating the before/after UI. Only
+// reachable when `job` is provided (the picker below is mock-only), so a
+// real-job caller never exercises the JOBS/trackedList picker path at all.
+export default function LogPrepModal({ job, onClose, computeOddsFn = computeOdds }) {
   const { trackedJobs, prepLogged, logPrep } = useAppState();
   const trackedList = useMemo(
     () => Object.keys(trackedJobs).map((id) => JOBS.find((j) => j.id === id)).filter(Boolean),
@@ -28,10 +34,10 @@ export default function LogPrepModal({ job, onClose }) {
   const effect = useMemo(() => {
     if (!selectedJob) return null;
     const currentExtra = prepLogged[selectedJob.id] || 0;
-    const before = computeOdds(selectedJob, { extraPrepHours: currentExtra });
-    const after = computeOdds(selectedJob, { extraPrepHours: currentExtra + hours });
+    const before = computeOddsFn(selectedJob, { extraPrepHours: currentExtra });
+    const after = computeOddsFn(selectedJob, { extraPrepHours: currentExtra + hours });
     return { before, after };
-  }, [selectedJob, hours, prepLogged]);
+  }, [selectedJob, hours, prepLogged, computeOddsFn]);
 
   function handleLog() {
     if (!selectedJob) return;

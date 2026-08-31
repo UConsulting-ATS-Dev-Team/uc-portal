@@ -1,5 +1,3 @@
-import { computeOdds } from "../data/oddsModel.js";
-
 const LEVER_COPY = {
   prep: "Log more prep time",
   networking: "Chat with more UC connections here",
@@ -24,16 +22,28 @@ function ordinal(n) {
   }
 }
 
-export default function OddsModel({ job, extraPrepHours, onLogPrep }) {
-  const odds = computeOdds(job, { extraPrepHours });
-
+// Presentational only -- takes an already-computed `odds` object (same
+// shape data/oddsModel.js's computeOdds() and data/realOddsModel.js's
+// computeRealOdds() both return: headline, openMarketBaseline, pastUCRate,
+// percentile, factors[], lever, prepHours, plus two optional real-odds-only
+// fields, headlineLabel/methodologyNote) so this one component renders both
+// the mock and the real odds model unmodified. Callers own the compute step
+// (JobDetail.jsx calls computeOdds() synchronously; RealJobDetail.jsx awaits
+// computeRealOdds()'s async inputs first) since that's exactly the part
+// that differs structurally between mock and real data.
+export default function OddsModel({ odds, onLogPrep }) {
   return (
     <div className="detail-section">
       <h2 className="detail-section__title">Your realistic odds</h2>
       <div className="odds-layout">
         <div className="odds-left">
           <div className="odds-headline">{odds.headline}%</div>
-          <div className="odds-headline-label">Estimated chance of an offer</div>
+          <div className="odds-headline-label">{odds.headlineLabel || "Estimated chance of an offer"}</div>
+          {odds.methodologyNote && (
+            <p className="meta" style={{ marginTop: "var(--space-2)" }}>
+              {odds.methodologyNote}
+            </p>
+          )}
           <div className="odds-comparison">
             <span>Open-market baseline</span>
             <span>{odds.openMarketBaseline}%</span>
@@ -64,7 +74,7 @@ export default function OddsModel({ job, extraPrepHours, onLogPrep }) {
                   <td>{f.label}</td>
                   <td className="factor-table__signal">
                     {f.signal}
-                    {f.lowConfidence && <span className="factor-table__low-confidence">n={job.pastCycleApplicants} · limited data</span>}
+                    {f.lowConfidence && <span className="factor-table__low-confidence">{f.lowConfidenceNote}</span>}
                   </td>
                   <td>{Math.round(f.weight * 100)}%</td>
                   <td>

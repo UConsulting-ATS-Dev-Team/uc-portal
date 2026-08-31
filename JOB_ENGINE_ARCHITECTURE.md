@@ -3076,3 +3076,152 @@ per-row round trip for a cosmetic/tie-break-only field on every one of
 ~3,300+ active jobs, every single day, for no real product benefit.
 
 Committed and pushed per standing permission for this repo.
+
+**2026-08-31 -- The odds model, on real jobs.** Closed the last gap the
+Progress section's own "the app's signature feature currently only works
+on 8 fictional demo jobs" line named: `pages/RealJobDetail.jsx` (the
+~332+ real, live postings) now has the full odds model CLAUDE.md's
+signature-feature section describes -- headline estimate, 3 comparison
+rows, the 5-factor table with contribution bars, and the "biggest lever"
+callout -- not just a match checklist.
+
+**Design: two odds-model modules, one render component.** `data/oddsModel.js`
+(mock) is untouched -- same numbers, same behavior, verified by diff. A new
+`data/realOddsModel.js` sources every factor from real data instead of
+`data/mockJobs.js` fields:
+
+- **Profile & resume fit (15%)** -- reuses `data/jobMatch.js`'s `matchJob()`
+  score, exactly as `RealJobDetail.jsx`'s existing checklist already
+  computes.
+- **Timing of application (10%)** -- reuses `data/jobUtils.js`'s
+  `daysUntil()` against the job's real `application_deadline`; a real job
+  has no "rolling" flag the way a mock one does, so a null deadline reads
+  as "not listed" (same score as the mock model's own null-deadline case).
+- **Preparation logged (25%)** -- `prepLogged[job.id]` from `data/store.jsx`,
+  same mechanism the mock model already uses, keyed by the real UUID
+  instead of a mock slug. Deliberately **not** seeded the way the mock
+  model's `seededPrepHours()` fakes a baseline for demo purposes -- a real
+  job's logged hours start genuinely at 0 until a member actually logs
+  time, since inventing a baseline here would be exactly the kind of
+  non-traceable number CLAUDE.md's principle rules out.
+- **Networking depth (20%)** -- `RealJobDetail.jsx` already fetches real
+  UC members at the company for its rail
+  (`fetchRealPeopleAtCompany()`); this factor reuses that exact same list
+  (no second query) and counts how many of those specific people are in
+  the member's own `savedConnections`/`coffeeChatStatus` (both already
+  real, synced state from the Network-page work). Fully local/client-side
+  -- no privacy concern, since it's only ever the member's own
+  saved-connections/coffee-chat state being read.
+- **UC track record (30%)** -- the hard one, per the task brief. A single
+  real posting will almost always have zero UC members who've tracked
+  *that exact listing* yet -- expected, not a bug, exactly what the
+  sparse-data rule exists for. New migration
+  `20260831230000_job_track_record_report.sql` adds
+  `job_track_record_report(target_job_id, target_company)`, a `security
+  definer` Postgres function following the same template
+  `company_demand_report` already established: it can read every member's
+  `tracked_applications` row internally (RLS there is `member_id =
+  auth.uid()` with no admin bypass, by design), but its return shape is
+  fixed to aggregate counts only -- `scope` ('job' or 'company'),
+  `applicant_count`, `interview_count` -- so there is no query against it
+  that gets an individual member's identity back out. It tries job-scope
+  first (exact `job_id` match) and falls back to company-scope (joining
+  `tracked_applications.job_id::uuid = jobs.id` for rows that look like a
+  real UUID, guarded by a regex so a mock job's text slug never hits an
+  invalid cast) only when the specific job has zero tracked applicants.
+
+  **Honest scope decision, not a shortcut:** `tracked_applications`'
+  stage taxonomy (`data/trackerUtils.js`) has no "received an offer"
+  outcome -- `Closed` is ambiguous (offer-and-accepted, rejected, or
+  withdrawn all look identical). Reusing `Closed` as a stand-in for
+  "offer" the way the mock model's `pastCycleOffers` field works would
+  fabricate data that doesn't exist. Instead this factor measures how
+  many UC applicants **reached an interview stage** (`First round` or
+  `Final round`) -- a real, non-fabricated signal -- and both the factor's
+  own signal text and a new `headlineLabel`/`methodologyNote` on the odds
+  object say so explicitly ("Estimated likelihood of reaching an
+  interview" / "the tracker doesn't record final offer outcomes yet"),
+  rather than silently relabeling a different measurement as "chance of
+  an offer." A company-scope fallback number is always visibly labeled
+  "(company-wide, not this posting)" in its own signal text, independent
+  of whether it also happens to be sparse -- satisfying the task brief's
+  explicit requirement that a broader aggregate never be presented as if
+  it were the specific job's own track record.
+
+**Sparse-data rule, rendered exactly as CLAUDE.md specifies:** the
+track-record factor always renders (contribution bar included) even at
+`n=0`, tagged `n=N · limited data` whenever the applicant count (job- or
+company-scope) is below 5 -- never suppressed, never silently blended.
+Verified with a pure-function sanity pass (`vite-node`, since `import.meta
+.env` needs Vite's loader) across four cases: 0 applicants (sparse, base
+rate 0.08, tag rendered), 6 applicants at job-scope (not sparse, tag
+absent, "this exact posting" wording), 2 applicants at company-scope
+(sparse AND company-labeled simultaneously -- both honesty conditions hold
+at once), and a null deadline (falls back to the same 0.4 timing score the
+mock model uses for "no deadline listed").
+
+**Rendering: one component, two callers.** `components/OddsModel.jsx` no
+longer computes odds itself -- it now takes an already-computed `odds`
+object (same shape both `computeOdds()` and `computeRealOdds()` return) so
+the same component renders either unmodified. `pages/JobDetail.jsx` (mock)
+now calls `computeOdds(job, { extraPrepHours })` itself and passes the
+result in -- a one-line, behavior-preserving change, not a data-sourcing
+change; `pages/RealJobDetail.jsx` awaits `data/realOddsModel.js`'s async
+`fetchRealOddsInputs()` (the one network round-trip, the track-record RPC)
+once per job load, then calls the pure, synchronous `computeRealOdds()`
+on every render (e.g. after logging prep) with no further round-trip.
+Loading state reuses the existing `Skeleton` component (never a spinner,
+per convention) while the RPC is in flight.
+
+`components/modals/LogPrepModal.jsx` gained one optional prop,
+`computeOddsFn` (default: the mock `computeOdds`, so every existing mock
+call site is unchanged) -- `RealJobDetail.jsx` passes a small closure
+bound to its already-fetched real odds inputs, so the exact same
+before/after "Log prep" modal (with its live effect-card recompute) works
+for a real job without a second modal implementation. `RealJobDetail.jsx`'s
+"About this listing" rail copy, which used to say real jobs have no odds
+model and that tracker data "doesn't yet cover real jobs" (both stale --
+`tracked_applications` has covered real job UUIDs since the Stage 5 entry
+above), was corrected.
+
+**Verified:**
+- `job_track_record_report()` against live data via a self-contained,
+  self-cleaning migration (`20260831230100_verify_job_track_record_
+  report.sql`, a single `do $$ ... $$` transaction, not committed as a
+  standing test fixture since a failed `RAISE EXCEPTION` rolls the whole
+  thing back automatically): inserted one real `tracked_applications` row
+  at `First round` for a real active job under an existing `auth.users`
+  id, confirmed job-scope `applicant_count`/`interview_count` incremented
+  correctly, deleted it and confirmed the count reverted; then inserted a
+  row against a *different* real job at the same company and confirmed
+  the original job's own report correctly fell back to `scope: 'company'`
+  and picked up that other job's row, with an `Applied`-stage row
+  correctly *not* counted as an interview. Migration pushed clean --
+  no assertion failed.
+- `computeRealOdds()`'s pure logic via `vite-node` (see the sparse-data
+  paragraph above) -- all four cases produced correct, sensible headline/
+  percentile/lever output with no exceptions.
+- `npm run build` -- clean. `npm run test:server` -- **108/108 green**,
+  unchanged (this feature has no server-mirrored logic -- like the mock
+  odds model before it, it's frontend-only, never ported into
+  `server/src`).
+- **Not verified live in an authenticated browser session.** Every table
+  this feature reads (`jobs`, `people`, `tracked_applications` via the
+  RPC) is granted to the `authenticated` Postgres role only, confirmed by
+  checking `20260821150000_grants.sql` -- there is no anonymous path to
+  exercise this page at all. Earlier entries in this doc describing a
+  live authenticated pass (e.g. the continuous-feed entry above) record
+  the user doing that sign-in personally; this session had no existing
+  session or test credentials available to reuse, and creating an
+  account or entering a password to authenticate is outside what this
+  agent will do regardless of instruction, per its own standing
+  operating rules. The SQL-level and pure-function verification above is
+  real (not a substitute claimed to be equivalent), but a final live
+  click-through -- confirming the Skeleton-to-rendered transition, the
+  Log Prep modal's live recompute, and the sparse/populated paths on two
+  real jobs side by side -- is the one item from the task brief this
+  entry is explicitly not claiming to have done, and is worth a quick
+  pass by someone with an active session before considering this fully
+  closed.
+
+Committed and pushed per standing permission for this repo.

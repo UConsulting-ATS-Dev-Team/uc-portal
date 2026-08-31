@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { JOBS } from "../data/mockJobs.js";
 import { deadlineLabel, descriptionFor, qualificationsFor, writeupsFor } from "../data/jobUtils.js";
 import { fetchRealPeopleAtCompany } from "../data/realPeople.js";
+import { computeOdds } from "../data/oddsModel.js";
 import { useAppState } from "../data/store.jsx";
 import OddsModel from "../components/OddsModel.jsx";
 import LogPrepModal from "../components/modals/LogPrepModal.jsx";
@@ -142,7 +143,7 @@ export default function JobDetail() {
             </div>
           </div>
 
-          <OddsModel job={job} extraPrepHours={extraPrepHours} onLogPrep={() => setShowLogPrepModal(true)} />
+          <OddsModel odds={computeOdds(job, { extraPrepHours })} onLogPrep={() => setShowLogPrepModal(true)} />
 
           <div className="detail-section">
             <h2 className="detail-section__title">Role description</h2>

@@ -70,6 +70,11 @@ export function computeOdds(job, { extraPrepHours = 0 } = {}) {
           : "No UC applicants on record yet",
       score: Math.max(0, Math.min(1, companyRate / TRACK_RECORD_CEILING)),
       lowConfidence: isSparse,
+      // Sourced from the factor itself (rather than components/OddsModel.jsx
+      // reaching into job.pastCycleApplicants directly) so the render
+      // component can stay agnostic to whether it's showing a mock or real
+      // odds object -- see data/realOddsModel.js's identically-shaped factor.
+      lowConfidenceNote: isSparse ? `n=${job.pastCycleApplicants} · limited data` : undefined,
     },
     {
       key: "prep",
