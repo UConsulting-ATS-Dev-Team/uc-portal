@@ -3224,4 +3224,9 @@ above), was corrected.
   pass by someone with an active session before considering this fully
   closed.
 
+  **That live pass has since happened**: the user opened a real job's
+  detail page themselves and confirmed the odds model renders correctly.
+  This closes the one item the SQL/pure-function verification above
+  couldn't reach on its own.
+
 Committed and pushed per standing permission for this repo.
