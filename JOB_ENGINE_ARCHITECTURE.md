@@ -3230,3 +3230,165 @@ above), was corrected.
   couldn't reach on its own.
 
 Committed and pushed per standing permission for this repo.
+
+**2026-08-31 -- US-61's real blocker addressed: started capturing daily
+job-board-history snapshots.** US-61 (job-trend insights over time, §8.2)
+has sat blocked on its own note that it "depends on historical data
+existing (needs Stage 2+ running for a while first, not just an
+engineering dependency)" -- true, but every day that passed without
+capturing *any* history was a day of trend data permanently and
+irrecoverably lost, since `jobs` only ever reflects the board's current
+state (`first_seen_at`/`last_seen_at` describe one row's own lifecycle,
+never the board's aggregate shape on a past day). **This entry is
+infrastructure only** -- it does not build US-61's trend-insights UI/
+feature itself (there still isn't enough history for that to be
+meaningful), it only starts the data collection so that feature is
+buildable later.
+
+**Schema** (`20260831240000_job_board_snapshots.sql`): a new table,
+`job_board_snapshots`, one row per UTC calendar day (`snapshot_date date
+not null unique`) -- deliberately aggregate stats, not full job rows
+(that's what `jobs`, with its own timestamps, already is): `total_active_
+jobs`, `distinct_companies`, `avg_quality_score`, and three `jsonb`
+breakdowns keyed by category -- `jobs_by_company`, `jobs_by_job_function`
+(joined through `job_functions`, `Unclassified` for a null
+`job_function_id`), `jobs_by_employment_type`, and `jobs_by_link_health`
+(the last included because it's already a real, cheap-to-aggregate
+per-job column since 20260825110000, and "how has the board's overall
+link health trended" is a genuine board-health question). RLS + grants
+mirror `source_fetch_log` exactly (admin-all policy, `select` to
+`authenticated`, full privileges to `service_role`).
+
+The actual aggregation is a real Postgres function,
+`compute_job_board_snapshot()` (`language sql`, `stable`, SECURITY INVOKER
+-- no member-privacy boundary to enforce here unlike `company_demand_
+report`/`job_track_record_report`, so no `security definer` needed) --
+one query, four `jsonb_object_agg(... order by ...)` CTEs and a handful of
+scalar subqueries, executed entirely inside Postgres. Deliberately **not**
+a client-side pull-every-row-into-JS aggregation: this codebase has hit
+the PostgREST 1000-row pagination cap at real scale twice already
+(fetch-greenhouse-companies' orphaned-duplicate incident and Stripe's
+574-of-575 auto-merge incident, both documented in Part 7 Stage 3/4) --
+doing the count/group-by in SQL sidesteps that whole bug class rather than
+reintroducing it a third time via `fetchAllRows()`. Granted `execute` to
+`service_role` explicitly in the same migration, learning from
+`20260825130000`'s own discovery that a migration-created function
+defaults to EXECUTE for the migration runner plus whatever PUBLIC
+carries, and `service_role` is not superuser in this project -- it
+bypasses RLS, not GRANTs.
+
+Seeded a `sources` row, `'Job Board Snapshot'` (`type: 'system'`, the same
+enum value `check-job-links`'s `'Link Health Checker'` row introduced) --
+not a job-listing source (never contributes a job record), just reusing
+the §3.7 registry for its enable/disable toggle and `source_fetch_log`
+run-history, same reasoning as that earlier row.
+
+**Edge Function** (`supabase/functions/snapshot-job-board/index.ts`) --
+modeled directly on `check-job-links`' shape (the closest existing analog:
+a scheduled function that isn't a job-listing adapter). Checks the
+source's `authorization_status` first (same §3.7 kill switch every
+scheduled function honors), calls `compute_job_board_snapshot()` once,
+then **upserts** (not inserts) the result into `job_board_snapshots` keyed
+on `snapshot_date` -- deliberate, so today's manual first run (per this
+task) and a same-day cron re-run never collide on the unique constraint;
+a same-day re-run correctly overwrites with the latest count, matching
+this codebase's existing idempotency expectations for every other
+scheduled function. Logs to `source_fetch_log` via the exact same
+success/failed/skipped shape `check-job-links` established (reused, not a
+fourth log shape invented) -- `source_fetch_log`'s existing
+`(source_id, status, summary)` columns already fit a snapshot run's
+"succeeded / failed / was skipped because the source is disabled"
+outcome without any schema change.
+
+**Scheduling** (`20260831250000_schedule_snapshot_job_board.sql`): pg_cron
++ pg_net, same mechanism as every other scheduled function. Deliberately
+the *last* of the four daily jobs -- 13:17 greenhouse, 14:17 deloitte,
+15:17 check-job-links, **16:17 this one** -- so each day's snapshot
+reflects that day's fully-settled board (that day's inserts/refreshes/
+expirations and that day's freshly-checked link health), not a partial
+state from earlier in the cron sequence.
+
+**Server-side mirror: none, and that's a deliberate scope call, not an
+oversight.** Unlike the pipeline modules (`normalize.ts`/`dedupe.ts`/
+`quality.ts`/etc.), there is no real business logic here to port into
+`server/src/` and unit-test in isolation -- `compute_job_board_snapshot()`
+is a single SQL aggregation query with no branching, no thresholds, no
+edge cases to enumerate; its only meaningful "test" is running it against
+real data and checking the numbers foot, which the live verification
+below already does. This is the same category of gap `check-job-links`
+already has (also no `server/src/` mirror) for the same reason -- not
+every Edge Function in this codebase has one.
+
+**Ran it once manually, right now, so day 1 of history starts today
+rather than waiting for tomorrow's cron** (per the task's own instruction
+-- every day of delay is unrecoverable history). Response:
+`{"snapshotDate":"2026-08-31","totalActiveJobs":356,"distinctCompanies":
+14,"avgQualityScore":0.4707}`.
+
+**Verified against a real independent live count, not just the function's
+own claim** (`npx supabase db query --linked`, a separate read path from
+the Edge Function's own service-role client):
+
+```sql
+select count(*) as total_active, count(distinct company) as distinct_companies,
+       round(avg(quality_score)::numeric,4) as avg_quality
+from jobs where active;
+-- {"avg_quality":"0.4707","distinct_companies":14,"total_active":356}
+```
+
+Exact match against the stored row on all three scalar fields. The three
+`jsonb` breakdowns were cross-checked for internal consistency against
+that same independently-confirmed total rather than re-querying each
+individually: `jobs_by_company` sums to 356 (11 companies capped at the
+new 30-job company cap from `20260831200000` -- Airbnb/Brex/Carvana/
+Charlie Health/Coinbase/Databricks/Deloitte/Figma/IMC/Robinhood/Stripe --
+plus Accordion 17, Guild 2, SoundCloud 7, all under the cap); `jobs_by_
+employment_type` sums to 356 (348 full_time + 7 internship + 1 part_time);
+`jobs_by_link_health` sums to 356 (280 ok + 75 unchecked + 1 broken) --
+three independent groupings of the same 356-row active set, each summing
+to exactly the independently-verified total, which is the strongest
+internal-consistency check available short of re-deriving each breakdown
+with its own separate query. The 356 total itself (down from the ~3,300+
+active jobs earlier Part 7 entries describe) is expected, not a
+regression -- it reflects the newly-enforced 30-job-per-company cap
+(`20260831200000`) and the white-collar relevance filter landing the same
+day, both already committed before this task began.
+
+Confirmed the row lives where it should:
+`select * from job_board_snapshots order by snapshot_date desc limit 1;`
+returned exactly one row for `2026-08-31` with all seven aggregate
+columns populated as shown above, and a matching `source_fetch_log` row
+(`status: 'success'`) under the new `'Job Board Snapshot'` source.
+
+**One thing worth being honest about, caught by re-querying a few minutes
+later out of due diligence:** a follow-up `active` count came back higher
+(611), then a different follow-up came back at 611 again but an
+employment-type breakdown taken in between summed to 1,788 -- three
+different numbers across a few minutes. This is **not** drift or a bug in
+`compute_job_board_snapshot()` -- per this task's own coordination note, a
+concurrent agent is doing live job-source discovery work in this same
+repo/database right now (new companies being fetched, the company cap
+enforcing itself against them), so the *live* active-job count is
+genuinely changing minute to minute while this verification was running.
+The number that matters is the one checked **simultaneously** with the
+snapshot write (356, immediately above) -- that comparison is solid
+because both queries ran in the same breath against the same instant.
+Everything after that is the board legitimately moving on, which is
+exactly the kind of change this snapshot mechanism exists to capture
+day-over-day, not evidence against it.
+
+`npm run test:server`: **108/108 green**, unaffected -- this task touched
+no `server/src/` pipeline code, consistent with the "no server-side
+mirror" scope call above.
+
+**What this is not:** US-61 (job-trend insights over time) is still not
+built. One snapshot is a single data point, not a trend -- this entry
+only stops the history from continuing to not exist. The trend-insights
+UI/feature still needs real accumulated history (weeks/months of daily
+snapshots) before it would be meaningful to build, exactly as §8.2
+already said.
+
+Migrations applied via `npx supabase db push` (`20260831240000`,
+`20260831250000`); function deployed via `npx supabase functions deploy
+snapshot-job-board --use-api`. Committed and pushed per standing
+permission for this repo.
