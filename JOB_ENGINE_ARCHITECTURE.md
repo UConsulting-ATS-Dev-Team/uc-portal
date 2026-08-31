@@ -3392,3 +3392,177 @@ Migrations applied via `npx supabase db push` (`20260831240000`,
 `20260831250000`); function deployed via `npx supabase functions deploy
 snapshot-job-board --use-api`. Committed and pushed per standing
 permission for this repo.
+
+**2026-08-31 -- Seventh addition: ten more companies (2K, Jane Street, Jump
+Trading, Akuna Capital, XTX Markets, Mercury, Affirm, Chime, SoFi,
+AlixPartners), the largest single source-discovery pass this doc has
+recorded.** Same standing direction as the Sixth addition: prioritize
+finding new companies over adding volume to existing ones, weighted toward
+consulting/investment banking/tech/finance -- this pass leaned harder into
+the "adjacent companies to what's already succeeded" allowance §7's own
+task brief calls out explicitly (other prop-trading firms alongside IMC
+Trading, other fintechs alongside Stripe/Brex, another finance-consulting
+firm alongside Accordion), on top of the usual alumni-backed sourcing.
+
+**Alumni-backed candidates** (real UC alumni/current-member counts,
+queried directly from the live `people` table via `npx supabase db query
+--linked`, ~90 distinct company text values once nulls and non-company
+rows like "Stealth Startup"/role-strings/institution names are excluded).
+Skipped everything already live or already rejected in a prior pass -- the
+full running list, kept here so a future pass doesn't re-check any of it:
+Bain, McKinsey, Goldman Sachs, BCG, EY-Parthenon, Accenture, L.E.K., FTI
+Consulting, KPMG, PwC, Lazard, Nous Group, Cornerstone Research, Huron
+Consulting, Morgan Stanley, Deutsche Bank, JP Morgan, Barclays, Oliver
+Wyman, Microsoft, Meta/Facebook, Visa, Intel, Boeing, NASA JPL, Moelis,
+Disney, Capital One, Indeed, Plaid, Notion, DoorDash, Ramp, Evercore, Ares
+Management, PIMCO, Google, Amazon, Apple, Cisco, PayPal, KKR, Sequoia
+Capital, CBRE, Aon, BDO, Standard Chartered, Wavestone, Veritas Capital,
+Narmi, LIDD Consultants, Konrad Group, Pacific Life, Candidly, BetterUp,
+Zendesk, Cart.com, nference, Twitter, RS Investments, Contend, Invenergy,
+Aura. New alumni-backed candidates checked this pass, all rejected: Peterson
+Capital Management, NextSense, SiPhox, Kommu, Get Spiffy, MLB (all: no
+usable board/signal on any platform); Pumpkin (Workday hint only, same
+non-buildable signal already documented for Accenture/Microsoft/Pacific
+Life/Zendesk). One real hit: **2K** (alumni record reads "2K Games").
+
+**Adjacent-company candidates**, checked without a direct alumni hit per
+the task's own explicit allowance for this when there's real reason to
+think a company is relevant and might have a genuine public board.
+Checked and rejected: DRW, Susquehanna International Group (SIG), Two
+Sigma, Citadel Securities, Rho, Alvarez & Marsal, West Monroe, ZS
+Associates (all: no usable board or signal found, including a
+JS-rendered-page re-check the same way SoundCloud/XTX Markets' real slugs
+were found -- these simply had none); Optiver (Greenhouse slug "optiver"
+resolves but reports 0 postings and a null company_name -- same "real but
+empty" case as Plaid/Indeed/Narmi/Candidly); Guidehouse (Workday hint
+only); Hudson River Trading (Greenhouse slug "hrttalentcommunity" -- found
+the real token the same way SoundCloud's "soundcloud71" was, via the
+company's own rendered careers-page source -- resolves, but company_name
+is literally "HRT Talent Community" and only 3 listings, one titled "HRT
+Talent Community" itself: a talent-pipeline signup form, not a real open
+jobs board, so excluded on the same "real but not usable" grounds as the
+empty-board cases above). Five real hits: **Jane Street**, **Jump
+Trading**, **Akuna Capital** (all three prop-trading/quant-finance peers of
+IMC Trading, already live), **XTX Markets** (real token
+"xtxmarketstechnologies", not a guessable slug -- "xtxmarkets"/"xtx" both
+404; found the same way as Hudson River Trading/SoundCloud above, except
+this one *was* a real, usable board once found), and **AlixPartners** (a
+management-consulting peer of Accordion, already live). Two more fintechs
+came out of this same adjacent-company sweep: **Mercury** and **Chime**,
+plus **Affirm** and **SoFi** rounding out the fintech cluster alongside
+Stripe/Brex/Mercury/Chime already live or just added.
+
+Every company below verified the same way as every prior addition --
+Greenhouse's own `company_name` field checked for an exact match (not
+substring), plus at least one sampled application URL or the company's own
+careers page confirmed to link to this exact board, never trusting a slug
+guess alone (the same discipline that caught "bcg"/"Oliver Wyman
+Labs"/"Disney"/Capital One's Lever slug/Aura in prior passes):
+
+- **2K**: Greenhouse slug "2k", 114 fetched, company_name "2K" (exact) --
+  Take-Two Interactive's real game-publishing label (NBA 2K, etc.).
+  2k.com/careers's own rendered page source embeds this exact board
+  directly. Real corporate roles present alongside game-dev ones (Manager
+  Commercial Strategy, Manager FP&A, Manager Global Go-to-Market, Office
+  Admin), not purely creative/entertainment -- relevant to the tech
+  vertical.
+- **Jane Street**: Greenhouse slug "janestreet", 232 fetched, company_name
+  "Jane Street" (exact), sampled application URL resolves to
+  www.janestreet.com/join-jane-street/apply/... (own domain) -- the
+  strongest identity signal available.
+- **Jump Trading**: Greenhouse slug "jumptrading", 109 fetched,
+  company_name "Jump Trading" (exact), sampled application URL resolves to
+  www.jumptrading.com/hr/job (own domain).
+- **Akuna Capital**: Greenhouse slug "akunacapital", 34 fetched,
+  company_name "Akuna Capital" (exact), sampled application URL resolves
+  to www.akunacapital.com/careers/job/... (own domain); offices
+  (Chicago, Sydney, Singapore) match the real firm.
+- **XTX Markets**: real board token "xtxmarketstechnologies" (pulled from
+  xtxmarkets.com/careers's own rendered page source, plain
+  "xtxmarkets"/"xtx" 404), 9 fetched, company_name "XTX Markets" (exact).
+  Small board, same size class as SoundCloud (15) and Guild (5) when first
+  added.
+- **Mercury**: Greenhouse slug "mercury", 54 fetched, company_name
+  "Mercury" (exact). Deliberately not trusted on the slug/name alone given
+  real name-collision risk (Mercury Insurance, Mercury Systems, Mercury
+  General all also exist) -- confirmed via mercury.com/careers's own
+  rendered page source directly embedding this exact board (multiple
+  greenhouse.io/mercury/jobs/... links present), and every sampled
+  title/office matches the fintech Mercury specifically (Deputy CISO -
+  Bank, Head of Product - Business Lending, offices in NY/SF/Portland).
+- **Affirm**: Greenhouse slug "affirm", 200 fetched, company_name "Affirm"
+  (exact) -- real publicly-traded fintech (NASDAQ: AFRM). One sampled
+  title directly names the real internal entity ("Affirm Bank Strategic
+  Finance Manager"), and remote-location spread (US, Canada, UK, Poland,
+  Spain, Australia) matches Affirm's known real international footprint --
+  its own careers page is heavily client-rendered and didn't surface a
+  direct link in a raw fetch, so identity rests on these two signals
+  together rather than a page-source embed.
+- **Chime**: Greenhouse slug "chime", 65 fetched, company_name "Chime
+  Financial, Inc" (exact real legal name). chime.com/careers's own
+  rendered page source directly embeds this exact board
+  (boards.greenhouse.io/chime/jobs/... links present). Offices (SF, NY,
+  Chicago, Seattle) match the real Chime.
+- **SoFi**: Greenhouse slug "sofi", 59 fetched, company_name "SoFi"
+  (exact), sampled application URL resolves to sofi.com/careers/job/...
+  (own domain) -- real publicly-traded fintech (NASDAQ: SOFI).
+- **AlixPartners**: Greenhouse slug "alixpartners", 120 fetched,
+  company_name "AlixPartners" (exact), sampled application URL resolves to
+  www.alixpartners.com/careers/... (own domain). Real global
+  turnaround/restructuring/performance-improvement consulting firm; office
+  footprint (Boston, Chicago, Detroit, New York, Paris, Milan, Sydney,
+  Buenos Aires) matches.
+
+Added via migration `20260831260000_greenhouse_seventh_addition.sql` onto
+the same config-driven `fetch-greenhouse-companies` mechanism as every
+prior Greenhouse addition -- no adapter code changes needed, all ten
+inherit Part 1's white-collar relevance filter and Part 2's
+30-active-jobs-per-company cap automatically, verified rather than assumed
+(see below).
+
+Verified live end-to-end via direct `curl` against the deployed HTTPS
+endpoint (anon key), same pattern as every prior direct-invocation
+verification in this doc. First invocation picked up all ten new config
+rows alongside the 13 existing Greenhouse sources in one run, `status:
+"success"` and `skippedCompanyMismatch: 0` for every one of the ten --
+2K 114 fetched/55 inserted, Jane Street 232/150 (hit the 150-per-run
+MAX_NEW_JOBS_PER_RUN cap, 74 correctly deferred), Jump Trading 109/107,
+Akuna Capital 34/34, XTX Markets 9/9, Mercury 54/18, Affirm 200/57 (+30
+merged as real duplicate candidates against each other), Chime 65/29, SoFi
+59/19, AlixPartners 120/62. A second invocation drained Jane Street's
+deferred remainder (74 inserted, deferred: 0) and confirmed idempotency
+for the other nine (0 inserted, correct refreshed counts, 0 conflicts); a
+third invocation confirmed Jane Street itself now idempotent too (0
+inserted, 224 refreshed).
+
+Cross-checked directly against Postgres, not just the fetch summaries:
+active-job counts for all ten sit at or under the 30-job cap exactly as
+designed -- 2K 30/55 total, Affirm 30/57, Akuna Capital 30/34, AlixPartners
+30/62, Jane Street 30/224, Jump Trading 30/107, Chime 29/29, SoFi 19/19,
+Mercury 18/18, XTX Markets 9/9 (the last four under 30 because their total
+fetched volume, post-relevance-filter, doesn't reach the cap in the first
+place -- `capDeactivated: 0` for all four on every run, consistent with
+how Accordion/SoundCloud/Guild behaved when first added). Pulled and
+read every one of the ~330 active titles across all ten companies
+directly: zero manual-trade or clinical-care titles anywhere (as
+expected -- these are trading firms, fintechs, a game publisher, and a
+consulting firm, not the retail/healthcare profile that produced
+Carvana/Charlie Health's denylist hits), all genuinely white-collar
+corporate/finance/tech/consulting roles. Some non-denylisted "Lead"/
+"Manager" titles remain visible by design (`SENIOR_TITLE_PATTERN` denylists
+senior/staff/principal/director/vp/chief-class words specifically, not
+"Lead" or "Manager" -- same conservative-asymmetry behavior already
+documented and unchanged here, not a new gap this addition introduced).
+
+`npm run test:server`: **108/108 green** (unchanged from the count at the
+top of this entry -- the 5-test gap from the Sixth addition's own
+103/103 reflects the concurrent snapshot-infrastructure work recorded
+immediately above, not anything in this entry; config-only addition here
+too, no adapter/pipeline code touched).
+
+Migration pushed via `npx supabase db push` after re-checking
+`supabase/migrations` immediately beforehand for a timestamp collision
+with the concurrent agent's own work (per this task's coordination note --
+confirmed clear both before writing the migration and again immediately
+before pushing). Committed and pushed per standing permission for this
+repo.
