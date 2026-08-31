@@ -50,7 +50,7 @@ import { validateJob, scoreQuality } from "../_shared/pipeline/quality.ts";
 import { scoreDuplicate, classifyDuplicateTier } from "../_shared/pipeline/dedupe.ts";
 import { isLikelySeniorRole, isLikelyNonCorporateRole } from "../_shared/pipeline/relevance.ts";
 import type { RawJob } from "../_shared/pipeline/types.ts";
-import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows } from "../_shared/dedupeHelpers.ts";
+import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows, enforceCompanyCap } from "../_shared/dedupeHelpers.ts";
 
 const SOURCE_NAME = "Deloitte (Careers RSS Feed)";
 const KEYWORDS = ["consultant", "strategy", "analyst"];
@@ -182,6 +182,10 @@ async function runFetch(adminClient: SupabaseClient, source: any): Promise<Fetch
   }
 
   const jobFunctionIdByName = new Map<string, string>(jobFunctions.map((f) => [f.name as string, f.id as string]));
+  // Reverse of the above, for enforceCompanyCap's tiering (job_function_id
+  // on a row -> the taxonomy name companyCap.ts's tiers are keyed on) --
+  // same pair fetch-greenhouse-companies builds for the same reason.
+  const jobFunctionNameById = new Map<string, string>(jobFunctions.map((f) => [f.id as string, f.name as string]));
   const existingJobIdBySourceJobId = new Map<string, string>(existingSources.map((r) => [r.source_job_id as string, r.job_id as string]));
 
   // ---- Only fetch detail pages for items not already tracked ----
@@ -355,6 +359,13 @@ async function runFetch(adminClient: SupabaseClient, source: any): Promise<Fetch
     if (error) return failed(`Refresh update failed: ${error.message}`);
   }
 
+  // Part 2 (2026-08-27) -- per-company cap, enforced last so it sees
+  // Deloitte's true post-insert/refresh active set. Same call
+  // fetch-greenhouse-companies makes per company; see enforceCompanyCap's
+  // own comment (dedupeHelpers.ts) and companyCap.ts for the rationale.
+  const { deactivatedCount: capDeactivated, error: capError } = await enforceCompanyCap(adminClient, "Deloitte", jobFunctionNameById);
+  if (capError) return failed(`Company cap enforcement failed: ${capError}`);
+
   const summary = {
     // `fetched` matches the common key SourceManagement.jsx's
     // summarizeFetchLog() reads across every source, so this shows
@@ -371,6 +382,7 @@ async function runFetch(adminClient: SupabaseClient, source: any): Promise<Fetch
     skippedNoSchema,
     skippedCompanyMismatch,
     skippedNotRelevant,
+    capDeactivated,
     expirationSweep: "skipped -- capped/partial feed, see header comment",
   };
   return { httpStatus: 200, body: summary, logStatus: "success", logSummary: summary };

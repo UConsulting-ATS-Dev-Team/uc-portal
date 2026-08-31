@@ -36,17 +36,18 @@ import { validateJob, scoreQuality } from "../_shared/pipeline/quality.ts";
 import { scoreDuplicate, classifyDuplicateTier } from "../_shared/pipeline/dedupe.ts";
 import { isLikelySeniorRole, isLikelyNonCorporateRole } from "../_shared/pipeline/relevance.ts";
 import type { RawJob } from "../_shared/pipeline/types.ts";
-import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows } from "../_shared/dedupeHelpers.ts";
+import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows, updateInBatches, enforceCompanyCap } from "../_shared/dedupeHelpers.ts";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
-// fetchAllRows moved to ../_shared/dedupeHelpers.ts -- approve-submission
-// and fetch-deloitte-jobs turned out to have the exact same unbounded-
-// .select() risk against `jobs`/`job_sources`, so the pagination fix now
-// lives in one place instead of three.
-
+// fetchAllRows and updateInBatches moved to ../_shared/dedupeHelpers.ts --
+// approve-submission and fetch-deloitte-jobs turned out to have the exact
+// same unbounded-.select() risk against `jobs`/`job_sources`, and
+// enforceCompanyCap (Part 2, 2026-08-27) needed updateInBatches too, so
+// both live in one place instead of duplicated per function.
+//
 // PostgREST encodes .in() filters into the request URL's query string
 // regardless of HTTP method, which has a real length limit -- confirmed
 // live: a refresh update against ~600 already-tracked Databricks jobs
@@ -55,16 +56,6 @@ function jsonResponse(body: unknown, status = 200) {
 // under that limit permanently, not just for today's backfill -- this was
 // going to fail on every future daily run once any company had a few
 // hundred already-tracked jobs, not just during the initial backfill.
-const UPDATE_BATCH_SIZE = 200;
-async function updateInBatches(adminClient: SupabaseClient, ids: string[], fields: Record<string, unknown>): Promise<string | null> {
-  const uniqueIds = [...new Set(ids)];
-  for (let i = 0; i < uniqueIds.length; i += UPDATE_BATCH_SIZE) {
-    const batch = uniqueIds.slice(i, i + UPDATE_BATCH_SIZE);
-    const { error } = await adminClient.from("jobs").update(fields).in("id", batch);
-    if (error) return error.message;
-  }
-  return null;
-}
 
 // See the deferral comment in runFetchForCompany's main loop -- this is
 // the actual ceiling that keeps a single very large first-run backfill
@@ -100,6 +91,7 @@ async function runFetchForCompany(
   activeJobsForCompany: Array<Record<string, unknown>>,
   existingJobIdBySourceJobId: Map<string, string>,
   jobFunctionIdByName: Map<string, string>,
+  jobFunctionNameById: Map<string, string>,
 ): Promise<FetchOutcome> {
   const slug = source.config?.slug as string | undefined;
   const company = source.config?.company as string | undefined;
@@ -314,6 +306,16 @@ async function runFetchForCompany(
     }
   }
 
+  // Part 2 (2026-08-27) -- per-company cap, enforced last so it sees this
+  // company's true post-insert/refresh/expire active set. See
+  // enforceCompanyCap's own comment (dedupeHelpers.ts) for why it re-reads
+  // from the database instead of trying to reuse the `activeJobs` local
+  // copy, and companyCap.ts for the tiering rationale.
+  let capDeactivated = 0;
+  const { deactivatedCount, error: capError } = await enforceCompanyCap(adminClient, company, jobFunctionNameById);
+  if (capError) return failed(`Company cap enforcement failed: ${capError}`);
+  capDeactivated = deactivatedCount;
+
   const summary = {
     fetched: ghJobs.length,
     inserted: newJobRows.length,
@@ -326,6 +328,7 @@ async function runFetchForCompany(
     deferred,
     markedPotentiallyExpired,
     markedFullyExpired,
+    capDeactivated,
     suspiciouslyEmpty,
   };
   return { logStatus: "success", logSummary: summary };
@@ -388,6 +391,9 @@ Deno.serve(async (req) => {
   }
 
   const jobFunctionIdByName = new Map<string, string>((jobFunctions ?? []).map((f) => [f.name as string, f.id as string]));
+  // Reverse of the above, for enforceCompanyCap's tiering (job_function_id
+  // on a row -> the taxonomy name companyCap.ts's tiers are keyed on).
+  const jobFunctionNameById = new Map<string, string>((jobFunctions ?? []).map((f) => [f.id as string, f.name as string]));
 
   const activeJobsByCompany = new Map<string, Array<Record<string, unknown>>>();
   for (const job of rawActiveJobs ?? []) {
@@ -416,6 +422,7 @@ Deno.serve(async (req) => {
         company ? activeJobsByCompany.get(company) ?? [] : [],
         existingJobIdBySourceJobId,
         jobFunctionIdByName,
+        jobFunctionNameById,
       );
 
       await adminClient.from("source_fetch_log").insert({

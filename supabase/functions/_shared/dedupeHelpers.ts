@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import type { NormalizedJob } from "./pipeline/types.ts";
+import { MAX_ACTIVE_JOBS_PER_COMPANY, idsExceedingCompanyCap, type CompanyCapCandidate } from "./pipeline/companyCap.ts";
 
 // Shared between approve-submission (Stage 2), fetch-deloitte-jobs, and
 // fetch-greenhouse-companies (Stage 3/4) -- all run the same normalize ->
@@ -163,4 +164,72 @@ export async function resolveJobFunctionId(adminClient: any, jobFunctionName: st
   if (!jobFunctionName) return null;
   const { data } = await adminClient.from("job_functions").select("id").eq("name", jobFunctionName).maybeSingle();
   return data?.id ?? null;
+}
+
+// Moved here from fetch-greenhouse-companies (its original, only caller) so
+// enforceCompanyCap below can reuse the same chunking for a potentially
+// large excess-deactivation batch (e.g. Carvana's real excess was in the
+// hundreds the first time this ran) without a second copy of the same
+// PostgREST .in()-URL-length workaround fetch-deloitte-jobs would otherwise
+// need too.
+const UPDATE_BATCH_SIZE = 200;
+export async function updateInBatches(adminClient: SupabaseClient, ids: string[], fields: Record<string, unknown>): Promise<string | null> {
+  const uniqueIds = [...new Set(ids)];
+  for (let i = 0; i < uniqueIds.length; i += UPDATE_BATCH_SIZE) {
+    const batch = uniqueIds.slice(i, i + UPDATE_BATCH_SIZE);
+    const { error } = await adminClient.from("jobs").update(fields).in("id", batch);
+    if (error) return error.message;
+  }
+  return null;
+}
+
+// Part 2 of the 2026-08-27 rescope (see JOB_ENGINE_ARCHITECTURE.md and
+// pipeline/companyCap.ts's own header comment for the full tiering
+// rationale). Called once per company at the very end of that company's
+// fetch run -- after every insert/refresh/merge/expire for it has already
+// landed -- so this always re-reads the company's true just-committed
+// active set from the database rather than trying to thread partial
+// in-memory bookkeeping through several genuinely different update paths
+// (mark_jobs_missed's RPC in particular transitions jobs to inactive
+// server-side, invisible to any in-memory tracking the caller might keep).
+// That extra read is the cost of correctness here, not an oversight --
+// same trade-off fetchAllRows' pagination already makes elsewhere in this
+// file. `jobFunctionNameById` is passed in rather than re-queried since
+// every caller already loads job_functions once per invocation for its own
+// classification step.
+export async function enforceCompanyCap(
+  adminClient: SupabaseClient,
+  company: string,
+  jobFunctionNameById: Map<string, string>,
+  cap: number = MAX_ACTIVE_JOBS_PER_COMPANY,
+): Promise<{ deactivatedCount: number; error: string | null }> {
+  let rows: Record<string, unknown>[];
+  try {
+    rows = await fetchAllRows(adminClient, "jobs", "id, job_function_id, quality_score, posted_date", (q) =>
+      q.eq("active", true).eq("company", company),
+    );
+  } catch (err) {
+    return { deactivatedCount: 0, error: err instanceof Error ? err.message : String(err) };
+  }
+
+  const candidates: CompanyCapCandidate[] = rows.map((r) => ({
+    id: r.id as string,
+    jobFunctionName: r.job_function_id ? jobFunctionNameById.get(r.job_function_id as string) ?? null : null,
+    qualityScore: (r.quality_score as number | null) ?? null,
+    postedDate: (r.posted_date as string | null) ?? null,
+  }));
+
+  const excessIds = idsExceedingCompanyCap(candidates, cap);
+  if (excessIds.length === 0) return { deactivatedCount: 0, error: null };
+
+  // status: "removed" -- same status a manually-resolved duplicate gets
+  // (resolve-duplicate-candidate/index.ts), not "expired"/"potentially_
+  // expired": those describe the *employer's own posting* going stale,
+  // which isn't what happened here. This posting is still genuinely open;
+  // it's merely over this company's quota. "removed" is the existing
+  // status value that means "we took this out of the active set for a
+  // reason other than the listing itself disappearing."
+  const nowIso = new Date().toISOString();
+  const error = await updateInBatches(adminClient, excessIds, { active: false, status: "removed", updated_at: nowIso });
+  return { deactivatedCount: error ? 0 : excessIds.length, error };
 }

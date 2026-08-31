@@ -2687,3 +2687,146 @@ already reasoned through above, nothing egregious slipped through. This
 confirms Part 1 was correctly finished and deployed before the session
 loss; the redeploy and re-checks here are belt-and-suspenders, not a
 fix. `npm run test:server` re-run clean at 90/90 before committing.
+
+**2026-08-31 -- Part 2: `MAX_ACTIVE_JOBS_PER_COMPANY = 30`, a hard per-
+company cap on active postings.** Part 1 fixed *what kind* of job is
+relevant; this fixes *how many* postings from one employer are allowed
+to crowd out everyone else. The user's own framing: "I want to focus
+more on having more companies rather than few companies with tons of
+jobs. Pick the most important/relevant ones to consulting, investment
+banking, tech, finance, and similar fields." This work had already been
+started and left uncommitted across a prior interrupted session (machine
+idle, not a real error) -- `server/src/companyCap.ts`,
+`supabase/functions/_shared/pipeline/companyCap.ts`,
+`server/tests/companyCap.test.ts`, and partial wiring into both fetch
+functions were sitting in the working tree. Verified rather than trusted:
+the two `companyCap.ts` copies (server mirror + Edge Function original)
+were already byte-for-byte identical and the 13-test suite already
+covered tiering, quality/date tiebreaks, determinism, and idempotency
+correctly -- no changes needed there. `fetch-greenhouse-companies` was
+already fully wired (imports `enforceCompanyCap`, calls it once per
+company at the end of `runFetchForCompany`, threads a `jobFunctionNameById`
+map through). **`fetch-deloitte-jobs` was not** -- it imported
+`enforceCompanyCap` but never called it, a real gap from the
+interruption, not a stylistic choice. Fixed by adding the same
+`jobFunctionNameById` reverse-lookup map and the same
+`enforceCompanyCap(adminClient, "Deloitte", jobFunctionNameById)` call at
+the end of `runFetch`, plus a `capDeactivated` field in its summary
+object to match the Greenhouse function's shape.
+
+**Tier design** (`companyCap.ts`'s own header comment has the full
+reasoning; summarized here). Three tiers, ranked using the real
+`job_functions` taxonomy already seeded in the database -- not the
+broader wishlist of categories from scoping conversations (Strategy,
+Private Equity, Data/Analytics aren't distinct `job_functions` rows
+today; `occupationTaxonomy.ts` already folds Strategy into Consulting and
+Private Equity into Investment Banking, so a posting classified via
+either keyword already lands in the tier its name suggests):
+- **Tier 0 (top)** -- Consulting, Investment Banking, Software
+  Engineering, Product Management. The verticals UC Portal exists for.
+- **Tier 1 (mid)** -- Marketing, Operations, Sales. Real, legitimately
+  white-collar corporate functions (Part 1 already filters out manual-
+  trade/clinical work) -- just not what UC members are primarily
+  recruiting for. ("Sales" has no occupation stub mapping to it yet, so
+  it's currently a no-op tier, kept for documentation/future-proofing.)
+- **Tier 2 (bottom)** -- unclassified (`job_function_id is null`). The
+  largest tier for nearly every company (Part 1's own writeup found
+  O*NET classification coverage low company-wide: Stripe 26%, Databricks
+  7.5%, Charlie Health 2.8%). This is a ranking *signal*, not a relevance
+  gate -- an unclassified posting can absolutely be a genuinely relevant
+  white-collar role; it just loses ties to a classified one when a
+  company is over quota.
+
+Within a tier: `quality_score` descending, then `posted_date` descending,
+then a stable `id` comparison as the final deterministic tiebreak --
+required for idempotency (re-running against an unchanged active set must
+always compute the same excess, never reshuffle it).
+
+**Deactivate, never delete.** `active = false, status = 'removed'` -- the
+same `job_status` enum value `resolve-duplicate-candidate` already uses
+for "taken out of the active set for a reason other than the listing
+itself disappearing," distinct from `expired`/`potentially_expired`
+(which describe the *employer's own posting* going stale -- not what
+happened here; these are still genuinely open roles, merely over quota).
+Reversible later (raising the cap, or other postings at that company
+expiring and freeing room) without re-fetching anything, and preserves
+`job_sources`/`duplicate_candidates` provenance untouched.
+
+**Retroactive cleanup, applied live.** Computed client-side (same
+precedent as Part 1's migration and `20260824120000` before it --
+reimplementing the exact deployed `tierForJobFunction`/
+`compareCapCandidates` logic in Postgres' own dialect risked a mismatch
+between what was reviewed and what actually ran) against a live pull of
+every active job's `id`/`company`/`job_function` name/`quality_score`/
+`posted_date`, then written as migration
+`20260831200000_enforce_company_job_cap.sql` -- an explicit `update jobs
+set active = false, status = 'removed' where id = any(array[...]::uuid[])`
+over 1,824 listed ids (needed the same `::uuid[]` cast Part 1's migration
+used; a first attempt without it failed with `operator does not exist:
+uuid = text` since a bare `array['...']` literal defaults to `text[]`).
+
+Real live counts, verified via direct Postgres query before and after
+(all had drifted up slightly from the counts in the task brief, from the
+existing daily crons running in between):
+
+| Company | Before | After | Deactivated | Survivors: tier0 / tier1 / unclassified |
+|---|---|---|---|---|
+| Stripe | 518 | 30 | 488 | 30 / 0 / 0 |
+| Carvana | 404 | 30 | 374 | 6 / 24 / 0 |
+| Databricks | 322 | 30 | 292 | 14 / 9 / 7 |
+| Brex | 170 | 30 | 140 | 22 / 8 / 0 |
+| Charlie Health | 166 | 30 | 136 | 7 / 0 / 23 |
+| IMC | 165 | 30 | 135 | 30 / 0 / 0 |
+| Figma | 142 | 30 | 112 | 30 / 0 / 0 |
+| Airbnb | 91 | 30 | 61 | 9 / 13 / 8 |
+| Coinbase | 87 | 30 | 57 | 13 / 8 / 9 |
+| Robinhood | 49 | 30 | 19 | 9 / 7 / 14 |
+| Deloitte | 40 | 30 | 10 | 25 / 0 / 5 |
+| Guild | 2 | 2 | 0 (already under cap) | 1 / 0 / 1 |
+
+Total: 2,156 -> 332 active across 12 companies (1,824 deactivated).
+Stripe/IMC/Figma filling all 30 slots from tier 0 alone shows the tier
+design doing exactly what was asked (crowding out generic postings with
+consulting/IB/tech/finance-relevant ones first); Charlie Health's
+7-tier0/23-unclassified split shows the tier-2 fallback working as
+designed for a company with thin O*NET coverage rather than leaving 23
+slots empty.
+
+**Deployed both functions** (`--use-api`) and verified live, not just
+assumed:
+- `fetch-deloitte-jobs` invoked directly (curl against the deployed
+  endpoint, anon key -- confirmed sufficient for these functions'
+  `Deno.serve`, no service-role key needed for invocation): first call
+  `capDeactivated: 0` (Deloitte was already exactly at 30 from the
+  migration), second call also `capDeactivated: 0` -- stable.
+- `fetch-greenhouse-companies` invoked twice in a row (all 11 companies).
+  Both runs returned `inserted: 0` everywhere except real new postings
+  that legitimately appeared (a handful per company, consistent with
+  Part 1's own re-verification entry) -- no duplicate-insert bug.
+  `capDeactivated` was nonzero on *every* run, including the second
+  (e.g. Stripe 469 then 467) -- this is expected, not a leak: each
+  company's own freshness-refresh path (`refreshed: N`) sets
+  `active = true, status = 'active'` on every already-tracked job still
+  present in that day's Greenhouse feed, including ones the cap had
+  previously deactivated, before `enforceCompanyCap` runs last and trims
+  back down to 30 -- re-reading the true post-refresh active set from
+  the database is exactly why `enforceCompanyCap` re-queries rather than
+  trusting in-memory state (see its own comment in `dedupeHelpers.ts`).
+  Net active count stayed at exactly 30 (or 2 for Guild) after every
+  invocation, confirmed via direct query after each run.
+- **Idempotency spot-check, not just count-level**: pulled the exact set
+  of active job ids for Stripe and Databricks before and after a second
+  `fetch-greenhouse-companies` invocation. Databricks: identical set, 0
+  ids differed. Stripe: 2 ids differed between the two snapshots --
+  traced to that run's own `markedFullyExpired: 2` /
+  `markedPotentiallyExpired: 1` (the pre-existing freshness sweep, not
+  the cap) genuinely removing 2 previously-active Stripe postings from
+  the candidate pool between snapshots, which correctly promoted the
+  next-best surviving candidate into the freed slot -- the tiering/
+  ranking itself is deterministic given an unchanged candidate pool
+  (proven by Databricks' 0-diff result); the Stripe diff reflects a real
+  upstream signal (postings going stale), not non-determinism in the cap
+  logic.
+
+`npm run test:server`: 103/103 green (13 new in `companyCap.test.ts`, 90
+pre-existing untouched). `npm run typecheck:server` clean.
