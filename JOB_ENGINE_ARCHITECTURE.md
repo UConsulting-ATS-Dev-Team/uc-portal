@@ -3885,3 +3885,197 @@ and pushed per standing permission for this repo.
 Deliberately out of scope for this pass, per explicit direction: finding
 more Lever companies beyond these first two. A natural follow-on, not
 attempted here.**
+
+**2026-08-31 -- Ninth addition: twelve more companies (Point72, Squarepoint
+Capital, ExodusPoint, Schonfeld, Qube Research & Technologies, Chicago
+Trading Company, Gusto, Public, Baringa Partners, Elixirr, General
+Catalyst, Bessemer Venture Partners), the largest single source-discovery
+pass this doc has recorded, surpassing the Eighth.** Same standing
+direction: prioritize finding new companies over adding volume, weighted
+toward consulting/investment banking/tech/finance.
+
+**Step 1: checked for a leftover cheap win first.** The prior entry's own
+"deliberately out of scope" note (finding more Lever companies) was a
+different task than checking for *already-found-but-unadded* Lever hits
+from earlier passes -- re-read every dated entry in this Part again
+specifically for that. Confirmed: Wealthfront and Belvedere Trading (the
+two the Eighth addition flagged as "found and deliberately not added, no
+adapter exists") are the only such case in this doc's history, and they
+were already onboarded in the entry immediately above. Every other Lever
+hit found across prior passes was excluded for a different, still-valid
+reason regardless of adapter existence (Plaid/Narmi/Wealthsimple/Compass
+Lexecon/Thoma Bravo: real board, 0 postings; Capital One's Lever slug/
+Oliver Wyman Labs: identity mismatch, a different real company on that
+slug) -- nothing was sitting on a "no adapter yet" shelf waiting to be
+picked up.
+
+**Step 2: re-queried the live `people` table directly** (`npx supabase db
+query --linked`, every non-null/non-empty `company` value, both Alumni and
+current-member rows). Every distinct value came back already checked
+(live or rejected) in a prior pass -- no new alumni-backed candidates this
+pass; the roster hasn't grown since the Eighth addition's McKenna
+Labs/Paladin Protocol check.
+
+**Step 3: branched into the same four verticals, checking a fresh batch of
+39 candidates against both Greenhouse and Lever** (not just Greenhouse,
+now that a Lever adapter exists) via `scripts/check-company-source.mjs`:
+
+- Quant/prop-trading (11 checked): Millennium Management, D. E. Shaw, Da
+  Vinci Trading, and Maven Securities had no usable signal on either
+  platform. Marshall Wace's Greenhouse slug resolves but reports 0
+  postings and a null company_name -- same real-but-empty case already
+  documented for Plaid/Indeed/Narmi/Candidly/Optiver/Apollo/American
+  Securities/Thoma Bravo. Chicago Trading Company (CTC), Point72,
+  Squarepoint Capital, ExodusPoint, Schonfeld, and Qube Research &
+  Technologies were real hits (see below).
+- Fintech (10 checked): Klarna, Revolut, Rippling, Deel, Acorns, MoneyLion,
+  and Addepar had no usable signal on either platform. Wealthsimple's
+  Lever slug resolves but reports 0 postings -- same real-but-empty case.
+  Gusto and Public were real hits.
+- Consulting/advisory (8 checked): Bates White, Berkeley Research Group,
+  Ankura, Secretariat International, and Sia Partners had no usable
+  signal. Compass Lexecon's Lever slug resolves but reports 0 postings --
+  same real-but-empty case. Baringa Partners and Elixirr were real hits.
+- Private equity/asset management/VC (10 checked): TPG, Brookfield, EQT,
+  Oaktree Capital, and Centerbridge Partners/Clayton Dubilier and Rice had
+  no usable signal. Permira's and Battery Ventures' Greenhouse slugs both
+  resolve but report 0 postings and a null company_name -- two more real-
+  but-empty data points. General Catalyst and Bessemer Venture Partners
+  were real hits.
+
+**Two identity checks worth recording in detail, both resolved by looking
+past the automated tool's own verdict rather than trusting it blindly:**
+
+1. **Qube Research & Technologies** -- `check-company-source.mjs` flagged
+   its own Greenhouse hit (slug "quberesearchandtechnologies", 193
+   postings, company_name "Qube Research & Technologies") as a "COMPANY
+   NAME MISMATCH," because its `namesLookRelated()` helper strips
+   punctuation before comparing and the input "Qube Research and
+   Technologies" (typed with "and") doesn't survive that normalization as
+   a substring match against the real company_name (which uses "&"). This
+   is a real, narrow gap in the script's own naive heuristic, not a real
+   mismatch -- manually reviewed and confirmed correct (office spread:
+   Zurich, Dubai, Geneva, London, Paris, Budapest, Hong Kong, matching the
+   real global quant firm) before including it. Worth remembering for a
+   future pass: the script's automated verdict is an aid, never a
+   substitute for the human review it says itself.
+2. **Chicago Trading Company (CTC)** -- Greenhouse slug "chicagotrading"
+   resolves with 24 real distinct postings, but its own company_name field
+   reads "CTC Lateral - Website & LinkedIn" -- an internal recruiting-
+   channel label, not a form of the company's name the way IMC Trading's
+   "IMC" or Old Mission Capital's "Old Mission" were. Not accepted on
+   content signals alone (exclusively Chicago/New York offices, systematic
+   options-market-making/engineering/compliance roles, a real internal
+   desk name "Delta Force") -- independently confirmed by fetching one of
+   its own Greenhouse-hosted job pages directly and finding the page's own
+   logo element links to `https://www.chicagotrading.com/`, the real
+   company's own domain (the same class of confirmation this doc used for
+   Jane Street/Jump Trading/Akuna Capital/SoFi/AlixPartners/Mercury when a
+   raw careers-page fetch didn't surface a direct embed). Included with
+   the company_name anomaly documented honestly in both this entry and the
+   migration itself, not smoothed over.
+
+**Twelve real hits**, each verified the same way as every prior addition
+-- company_name checked for an exact match (except CTC's documented
+exception above) plus at least one sampled application URL, page embed, or
+office footprint cross-checked against the real company:
+
+- **Point72**: real multi-strategy hedge fund. Greenhouse slug "point72",
+  236 postings, company_name "Point72" (exact). Titles reference the
+  firm's own real internal programs ("Cubist Quant Academy", "Point72
+  Academy").
+- **Squarepoint Capital**: real quant trading firm. Greenhouse slug
+  "squarepointcapital", 93 postings, company_name "Squarepoint Capital"
+  (exact), application URLs resolve to www.squarepoint-capital.com (own
+  domain).
+- **ExodusPoint**: real multi-strategy hedge fund. Greenhouse slug
+  "exoduspoint", a small board (2 postings), company_name "ExodusPoint"
+  (exact) -- one posting is titled "Investment - ExodusPoint Jobs Page."
+- **Schonfeld**: real multi-strategy trading firm. Greenhouse slug
+  "schonfeld", 55 postings, company_name "Schonfeld" (exact).
+- **Qube Research & Technologies**: real quant trading firm. Greenhouse
+  slug "quberesearchandtechnologies", 193 postings -- see the identity
+  discussion above.
+- **Chicago Trading Company**: real Chicago-based options-market-making/
+  prop-trading firm. Greenhouse slug "chicagotrading", 24 postings -- see
+  the identity discussion above.
+- **Gusto**: real payroll/HR/benefits fintech. Greenhouse slug "gusto", 91
+  postings, company_name "Gusto, Inc." (exact).
+- **Public**: real retail investing/trading fintech (Public.com).
+  Greenhouse slug "public", a small board (4 postings), company_name
+  "Public" (exact) -- despite the generic name, titles ("Active Trader
+  Sales: Options Lead") are unambiguously the real trading app.
+- **Baringa Partners**: real UK-based energy/financial-services/
+  technology consulting firm. Greenhouse slug "baringa" (an EU-hosted
+  board, job-boards.eu.greenhouse.io -- fetched cleanly through the same
+  boards-api.greenhouse.io endpoint every other source uses), 90
+  postings, company_name "Baringa" (exact).
+- **Elixirr**: real management consulting firm. Greenhouse slug "elixirr",
+  19 postings, company_name "Elixirr Consulting" (exact), application
+  URLs resolve to www.elixirr.com/careers (own domain).
+- **General Catalyst**: real venture capital firm (its wealth-management
+  arm, GC Wealth). Greenhouse slug "generalcatalyst" -- not the bare
+  "general" slug guess, which resolves to an unrelated company, "General
+  Interest," the same slug-squatting pattern already caught for "bcg"/
+  "Disney"/Capital One's Lever slug/Aura/Wise/Current. A small board (1
+  posting), company_name "General Catalyst" (exact), titled "Client
+  Service Associate, GC Wealth."
+- **Bessemer Venture Partners**: real venture capital firm. Greenhouse
+  slug "bessemerventurepartners", 4 postings, company_name "Bessemer
+  Venture Partners" (exact).
+
+Added via migration `20260831300000_greenhouse_ninth_addition.sql` onto
+the same config-driven `fetch-greenhouse-companies` mechanism as every
+prior Greenhouse addition -- no adapter code changes needed, all twelve
+inherit Part 1's white-collar relevance filter and Part 2's
+30-active-jobs-per-company cap automatically, verified rather than
+assumed.
+
+Verified live end-to-end via direct `curl` against the deployed HTTPS
+endpoint (anon key). First invocation (its own response body wasn't fully
+captured due to a client-side truncation, so a second invocation was run
+immediately after specifically to re-confirm) picked up all twelve new
+config rows alongside the 37 existing Greenhouse/RSS sources. Second and
+third invocations both showed `inserted: 0` with correct nonzero
+`refreshed` counts and `skippedCompanyMismatch: 0` for all twelve,
+confirming the first invocation's inserts landed correctly and the source
+is idempotent.
+
+Cross-checked directly against Postgres, not just the fetch summaries --
+and this surfaced a real false alarm worth recording. A first join-based
+count query for Point72 showed 32 active jobs, not the expected 30,
+across 222 total `job_sources` rows. Investigated rather than assumed
+correct: `job_sources` had 222 rows but only 220 *distinct* `job_id`
+values (2 Point72 postings each carry two `job_sources` rows, a genuine
+near-duplicate merge from ingestion, same pattern Affirm's "+30 merged as
+real duplicate candidates" showed in the Seventh addition) -- a plain SQL
+join across `job_sources` double-counts those 2 jobs, which is exactly
+what inflated the naive count query. A corrected query (`select distinct
+id, active from ...` before aggregating) confirmed the true distinct
+active count is exactly 30, and `enforceCompanyCap`'s own logic (which
+operates on distinct `jobs.id` rows, not `job_sources` rows) was correct
+the whole time -- the discrepancy was in the verification query, not the
+product. Re-verified the same corrected way for all twelve: **Point72
+30/220, Squarepoint Capital 30/82, Qube Research & Technologies 30/164,
+Schonfeld 30/41, Gusto 30/61, Baringa Partners 30/44 (all six hit the
+cap); Chicago Trading Company 16/16, Elixirr 11/11, ExodusPoint 2/2,
+Public 2/2, Bessemer Venture Partners 1/1, General Catalyst 1/1 (all six
+under 30, `capDeactivated: 0` for these, consistent with how Accordion/
+SoundCloud/Guild/Mercury/Marqeta/XTX Markets behaved when first added)**.
+Pulled every active title across all twelve directly: zero manual-trade
+or clinical-care matches anywhere (expected -- hedge funds/quant firms, a
+prop-trading firm, fintechs, consulting firms, and VC firms, not the
+retail/healthcare profile that produced Carvana/Charlie Health's denylist
+hits), all genuinely white-collar corporate/finance/tech/consulting roles.
+
+`npm run test:server`: **123/123 green**, unchanged (config-only
+addition, no adapter/pipeline code touched this pass).
+
+**Total company job-listing sources after this addition: 51** (48
+Greenhouse + 2 Lever + 1 Deloitte RSS feed), confirmed via a direct count
+against the live `sources` table grouped by `config->>'platform'`, not
+assumed from migration history alone.
+
+Migration pushed via `npx supabase db push` after checking
+`supabase/migrations` immediately beforehand for the next available
+timestamp. Committed and pushed per standing permission for this repo.
