@@ -4288,3 +4288,227 @@ unnamed job, same as the original real-odds-model entry's own closing
 note asked for and eventually got.
 
 Committed and pushed per standing permission for this repo.
+
+**2026-09-01 -- Eleventh addition: eighteen more companies (seventeen
+Greenhouse, one Lever), continuing the same standing direction as the
+Sixth-through-Tenth additions: prioritize finding new companies over
+adding volume, weighted toward consulting/investment banking/tech/
+finance.**
+
+Read every prior dated entry in this Part carefully first, compiling the
+full running list of 150+ companies already added or checked-and-rejected
+across ten prior passes, to avoid re-checking any of it. Re-queried the
+live `people` table directly (`npx supabase db query --linked`, 94
+distinct non-null/non-empty `company` values across Alumni and
+current-member rows -- reflecting the real data-quality pass done on that
+table earlier the same day). Every value matched something already
+checked except one: **Savant Care** (a telepsychiatry/therapy provider) --
+checked via `scripts/check-company-source.mjs`, no usable board on either
+platform. No new alumni-backed hits this pass.
+
+Branched into the same productive verticals plus one not deeply searched
+before (mid-market/boutique investment banks -- MBB/bulge-bracket firms
+have consistently shown no usable board across prior passes, so this
+pass tested whether that pattern holds for smaller IBs too), checking
+~90 candidates total via a batch script wrapping the same Greenhouse/
+Lever probes as `check-company-source.mjs`:
+
+- **Quant/prop-trading** (~20 checked): Balyasny Asset Management, Man
+  Group, Verition Fund Management, Trexquant Investment, Tudor Investment
+  Corporation, Renaissance Technologies, Eisler Capital, Hehmeyer
+  Trading, G-Research, Millennium, Cubist Systematic Strategies, and
+  Citadel (the hedge fund itself, distinct from the already-live Citadel
+  Securities entry in `data/industryBaseRates.js`) had no usable signal.
+  Voleon's and Stax's Lever slugs resolve but report 0 postings --
+  real-but-empty, same class as Plaid/Narmi/Optiver/Marshall Wace. One
+  identity rejection worth recording in detail: **Anchorage Capital
+  Group** (the multi-strategy hedge fund) was the search target, but its
+  Lever slug "anchorage" resolves to postings unambiguously for Anchorage
+  *Digital* instead -- titles like "APAC Regional Lead, Stablecoin
+  Solutions" and "Credit Trader - Prime Finance," offices in Cayman
+  Islands/Singapore -- a different real company sharing the short name
+  "Anchorage," the same slug-collision pattern already caught for "bcg"/
+  Disney/Capital One/Aura/Wise/Current/General Catalyst's bare-word
+  guess. Excluded. Four real hits: AQR Capital Management, PDT Partners,
+  Engineers Gate, Voloridge Investment Management.
+- **Fintech** (~18 checked): Circle, Dave, Varo Bank, Airwallex, Remitly,
+  Bilt Rewards, Brigit, Petal, Zip Co, Afterpay, Flywire, Synctera, Unit,
+  Column, Modern Treasury had no usable signal. Kraken (Lever), Nubank
+  (Greenhouse, null company_name), and Increase (Lever) all resolve with
+  0 postings -- real-but-empty. Five real hits: Gemini, Adyen, Cross
+  River Bank, Alloy (Greenhouse), plus Tala (Lever).
+- **Consulting/advisory** (~12 checked): GLG, Mosaic, Putnam Associates,
+  PA Consulting, Roland Berger, Cambridge Associates, Mercer, Willis
+  Towers Watson, Marsh McLennan, Actualize Consulting, Delphi Advisors,
+  Ferrazzi Greenlight had no usable signal. One real board found and
+  deliberately **not** added: "Coleman Research" -- Greenhouse slug
+  "colemanresearch" resolves, 11 postings, company_name "VISASQ/COLEMAN"
+  (plausibly the real expert-network Coleman Research Group, acquired by
+  VisasQ in 2020 -- Raleigh NC/Reading UK/Hong Kong/Bogota offices and
+  multi-language "Associate (English and Japanese/Korean/Mandarin)"
+  titles are consistent with that). Identity could not be independently
+  confirmed: colemanresearch.com 301-redirects to colemaninsights.com, an
+  unrelated NC-based media-research firm, and neither
+  colemanresearchgroup.com nor colemanresearch.net served confirming
+  content. Excluded per this project's established rigor bar for
+  unconfirmable identity (same class as Aura) -- a real board,
+  deliberately not added, not a claim the real Coleman Research Group
+  doesn't exist.
+- **Investment banking** (~18 checked, the new sub-vertical this pass):
+  Houlihan Lokey, Perella Weinberg Partners, Jefferies, Rothschild & Co,
+  Piper Sandler, Raymond James, Stifel, Robert W. Baird, Guggenheim
+  Partners, PJT Partners, Centerview Partners, Qatalyst Partners,
+  Greenhill, Solomon Partners, Duff & Phelps, Kroll Bond Rating, S&P
+  Global, Moody's had no usable signal. One real hit: **William Blair**
+  -- confirms the "no usable board" pattern found for MBB/bulge-bracket
+  firms mostly extends to mid-market/boutique IBs too, but isn't
+  universal.
+- **PE/asset management/VC** (~30 checked): Andreessen Horowitz, Kleiner
+  Perkins, Accel, Lightspeed Venture Partners, NEA, Tiger Global, Coatue
+  Management, IVP, Greylock Partners, Khosla Ventures, Redpoint Ventures,
+  Benchmark, Union Square Ventures, Vanguard, Fidelity Investments, T.
+  Rowe Price, Wellington Management, Angelo Gordon, Sixth Street
+  Partners, GoldenTree Asset Management, Bridgewater Associates, Elliott
+  Management, Baupost Group, York Capital, Marathon Asset Management,
+  Farallon Capital, Cerberus Capital Management, TA Associates, Bain
+  Capital Ventures, Lightyear Capital had no usable signal. Index
+  Ventures' Lever slug, Fortress Investment Group's Lever slug, and HPS
+  Investment Partners' Greenhouse slug all resolve but report 0 postings
+  -- real-but-empty. Two identity rejections, the same bare-word-slug-
+  squat pattern General Catalyst's own earlier catch established:
+  Founders Fund's "founders" slug resolves to company_name "Founders
+  Green Animal Hospital" (an unrelated vet practice), and Thrive
+  Capital's "thrive" slug resolves to company_name "THRIVE" with only 3
+  Atlanta-based postings (one titled "Join Our Talent Community!," the
+  same talent-pipeline-not-a-real-board pattern Hudson River Trading was
+  excluded on) -- doesn't match the NYC-based VC firm. Both excluded. No
+  real hits in this vertical this pass.
+- **Established tech companies with real public boards** (~14 checked,
+  continuing the Tenth addition's approach): OpenAI, Snowflake,
+  Confluent, Zoom, DocuSign, Atlassian, Salesforce, Snap, Uber, Canva,
+  Miro, Zapier, Grammarly had no usable signal. HubSpot's Greenhouse slug
+  resolves but reports 0 postings, null company_name -- real-but-empty.
+  Eight real hits: Scale AI, Anthropic, Twilio, Cloudflare, Lyft,
+  Airtable, Webflow, Klaviyo.
+
+**Eighteen real hits**, each verified the same way as every prior
+addition -- `company_name` checked for an exact match, plus at least one
+sampled application URL, page embed, or office footprint cross-checked
+against the real company, never trusting a slug guess alone:
+
+- **AQR Capital Management**: Greenhouse slug "aqr", 54 postings,
+  company_name "AQR" (short form, verified via careers.aqr.com -- own
+  domain); offices (Greenwich CT, Dubai, Bengaluru, Hong Kong) match.
+- **PDT Partners**: slug "pdtpartners", 10 postings, company_name exact;
+  pdtpartners.com's own page source directly embeds this exact board.
+- **Engineers Gate**: slug "engineersgate", 7 postings, company_name
+  exact; offices (New York, Hong Kong, London) and titles (Quantitative
+  Researcher, Trading Operations Associate) match.
+- **Voloridge Investment Management**: slug
+  "voloridgeinvestmentmanagement", 8 postings, company_name exact (full
+  legal name); every posting located in Jupiter, FL -- the real firm's
+  actual HQ.
+- **Gemini**: slug "gemini", 40 postings, company_name exact; one
+  posting titled "Head of Compliance, Gemini Galactic Markets, LLC" (a
+  real Gemini subsidiary), NYC/Miami-heavy locations -- the real
+  cryptocurrency exchange, not the unrelated "Gemini" AI product.
+- **Adyen**: slug "adyen", 220 postings, company_name exact -- real
+  publicly-traded payments company (AMS: ADYEN).
+- **Cross River Bank**: slug "crossriverbank", 38 postings, company_name
+  "Cross River" (short form, verified via www.crossriver.com/greenhouse
+  -- own domain).
+- **Alloy**: slug "alloy", 22 postings, company_name exact, verified via
+  www.alloy.com/about/jobs -- own domain. A separate Lever slug "alloy"
+  (7 postings) also resolves; deliberately not added alongside this one
+  since a common name on a second platform can't be assumed to be the
+  same company without further identity work the Greenhouse board's own
+  domain confirmation already made unnecessary.
+- **William Blair**: slug "williamblair", 50 postings, company_name
+  exact, verified via www.williamblair.com/Careers -- own domain. Real
+  mid-market investment bank/asset manager.
+- **Scale AI**: slug "scaleai", 211 postings, company_name exact.
+- **Anthropic**: slug "anthropic", 571 postings (growing to 573 across
+  this pass's own verification runs), company_name exact.
+- **Twilio**: slug "twilio", 135 postings, company_name exact -- real
+  publicly-traded company (NYSE: TWLO).
+- **Cloudflare**: slug "cloudflare", 319 postings, company_name exact --
+  real publicly-traded company (NYSE: NET).
+- **Lyft**: slug "lyft", 164 postings, company_name exact, verified via
+  app.careerpuck.com/job-board/lyft (Lyft's own careers-page vendor) --
+  real publicly-traded company (NASDAQ: LYFT).
+- **Airtable**: slug "airtable", 16 postings, company_name exact.
+- **Webflow**: slug "webflow", 31 postings, company_name exact.
+- **Klaviyo**: slug "klaviyo", 140 postings, company_name exact,
+  verified via www.klaviyo.com/careers -- own domain. Real publicly-
+  traded company (NYSE: KVYO).
+- **Tala** (Lever): slug "tala", 8 postings. No self-reported company
+  name exists in Lever's response (same limitation documented for
+  Wealthfront/Belvedere Trading) -- identity verified instead via
+  tala.co/careers's own page source directly embedding this exact board,
+  and posting locations (Mexico, India, Philippines) matching the real
+  mobile-lending fintech's known footprint exactly.
+
+None of these eighteen match a `NAMED_COMPANY_RATES` entry in
+`data/industryBaseRates.js` (MBB / bulge-bracket IB / elite quant trading
+/ elite big tech) -- all fall through to that module's broader
+industry-tier fallback, same as most of this app's real sources today.
+
+Added via two migrations onto the existing config-driven mechanisms --
+`20260901100000_greenhouse_eleventh_addition.sql` (the seventeen
+Greenhouse companies, `fetch-greenhouse-companies`) and
+`20260901110000_lever_tala.sql` (Tala, `fetch-lever-companies`) -- no
+adapter code changes needed, all eighteen inherit Part 1's white-collar
+relevance filter and Part 2's 30-active-jobs-per-company cap
+automatically, verified rather than assumed.
+
+`npm run test:server`: **123/123 green**, unaffected (config-only
+addition, no adapter/pipeline code touched this pass). Migrations pushed
+via `npx supabase db push --linked`.
+
+Verified live end-to-end via direct `curl` against both deployed HTTPS
+endpoints (anon key). `fetch-greenhouse-companies`: first invocation
+picked up all seventeen new config rows alongside the existing 72
+Greenhouse sources; two further invocations confirmed idempotency for
+sixteen of the seventeen immediately (`inserted: 0` with correct
+`refreshed` counts) and drained Anthropic's initial `deferred: 140`
+(hit `MAX_NEW_JOBS_PER_RUN` on a 571-posting board) over the second and
+third runs -- a third-run `inserted: 2` for Anthropic reflects two
+genuinely new postings that appeared between runs (`fetched` grew from
+571 to 573), not a non-idempotency bug. `fetch-lever-companies`: first
+invocation showed Tala `fetched: 8, inserted: 2, skippedNotRelevant: 6`
+(six "Senior ..." titles correctly denylisted); a second invocation
+confirmed idempotency (`inserted: 0, refreshed: 2`).
+
+Cross-checked directly against Postgres, not just the fetch summaries:
+every one of the eighteen sits at or under the 30-job cap --
+**Adyen/Anthropic/AQR/Cloudflare/Klaviyo/Lyft/Scale AI/Twilio/William
+Blair all at exactly 30 active** (fetched volume exceeds the cap);
+**Airtable 11/11, Alloy 11/11, Cross River 21/21, Engineers Gate 7/7,
+Gemini 12/12, PDT Partners 9/9, Tala 2/2, Voloridge Investment Management
+7/7, Webflow 10/10** (all under 30 because relevant volume doesn't reach
+it, `capDeactivated: 0` for these, consistent with every small-board
+addition in this doc's history). Pulled a random 25-title sample across
+all eighteen directly: zero manual-trade or clinical-care titles (a
+grep for the usual denylist terms across every active title from all
+eighteen also came back empty) -- genuinely white-collar finance/tech/
+corporate roles throughout (Product Manager, Software Engineer,
+Marketing Strategy & Planning Manager, Client Services Associate, Tax
+Operations Analyst, Systems Administrator, Corporate Finance & Strategy
+among them).
+
+**Total company job-listing sources after this addition: 95** (89
+Greenhouse + 5 Lever + 1 Deloitte RSS feed), confirmed via a direct count
+against the live `sources` table grouped by `config->>'platform'`, up
+from 77 at the start of this pass.
+
+**One unrelated observation surfaced while verifying, worth flagging
+rather than silently ignoring:** the pre-existing Marqeta source
+(Eighth addition) returned `"error": "Fetch failed: Greenhouse returned
+HTTP 404"` on every invocation this pass -- its Greenhouse board appears
+to have gone offline or been renamed since it was added. Not touched
+this session (out of scope for a source-discovery pass, and its existing
+30 active jobs remain untouched in Postgres since the fetcher never got
+far enough to deactivate anything), but worth a follow-up check next
+session.
+
+Committed and pushed per standing permission for this repo.
