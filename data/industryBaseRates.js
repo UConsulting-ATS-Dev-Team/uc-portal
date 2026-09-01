@@ -34,9 +34,10 @@
 //    Charlie Health, most of the quant/prop-trading cluster that isn't
 //    individually name-brand-famous, etc.) falls to one of two broad,
 //    HONESTLY-labeled tiers rather than an invented per-company number:
-//      - "competitive" (~5-15%, midpoint 10%) when UC's own industry
-//        taxonomy (job.relevant_industries, populated at ingestion --
-//        JOB_ENGINE_ARCHITECTURE.md §3.2 -- the same field
+//      - "competitive" (~5-15% band, pinned to the LOW end at 7% -- see
+//        the pessimism-bias note by COMPETITIVE_RATE below) when UC's own
+//        industry taxonomy (job.relevant_industries, populated at
+//        ingestion -- JOB_ENGINE_ARCHITECTURE.md §3.2 -- the same field
 //        pages/RealJobDetail.jsx already reads for the "Target industry"
 //        checklist row) classifies the posting as management consulting,
 //        investment banking, or private equity. These three fields are
@@ -45,9 +46,17 @@
 //        independent of any specific employer's individual fame -- a
 //        real, principled signal already computed and already fetched
 //        with the job row, so this adds zero new DB round trips.
-//      - "accessible" (~15-25%, midpoint 20%) for everything else -- the
-//        honest default when there's neither a named-company match nor a
-//        structurally-tight-industry classification.
+//      - "accessible" (~15-25% band, pinned to the LOW end at 15%) for
+//        everything else -- the honest default when there's neither a
+//        named-company match nor a structurally-tight-industry
+//        classification.
+//
+// PESSIMISM BIAS: every rate in this file leans toward the low end of its
+// cited/estimated range rather than the midpoint, per direct product
+// instruction -- when genuinely unsure, underestimate a member's odds
+// rather than overestimate them, so a real outcome is more likely to
+// pleasantly surprise than disappoint. This is a deliberate asymmetry, not
+// an attempt at the single most statistically likely number.
 //
 // KNOWN, DOCUMENTED LIMITATION: this can under-tier a real but
 // lesser-known boutique quant/prop-trading shop (e.g. one of the many
@@ -109,12 +118,12 @@ export const NAMED_COMPANY_RATES = [
   },
   {
     aliases: ["bain & company", "bain and company"],
-    rate: 0.015,
+    rate: 0.01,
     tierLabel: "MBB-tier consulting (Bain & Company)",
   },
   {
     aliases: ["bcg", "boston consulting group"],
-    rate: 0.015,
+    rate: 0.01,
     tierLabel: "MBB-tier consulting (BCG)",
   },
 
@@ -156,21 +165,21 @@ export const NAMED_COMPANY_RATES = [
     rate: 0.005,
     tierLabel: "elite quant trading (Citadel)",
   },
-  { aliases: ["jane street"], rate: 0.01, tierLabel: "elite quant trading (Jane Street)" },
-  { aliases: ["optiver"], rate: 0.01, tierLabel: "elite quant trading (Optiver)" },
-  { aliases: ["susquehanna"], rate: 0.01, tierLabel: "elite quant trading (SIG)" },
-  { aliases: ["drw"], rate: 0.01, tierLabel: "elite quant trading (DRW)" },
-  { aliases: ["two sigma"], rate: 0.01, tierLabel: "elite quant trading (Two Sigma)" },
-  { aliases: ["d.e. shaw", "de shaw"], rate: 0.01, tierLabel: "elite quant trading (D.E. Shaw)" },
-  { aliases: ["hudson river trading"], rate: 0.01, tierLabel: "elite quant trading (Hudson River Trading)" },
-  { aliases: ["jump trading"], rate: 0.01, tierLabel: "elite quant trading (Jump Trading)" },
-  { aliases: ["akuna capital"], rate: 0.01, tierLabel: "elite quant trading (Akuna Capital)" },
-  { aliases: ["xtx markets"], rate: 0.01, tierLabel: "elite quant trading (XTX Markets)" },
-  { aliases: ["imc trading", "imc financial", "imc"], rate: 0.01, tierLabel: "elite quant trading (IMC Trading)" },
+  { aliases: ["jane street"], rate: 0.008, tierLabel: "elite quant trading (Jane Street)" },
+  { aliases: ["optiver"], rate: 0.008, tierLabel: "elite quant trading (Optiver)" },
+  { aliases: ["susquehanna"], rate: 0.008, tierLabel: "elite quant trading (SIG)" },
+  { aliases: ["drw"], rate: 0.008, tierLabel: "elite quant trading (DRW)" },
+  { aliases: ["two sigma"], rate: 0.008, tierLabel: "elite quant trading (Two Sigma)" },
+  { aliases: ["d.e. shaw", "de shaw"], rate: 0.008, tierLabel: "elite quant trading (D.E. Shaw)" },
+  { aliases: ["hudson river trading"], rate: 0.008, tierLabel: "elite quant trading (Hudson River Trading)" },
+  { aliases: ["jump trading"], rate: 0.008, tierLabel: "elite quant trading (Jump Trading)" },
+  { aliases: ["akuna capital"], rate: 0.008, tierLabel: "elite quant trading (Akuna Capital)" },
+  { aliases: ["xtx markets"], rate: 0.008, tierLabel: "elite quant trading (XTX Markets)" },
+  { aliases: ["imc trading", "imc financial", "imc"], rate: 0.008, tierLabel: "elite quant trading (IMC Trading)" },
 
   // --- Elite big tech: not currently a live real source in this app.
-  { aliases: ["google"], rate: 0.03, tierLabel: "elite big tech (Google)" },
-  { aliases: ["meta"], rate: 0.02, tierLabel: "elite big tech (Meta)" },
+  { aliases: ["google"], rate: 0.025, tierLabel: "elite big tech (Google)" },
+  { aliases: ["meta"], rate: 0.015, tierLabel: "elite big tech (Meta)" },
 ];
 
 // The three CLAUDE.md/data/careerOptions.js industry strings that are
@@ -180,8 +189,16 @@ export const NAMED_COMPANY_RATES = [
 // data/careerOptions.js / occupationTaxonomy.ts's relevantIndustries.
 const TIGHT_INDUSTRIES = new Set(["Management consulting", "Investment banking", "Private equity"]);
 
-const COMPETITIVE_RATE = 0.1; // midpoint of the "competitive/well-known" band (~5-15%)
-const ACCESSIBLE_RATE = 0.2; // midpoint of the "accessible/smaller-volume" band (~15-25%)
+// Deliberately biased toward the LOW end of each band, not the midpoint --
+// direct product instruction: "if unsure, make the chance slightly lower so
+// that people are expecting the worse rather than getting overly
+// disappointed at a higher percentage." This matters most for these two
+// constants specifically, more than any single NAMED_COMPANY_RATES entry
+// above -- most real jobs on the platform hit one of these two fallback
+// tiers, not a named-company match, so this is where the bias actually
+// reaches the majority of members.
+const COMPETITIVE_RATE = 0.07; // low end of the "competitive/well-known" band (~5-15%)
+const ACCESSIBLE_RATE = 0.15; // low end of the "accessible/smaller-volume" band (~15-25%)
 
 function namedCompanyRate(companyName) {
   if (!companyName) return null;
