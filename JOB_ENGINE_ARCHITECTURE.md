@@ -4079,3 +4079,30 @@ assumed from migration history alone.
 Migration pushed via `npx supabase db push` after checking
 `supabase/migrations` immediately beforehand for the next available
 timestamp. Committed and pushed per standing permission for this repo.
+
+**2026-08-31 -- Tenth addition, 26 more companies (Greenhouse + Lever).**
+This pass was stopped partway through by direct user request (not an
+error or a stall) once it had already found and applied a large batch --
+the interrupted step was this doc writeup, not the database work, which
+had already completed and was confirmed applied via `supabase migration
+list` before anything was committed. Added: Graham Capital Management,
+GSA, Simplex Trading, Geneva Trading (quant/prop trading, alongside
+Point72/Tower Research/Virtu/etc.), Ripple, Toast, BILL, Melio,
+Payoneer, Justworks (fintech, alongside Stripe/Brex/Affirm/etc.),
+AlphaSights, Third Bridge, ICONIQ (consulting/research/wealth,
+alongside Accordion/AlixPartners/Charles River Associates), Coalition,
+Datadog, MongoDB, Okta, Asana, Instacart, Dropbox, Reddit, Duolingo,
+Pinterest, Roblox (established tech companies with real public boards,
+a category not yet deeply searched in prior passes), and two on Lever:
+Palantir and Point B.
+
+Total now: **77 company job-listing sources** (72 Greenhouse + 4 Lever +
+1 Deloitte RSS), up from 51 at the start of this pass. Verified via a
+direct query against the live `sources` table's `config->>'platform'`
+grouping (72/4/1) before committing. Per-company/per-title spot-checks
+and idempotency verification for this specific batch were not
+independently re-confirmed in this closing note (the interrupted agent's
+own in-session verification, per its established discipline throughout
+this doc, would have covered this before adding each row) -- worth a
+quick idempotent-rerun spot-check next session if any doubt arises,
+same as any other addition.
