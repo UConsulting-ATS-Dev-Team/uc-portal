@@ -771,6 +771,39 @@ longer breaks down to phone width either.
   this session — no test credentials were available and this agent
   doesn't authenticate as a user regardless).
 
+- **Real odds model: tiered industry-baseline prior for the no-real-data
+  case** — the "UC track record" factor's old flat 8% fallback (used
+  whenever a real job has zero real `tracked_applications` data, which is
+  nearly every real job today) made every company look equally likely
+  regardless of real-world competitiveness. Replaced with
+  `data/industryBaseRates.js`'s `industryBaselineForJob()`: a curated
+  ~20-company named-anchor map (real researched rates — MBB ~0.8-1.5%,
+  bulge-bracket IB ~0.7%, Citadel-tier elite quant ~0.5-1%, elite big
+  tech ~2-3%) falling back to two honestly-labeled tiers for everyone
+  else — "competitive" (10%) when `job.relevant_industries` already
+  tags the posting Management consulting/Investment banking/Private
+  equity (a real, zero-extra-cost signal, not a coin flip), "accessible"
+  (20%) otherwise. Real UC track record data, even n=1, still wins
+  outright per the sparse-data rule above — this prior only ever fires
+  when there's genuinely zero UC-specific signal. Labeling required
+  three changes so this is never confusable with real data: a new
+  `industryBaseline`/`industryBaselineNote` flag pair rendered in a
+  distinct muted-italic style from the existing `lowConfidence` "n=N ·
+  limited data" tag, an honest `methodologyNote` swap (the old copy
+  claimed "based on real UC applicants" even at n=0), and a
+  `pastUCRateLabel` override so the "Past UC applicants" comparison row
+  doesn't keep that label when the number it's showing isn't actually
+  from past UC applicants. Verified via a pure-function `vite-node`
+  script (9 cases: named-company matching including real messy company
+  spellings like "IMC" and "Chime Financial, Inc", both fallback tiers,
+  and — critically — confirming real data at n=1 and n=6 still overrides
+  the new baseline entirely) — not verified live in an authenticated
+  browser (same auth-wall constraint as the real odds model's original
+  build). Full tier reasoning, sourcing, and the one documented
+  limitation (small-board boutique quant/prop shops not on the named
+  list can be under-tiered) are in
+  [JOB_ENGINE_ARCHITECTURE.md](JOB_ENGINE_ARCHITECTURE.md)'s dated entry.
+
 Run locally:
 ```bash
 npm install

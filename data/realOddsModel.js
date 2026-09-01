@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient.js";
 import { daysUntil } from "./jobUtils.js";
+import { industryBaselineForJob } from "./industryBaseRates.js";
 
 // The odds model (wireframe 1e) for REAL job postings (pages/RealJobDetail.jsx),
 // see JOB_ENGINE_ARCHITECTURE.md's odds-model entry for the full design
@@ -34,11 +35,13 @@ const OFFER_MEDIAN_HOURS = 26;
 // higher than oddsModel.js's 0.35 offer-rate ceiling accordingly: a 50%
 // interview-reach rate reads as maximum strength here.
 const TRACK_RECORD_CEILING = 0.5;
-// Conservative floor when there is genuinely zero UC data at either the
-// job or the company scope -- mirrors the mock model's own industryBaseRate
-// fallback (0.08), not a fabricated number, just the same "assume below-
-// average until proven otherwise" default.
-const DEFAULT_BASE_RATE = 0.08;
+// DEFAULT_BASE_RATE (the old flat 8% fallback) is gone -- see
+// data/industryBaseRates.js's industryBaselineForJob() for what replaced
+// it: a tiered, honestly-labeled prior (named-company research for ~20
+// famous firms, an industry-classification heuristic for everyone else)
+// used ONLY when there is genuinely zero real UC applicant data at either
+// the job or the company scope. Real data, even n=1, always wins over
+// this -- see the isSparse/hasNoRealData split in computeRealOdds() below.
 const TIMING_CEILING_DAYS = 30;
 
 function clamp01(n) {
@@ -95,8 +98,16 @@ export function computeRealOdds(inputs, { extraPrepHours = 0 } = {}) {
   const { scope, applicantCount, interviewCount } = trackRecord;
 
   const prepHours = extraPrepHours;
-  const isSparse = applicantCount < SPARSE_DATA_THRESHOLD;
-  const companyRate = applicantCount > 0 ? interviewCount / applicantCount : DEFAULT_BASE_RATE;
+  // Two distinct "not much data" states, deliberately not collapsed into
+  // one -- see CLAUDE.md's sparse-data rule (thin-but-real data still
+  // wins and gets the existing "n=N - limited data" flag) vs. this
+  // session's new no-real-data-at-all case (gets a differently-worded
+  // "industry-typical, not UC-specific" flag instead -- see
+  // industryBaselineNote below and OddsModel.jsx's rendering of it).
+  const hasNoRealData = applicantCount === 0;
+  const isSparse = applicantCount > 0 && applicantCount < SPARSE_DATA_THRESHOLD;
+  const industryBaseline = hasNoRealData ? industryBaselineForJob(job) : null;
+  const companyRate = hasNoRealData ? industryBaseline.rate : interviewCount / applicantCount;
 
   const connectedIds = new Set([...(savedConnections || []), ...Object.keys(coffeeChatStatus || {})]);
   const peopleAtCompany = people || [];
@@ -123,6 +134,17 @@ export function computeRealOdds(inputs, { extraPrepHours = 0 } = {}) {
       score: clamp01(companyRate / TRACK_RECORD_CEILING),
       lowConfidence: isSparse,
       lowConfidenceNote: isSparse ? `n=${applicantCount} · limited data` : undefined,
+      // Distinct from lowConfidence above -- that flag means "some real
+      // UC data exists, but it's thin." This means "zero real UC data
+      // exists at all, so the number above is a researched industry
+      // baseline standing in for it" -- must never be visually or
+      // textually confusable with real UC-specific data (CLAUDE.md's
+      // odds-model decision + this session's brief). See
+      // components/OddsModel.jsx for how the two render differently.
+      industryBaseline: hasNoRealData,
+      industryBaselineNote: hasNoRealData
+        ? `Industry-typical rate for ${industryBaseline.tierLabel} — not based on UC applicants yet`
+        : undefined,
     },
     {
       key: "prep",
@@ -180,10 +202,20 @@ export function computeRealOdds(inputs, { extraPrepHours = 0 } = {}) {
   return {
     headline,
     headlineLabel: "Estimated likelihood of reaching an interview",
-    methodologyNote:
-      "Based on real UC applicants who reached an interview stage — the tracker doesn't record final offer outcomes yet, so this measures interview-stage progress rather than offers.",
+    // hasNoRealData gets an honest methodology note instead of the
+    // default one, which would otherwise claim "based on real UC
+    // applicants" while there are none -- the same
+    // never-confusable-with-real-data requirement as the factor-level
+    // industryBaselineNote above.
+    methodologyNote: hasNoRealData
+      ? "No UC applicants are on record for this company yet, so the estimate below uses a researched industry-typical baseline instead of real UC outcomes — see the \"UC track record\" factor for what that baseline is."
+      : "Based on real UC applicants who reached an interview stage — the tracker doesn't record final offer outcomes yet, so this measures interview-stage progress rather than offers.",
     openMarketBaseline,
     pastUCRate,
+    // "Past UC applicants" is only an honest label when pastUCRate is
+    // actually derived from real UC applicants -- OddsModel.jsx renders
+    // this instead of the hardcoded default label when set.
+    pastUCRateLabel: hasNoRealData ? "Industry-typical rate (no UC data yet)" : undefined,
     percentile,
     factors,
     lever: {

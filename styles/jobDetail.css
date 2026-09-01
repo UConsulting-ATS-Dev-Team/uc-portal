@@ -192,6 +192,19 @@
   display: block;
 }
 
+/* Deliberately distinct from .factor-table__low-confidence above: that
+   class flags thin-but-REAL UC data (n=1..4). This one flags "zero real
+   UC data at all, showing a researched industry baseline instead" -- a
+   different fact, so it gets muted/italic rather than the accent color
+   used for real (if sparse) UC signals, so the two are never visually
+   confusable at a glance. See data/industryBaseRates.js. */
+.factor-table__industry-baseline {
+  color: var(--color-text-muted);
+  font-size: var(--text-meta);
+  font-style: italic;
+  display: block;
+}
+
 .factor-bar-track {
   width: 100px;
   height: 8px;

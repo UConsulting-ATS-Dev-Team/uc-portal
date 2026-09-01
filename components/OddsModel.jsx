@@ -49,7 +49,7 @@ export default function OddsModel({ odds, onLogPrep }) {
             <span>{odds.openMarketBaseline}%</span>
           </div>
           <div className="odds-comparison">
-            <span>Past UC applicants</span>
+            <span>{odds.pastUCRateLabel || "Past UC applicants"}</span>
             <span>{odds.pastUCRate}%</span>
           </div>
           <div className="odds-comparison">
@@ -75,6 +75,7 @@ export default function OddsModel({ odds, onLogPrep }) {
                   <td className="factor-table__signal">
                     {f.signal}
                     {f.lowConfidence && <span className="factor-table__low-confidence">{f.lowConfidenceNote}</span>}
+                    {f.industryBaseline && <span className="factor-table__industry-baseline">{f.industryBaselineNote}</span>}
                   </td>
                   <td>{Math.round(f.weight * 100)}%</td>
                   <td>

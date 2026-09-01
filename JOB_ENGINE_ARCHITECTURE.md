@@ -4106,3 +4106,185 @@ own in-session verification, per its established discipline throughout
 this doc, would have covered this before adding each row) -- worth a
 quick idempotent-rerun spot-check next session if any doubt arises,
 same as any other addition.
+
+**2026-09-01 -- Tiered industry-baseline prior replaces the real odds
+model's flat 8% no-data fallback.** The real odds model's "UC track
+record" factor (data/realOddsModel.js) previously fell back to a flat
+`DEFAULT_BASE_RATE = 0.08` whenever a job had zero real
+`tracked_applications` data at either the job or company scope (via
+`job_track_record_report()`) -- which is nearly every real job today,
+since real usage has barely started. A flat number makes every company
+look equally likely regardless of how competitive it actually is. Per
+direct user request: "I don't need real data to know that MBB is going
+to be really low chance... the percentages don't have to be perfect, I
+want people to have a good ballpark estimate."
+
+**What changed:** a new pure module, `data/industryBaseRates.js`, and
+its single export `industryBaselineForJob(job)`, wired into
+`computeRealOdds()` as a straight replacement for `DEFAULT_BASE_RATE`
+**only** in the zero-real-data case -- real UC track record data, even
+n=1, still wins outright and is completely unaffected by this change
+(verified explicitly, see below). `DEFAULT_BASE_RATE` itself is deleted,
+not just unused.
+
+**Tier structure** (deliberately not a lookup table pretending to have
+precision it doesn't have):
+
+1. **Named-company anchors** -- a curated ~20-company map
+   (`NAMED_COMPANY_RATES`) for firms famous/scrutinized enough to have a
+   real, findable acceptance-rate figure, matched by whole-word
+   case-insensitive alias against `job.company` (real source data spells
+   company names inconsistently -- "Chime Financial, Inc" vs "Chime",
+   "IMC" vs "IMC Trading" -- so this is a substring/alias match, not
+   exact equality):
+   - **MBB consulting** (~0.8-1.5%): McKinsey & Company, Bain & Company,
+     BCG. Source: CaseCoach ("How Selective are Bain, BCG and McKinsey"),
+     Management Consulted's 2026 placement results, HackingTheCaseInterview
+     -- McKinsey >200k applications/yr, ~2,000 offers (<1%); BCG/Bain
+     reported slightly higher, ~1-3%. **None of these are currently a
+     live real job source in this app** (verified -- no MBB name appears
+     in any `sources`-seeding migration); kept anyway so the day one is
+     onboarded it's tiered correctly without another pass.
+   - **Bulge-bracket investment banking** (~0.7%): Goldman Sachs,
+     JPMorgan Chase, Morgan Stanley. Source: Fox Business/Entrepreneur
+     (Goldman -- 2,600 offers of 360,000 applicants, 2026 class, third
+     consecutive sub-1% year); MSN (JPMorgan -- 4,100 of 630,000, 2025
+     class; Morgan Stanley reported in the same sub-1% band). Also not
+     currently a live real source.
+   - **Elite quant/prop trading, "Citadel-tier"** (~0.5-1%): Citadel,
+     Jane Street, Optiver, SIG (Susquehanna), DRW, Two Sigma, D.E. Shaw,
+     Hudson River Trading, Jump Trading, Akuna Capital, XTX Markets, IMC
+     Trading. Source: Extern / a quant-internship guide (Substack) --
+     Citadel ~350 of ~115,900 applicants, 2026 class, ~0.36% (independently
+     reported; rounded up slightly to a clean 0.5% for that one entry); the rest
+     of this cluster is described by the same guide as "well under 2%"
+     without an individually published per-firm number, so they share one
+     ~1% industry-tier estimate rather than 11 fabricated distinct
+     figures. **5 of these 12 are live real sources today** (Jane
+     Street, Jump Trading, Akuna Capital, XTX Markets, IMC Trading).
+   - **Elite big tech** (~2-3%): Google (~0.55% at its APM program
+     specifically, low-single-digits for general SWE, per Candor),
+     Meta (~1-3%, community/analyst estimate, no official Meta figure
+     exists). Not currently a live real source.
+   - **Deliberately excluded from individual naming**: the rest of this
+     app's real quant/prop-trading cluster -- Point72, Squarepoint
+     Capital, ExodusPoint, Schonfeld, Qube Research & Technologies,
+     Chicago Trading Company, Tower Research Capital, Virtu Financial,
+     Old Mission Capital, DV Trading, Flow Traders, Geneva Trading,
+     Simplex Trading, Graham Capital Management, Belvedere Trading --
+     real firms, real jobs, but no individually-published acceptance
+     figure findable for any of them specifically. Naming all ~20 with
+     invented distinct percentages would be exactly the fabricated
+     precision this task explicitly ruled out; they fall through to tier
+     2 instead (see the documented limitation below).
+
+2. **Un-named majority -- two broad, honestly-labeled tiers**, chosen
+   from a real signal already on the job row (zero new DB round trips,
+   consistent with requirement 5 -- `computeRealOdds()` already does
+   exactly one network round trip per job load, the track-record RPC, and
+   this doesn't add a second):
+   - **"competitive" tier, 10%** (~5-15% band) when
+     `job.relevant_industries` -- populated at ingestion, §3.2, the same
+     field `pages/RealJobDetail.jsx` already reads for the "Target
+     industry" match-checklist row -- includes "Management consulting",
+     "Investment banking", or "Private equity". These three fields are
+     well-documented industry-wide as running far tighter
+     applicant-to-hire ratios than a typical corporate role, independent
+     of any one employer's individual fame -- a real, principled signal,
+     not a coin flip.
+   - **"accessible" tier, 20%** (~15-25% band) for everything else --
+     the honest default when there's neither a named-company match nor a
+     tight-industry classification. Covers the large majority of this
+     app's real sources: Stripe, Databricks, Brex, Accordion, Carvana's
+     corporate roles, Charlie Health, etc.
+   - Considered and rejected as the primary size signal: total active
+     job count per company (the task brief's own suggested example).
+     Rejected specifically because computing it live would mean a second
+     DB round trip per job-detail load (no existing per-company count is
+     already fetched anywhere on that page), trading a real cost against
+     a signal that's a weaker fit anyway -- board size correlates with
+     "how much this company is actively hiring," not cleanly with
+     "how selective is any one role," and would have misclassified
+     several of the small-board elite quant shops above as more
+     accessible than they really are (this exact failure mode is why the
+     industry-classification signal was chosen instead for the finance
+     roles it actually covers).
+
+**Documented limitation, not silently smoothed over:** a real but
+lesser-known boutique quant/prop-trading shop that isn't one of the 12
+individually-named "Citadel-tier" firms above, and also isn't tagged
+with a `relevant_industries` value the classifier recognizes as
+"tight" (occupation classification for quant/trading roles doesn't
+currently map onto the consulting/banking/PE industries list), lands in
+the 20% "accessible" tier -- probably an underestimate of how selective
+that specific firm's real hiring is. This wasn't fixable without either
+inventing a firm-specific number (ruled out) or a more elaborate
+role-title heuristic (judged out of scope for a fallback-only feature,
+see the "don't scope-creep" instruction) -- worth revisiting if a better
+real signal (e.g. actual applicant-volume data, once members start using
+the tracker for real) becomes available.
+
+**Labeling -- the part CLAUDE.md's own decision calls "the most
+important part."** Three places needed to change so this new prior is
+never confusable with real UC-specific data, following the same
+fact-vs-inferred template `pages/RealJobDetail.jsx`'s
+`CLASSIFICATION_METHOD_LABEL` already established for `classification_
+method` ("our estimate, from the role title (O*NET)"):
+- The trackRecord factor gained a second flag pair, `industryBaseline`/
+  `industryBaselineNote`, alongside (not replacing) the existing
+  `lowConfidence`/`lowConfidenceNote` used for thin-but-real data --
+  e.g. "Industry-typical rate for elite quant trading (Jane Street) —
+  not based on UC applicants yet" vs. the unrelated existing "n=1 ·
+  limited data" tag. `components/OddsModel.jsx` renders these in a new
+  `.factor-table__industry-baseline` CSS class -- deliberately muted/
+  italic rather than the existing tag's accent color, so the two are
+  never visually confusable at a glance (`styles/jobDetail.css`).
+- `methodologyNote` (shown under the headline number) gets an honest
+  swap when there's no real data at all -- the old copy ("Based on real
+  UC applicants who reached an interview stage...") would otherwise keep
+  displaying even when zero real applicants exist, which is a false
+  claim, not just an omission.
+- The "Past UC applicants" comparison row was a real, pre-existing gap
+  this task surfaced: it would have kept showing the new industry-baseline
+  percentage next to a label flatly asserting it came from past UC
+  applicants. Added `pastUCRateLabel` to the odds object (default
+  undefined, so the mock odds model and every existing real-data case
+  render exactly as before) and made `OddsModel.jsx` render
+  `odds.pastUCRateLabel || "Past UC applicants"` -- when there's no real
+  data it now reads "Industry-typical rate (no UC data yet)" instead.
+
+**Verified (pure-function only, not live in an authenticated browser --
+same auth-wall constraint prior real-odds-model sessions hit, no test
+credentials available and this agent doesn't authenticate as a user
+regardless):** a `vite-node` script (written to the repo root, run, then
+deleted -- not a committed fixture) exercised `industryBaselineForJob()`
+and the full `computeRealOdds()` integration across 9 cases, all passing:
+Jane Street (named elite-quant match, rate 1%); "IMC" -- the real DB
+spelling, confirmed it matches the "IMC Trading" alias; "Chime Financial,
+Inc" -- confirmed the matcher does NOT false-positive against any named
+alias; an unnamed company tagged "Management consulting" (Accordion,
+illustrative) correctly lands in the 10% competitive tier; an unnamed
+company with no tight industry (Stripe) correctly lands in the 20%
+accessible tier; a full `computeRealOdds()` pass for Jane Street with
+zero real applicants confirmed `industryBaseline: true`, the correctly-
+worded note, the swapped `methodologyNote`, and the relabeled
+`pastUCRateLabel` all together, with a sane resulting headline (1%, not
+the old flat-8%-derived number); the same for an accessible-tier company
+(Brex, headline 15% with a mid-strength profile); critically, a case with
+`applicantCount: 1` at the same elite Jane Street company confirmed real
+data still wins outright -- `industryBaseline: false`, the existing
+`lowConfidence`/`n=1 · limited data` tag unchanged, `pastUCRateLabel`
+stays undefined (default row label) -- and a `company`-scope n=6 case
+confirmed the real 2/6 (33%) rate displays untouched. `npm run build` --
+clean. `npm run test:server` -- 123/123 green, unchanged (this feature
+has no server-mirrored logic, same as the mock and real odds models
+before it). **Not verified live in an authenticated browser session** --
+stated honestly rather than claimed: this session had no active session
+or test credentials to reuse, and creating an account or entering a
+password to authenticate is outside what this agent will do regardless
+of instruction. Worth a quick live pass by someone with an active session
+across a named-elite job, a tight-industry unnamed job, and an accessible
+unnamed job, same as the original real-odds-model entry's own closing
+note asked for and eventually got.
+
+Committed and pushed per standing permission for this repo.
