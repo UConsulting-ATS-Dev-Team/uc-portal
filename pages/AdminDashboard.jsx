@@ -8,7 +8,6 @@ import {
   biggestGap,
   CLASS_YEAR_BREAKDOWN,
   MOST_TARGETED_COMPANIES,
-  MEMBER_ENGAGEMENT,
   ACCESS_CONTROL,
   FLAGGED_FEED_POSTS,
 } from "../data/mockAdmin.js";
@@ -53,6 +52,9 @@ export default function AdminDashboard() {
   const [featureRequestsLoading, setFeatureRequestsLoading] = useState(true);
   const [featureRequestsError, setFeatureRequestsError] = useState(null);
   const [updatingRequestId, setUpdatingRequestId] = useState(null);
+  const [engagement, setEngagement] = useState([]);
+  const [engagementLoading, setEngagementLoading] = useState(true);
+  const [engagementError, setEngagementError] = useState(null);
   const gap = biggestGap();
   const maxMembers = Math.max(...INDUSTRY_INTEREST.map((i) => i.members));
 
@@ -168,13 +170,32 @@ export default function AdminDashboard() {
     setBrokenLinkLoading(false);
   }
 
+  // Real member-engagement visibility (member_engagement_report(), a
+  // security definer function -- see its own migration comment for the
+  // full privacy reasoning). This is a deliberately narrower carve-out
+  // from "admins see aggregate only" than the rest of this page: this
+  // story explicitly wants individual identity ("which members haven't
+  // engaged"), so the function returns a name/email + one last-active
+  // timestamp per member -- never *what* they did, no application or
+  // preference content, just presence/absence of activity.
+  async function loadEngagement() {
+    setEngagementLoading(true);
+    const { data, error } = await supabase.rpc("member_engagement_report", { inactive_threshold_days: 14 });
+    if (error) setEngagementError(error.message);
+    else setEngagement(data ?? []);
+    setEngagementLoading(false);
+  }
+
   useEffect(() => {
     loadQueue();
     loadDuplicates();
     loadFeatureRequests();
     loadLowQualityJobs();
     loadBrokenLinkJobs();
+    loadEngagement();
   }, []);
+
+  const disengagedCount = engagement.filter((m) => m.is_disengaged).length;
 
   // feature_requests grants admins direct update access via RLS (unlike
   // jobs/job_sources) since there's no equivalent trust boundary here --
@@ -612,6 +633,58 @@ export default function AdminDashboard() {
           </div>
 
           <div className="detail-section">
+            <h2 className="detail-section__title">Member engagement</h2>
+            <p className="meta" style={{ marginTop: 0 }}>
+              Real signed-up accounts, ranked least-active first. "Last active" is the most recent of: signing
+              in, editing preferences/profile, tracker activity, saving a job, or a coffee-chat/connection
+              update -- presence only, never what a member actually did. Per CLAUDE.md's standing privacy rule,
+              this never surfaces an individual's application list or its contents, only whether they've
+              touched the platform at all. {engagementLoading ? "" : `${engagement.length} real account${engagement.length === 1 ? "" : "s"} exist today -- this list is genuinely small until real members sign up.`}
+            </p>
+            {engagementError && <p className="meta" style={{ color: "#B3261E" }}>{engagementError}</p>}
+            <div className="queue-table__scroll">
+            <table className="queue-table">
+              <thead>
+                <tr>
+                  <th>Member</th>
+                  <th>Last active</th>
+                  <th>Days inactive</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {engagement.map((m) => (
+                  <tr key={m.member_id}>
+                    <td>{m.display_name}</td>
+                    <td className="meta">
+                      {m.last_active_at
+                        ? new Date(m.last_active_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+                        : "Never"}
+                    </td>
+                    <td>{m.days_inactive ?? "—"}</td>
+                    <td>{m.is_disengaged ? "Disengaged" : "Active"}</td>
+                  </tr>
+                ))}
+                {!engagementLoading && engagement.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="meta">
+                      No real signed-up accounts yet.
+                    </td>
+                  </tr>
+                )}
+                {engagementLoading && (
+                  <tr>
+                    <td colSpan={4} className="meta">
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            </div>
+          </div>
+
+          <div className="detail-section">
             <h2 className="detail-section__title">Feature requests</h2>
             {featureRequestsError && <p className="meta" style={{ color: "#B3261E" }}>{featureRequestsError}</p>}
             <div className="queue-table__scroll">
@@ -702,29 +775,18 @@ export default function AdminDashboard() {
 
           <div className="rail-card">
             <div className="rail-card__title">Member engagement</div>
+            {engagementError && <p className="meta" style={{ color: "#B3261E" }}>{engagementError}</p>}
             <div className="engagement-row">
-              <span>Logged in this week</span>
-              <span>{MEMBER_ENGAGEMENT.loggedInThisWeek}</span>
-            </div>
-            <div className="engagement-row">
-              <span>Tracking ≥1 application</span>
-              <span>{MEMBER_ENGAGEMENT.trackingAtLeastOne}</span>
-            </div>
-            <div className="engagement-row">
-              <span>Booked a coffee chat</span>
-              <span>{MEMBER_ENGAGEMENT.bookedCoffeeChat}</span>
-            </div>
-            <div className="engagement-row">
-              <span>Contributed a resource</span>
-              <span>{MEMBER_ENGAGEMENT.contributedResource}</span>
+              <span>Real signed-up accounts</span>
+              <span>{engagementLoading ? "…" : engagement.length}</span>
             </div>
             <div className="engagement-row is-accent">
-              <span>Never opened the platform</span>
-              <span>{MEMBER_ENGAGEMENT.neverOpened}</span>
+              <span>No activity in 14+ days</span>
+              <span>{engagementLoading ? "…" : disengagedCount}</span>
             </div>
-            <button className="btn btn-secondary" style={{ marginTop: "var(--space-4)", width: "100%" }}>
-              Nudge inactive members
-            </button>
+            <p className="meta" style={{ marginTop: "var(--space-3)" }}>
+              Full list, real names, below.
+            </p>
           </div>
 
           <div className="rail-card">

@@ -5017,3 +5017,80 @@ is itself a fresh direct-query confirmation, not carried over from any
 prior pass's claim).
 
 Committed and pushed per standing permission for this repo.
+
+**2026-09-02 -- Real member-engagement visibility for Admin Dashboard,
+closing a story that had sat mock since Stage 4.** PROJECT_PLAN.md's own
+user story asks for exactly this: "As an Exec member, I want to see
+which members haven't engaged with the platform at all, so that I can
+nudge them before they disengage from UC entirely." CLAUDE.md's own
+build notes had already flagged the Admin Dashboard's engagement numbers
+as "illustrative mock figures... since this is the one screen where real
+computation from browsable records isn't possible" -- no longer true
+now that `member_preferences`, `tracked_applications`, `saved_jobs`, and
+`network_connections` all exist with real per-member timestamps.
+
+**Privacy design -- a deliberately different, narrower carve-out than
+`company_demand_report()`/`job_track_record_report()`.** Those two never
+return identity at all. This story explicitly wants it ("which
+members"), since the whole point is enabling individual outreach. The
+line drawn: admins may see *that* a member has or hasn't been active and
+*when*, never *what* they did. `member_engagement_report(integer)`
+(migration `20260902110000_member_engagement_report.sql`) is a
+`security definer` function, same `is_admin()`-gated pattern as the
+other two reports, but its return shape is `{member_id, display_name,
+email, last_active_at, days_inactive, is_disengaged}` -- a single
+timestamp computed as the greatest of five real activity signals
+(`auth.users.last_sign_in_at`, and each table's own `updated_at`/
+`saved_at`), never which specific table fired or its row content. No
+RLS grant was opened on the underlying activity tables themselves --
+the function is the only path, exactly like the existing pattern.
+
+**Identity resolution, investigated rather than assumed:** `profiles`
+has only 2 rows today, both with `full_name` empty (members rarely fill
+in My Profile's Personal tab) -- so the function resolves a real name by
+matching email against the real `people` table first, falls back to
+`profiles.full_name`, and falls back to the account's own email as a
+last resort (never a fabricated name). Real coverage today: 0 of 2 real
+signed-up accounts matched a `people` row (both are this session's own
+test accounts, `ucportal.claude.test.001@gmail.com` and
+`jflowenberg+ucportaltest@gmail.com` -- neither is a real club member),
+so both currently fall back to displaying their email. This coverage
+number will improve automatically once real members actually sign up
+with their real club email.
+
+**Honest scope note:** there are only 2 real accounts in the whole
+project right now, one of which has never signed in. This feature is
+correctly-built real infrastructure, not something with meaningful data
+to show today -- same situation as the job-board history snapshots
+(US-61) from two days ago. It's ready the moment real membership exists.
+
+**UI**: `pages/AdminDashboard.jsx`'s "Member engagement" rail card now
+shows two real numbers (total real accounts, count inactive 14+ days)
+instead of the old five-line mock breakdown, and a new full detail-
+section table (matching the existing Job Quality/Broken Links panel
+pattern -- `queue-table`/`queue-table__scroll`, no new CSS) lists every
+real account, least-active first, with an honest note when the list is
+this small. The old inert "Nudge inactive members" button (never wired
+to anything) was removed rather than kept as another dead click target.
+`MEMBER_ENGAGEMENT` was removed from `data/mockAdmin.js`'s imports here
+(the mock export itself is left in place in case another mock-data
+screen still references it -- not swept for unrelated cleanup).
+
+**Verified:** the function's core computation logic directly via a raw
+(non-RPC) SQL query bypassing the `is_admin()` gate for testing purposes
+only -- confirmed both real accounts compute correctly: the
+never-signed-in account correctly falls through every signal to
+`last_active_at: null` / `is_disengaged: true`; the other account's
+`last_active_at` came out *later* than its own `last_sign_in_at`,
+confirming the "greatest of several real signals" logic is genuinely
+pulling from more than just login time, not silently degrading to it.
+`is_admin()` itself is the exact same, already-proven gate
+`company_demand_report()` uses -- not re-verified independently here,
+since re-proving an already-proven shared mechanism adds no real
+confidence. `npx vite build` clean. `npm run test:server`: 123/123
+green (one transient flake on an earlier run, unrelated -- re-ran clean
+immediately after, same 123/123 baseline, no code changed between runs).
+**Not verified in a live authenticated browser session** -- same
+constraint as every other real-data feature this session that needed
+one: no test credentials this agent will use itself. Worth a quick
+visual pass by someone with an active admin session.
