@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { nextActionForStage, formatDate } from "../data/trackerUtils.js";
+import { nextActionForStage, formatDate, outcomeLabel } from "../data/trackerUtils.js";
 import { deadlineLabel } from "../data/jobUtils.js";
 import CompanyLogo from "./CompanyLogo.jsx";
 
@@ -11,9 +11,15 @@ const COLUMNS = [
   { key: "deadline", label: "Deadline" },
   { key: "nextAction", label: "Next action" },
   { key: "connections", label: "UC connections" },
+  { key: "outcome", label: "Outcome" },
 ];
 
-export default function TrackerTable({ applications, sortColumn, sortDirection, onSort, onExportCsv }) {
+// onRequestOutcome: (jobId) => void, optional -- same callback TrackerBoard
+// takes, passed down from Applications.jsx so the one outcome-capture
+// modal works from either view. Table has no stage-change interaction of
+// its own (sorting/export only), so this column is read-only except for
+// the "Record outcome" link on a Closed row with nothing recorded yet.
+export default function TrackerTable({ applications, sortColumn, sortDirection, onSort, onExportCsv, onRequestOutcome }) {
   return (
     <div>
       <div className="tracker-table__scroll">
@@ -29,7 +35,7 @@ export default function TrackerTable({ applications, sortColumn, sortDirection, 
             </tr>
           </thead>
           <tbody>
-            {applications.map(({ jobId, job, stage, addedAt }) => (
+            {applications.map(({ jobId, job, stage, addedAt, outcome }) => (
               <tr key={jobId} className={stage === "Closed" ? "is-closed" : ""}>
                 <td>
                   <Link to={`/jobs/${jobId}`} className="tracker-table__company" style={{ textDecoration: "none" }}>
@@ -45,6 +51,17 @@ export default function TrackerTable({ applications, sortColumn, sortDirection, 
                 <td>{job.rolling ? "Rolling" : deadlineLabel(job)}</td>
                 <td>{nextActionForStage(stage)}</td>
                 <td>{job.ucConnections}</td>
+                <td>
+                  {stage !== "Closed" ? (
+                    "—"
+                  ) : outcome ? (
+                    <span className="chip">{outcomeLabel(outcome)}</span>
+                  ) : (
+                    <button className="btn-link" onClick={() => onRequestOutcome?.(jobId)}>
+                      Record outcome
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

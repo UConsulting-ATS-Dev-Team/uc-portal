@@ -30,11 +30,18 @@ const SPARSE_DATA_THRESHOLD = 5;
 // fabricated real statistic. The number actually displayed next to it (the
 // member's own logged hours) is always real.
 const OFFER_MEDIAN_HOURS = 26;
-// Real track record measures "reached an interview," a structurally easier
-// bar than the mock model's "received an offer" (see below) -- ceiling set
-// higher than oddsModel.js's 0.35 offer-rate ceiling accordingly: a 50%
-// interview-reach rate reads as maximum strength here.
+// Real track record measures "reached an interview" whenever there's no
+// real offer data yet -- a structurally easier bar than "received an
+// offer" -- so its ceiling is set higher than the offer-rate ceiling below:
+// a 50% interview-reach rate reads as maximum strength for that proxy.
 const TRACK_RECORD_CEILING = 0.5;
+// Used instead of the interview-reach ceiling above once real offer data
+// exists (tracked_applications.outcome, migration
+// 20260902130000/20260902130100) -- same 0.35 ("a 35% offer rate reads as
+// maximum strength") data/oddsModel.js's own mock offer-rate factor
+// already uses, since this is now measuring the literal same thing
+// (offers / applicants), just from real rather than mock data.
+const OFFER_RATE_CEILING = 0.35;
 // DEFAULT_BASE_RATE (the old flat 8% fallback) is gone -- see
 // data/industryBaseRates.js's industryBaselineForJob() for what replaced
 // it: a tiered, honestly-labeled prior (named-company research for ~20
@@ -48,31 +55,34 @@ function clamp01(n) {
   return Math.max(0, Math.min(1, n));
 }
 
-// tracked_applications' stage taxonomy (data/trackerUtils.js) has no
-// "received an offer" outcome -- "Closed" is ambiguous (offer-and-accepted,
-// rejected, or withdrawn all look identical). Treating "Closed" as a stand-in
-// for "offer" would fabricate data that doesn't exist, which is exactly what
-// CLAUDE.md's "every number traceable" principle rules out. "Reached an
-// interview stage" (First round or Final round) is the closest real,
-// non-fabricated signal tracked_applications actually has -- job_track_record
-// _report() (migration 20260831230000) computes it as a privacy-safe
-// aggregate (security definer, counts only, no member identity ever
-// returned), falling back from job-level to company-level when the specific
-// posting has zero tracked applicants of its own (the common case for a
-// single real listing).
+// tracked_applications' stage taxonomy (data/trackerUtils.js) originally had
+// no "received an offer" outcome -- "Closed" was ambiguous (offer-and-
+// accepted, rejected, or withdrawn all looked identical). A real `outcome`
+// column now exists (migration 20260902130000_tracked_application_outcome
+// .sql) and job_track_record_report() (20260831230000, extended by
+// 20260902130100_job_track_record_report_offers.sql) reports a real
+// `offer_count` alongside the original counts. "Reached an interview stage"
+// (First round or Final round) remains the fallback signal for whenever no
+// UC member has recorded a real offer outcome yet -- see computeRealOdds()
+// below for exactly when each is used and why. Both are computed as a
+// privacy-safe aggregate (security definer, counts only, no member identity
+// ever returned), falling back from job-level to company-level when the
+// specific posting has zero tracked applicants of its own (the common case
+// for a single real listing).
 export async function fetchTrackRecord(job) {
   const { data, error } = await supabase.rpc("job_track_record_report", {
     target_job_id: job.id,
     target_company: job.company,
   });
   if (error || !data || data.length === 0) {
-    return { scope: "job", applicantCount: 0, interviewCount: 0 };
+    return { scope: "job", applicantCount: 0, interviewCount: 0, offerCount: 0 };
   }
   const row = data[0];
   return {
     scope: row.scope,
     applicantCount: Number(row.applicant_count) || 0,
     interviewCount: Number(row.interview_count) || 0,
+    offerCount: Number(row.offer_count) || 0,
   };
 }
 
@@ -95,19 +105,44 @@ export async function fetchRealOddsInputs(job, { matchScore, people, savedConnec
 // track-record factor above is built around.
 export function computeRealOdds(inputs, { extraPrepHours = 0 } = {}) {
   const { job, matchScore, people, savedConnections, coffeeChatStatus, trackRecord } = inputs;
-  const { scope, applicantCount, interviewCount } = trackRecord;
+  const { scope, applicantCount, interviewCount, offerCount = 0 } = trackRecord;
 
   const prepHours = extraPrepHours;
-  // Two distinct "not much data" states, deliberately not collapsed into
-  // one -- see CLAUDE.md's sparse-data rule (thin-but-real data still
-  // wins and gets the existing "n=N - limited data" flag) vs. this
-  // session's new no-real-data-at-all case (gets a differently-worded
-  // "industry-typical, not UC-specific" flag instead -- see
-  // industryBaselineNote below and OddsModel.jsx's rendering of it).
+  // Three distinct "how much do we actually know" states, deliberately not
+  // collapsed into one:
+  //  - hasNoRealData: zero UC applicants tracked at all -- falls back to
+  //    the researched industry-typical prior (industryBaseRates.js),
+  //    labeled as such.
+  //  - hasOfferData: at least one UC applicant's outcome is recorded as a
+  //    real offer -- the genuine signal this whole feature exists to
+  //    surface, used in preference to the interview-stage proxy the moment
+  //    it exists. Deliberately NOT triggered by offerCount === 0 alone
+  //    (applicantCount > 0 but nobody has recorded an offer yet) -- a zero
+  //    here is ambiguous between "confirmed nobody got an offer" and "no
+  //    one has recorded their outcome yet" (most Closed rows still have
+  //    outcome = null, and plenty of applicants haven't reached Closed at
+  //    all), so it would be dishonest to read it as a real 0% rate. Only a
+  //    positive offer count is unambiguous, so only a positive count
+  //    switches the factor over -- this is the asymmetry the task brief
+  //    asked to reason through explicitly.
+  //  - otherwise: the original "reached an interview stage" proxy, exactly
+  //    as before this task -- real applicant data exists, just not (yet)
+  //    a real offer outcome.
+  // isSparse (thin-but-real data still wins, just visibly flagged) applies
+  // across both the offer and interview-proxy cases, keyed off the same
+  // applicantCount denominator either way -- an offer count will always be
+  // sparser than the interview count it's a subset of, so this threshold
+  // if anything under-flags the offer case, never over-flags it.
   const hasNoRealData = applicantCount === 0;
+  const hasOfferData = offerCount > 0;
   const isSparse = applicantCount > 0 && applicantCount < SPARSE_DATA_THRESHOLD;
   const industryBaseline = hasNoRealData ? industryBaselineForJob(job) : null;
-  const companyRate = hasNoRealData ? industryBaseline.rate : interviewCount / applicantCount;
+  const trackRecordCeiling = hasOfferData ? OFFER_RATE_CEILING : TRACK_RECORD_CEILING;
+  const companyRate = hasNoRealData
+    ? industryBaseline.rate
+    : hasOfferData
+      ? offerCount / applicantCount
+      : interviewCount / applicantCount;
 
   const connectedIds = new Set([...(savedConnections || []), ...Object.keys(coffeeChatStatus || {})]);
   const peopleAtCompany = people || [];
@@ -119,6 +154,9 @@ export function computeRealOdds(inputs, { extraPrepHours = 0 } = {}) {
   let trackRecordSignal;
   if (applicantCount === 0) {
     trackRecordSignal = "No UC applicants on record yet";
+  } else if (hasOfferData) {
+    const scopeNote = scope === "job" ? "this exact posting" : `${job.company} roles (company-wide, not this posting)`;
+    trackRecordSignal = `${offerCount} of ${applicantCount} UC applicant${applicantCount === 1 ? "" : "s"} to ${scopeNote} received an offer`;
   } else if (scope === "job") {
     trackRecordSignal = `${interviewCount} of ${applicantCount} UC applicant${applicantCount === 1 ? "" : "s"} to this exact posting reached an interview`;
   } else {
@@ -131,7 +169,7 @@ export function computeRealOdds(inputs, { extraPrepHours = 0 } = {}) {
       label: "UC track record here",
       weight: WEIGHTS.trackRecord,
       signal: trackRecordSignal,
-      score: clamp01(companyRate / TRACK_RECORD_CEILING),
+      score: clamp01(companyRate / trackRecordCeiling),
       lowConfidence: isSparse,
       lowConfidenceNote: isSparse ? `n=${applicantCount} · limited data` : undefined,
       // Distinct from lowConfidence above -- that flag means "some real
@@ -199,17 +237,33 @@ export function computeRealOdds(inputs, { extraPrepHours = 0 } = {}) {
   const projectedQuality = qualityIndex + lever.gain;
   const projectedEstimate = Math.round(Math.max(1, Math.min(95, companyRate * (0.5 + projectedQuality) * 100)));
 
+  // Headline label/methodology copy now has three honestly-distinct
+  // states instead of two, mirroring the three-way companyRate branch
+  // above -- gap this task set out to close: once a real offer outcome
+  // exists, the headline stops saying "reaching an interview" (a proxy)
+  // and correctly says "receiving an offer" (the real thing).
+  const headlineLabel = hasOfferData
+    ? "Estimated likelihood of receiving an offer"
+    : "Estimated likelihood of reaching an interview";
+  let methodologyNote;
+  if (hasNoRealData) {
+    // Unchanged from before this task -- no UC applicants on record at
+    // all, so this must never claim to be based on real UC outcomes,
+    // same never-confusable-with-real-data requirement as the
+    // factor-level industryBaselineNote below.
+    methodologyNote =
+      "No UC applicants are on record for this company yet, so the estimate below uses a researched industry-typical baseline instead of real UC outcomes — see the \"UC track record\" factor for what that baseline is.";
+  } else if (hasOfferData) {
+    methodologyNote = "Based on real UC applicants' recorded outcomes — including at least one real offer on record, the strongest signal this model can use.";
+  } else {
+    methodologyNote =
+      "Based on real UC applicants who reached an interview stage — no UC applicant has a recorded offer outcome for this company yet, so this measures interview-stage progress as the closest available proxy.";
+  }
+
   return {
     headline,
-    headlineLabel: "Estimated likelihood of reaching an interview",
-    // hasNoRealData gets an honest methodology note instead of the
-    // default one, which would otherwise claim "based on real UC
-    // applicants" while there are none -- the same
-    // never-confusable-with-real-data requirement as the factor-level
-    // industryBaselineNote above.
-    methodologyNote: hasNoRealData
-      ? "No UC applicants are on record for this company yet, so the estimate below uses a researched industry-typical baseline instead of real UC outcomes — see the \"UC track record\" factor for what that baseline is."
-      : "Based on real UC applicants who reached an interview stage — the tracker doesn't record final offer outcomes yet, so this measures interview-stage progress rather than offers.",
+    headlineLabel,
+    methodologyNote,
     openMarketBaseline,
     pastUCRate,
     // "Past UC applicants" is only an honest label when pastUCRate is

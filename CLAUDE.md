@@ -832,6 +832,38 @@ longer breaks down to phone width either.
   [JOB_ENGINE_ARCHITECTURE.md](JOB_ENGINE_ARCHITECTURE.md)'s dated entry
   for the full verification transcript.
 
+- **Real offer outcomes on the Applications tracker** — closes the exact
+  gap the real odds model's "UC track record" factor writeup named:
+  `tracked_applications` had no "received an offer" outcome, so that
+  factor measured "reached an interview stage" as a proxy. A new
+  `outcome` column (`null`, `offer`, `rejected`, `withdrew`, or
+  `no_response` — `null` means "Closed but not yet annotated," never a
+  fifth real value) is captured in the real tracker UI:
+  `components/modals/RecordOutcomeModal.jsx` opens automatically when a
+  Board card is dropped into Closed, and via a persistent "Record
+  outcome" affordance on any already-Closed card without one (covers the
+  seed data and every pre-existing Closed application too). `data/store
+  .jsx`'s new `setApplicationOutcome()` is deliberately separate from
+  `updateApplicationStage()` so recording an outcome doesn't spuriously
+  append to `stageHistory`. `job_track_record_report()` now returns a
+  real `offer_count`, and `data/realOddsModel.js` prefers a genuine offer
+  rate over the interview-stage proxy the moment `offerCount > 0` — but
+  deliberately *not* on `offerCount === 0` alone (ambiguous between "no
+  one got an offer" and "no one's recorded their outcome yet"), so the
+  factor only ever upgrades on an unambiguous positive signal. Verified
+  via a self-cleaning migration's live SQL test, a second independent
+  direct-SQL pass (upserting through the exact shape the real UI's sync
+  path sends, confirming `job_track_record_report()`'s new column, then
+  cleaning up with zero residue), a 5-case `vite-node` pass over
+  `computeRealOdds()`, and a live local browser click-through of the
+  outcome modal and both tracker views (drag-to-Closed's auto-open
+  itself was code-reviewed rather than live-dragged — this session's
+  browser tool couldn't trigger native HTML5 drag-and-drop, a known
+  limitation, not a skipped check) — see
+  [JOB_ENGINE_ARCHITECTURE.md](JOB_ENGINE_ARCHITECTURE.md)'s dated entry
+  for the full transcript. `npm run test:server`: 123/123 green,
+  unchanged (no server-mirrored logic for this feature).
+
 Run locally:
 ```bash
 npm install

@@ -81,6 +81,11 @@ const SEED_TRACKED_JOBS = {
       { stage: "Applied", date: "2026-07-25T12:00:00.000Z" },
       { stage: "Closed", date: "2026-08-01T12:00:00.000Z" },
     ],
+    // The one seeded application already at Closed gets a real outcome so
+    // the Board/Table demo the "recorded" rendering, not just the "Record
+    // outcome" prompt -- see data/trackerUtils.js's OUTCOMES for the four
+    // real values this field can hold.
+    outcome: "offer",
   },
 };
 
@@ -338,7 +343,7 @@ export function AppStateProvider({ children }) {
     setState((prev) => {
       if (prev.trackedJobs[jobId]) return prev; // don't downgrade an existing stage
       const now = new Date().toISOString();
-      const record = { stage, addedAt: now, stageHistory: [{ stage, date: now }] };
+      const record = { stage, addedAt: now, stageHistory: [{ stage, date: now }], outcome: null };
       syncPayload = { ...record, prepLoggedHours: 0, timelineShiftDays: 0 };
       return { ...prev, trackedJobs: { ...prev.trackedJobs, [jobId]: record } };
     });
@@ -364,6 +369,27 @@ export function AppStateProvider({ children }) {
       const existing = prev.trackedJobs[jobId];
       const history = existing.stageHistory || [];
       const record = { ...existing, stage, stageHistory: [...history, { stage, date: new Date().toISOString() }] };
+      syncPayload = { ...record, prepLoggedHours: prev.prepLogged[jobId] ?? 0, timelineShiftDays: prev.timelineShiftDays[jobId] ?? 0 };
+      return { ...prev, trackedJobs: { ...prev.trackedJobs, [jobId]: record } };
+    });
+    if (syncPayload) syncTrackedApplicationToRemote(jobId, syncPayload);
+  }
+
+  // Records what actually happened on an application -- separate from
+  // updateApplicationStage (rather than an extra param on it) since
+  // setting/correcting an outcome shouldn't append a second entry to
+  // stageHistory the way a real stage transition does. Real UI calls this
+  // from components/modals/RecordOutcomeModal.jsx, opened either right
+  // after a card is dropped/set to Closed or later via the persistent
+  // "Record outcome" affordance on an already-Closed card with no outcome
+  // yet (covers every pre-existing Closed application too, including the
+  // seed data and anything added directly at Closed via AddApplicationModal).
+  function setApplicationOutcome(jobId, outcome) {
+    let syncPayload = null;
+    setState((prev) => {
+      const existing = prev.trackedJobs[jobId];
+      if (!existing) return prev;
+      const record = { ...existing, outcome };
       syncPayload = { ...record, prepLoggedHours: prev.prepLogged[jobId] ?? 0, timelineShiftDays: prev.timelineShiftDays[jobId] ?? 0 };
       return { ...prev, trackedJobs: { ...prev.trackedJobs, [jobId]: record } };
     });
@@ -448,6 +474,7 @@ export function AppStateProvider({ children }) {
         addToTracker,
         logPrep,
         updateApplicationStage,
+        setApplicationOutcome,
         shiftTimeline,
         requestCoffeeChat,
         toggleSavedConnection,

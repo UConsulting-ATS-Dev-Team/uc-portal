@@ -1,0 +1,44 @@
+-- Closes the gap JOB_ENGINE_ARCHITECTURE.md's real-odds-model entry named
+-- explicitly: tracked_applications' stage taxonomy (data/trackerUtils.js's
+-- STAGES) has no "received an offer" outcome -- "Closed" alone is
+-- ambiguous (offer-and-accepted, rejected, and withdrawn all looked
+-- identical). job_track_record_report() had to fall back to measuring
+-- "reached an interview stage" instead of a real offer rate because of
+-- exactly this gap. This migration adds the missing field so a future pass
+-- (this same task, see the next migration) can report a genuine offer rate.
+--
+-- text + a check constraint, not a Postgres enum type -- matches this same
+-- table's own existing `stage text not null` column (an enum was never
+-- used for stage either), not the separate `interview_writeup_outcome`
+-- enum a different concurrent migration
+-- (20260902120000_interview_writeups.sql) introduced for a different table
+-- with its own self-reported-write-up conventions.
+--
+-- Four values, chosen to be genuinely distinguishable and non-overlapping:
+--   - 'offer'       -- got an offer (regardless of whether they accepted --
+--                      accept/decline isn't tracked separately; "did UC
+--                      applicants who reached this far get offered" is the
+--                      real signal the odds model needs, not what a member
+--                      personally chose to do with it)
+--   - 'rejected'     -- explicitly turned down by the employer
+--   - 'withdrew'     -- the member pulled out before a decision
+--   - 'no_response'  -- the employer went silent / ghosted -- deliberately
+--                      kept distinct from 'rejected' (a real, common, and
+--                      different outcome, not the same thing worded twice)
+-- NULL is the default and stays valid indefinitely -- it means "Closed but
+-- outcome not yet recorded," not "resolved with no outcome." Every
+-- application that reached Closed before this migration existed, and any
+-- new one a member declines to annotate, is exactly this case: still
+-- genuinely ambiguous until a member records what happened. The odds model
+-- and any future admin analytics must keep treating null as "no data,"
+-- never silently as one of the four real values.
+--
+-- Deliberately NOT constrained to only be set when stage = 'Closed' (no
+-- trigger, no compound check) -- keeps this migration simple, matches this
+-- table's existing light-touch validation (stage itself isn't
+-- constrained to the STAGES list at the DB level either, since that list
+-- lives in data/trackerUtils.js), and leaves room for a member to correct
+-- an outcome later without the DB fighting a legitimate edit path.
+alter table tracked_applications
+  add column outcome text
+    check (outcome is null or outcome in ('offer', 'rejected', 'withdrew', 'no_response'));

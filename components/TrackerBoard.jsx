@@ -1,16 +1,32 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { STAGES, INTERVIEW_STAGES } from "../data/trackerUtils.js";
+import { STAGES, INTERVIEW_STAGES, outcomeLabel } from "../data/trackerUtils.js";
 import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
 import CompanyLogo from "./CompanyLogo.jsx";
 
-export default function TrackerBoard({ applications, onMoveStage }) {
+// onRequestOutcome: (jobId) => void, optional -- when provided, dropping a
+// card into Closed opens the outcome-capture modal right away (Applications.jsx
+// owns that modal's open/closed state), and Closed cards with no outcome
+// recorded yet get a "Record outcome" affordance instead of a bare detail
+// line. Optional so this component still works standalone/unchanged if a
+// future caller doesn't want the prompt.
+export default function TrackerBoard({ applications, onMoveStage, onRequestOutcome }) {
   const [dragOverStage, setDragOverStage] = useState(null);
 
   function handleDrop(event, stage) {
     event.preventDefault();
     const jobId = event.dataTransfer.getData("text/plain");
-    if (jobId) onMoveStage(jobId, stage);
+    if (jobId) {
+      onMoveStage(jobId, stage);
+      // Prompt right at the moment of transition, per this feature's own
+      // design brief -- doesn't fire for a card dragged between two
+      // non-Closed columns, and doesn't re-fire for a card dragged within
+      // Closed (drop target is already Closed either way, so this can't
+      // distinguish "just arrived" from "already here" -- harmless, since
+      // the modal is a no-op to re-open on an application that already has
+      // an outcome, and the persistent card affordance covers the rest).
+      if (stage === "Closed") onRequestOutcome?.(jobId);
+    }
     setDragOverStage(null);
   }
 
@@ -34,7 +50,7 @@ export default function TrackerBoard({ applications, onMoveStage }) {
               onDragLeave={() => setDragOverStage(null)}
               onDrop={(e) => handleDrop(e, stage)}
             >
-              {cards.map(({ jobId, job }) => {
+              {cards.map(({ jobId, job, outcome }) => {
                 const urgent = isUrgent(job);
                 return (
                   <div
@@ -51,10 +67,21 @@ export default function TrackerBoard({ applications, onMoveStage }) {
                       <div className="board-card__role">{job.role}</div>
                     </Link>
                     <div className={`board-card__detail${urgent ? " is-urgent" : ""}`}>
-                      {stage === "Closed" ? "Closed" : job.rolling ? "Rolling deadline" : deadlineLabel(job)}
+                      {stage === "Closed" ? (outcome ? outcomeLabel(outcome) : "Closed") : job.rolling ? "Rolling deadline" : deadlineLabel(job)}
                     </div>
                     {stage === "Applied" && (
                       <button className="btn btn-secondary board-card__followup">Follow up</button>
+                    )}
+                    {stage === "Closed" && !outcome && (
+                      <button
+                        className="btn btn-secondary board-card__followup"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          onRequestOutcome?.(jobId);
+                        }}
+                      >
+                        Record outcome
+                      </button>
                     )}
                   </div>
                 );

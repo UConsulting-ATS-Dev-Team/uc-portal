@@ -5095,6 +5095,183 @@ constraint as every other real-data feature this session that needed
 one: no test credentials this agent will use itself. Worth a quick
 visual pass by someone with an active admin session.
 
+**2026-09-02 -- Real offer outcomes: closing the exact gap the odds
+model's own track-record writeup named.** That entry (2026-08-31, above)
+said plainly: "the tracker doesn't record final offer outcomes yet, so
+this measures interview-stage progress rather than offers." This closes
+that gap for real -- a genuine `outcome` field on `tracked_applications`,
+captured in the real Applications tracker UI, and `job_track_record_
+report()`/`data/realOddsModel.js` updated to prefer it the moment it
+exists.
+
+**Schema** (`20260902130000_tracked_application_outcome.sql`): adds
+`outcome text` to `tracked_applications`, constrained by a plain check
+(not a Postgres enum -- matches this same table's own existing `stage
+text` column, not the separate `interview_writeup_outcome` enum a
+different, concurrent migration this same day introduced for an
+unrelated table) to four values: `'offer'`, `'rejected'`, `'withdrew'`,
+`'no_response'` (an employer going silent, deliberately kept distinct
+from an explicit rejection -- a real and different outcome, not the same
+thing worded twice). `NULL` is the default and stays valid indefinitely
+-- it means "Closed but not yet annotated" (every pre-existing Closed
+row, seed data included, and any new one a member skips), never a fifth
+real value. Not constrained to `stage = 'Closed'` at the DB level,
+matching this table's existing light-touch validation (STAGES itself
+isn't DB-enforced either) and leaving room to correct an outcome later.
+
+**Real UI**: `data/trackerUtils.js` gained `OUTCOMES`/`outcomeLabel()` as
+the single source of truth for the four values and their display labels.
+`data/store.jsx` gained `setApplicationOutcome(jobId, outcome)` --
+deliberately a separate function from `updateApplicationStage()` rather
+than an extra parameter on it, since recording/correcting an outcome
+shouldn't append a second entry to `stageHistory` the way a real stage
+transition does. New `components/modals/RecordOutcomeModal.jsx` (reusing
+the shared `Modal.jsx` shell and the established `chip-row`/`chip-toggle`
+single-select pattern, same as Request a feature) is opened two ways from
+`pages/Applications.jsx`: automatically right after `TrackerBoard`'s
+`handleDrop` moves a card into the Closed column (the natural moment,
+per this task's own brief), and via a persistent "Record outcome"
+affordance on any already-Closed card with no outcome yet --
+`TrackerBoard.jsx`'s cards and a new "Outcome" column on
+`TrackerTable.jsx` both render it (a chip once recorded, a link/button
+before), which also covers every application that reached Closed before
+this feature existed (the seed data, or anything added directly at
+Closed via `AddApplicationModal`) without needing separate handling.
+CSV export (`toCsv()` in `Applications.jsx`) gained an Outcome column too
+-- the same "every number traceable, and exportable" spirit as the rest
+of the tracker. `data/trackerSync.js`'s `rowsToLocalMaps`/
+`syncTrackedApplicationToRemote` carry `outcome` through the existing
+background-sync path unchanged in shape -- no new write path invented,
+same "local store first, Supabase synced in the background" pattern
+`prepLoggedHours`/`timelineShiftDays` already established.
+
+**`job_track_record_report()` extended, not replaced in place**
+(`20260902130100_job_track_record_report_offers.sql`) -- `create or
+replace` can't add an output column to an existing `returns table(...)`
+function (Postgres treats it as a return-type change), so this drops and
+recreates, re-granting `execute` to `authenticated` afterward (a drop
+doesn't carry the old grant forward). Adds `offer_count bigint`
+alongside the existing `applicant_count`/`interview_count`, computed at
+both the job- and company-scope with the identical `count(distinct
+member_id) filter (...)` pattern the existing counts already use --
+same privacy guarantee (aggregate counts only, never a row per member).
+
+**`data/realOddsModel.js`: three honestly-distinct data states, not
+two.** `computeRealOdds()` now branches on `hasNoRealData` (unchanged --
+industry-baseline prior), `hasOfferData` (`offerCount > 0` -- the new
+case), and the original interview-stage proxy as the remaining
+fallback. The **sparse-data-threshold reasoning the task asked to work
+through explicitly**: `hasOfferData` is deliberately triggered by
+`offerCount > 0` alone, never by `offerCount === 0`, even when
+`applicantCount` is well past the existing sparse threshold of 5 -- a
+zero offer count is genuinely ambiguous between "confirmed nobody got an
+offer" and "nobody has recorded their outcome yet" (most Closed rows
+still have `outcome = null`, and plenty of tracked applicants haven't
+reached Closed at all), so reading a zero as a real 0% rate would be
+exactly the kind of dishonest number CLAUDE.md's "every number
+traceable" principle rules out. Only a *positive* offer count is
+unambiguous, so only a positive count switches the factor over. The
+existing `isSparse` (`n<5`) flag still applies underneath either the
+offer or interview-proxy branch, keyed off the same `applicantCount`
+denominator -- an offer count is always a subset of (so always sparser
+than) the interview count it can replace, meaning this threshold
+if anything under-flags the offer case, never over-flags it. The
+offer-rate ceiling reuses `data/oddsModel.js`'s own mock offer-rate
+constant (0.35 -- "a 35% offer rate reads as maximum strength") rather
+than the interview-proxy's looser 0.5 ceiling, since this is now
+measuring the literal same thing the mock model already measures, just
+from real instead of fabricated data. `headlineLabel`/`methodologyNote`
+now read "likelihood of receiving an offer" / "based on real UC
+applicants' recorded outcomes... including at least one real offer on
+record" the moment real offer data exists, replacing the interview-stage
+proxy wording -- the exact copy fix this whole task exists to make.
+
+**Verified:**
+- The two new migrations plus a third, self-cleaning live test
+  (`20260902130200_verify_job_track_record_report_offers.sql`, same
+  `do $$ ... $$` pattern as the original 20260831230100 -- a failed
+  `RAISE EXCEPTION` rolls the whole thing back automatically) all pushed
+  clean via `npx supabase db push`: inserted a `rejected`-outcome row and
+  confirmed `offer_count` did *not* increment, then an `offer`-outcome
+  row and confirmed it incremented by exactly one, deleted both and
+  confirmed the report reverted to baseline with zero residue.
+- **A second, independent direct-SQL pass** beyond the migration's own
+  test, run manually after the push (not just the migration's own
+  assertions): queried `information_schema.columns` to confirm the real
+  `outcome text` column exists; called `job_track_record_report()`
+  directly against a real active job with zero data (confirmed the new
+  4-column shape: `scope/applicant_count/interview_count/offer_count`,
+  all zero); then upserted a `tracked_applications` row using the exact
+  same column shape `data/trackerSync.js`'s `syncTrackedApplicationToRemote`
+  sends from the real UI (`stage: 'Closed'`, `outcome: 'offer'`, full
+  `stage_history`), re-ran the RPC and confirmed `applicant_count: 1,
+  interview_count: 0, offer_count: 1` (correctly *not* counting a
+  Closed-only row as an interview), then deleted the row and confirmed
+  `select count(*) from tracked_applications` returned 0 -- no residue
+  left in the live database from this session's testing.
+- `computeRealOdds()`'s pure logic via `vite-node` across 5 cases: zero
+  applicants (industry baseline, unchanged), 6 applicants/2 interviews/0
+  offers (interview proxy, unchanged from before this task), 3
+  applicants/1 interview/1 offer (offer rate used *and* still flagged
+  `n=3 · limited data`, confirming sparse-flagging survives the new
+  branch), 10 applicants/4 interviews/2 offers at company scope (offer
+  rate, not sparse, correct company-wide wording), and `offerCount`
+  omitted entirely from the input object (defensive default of 0,
+  behaves identically to the explicit-zero case) -- all five produced
+  the expected headline/label/methodology/signal text with no
+  exceptions.
+- **Live in an unauthenticated local dev session** (`npx vite build`'s
+  dev server, no Supabase session -- this repo's tracker routes carry no
+  auth guard, consistent with CLAUDE.md's "clickable prototype" framing;
+  background sync to Supabase silently no-ops with no session, exactly
+  as `trackerSync.js` documents): opened `/applications`, confirmed the
+  seed Closed application (Accenture, given a real `outcome: "offer"` in
+  `SEED_TRACKED_JOBS` specifically to demonstrate this) renders "Got an
+  offer" on both the Board card and the Table's Outcome column with no
+  "Record outcome" affordance; patched a second tracked job to `Closed`/
+  `outcome: null` via `localStorage` to exercise the affordance itself
+  (native HTML5 drag-and-drop of a Board card into the Closed column
+  could not be made to fire in this tool session -- documented as a
+  known limitation below, not silently skipped), clicked "Record
+  outcome" in the Table view, confirmed `RecordOutcomeModal` opens with
+  the correct company/role context copy, selected "Rejected," clicked
+  "Save outcome," confirmed the modal closed and both the Table's
+  Outcome column and the Board's card (after switching views) correctly
+  showed "Rejected," and confirmed via a `localStorage` read that
+  `outcome: "rejected"` persisted with `stageHistory` correctly
+  *unchanged* (no spurious extra entry from a pure outcome-set). Zero
+  console errors throughout. Cleared the patched `localStorage` state
+  afterward so this tab's next load starts from a clean seed again (this
+  is browser-local prototype state, not the live database, so no
+  cleanup migration was needed for it).
+- **Known, honestly-named gap, not silently skipped:** the auto-open
+  path (dropping a Board card directly into the Closed column opens the
+  modal immediately, via two added lines in `TrackerBoard.jsx`'s
+  existing, already-working `handleDrop`) was verified by code review
+  only, not by an actual live drag in this session -- this tool's
+  `left_click_drag` could not be made to trigger the browser's native
+  HTML5 `dragstart`/`drop` sequence `TrackerBoard.jsx` relies on (a
+  different mechanism than the mouse-based custom drag `TrackerTimeline`
+  uses, which a past session entry confirmed this same tool *can*
+  drive). The two-line addition itself is trivial and sits inside a drop
+  handler whose surrounding drag-and-drop mechanics were unmodified and
+  already verified working in a past session; the harder, actually-new
+  logic (the modal, `setApplicationOutcome`, both views' rendering) was
+  fully exercised live via the Table-view "Record outcome" path above,
+  which calls the identical code the auto-open path would call. Worth a
+  quick real-mouse drag-to-Closed confirmation by someone with working
+  native drag automation, but not blocking -- same category of gap as
+  the real-odds-model entry's own "not verified live" notes elsewhere in
+  this doc.
+- `npx vite build` -- clean (one pre-existing >500kB chunk-size warning,
+  unrelated to this change). `npm run test:server` -- **123/123 green,
+  unchanged** -- checked `server/src/` first per the task's own
+  instruction and confirmed it has nothing mirroring tracker/odds-model
+  logic (same as the original real-odds-model entry above), so this
+  feature is frontend + SQL only, same as that one.
+
+Committed and pushed per standing permission for this repo.
+
 **2026-09-02 -- Real interview write-ups, closing the gap CLAUDE.md's own
 Contribute-modal build note flagged.** `components/modals/
 ContributeModal.jsx`'s "Interview write-up" path was deliberately built

@@ -2,12 +2,13 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { JOBS } from "../data/mockJobs.js";
 import { daysUntil } from "../data/jobUtils.js";
-import { STAGES } from "../data/trackerUtils.js";
+import { STAGES, outcomeLabel } from "../data/trackerUtils.js";
 import { useAppState } from "../data/store.jsx";
 import TrackerBoard from "../components/TrackerBoard.jsx";
 import TrackerTable from "../components/TrackerTable.jsx";
 import TrackerTimeline from "../components/TrackerTimeline.jsx";
 import AddApplicationModal from "../components/modals/AddApplicationModal.jsx";
+import RecordOutcomeModal from "../components/modals/RecordOutcomeModal.jsx";
 import "../styles/tracker.css";
 import "../styles/timeline.css";
 import "../styles/home.css";
@@ -15,13 +16,14 @@ import "../styles/home.css";
 const VIEWS = ["Board", "Table", "Timeline"];
 
 function toCsv(applications) {
-  const header = ["Company", "Role", "Stage", "Applied", "Deadline"];
-  const rows = applications.map(({ job, stage, addedAt }) => [
+  const header = ["Company", "Role", "Stage", "Applied", "Deadline", "Outcome"];
+  const rows = applications.map(({ job, stage, addedAt, outcome }) => [
     job.company,
     job.role,
     stage,
     addedAt ? new Date(addedAt).toISOString().slice(0, 10) : "",
     job.rolling ? "Rolling" : job.deadlineDate || "",
+    outcome ? outcomeLabel(outcome) : "",
   ]);
   return [header, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
 }
@@ -44,6 +46,7 @@ export default function Applications() {
   const [sortColumn, setSortColumn] = useState("deadline");
   const [sortDirection, setSortDirection] = useState("asc");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [outcomeModalJobId, setOutcomeModalJobId] = useState(null);
 
   const applications = useMemo(() => {
     return Object.entries(trackedJobs)
@@ -137,7 +140,11 @@ export default function Applications() {
       ) : (
         <>
           {view === "Board" && (
-            <TrackerBoard applications={applications} onMoveStage={updateApplicationStage} />
+            <TrackerBoard
+              applications={applications}
+              onMoveStage={updateApplicationStage}
+              onRequestOutcome={setOutcomeModalJobId}
+            />
           )}
 
           {view === "Table" && (
@@ -147,6 +154,7 @@ export default function Applications() {
               sortDirection={sortDirection}
               onSort={handleSort}
               onExportCsv={() => downloadCsv(toCsv(applications))}
+              onRequestOutcome={setOutcomeModalJobId}
             />
           )}
 
@@ -161,6 +169,15 @@ export default function Applications() {
       )}
 
       {showAddModal && <AddApplicationModal onClose={() => setShowAddModal(false)} />}
+
+      {outcomeModalJobId && (
+        <RecordOutcomeModal
+          jobId={outcomeModalJobId}
+          job={JOBS.find((j) => j.id === outcomeModalJobId)}
+          currentOutcome={trackedJobs[outcomeModalJobId]?.outcome}
+          onClose={() => setOutcomeModalJobId(null)}
+        />
+      )}
     </div>
   );
 }
