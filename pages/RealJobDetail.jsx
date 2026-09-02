@@ -6,10 +6,12 @@ import { fetchRealOddsInputs, computeRealOdds } from "../data/realOddsModel.js";
 import { useAppState } from "../data/store.jsx";
 import { currentUser } from "../data/mockUser.js";
 import { fetchRealPeopleAtCompany } from "../data/realPeople.js";
+import { fetchRealWriteupsForJob } from "../data/realWriteups.js";
 import { COMPANIES } from "../data/mockCompanies.js";
 import CompanyLogo from "../components/CompanyLogo.jsx";
 import OddsModel from "../components/OddsModel.jsx";
 import LogPrepModal from "../components/modals/LogPrepModal.jsx";
+import ContributeModal from "../components/modals/ContributeModal.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 import Placeholder from "./Placeholder.jsx";
 import "../styles/jobDetail.css";
@@ -49,20 +51,21 @@ const CLASSIFICATION_METHOD_LABEL = {
 
 // Detail view for a real job (a UUID id, see JobDetail.jsx's dispatch at the
 // top of its component). Still simpler than the mock JobDetail -- no
-// past-cycle stage timeline, no interview write-ups, since those need
-// content someone actually contributed and nothing exists yet for real
-// postings. What IS real here: the job's actual fields from the jobs
-// table, a genuine match explanation via data/jobMatch.js against the
-// member's real local preferences, real UC members at this company (since
-// the real people import -- see JOB_ENGINE_ARCHITECTURE.md's Stage 5
-// entry), matched the same way CompanyPage.jsx does (the directory's
-// company text doesn't match this app's canonical names, so it's a
-// starts-with match on the first token, not an exact one) -- and now the
-// odds model too (data/realOddsModel.js), the last piece of the mock
-// JobDetail this page didn't have a real-data equivalent for. See that
-// module's own header for how each factor is sourced from real data and
-// why "UC track record" measures interview-stage progress rather than
-// offers (tracked_applications has no offer outcome to read).
+// past-cycle stage timeline, since that needs a lot more historical stage
+// data than any real job has yet. What IS real here: the job's actual
+// fields from the jobs table, a genuine match explanation via
+// data/jobMatch.js against the member's real local preferences, real UC
+// members at this company (since the real people import -- see
+// JOB_ENGINE_ARCHITECTURE.md's Stage 5 entry), matched the same way
+// CompanyPage.jsx does (the directory's company text doesn't match this
+// app's canonical names, so it's a starts-with match on the first token,
+// not an exact one) -- the odds model too (data/realOddsModel.js) -- and
+// now real interview write-ups (data/realWriteups.js, backed by the
+// interview_writeups table), the last piece of the mock JobDetail this
+// page didn't have a real-data equivalent for. See realOddsModel.js's own
+// header for how each odds factor is sourced from real data and why "UC
+// track record" measures interview-stage progress rather than offers
+// (tracked_applications has no offer outcome to read).
 export default function RealJobDetail({ jobId }) {
   const [job, setJob] = useState(undefined); // undefined = loading, null = not found
   const { preferences, savedConnections, coffeeChatStatus, prepLogged } = useAppState();
@@ -73,6 +76,13 @@ export default function RealJobDetail({ jobId }) {
   // separate from [] so the rail doesn't flash "no UC members" before the
   // fetch resolves.
   const [people, setPeople] = useState(undefined);
+
+  // Real interview write-ups for this job (data/realWriteups.js) -- undefined
+  // while loading, kept separate from [] for the same reason `people` is,
+  // so the section doesn't flash "no write-ups yet" before the fetch
+  // resolves.
+  const [writeups, setWriteups] = useState(undefined);
+  const [showContributeModal, setShowContributeModal] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,6 +114,32 @@ export default function RealJobDetail({ jobId }) {
       cancelled = true;
     };
   }, [job?.company]);
+
+  useEffect(() => {
+    if (!job) return;
+    let cancelled = false;
+    setWriteups(undefined);
+    fetchRealWriteupsForJob(job)
+      .then((rows) => {
+        if (!cancelled) setWriteups(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setWriteups([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [job?.id, job?.company]);
+
+  // Re-fetches after the Contribute modal closes, so a write-up published
+  // from this very page (via the "Share your experience" button below)
+  // shows up immediately without a full reload.
+  function refetchWriteups() {
+    if (!job) return;
+    fetchRealWriteupsForJob(job)
+      .then((rows) => setWriteups(rows))
+      .catch(() => {});
+  }
 
   // The odds model's real signals (see data/realOddsModel.js): the one
   // async piece is the UC track record RPC, so this waits for `people` to
@@ -242,6 +278,33 @@ export default function RealJobDetail({ jobId }) {
               </>
             )}
           </div>
+
+          <div className="detail-section">
+            <h2 className="detail-section__title">Interview experiences from UC members</h2>
+            {writeups === undefined && <Skeleton lines={3} />}
+            {writeups?.length === 0 && (
+              <p className="meta">
+                No one's shared an interview experience at {job.company} yet. Be the first — it strengthens the odds
+                model for every UC member who applies here after you.
+              </p>
+            )}
+            {writeups?.map((w) => (
+              <div className="writeup-card" key={w.id}>
+                <div className="writeup-card__meta">
+                  <strong>{w.is_anonymous ? "Anonymous" : w.submitted_by_name}</strong>
+                  {w.round && <span className="meta">{w.round}</span>}
+                  <span className="chip chip-accent">{w.outcome}</span>
+                  <span className="meta">{new Date(w.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" })}</span>
+                  {w.job_id !== job.id && <span className="meta">· this posting's company, different listing</span>}
+                </div>
+                <p style={{ fontWeight: 700, margin: "0 0 var(--space-2)" }}>{w.title}</p>
+                <p style={{ margin: 0 }}>{w.body}</p>
+              </div>
+            ))}
+            <button className="btn btn-secondary" style={{ marginTop: "var(--space-3)" }} onClick={() => setShowContributeModal(true)}>
+              Share your experience
+            </button>
+          </div>
         </div>
 
         <div className="detail-rail">
@@ -280,15 +343,25 @@ export default function RealJobDetail({ jobId }) {
             <div className="rail-card__title">About this listing</div>
             <p className="meta" style={{ margin: 0 }}>
               This is a real posting (admin/member-submitted or from an automated source). The odds
-              model above and profile-fit checklist are real, computed from your own preferences and
-              the real application tracker -- interview write-ups and past-cycle stage timelines still
-              don't exist for real postings, since no one has contributed one yet.
+              model above, profile-fit checklist, and interview write-ups below are all real -- computed
+              from your own preferences, the real application tracker, and real member submissions.
+              Past-cycle stage timelines still don't exist for real postings -- there isn't yet enough
+              historical stage data to draw one.
             </p>
           </div>
         </div>
       </div>
 
       {showLogPrepModal && <LogPrepModal job={job} computeOddsFn={oddsComputeFn} onClose={() => setShowLogPrepModal(false)} />}
+      {showContributeModal && (
+        <ContributeModal
+          job={job}
+          onClose={() => {
+            setShowContributeModal(false);
+            refetchWriteups();
+          }}
+        />
+      )}
     </div>
   );
 }

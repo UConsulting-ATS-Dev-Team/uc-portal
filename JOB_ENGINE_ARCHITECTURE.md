@@ -5094,3 +5094,100 @@ immediately after, same 123/123 baseline, no code changed between runs).
 constraint as every other real-data feature this session that needed
 one: no test credentials this agent will use itself. Worth a quick
 visual pass by someone with an active admin session.
+
+**2026-09-02 -- Real interview write-ups, closing the gap CLAUDE.md's own
+Contribute-modal build note flagged.** `components/modals/
+ContributeModal.jsx`'s "Interview write-up" path was deliberately built
+to do nothing real -- "Contributed content isn't wired into the real
+Career Resources library... noted in-code rather than faked" -- because
+nothing existed to attach a submission to. Real jobs now exist
+(`pages/RealJobDetail.jsx`, 332+ live postings) but had zero interview-
+intelligence content, unlike the mock `pages/JobDetail.jsx` (`data/
+jobUtils.js`'s per-job `WRITEUP_POOL`). This closes that gap for real.
+
+**Schema** (migration `20260902120000_interview_writeups.sql`): new
+table `interview_writeups` matching exactly what the form already
+collects for that type -- `company`, `title`, `round`, `outcome` (a new
+`interview_writeup_outcome` enum mirroring the modal's own `OUTCOMES`
+array so it can't drift), `body`, `is_anonymous`, plus `job_id`
+(nullable -- set when contributed from a specific real job's own detail
+page, null when contributed generically from Career Resources with a
+freehand-typed company), `submitted_by` (always the real auth id, even
+when anonymous, since RLS's insert-own check needs it), and
+`submitted_by_name` (denormalized, same prototype convention `feature_
+requests`/`RequestFeatureModal.jsx` already use -- but null whenever
+`is_anonymous` is true, since this table's whole point is member-facing
+display and the submitter's own "Post anonymously" checkbox is a real
+choice to honor now, not just cosmetic success-message copy like
+before). Per JOB_ENGINE_ARCHITECTURE.md Part 2's established rule for
+member-submitted content, this stores only what the submitter personally
+typed in their own words -- no scraped/copied employer material.
+
+**RLS**: readable by any authenticated member (`auth.role() =
+'authenticated'`, the same pattern `industries`/`job_functions` already
+use for "needed by every member, never writable from the client" --
+except here it *is* writable, just gated separately), insertable only
+as your own `submitted_by` (`interview_writeups_insert_own`, the same
+`with check (submitted_by = auth.uid())` shape `feature_requests`/
+`opportunity_submissions` use). No admin-review gate, unlike those two
+tables -- a member's own honest account of their interview doesn't need
+Careers Committee approval before other members can see it. Explicit
+`grant select, insert ... to authenticated` alongside the policies, same
+gap every other table here has hit.
+
+**Wiring**: `ContributeModal.jsx` now takes an optional `job` prop.
+Opened from `RealJobDetail.jsx`'s new "Share your experience" button,
+`job` is the real `{id, company}` just viewed -- the company field
+becomes a locked, non-editable display of that job's own company (so a
+write-up can never end up mismatched against the job it was launched
+from) and the submission carries `job_id` for an exact match later.
+Opened from Career Resources' generic "+ Contribute" (unchanged trigger,
+no `job` prop), company stays the original free-text field and `job_id`
+is null. Only the "Interview write-up" type does a real insert (via the
+new `data/realWriteups.js`'s `submitInterviewWriteup()`) -- every other
+type still just validates and shows the honest in-modal "Published"
+state, exactly as before, since `RESOURCES` is still a static list.
+
+**Display**: `RealJobDetail.jsx`'s new "Interview experiences from UC
+members" section reuses the mock `JobDetail.jsx`'s existing `.writeup-
+card`/`.writeup-card__meta` CSS classes (already in `styles/
+jobDetail.css`, already imported by this page) rather than inventing a
+new visual pattern. `data/realWriteups.js`'s `fetchRealWriteupsForJob()`
+matches on `job_id` first (exact tie to the specific posting being
+viewed), then falls back to a company-token `ilike` match -- the same
+starts-with-first-token approach `data/realPeople.js`'s
+`fetchRealPeopleAtCompany()` already uses for the identical "real
+company text doesn't match this app's canonical name" problem (now
+exported as `companyMatchToken()` for this reuse) -- so a write-up
+contributed generically against "Bain" still surfaces on a real "Bain &
+Company" posting. Exact-job matches sort first, then newest-first.
+Anonymous write-ups render "Anonymous" instead of a name. Empty state
+(a real job with zero real write-ups) is an honest one-line invitation
+to be first, per CLAUDE.md's "never a bare 'No data'" rule, not a
+suppressed section -- the same "Share your experience" button doubles as
+its call to action.
+
+**Verified:** `npx vite build` clean. No `server/src/` mirror exists for
+this feature (nothing here touches job normalization/matching/dedupe),
+so `npm run test:server` wasn't run. **Not verified in a live
+authenticated browser session** -- same constraint as every other
+real-data feature this session needed one for: no test credentials this
+agent will use itself. Verified instead via direct Postgres queries
+(`npx supabase db query --linked`) that exercise RLS for real rather
+than bypass it: confirmed the table's exact column shape; confirmed both
+policies are attached; then, inside a rolled-back transaction with `set
+local role authenticated` and `set local request.jwt.claims` impersonating
+a real `auth.users` row, successfully inserted one named write-up tied
+to a real job (`Belvedere Trading`) and one anonymous write-up with no
+job tie, then selected both back under the same authenticated
+impersonation (both visible, `is_anonymous`/`submitted_by_name` correct
+in each case) -- then rolled back, so no data was left behind and no
+cleanup migration was needed. Also confirmed the negative cases: an
+insert attempting `submitted_by` set to a different user's id was
+rejected by the `insert_own` policy (`42501: new row violates row-level
+security policy`), and a bare `anon`-role select was rejected outright
+(`42501: permission denied ... GRANT SELECT ... TO anon`), confirming
+the table is genuinely closed to unauthenticated access, not just
+unlinked from the UI.
+
+Committed and pushed per standing permission for this repo.

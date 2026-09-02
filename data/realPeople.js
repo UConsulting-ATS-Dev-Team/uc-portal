@@ -22,7 +22,7 @@ export async function fetchRealPeople() {
 // Sachs" -> "Goldman") against a starts-with pattern catches the real
 // spellings actually seen in the data without also matching an unrelated
 // company whose name merely contains the token mid-string.
-function companyMatchToken(canonicalName) {
+export function companyMatchToken(canonicalName) {
   return canonicalName.split(/\s*&\s*|\s+/)[0];
 }
 

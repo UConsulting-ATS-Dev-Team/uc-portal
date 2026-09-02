@@ -804,6 +804,34 @@ longer breaks down to phone width either.
   list can be under-tiered) are in
   [JOB_ENGINE_ARCHITECTURE.md](JOB_ENGINE_ARCHITECTURE.md)'s dated entry.
 
+- **Real interview write-ups** — closes the gap the "Contribute to the
+  library" entry above flagged ("Deliberately does *not* inject into
+  `RESOURCES`... noted in-code rather than faked"). A new table,
+  `interview_writeups` (readable by any authenticated member, insertable
+  only as your own `submitted_by`), stores exactly the fields
+  `ContributeModal.jsx`'s interview-write-up path already collected
+  (company, title, round, outcome, body, anonymous), plus an optional
+  real `job_id` tie. `ContributeModal.jsx` now takes an optional `job`
+  prop — opened from `RealJobDetail.jsx`'s new "Share your experience"
+  button, the company field locks to that job's own company and the
+  submission is tied to it by id; opened from Career Resources' generic
+  "+ Contribute" (unchanged), company stays free-text and `job_id` is
+  null. Only the interview-write-up type does a real insert now — every
+  other type still just validates and shows the honest "Published" state
+  as before, since `RESOURCES` is still a static list. `RealJobDetail.jsx`
+  has a new "Interview experiences from UC members" section reusing the
+  mock `JobDetail.jsx`'s existing `.writeup-card` styles, matched by
+  `job_id` first then a company-token fallback (`data/realWriteups.js`,
+  reusing `data/realPeople.js`'s `companyMatchToken()`), with an honest
+  one-line invite-to-be-first empty state rather than a bare "No data."
+  Verified via direct Postgres queries under RLS impersonation (real
+  insert + select as an authenticated user inside a rolled-back
+  transaction, plus confirming a cross-user insert and an anon-role
+  select are both correctly rejected) rather than a live authenticated
+  browser session — see
+  [JOB_ENGINE_ARCHITECTURE.md](JOB_ENGINE_ARCHITECTURE.md)'s dated entry
+  for the full verification transcript.
+
 Run locally:
 ```bash
 npm install
