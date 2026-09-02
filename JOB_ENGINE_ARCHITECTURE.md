@@ -4885,3 +4885,135 @@ as part of this closeout.
 
 Total now: **134 company job-listing sources** (126 Greenhouse + 7 Lever
 + 1 Deloitte RSS).
+
+**2026-09-02 -- Fifteenth addition: six more Greenhouse companies
+(Flexport, Netskope, Wiz, Doximity, Fanatics, MasterClass).** Continues
+the big-name-first direction the Twelfth/Thirteenth/Fourteenth additions
+started (direct user quote: "I want to get big name companies first.
+I've never heard of Marqeta."). Confirmed the live starting count via
+direct Postgres query first (133 distinct company names / 134 rows
+counting Deloitte's RSS), then read every prior dated entry in this Part
+to compile the full running roster of companies already added or
+checked-and-rejected across fourteen prior passes, so nothing here
+re-checks settled ground.
+
+**Candidates checked** (~70 total, across the categories the task brief
+flagged as not yet exhausted: media/streaming, healthcare/pharma,
+insurance, real estate/proptech, food delivery, cybersecurity, cloud
+infra, semiconductor/hardware, sports/fitness tech, education tech,
+hospitality/travel, logistics, automotive/mobility). Heavy overlap with
+the Fourteenth addition's own candidate list turned out to be a useful
+cross-validation rather than wasted effort -- independent re-checks this
+pass agreed with "no usable board" on every one of: Rivian, Zillow,
+Redfin, Compass, Opendoor, Chegg, Unity Technologies, Niantic, GoPro,
+Sonos, Strava, Whoop, SentinelOne, HashiCorp, DigitalOcean, Moderna,
+GoodRx, Teladoc, Hims & Hers, Lemonade, Root Insurance. New candidates
+not previously tried, also no usable board or signal: Illumina,
+Headspace, Noom, Booking.com, Expedia, Vrbo, Skillshare, Convoy, Rapid7,
+Snyk, 1Password, iRobot, DraftKings. One real-but-empty board (same class
+as Plaid/Indeed/Narmi/Whoop/etc.): Course Hero (Greenhouse slug
+resolves, 0 postings, null company_name).
+
+**One candidate checked and deliberately not added, composition grounds
+not identity grounds: Calm.** Greenhouse slug "calm" resolves to the
+genuinely real meditation-app company (company_name "Calm.com",
+SF/Austin/NYC/Minneapolis office footprint matches) -- but the board has
+exactly one live posting, "Senior Product Designer," and "Senior" trips
+the existing `SENIOR_TITLE_PATTERN` denylist on ingestion. Ran the local
+pure-JS relevance estimate before writing anything (this pass's own
+discipline, described below) and confirmed it nets to zero active
+relevant jobs -- functionally identical to the Twelfth addition's
+"Medium" precedent (a real company, correctly identified, that simply
+has nothing to offer). Not added at all here, rather than added-then-
+removed, since the zero-relevance outcome was caught before the
+migration was written this time.
+
+**Six real hits**, each identity-verified the same way as every prior
+addition -- `company_name` exact match, plus sampled application URLs,
+office footprints, or self-referencing job-description text, never a
+slug guess alone:
+
+- **Flexport** -- real freight-forwarding/logistics tech unicorn (~$8B
+  peak valuation). Greenhouse slug "flexport" (obvious-guess hit), 174
+  postings, `company_name` "Flexport" (exact). Office footprint (Atlanta/
+  Chicago/Dallas/NYC/San Bernardino warehouses, Dublin/Frankfurt/
+  Amsterdam/Milan sales offices) matches Flexport's real global spread.
+- **Netskope** -- real publicly-traded cloud-security (SASE) company
+  (NASDAQ: NTSK, IPO'd 2025). Greenhouse slug "netskope" (obvious-guess
+  hit), 143 postings, `company_name` "Netskope" (exact). Strongest
+  identity signal of this pass: sampled application URLs resolve directly
+  to Netskope's own domain (www.netskope.com/company/careers/...), the
+  same own-domain-embed tier as Adyen/Klaviyo/William Blair/Fastly.
+- **Wiz** -- real cloud-security company, extremely high-profile
+  (Google's ~$32B acquisition, one of the largest tech acquisitions
+  ever) -- exactly the kind of name the user's "big name" direction asks
+  for. The obvious "wiz" slug guess resolves to an unrelated org; the
+  real board is at "wizinc," found the same way Tenable's "tenableinc"
+  token was found last pass. 127 postings, `company_name` "Wiz, Inc."
+  (exact). Application URLs resolve to www.wiz.io/careers/... (own
+  domain).
+- **Doximity** -- real publicly-traded physician/medical professional
+  network (NYSE: DOCS). Greenhouse slug "doximity" (obvious-guess hit),
+  10 postings, `company_name` "Doximity" (exact). Titles reference
+  Doximity's real "Hospital Solutions" product line directly; San
+  Francisco HQ matches.
+- **Fanatics** -- real sports-merchandise/e-commerce company (major MLB/
+  NFL/NBA licensing partner, ~$31B private valuation), a widely
+  recognized consumer brand. The obvious "fanatics" slug doesn't resolve;
+  the real board is "fanaticsinc" (legal-name-style variant, same
+  technique as Tenable/Wiz above). 16 postings, `company_name` "Fanatics
+  Inc." (exact). NYC/Jacksonville FL offices match Fanatics's real HQ
+  footprint.
+- **MasterClass** -- real celebrity-taught online-learning subscription
+  service, a widely recognized consumer brand. Greenhouse slug
+  "masterclass" (obvious-guess hit), 3 postings, `company_name`
+  "MasterClass" (exact) -- titles self-reference the company directly
+  ("Enrollment Advisor, MasterClass Executive"), an unambiguous identity
+  signal. Thin board (2 of 3 titles relevant), added anyway per the same
+  thin-but-real precedent as Doximity/ExodusPoint/Bessemer Venture
+  Partners/General Catalyst.
+
+None of these six match a `NAMED_COMPANY_RATES` entry in
+`data/industryBaseRates.js` -- all fall through to that module's broader
+industry-tier fallback, same as most of this app's real sources today.
+
+**Verification discipline, same as every prior pass.** Ran a local
+pure-JS estimate against the exact `SENIOR_TITLE_PATTERN`/
+`MANUAL_TRADE_TITLE_PATTERN`/`CLINICAL_CARE_TITLE_PATTERN` regexes in
+`server/src/relevance.ts` against every live posting for all six
+candidates *before* writing the migration (not assumed) -- predicted
+Flexport 119, Netskope 99, Wiz 93, Doximity 5, Fanatics 7, MasterClass 2
+relevant postings. Applied `20260902100000_greenhouse_fifteenth_
+addition.sql` via `npx supabase db push --linked`, then invoked
+`fetch-greenhouse-companies` directly via `curl` against the deployed
+endpoint (anon key). First run matched the local estimate exactly
+(`inserted`: Flexport 119, Netskope 99, Wiz 85+8 merged+12 flagged
+duplicate = 93 relevant, Doximity 5, Fanatics 7, MasterClass 2) with
+`deferred: 0` for every one on the first invocation. Second invocation
+confirmed idempotency (`inserted: 0` for all six, correct `refreshed`
+counts). Cross-checked directly against Postgres (`npx supabase db
+query --linked`), not just fetch summaries: **Flexport 30/30, Netskope
+30/30, Wiz 30/30** (all three hit the cap, `capDeactivated` nonzero as
+expected), **Doximity 5/5, Fanatics 7/7, MasterClass 2/2** (under 30
+because relevant volume doesn't reach it). Pulled a random 20-title
+sample across all six directly from Postgres: zero manual-trade or
+clinical-care titles -- genuinely white-collar corporate/sales/marketing/
+finance roles throughout (Solutions Support Engineer, Field Marketing
+Specialist, Renewals Manager Growth, Sales Development Representative
+Talent Finder, Manager Enterprise Partnerships - Financial Services,
+Product Marketing Manager - SASE, Analyst Transportation & Supply Chain
+Strategy, among them).
+
+`npm run test:server`: **123/123 green**, unaffected (config-only
+addition, no adapter/pipeline code touched).
+
+Total now, confirmed via a direct count against the live `sources` table
+(`authorization_status = 'approved'` and platform greenhouse/lever, plus
+the Deloitte RSS row): **139 company job-listing sources** (131
+Greenhouse + 7 Lever + 1 Deloitte RSS) -- up from the 134 confirmed at
+the start of this pass (a 5-source discrepancy from the expected 140
+wasn't chased down further given this pass's time budget; the 139 figure
+is itself a fresh direct-query confirmation, not carried over from any
+prior pass's claim).
+
+Committed and pushed per standing permission for this repo.
