@@ -5368,3 +5368,86 @@ the table is genuinely closed to unauthenticated access, not just
 unlinked from the UI.
 
 Committed and pushed per standing permission for this repo.
+
+**2026-09-02 -- Case-practice partner matching, moving the club's real
+manual workflow into the app.** While browsing the club's real Google
+Sheets earlier this session (the alumni-directory work), a separate
+"Case Partners" tab was found -- the club already manually pairs members
+for case-interview practice via spreadsheet. This is validated, real
+demand, not a guessed feature; the work here moves that exact workflow
+into UC Portal.
+
+**Critical product constraint, direct from the person who asked for
+this:** *"make sure for the casing buddy everybody is automatically not
+assigned to anyone."* This is enforced **structurally, not just by UI
+convention** -- two new tables, `case_partner_pool` (own-row-only
+opt-in, presence-based like `saved_jobs`) and `case_partner_requests`
+(a directed pair with a status enum), whose RLS policies make it
+mechanically impossible for a match to exist without two separate
+people's own actions: the insert policy forces every new request to
+start `pending` (no path creates an already-accepted row), and the
+update policy that can ever set `status = 'accepted'` only fires when
+`recipient_id = auth.uid()` -- the requester's own update path is
+restricted to cancelling their own still-pending request, nothing else.
+A member opting another member into the pool on their behalf, or a
+requester self-accepting their own request, are both blocked by RLS
+itself, not caught after the fact.
+
+**Why real `auth.users` ids, not `people.id`** (unlike
+`network_connections`, which targets the alumni directory and only
+tracks a one-sided "Request sent" label since most alumni aren't portal
+accounts): case-partner practice is inherently member-to-member -- you
+practice cases with someone also currently recruiting, not an alumnus
+who already has the job -- so restricting the pool to real signed-up
+accounts is what makes a genuine, RLS-enforced mutual accept possible at
+all, not just a label.
+
+**Matching signal**: `case_partner_candidates()` (security definer, any
+authenticated member -- not admin-gated, this is peer browsing) joins
+the pool with `member_preferences` live, never denormalized onto the
+pool row, so a member's visible signal (industries/roles/recruiting
+cycle) never goes stale after a My Profile edit -- same "every number
+traceable, never separately authored" principle the odds model and
+`company_demand_report` already follow. `components/CasePartnerFinder.jsx`
+ranks browsable candidates by industry/role overlap with the viewer's
+own real preferences.
+
+**Where it lives**: Career Resources (`pages/CareerResources.jsx`), not
+Network -- case practice is education-hub territory (practicing with a
+peer who's also recruiting), and its real matching signal comes from
+`member_preferences`, not the `people` directory Network's own filtering
+is built around.
+
+**Verified live against real RLS, not just read as SQL text**: a
+self-contained, self-cleaning migration
+(`20260902150400_verify_case_partner_requests.sql`, kept permanently in
+git as a regression-test-shaped migration, same precedent as
+`20260831230100_verify_job_track_record_report.sql`) genuinely switches
+Postgres role to `authenticated` and impersonates two real, existing
+`auth.users` rows via the same `request.jwt.claims` GUC PostgREST itself
+sets per request -- exercising the actual RLS boundary, not just
+function output. Confirmed: a member cannot opt another member into the
+pool on their behalf (blocked), a request cannot be inserted
+pre-accepted (blocked), the requester cannot accept their own request
+(blocked), and only the recipient's own separate update can ever produce
+`accepted` (succeeded) -- then deleted every row it created, verified
+zero residue. A real, non-obvious infrastructure discovery surfaced
+while building this test (this project's migration connection logs in
+as a low-privilege `cli_login_postgres` role and only gains real
+privileges via an implicit `SET ROLE postgres` -- so `RESET ROLE`
+reverts to that low-privilege role instead of restoring elevated access
+the way it would on a normal superuser login) is preserved in that
+migration's own header comment rather than in a throwaway file, since
+several exploratory diagnostic migrations used to discover it were
+themselves cleaned up (deleted locally, `supabase migration repair
+--status reverted`, same as this repo's real-PII-migration precedent)
+once the insight was captured in prose -- they added no permanent value
+once written down.
+
+`npx vite build` clean, `npm run test:server` 123/123 green (no
+`server/src/` mirror -- this feature is frontend + Postgres/RLS only).
+Not verified in a live authenticated browser session -- same constraint
+as every other real-data feature this session needed one for; the RLS
+verification above is real, not a substitute claimed to be equivalent,
+but a live click-through of the actual opt-in/request/accept UI is
+worth a pass by someone with an active session.

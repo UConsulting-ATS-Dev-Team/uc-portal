@@ -864,6 +864,18 @@ longer breaks down to phone width either.
   for the full transcript. `npm run test:server`: 123/123 green,
   unchanged (no server-mirrored logic for this feature).
 
+- **Case-practice partner matching built** (`components/CasePartnerFinder.jsx`
+  on Career Resources, `data/casePartners.js`) — moves the club's real
+  manual "Case Partners" Google Sheet tab into the app. Opt-in/request-
+  only by direct product requirement ("everybody is automatically not
+  assigned to anyone") — enforced structurally via `case_partner_pool`/
+  `case_partner_requests` RLS, not just UI convention, verified live
+  against real Postgres role-impersonation (a member cannot opt another
+  member in or self-accept their own request; only the recipient's own
+  action can ever produce a match). See
+  [JOB_ENGINE_ARCHITECTURE.md](JOB_ENGINE_ARCHITECTURE.md)'s dated entry
+  for the full design writeup and verification transcript.
+
 Run locally:
 ```bash
 npm install

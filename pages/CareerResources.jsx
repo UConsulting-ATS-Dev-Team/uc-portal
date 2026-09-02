@@ -4,8 +4,10 @@ import { RESOURCES, CERTIFICATIONS, LEARNING_TRACKS } from "../data/mockResource
 import { JOBS } from "../data/mockJobs.js";
 import { useAppState } from "../data/store.jsx";
 import ContributeModal from "../components/modals/ContributeModal.jsx";
+import CasePartnerFinder from "../components/CasePartnerFinder.jsx";
 import "../styles/jobDetail.css";
 import "../styles/resources.css";
+import "../styles/network.css";
 
 const CATEGORIES = ["Resume", "Cover letter", "Consulting cases", "Behavioral", "Networking", "Recruiting timelines", "Industry guides", "Company guides"];
 const SKILL_CATEGORIES = ["Excel & modeling", "SQL & data", "AI & automation", "Slide & comms craft", "Accounting & finance"];
@@ -118,6 +120,8 @@ export default function CareerResources() {
                 ))}
               </div>
             </div>
+
+            <CasePartnerFinder />
 
             <h2>Learning tracks — structured, start to finish</h2>
             <div className="track-card-grid">
