@@ -4526,3 +4526,334 @@ remaining active Marqeta postings (`active = false`, `status =
 'removed'`) since they're no longer verifiable as still-open. Verified
 live: `enabled`/`authorization_status` confirmed flipped, active Marqeta
 job count confirmed 0, `npm run test:server` still 123/123 green.
+
+**2026-09-01 -- Twelfth addition: thirteen more companies (twelve
+Greenhouse, one Lever), new direction -- big, recognizable names first.**
+Direct user quote that reframed this pass: **"I want to get big name
+companies first. I've never heard of Marqeta."** Prior passes (Sixth
+through Eleventh) had drifted into real-but-obscure niches (boutique
+quant shops, small fintechs, mid-market IBs) partly because the most
+obvious household names -- MBB, bulge-bracket banks, FAANG -- had already
+been checked early and come back with no usable board. This pass
+deliberately inverted the sourcing strategy: instead of alumni-driven or
+"adjacent to a niche that worked" discovery, it started from general
+knowledge of major/famous employers and worked down, explicitly valuing
+"no usable board" on a big name as real, reportable information, not a
+wasted check.
+
+**Step 1: compiled the full prior-checked list.** Read every dated entry
+in this Part across all eleven prior passes and assembled the complete
+roster of 150+ companies already added or checked-and-rejected, so
+nothing below re-checks a name already settled (the roster is long enough
+that it isn't repeated verbatim here again -- see the Sixth-through-
+Eleventh entries above for the itemized lists by vertical).
+
+**Step 2: two rounds of big-name candidates, ~155 total, categorically
+different from prior passes' verticals** (Fortune 500 tech, major banks/
+financial firms, famous consumer/retail brands, airlines/hospitality,
+pharma/healthcare, telecom, industrials/aerospace, automotive, logistics,
+then a second round of recognizable consumer-tech unicorns) -- the full
+company-by-company breakdown, including every reject, is recorded
+verbatim in migration `20260901130000_greenhouse_twelfth_addition.sql`'s
+own header comment (not duplicated here) since it's long enough to belong
+with the SQL it documents.
+
+**Headline finding, matching the pattern already suspected**: essentially
+every Fortune-500-scale name checked -- Oracle, IBM, Adobe, Nvidia,
+Netflix, ServiceNow, Intuit, eBay, Shopify, Dell, HP, Qualcomm, VMware,
+Palo Alto Networks, CrowdStrike, Workday, SAP, Texas Instruments,
+Broadcom, Citigroup, Wells Fargo, Bank of America, HSBC, UBS, American
+Express, US Bank, PNC, Truist, State Street, BNY Mellon, Northern Trust,
+Discover, Synchrony, Ally, Prudential, AIG, Progressive, Allstate,
+Travelers, Nike, Coca-Cola, PepsiCo, P&G, J&J, Colgate-Palmolive,
+Starbucks, McDonald's, Target, Walmart, Costco, Home Depot, Lululemon,
+Estee Lauder, Kroger, CVS, Walgreens, Best Buy, TJX, Nordstrom, Gap Inc,
+Ralph Lauren, Under Armour, VF Corp, Delta, American Airlines, United,
+Southwest, Marriott, Hilton, Hyatt, Pfizer, Merck, Eli Lilly, AbbVie, BMS,
+UnitedHealth Group, CVS Health, Cigna, Humana, Elevance Health, Verizon,
+AT&T, T-Mobile, Comcast, GE, 3M, Honeywell, Caterpillar, Deere, Lockheed
+Martin, RTX, Northrop Grumman, General Dynamics, FedEx, UPS -- carries
+only a Workday hint, non-buildable via this codebase's public-API-only
+approach. This is the single strongest confirmation yet of a pattern this
+doc has been noting piecemeal since the Fourth addition: real, large,
+famous companies overwhelmingly run their own licensed Workday tenant
+rather than a public Greenhouse/Lever board, and this remains true almost
+without exception at Fortune-500 scale, across every vertical, not just
+consulting/IB. A genuinely useful negative result for future passes: this
+scale of company is very unlikely to be worth checking again via this
+method.
+
+**Where the big-name strategy did pay off: recognizable consumer-tech
+unicorns and famous engineering-heavy companies, a size class between
+"Fortune 500" and the boutique/niche firms prior passes found.** Thirteen
+real hits, every one independently identity-verified (never trusting a
+slug or company_name match alone) -- full verification detail for each is
+in the two new migrations' header comments:
+
+- **SpaceX** (Greenhouse, 2,255 postings, capped to 30) -- Elon Musk's
+  aerospace company. The largest single board this app has ever added,
+  more than 4x Anthropic's 573. company_name exact match plus Hawthorne
+  CA (real HQ) and Starlink-referencing titles confirm identity.
+- **Discord** (Greenhouse, 51 postings, 22 active) -- real chat platform.
+- **Epic Games** (Greenhouse, 167 postings, capped to 30) -- Fortnite/
+  Unreal Engine maker. Strongest identity signal of the whole pass: every
+  application URL resolves to epicgames.com's own domain.
+- **Twitch** (Greenhouse, 49 postings, capped to 30) -- Amazon's
+  live-streaming platform.
+- **Peloton** (Greenhouse, 52 postings, capped to 30) -- NASDAQ: PTON.
+- **Squarespace** (Greenhouse, 24 postings, 12 active) -- formerly NYSE:
+  SQSP.
+- **Glossier** (Greenhouse, 21 postings, 14 active) -- DTC beauty brand.
+- **Lucid Motors** (Greenhouse, 326 postings, capped to 30) -- NASDAQ:
+  LCID. Costa Mesa, CA (real HQ) appears directly in sampled locations.
+- **Waymo** (Greenhouse, 350 postings, capped to 30) -- Alphabet/Google's
+  self-driving-car company. Application URLs resolve to Waymo's own
+  careers.withwaymo.com domain.
+- **Coursera** (Greenhouse, 21 postings, 6 active) -- NYSE: COUR.
+- **Udemy** (Greenhouse, 16 postings, 5 active) -- NASDAQ: UDMY.
+- **Spotify** (Lever, 77 postings, capped to 30) -- NYSE: SPOT. No
+  self-reported company name (Lever limitation, same as Wealthfront/
+  Belvedere Trading/Tala) -- identity confirmed via strongly
+  Spotify-specific content instead: a Stockholm-based "Senior Partner
+  Engineer - Hardware Partnerships" (Stockholm is Spotify's real HQ
+  city), "Artist & Label Partnerships Manager" roles (a function unique
+  to Spotify's real business), and Finance/Legal roles in New York/Los
+  Angeles matching Spotify's known real office footprint.
+
+All thirteen are exactly the kind of company the user's framing asked
+for -- names a UCLA business student (or any young adult) would
+immediately recognize, unlike Marqeta. None match a `NAMED_COMPANY_RATES`
+entry in `data/industryBaseRates.js` (that map is scoped to MBB/
+bulge-bracket IB/elite quant trading/elite big tech specifically) -- all
+thirteen fall through to the broader industry-tier fallback.
+
+**Three real, identity-checked rejections this pass, same rigor bar as
+every prior "bcg"/Disney/Capital One/Aura/Wise/Current/Founders Fund/
+Thrive Capital/Anchorage Capital Group catch -- the user's explicit
+warning that big/short names are the highest-risk category for
+slug-squatting held up in practice:**
+
+1. **"Charles Schwab"** -- Greenhouse slug "charles" resolves (3
+   postings), but `company_name` is the bare, lowercase "charles" and
+   every posting is Berlin-based (Business Development Representative
+   (German Speaker), Customer Success Manager -- Berlin, hybrid). An
+   unrelated European company on the plain "charles" slug, not the real
+   US-only Charles Schwab. Excluded.
+2. **"MetLife"** -- Lever slug "metlife" resolves (39 postings), but
+   every posting is an individually-named Colombia-based insurance
+   sales-agent recruiting listing (e.g. "Andres Gonzalez - Consultor/a
+   Comercial en Protección - Manizales"), the same "sales-agent
+   recruiting funnel, not a real open-roles board" pattern already
+   excluded for Wise's "Wise Worksite Field Sales" and Hudson River
+   Trading's "HRT Talent Community." The real metlife.com/careers page
+   was fetched directly and contains zero reference to lever.co anywhere
+   -- unlike Adyen/Klaviyo/William Blair's confirmed own-domain embeds.
+   Excluded on both content-mismatch and unconfirmable-identity grounds.
+3. **"Blue Apron"** -- Lever slug "blue" resolves (10 postings), but
+   titles ("#706 Snowflake Engagement Manager," "Senior Snowflake Data
+   Engineer - Talent Pipeline," "Solutions Architect (Pre-Sales)")
+   describe a Snowflake-consulting boutique data-services firm with no
+   plausible connection to the real meal-kit company. Excluded.
+
+**One real hit added then immediately removed once live data proved it
+worthless: "Medium."** Greenhouse slug "medium" genuinely is the real
+Medium.com (confirmed via its one posting's own description text
+self-identifying the company, not just the slug) -- but that board has
+exactly one posting ("Senior Data Platform Engineer"), and that title
+trips the existing `SENIOR_TITLE_PATTERN` denylist on ingestion
+(`skippedNotRelevant: 1`, `suspiciouslyEmpty: true`), netting to **zero**
+active jobs. Functionally identical to the "real-but-empty" boards this
+doc has excluded throughout its history (Plaid/Indeed/Narmi/Optiver/
+Apollo Global Management/Marshall Wace/Kraken/Nubank/Wealthsimple/
+Permira/Battery Ventures/etc.) -- added in
+`20260901130000_greenhouse_twelfth_addition.sql`, then deleted outright
+in a same-pass follow-up migration,
+`20260901150000_remove_medium_zero_relevant.sql`, rather than left as a
+permanently inert registry row. Not an identity rejection -- a real
+company, correctly identified, that simply has nothing to offer.
+
+**Verified live end-to-end, same discipline as every prior addition.**
+Applied via `npx supabase db push --linked`
+(`20260901130000_greenhouse_twelfth_addition.sql`,
+`20260901140000_lever_spotify.sql`, then
+`20260901150000_remove_medium_zero_relevant.sql`). Invoked both
+`fetch-greenhouse-companies` and `fetch-lever-companies` directly via
+`curl` against the deployed HTTPS endpoints (anon key). First
+`fetch-greenhouse-companies` run: all eleven surviving new companies
+inserted correctly (Medium confirmed `skippedNotRelevant: 1` on its only
+posting before being removed from the registry). Two further invocations
+confirmed idempotency for ten of the eleven immediately (`inserted: 0`
+with correct `refreshed` counts) and drained Lucid Motors'/Waymo's
+initial `deferred: 27`/`deferred: 26` fully to `deferred: 0` by the
+second run -- both then showed exact idempotency (`inserted: 0`) on the
+third. SpaceX's exceptional size (2,255 postings, the largest board this
+app has handled) means its own `MAX_NEW_JOBS_PER_RUN` backlog is still
+draining after three runs (`deferred: 1048` remaining) -- expected given
+even Anthropic's much smaller 573-posting board needed three runs; not a
+bug, and SpaceX is already sitting at its correct capped 30 active
+regardless of how much of the backlog remains to process. `fetch-lever-
+companies`: Spotify `fetched: 77, inserted: 39, skippedNotRelevant: 37`
+on the first run, confirmed idempotent (`inserted: 0, refreshed: 30`) on
+rerun.
+
+Cross-checked directly against Postgres (`npx supabase db query
+--linked`), not just fetch summaries. Final active counts, all correctly
+at or under the 30-job cap: **SpaceX 30/445, Epic Games 30/66, Lucid
+Motors 30/176, Peloton 30/34, Spotify 30/39, Twitch 30/34, Waymo 30/174**
+(seven hit the cap); **Discord 22/22, Glossier 14/14, Squarespace 12/12,
+Coursera 6/6, Udemy 5/5** (five under 30 because relevant volume doesn't
+reach it, `capDeactivated: 0` for these -- consistent with every
+small-board addition in this doc's history). Pulled a random 60-title
+sample across all twelve directly: zero manual-trade or clinical-care
+titles: genuinely white-collar corporate/finance/tech/product/marketing
+roles throughout (Business Analyst, Manager FP&A, Monetization Strategy &
+Operations Lead, Engineering Manager - Revenue, Account Manager -
+Advertising Solutions, Product Manager - Fleet Management Tools, among
+them), plus a handful of retail/in-store titles (Peloton "Store Manager,"
+Lucid Motors "Part Time Brand Ambassador," Glossier "Key Lead") that fall
+into the same already-established ambiguous-manager/retail-corporate
+"keep" zone as Carvana's dealership roles -- not manual-trade or clinical
+work, so correctly not denylisted.
+
+`npm run test:server`: **123/123 green**, unaffected (config-only
+addition, no adapter/pipeline code touched this pass).
+
+**Total company job-listing sources after this addition: 107** (100
+Greenhouse + 6 Lever + 1 Deloitte RSS feed), confirmed via a direct count
+against the live `sources` table grouped by `config->>'platform'`, up
+from 95 at the start of this pass -- the largest net increase of any
+single pass in this doc's history (12 real hits net of the one
+subsequently-removed Medium row, on top of a substantially higher
+big-name reject rate than any prior pass, exactly the tradeoff the user's
+framing asked for).
+
+Committed and pushed per standing permission for this repo.
+
+**2026-09-01 -- Thirteenth addition: twenty more companies (nineteen
+Greenhouse, one Lever), found already-applied by a second, concurrent
+session working the same brief.** Important process note, recorded
+honestly rather than folded silently into the Twelfth addition's own
+entry above: partway through committing the Twelfth addition, two
+additional migration files appeared on disk --
+`20260901170000_greenhouse_thirteenth_addition.sql` and
+`20260901180000_lever_coupa.sql` -- that this session did not create.
+`npx supabase migration list` confirmed both were already applied to the
+live linked database (local==remote), while `git log`/`git fetch`
+confirmed neither had reached git yet -- i.e. a second Claude Code
+session (or a scheduled task; the cause was never identified with
+certainty) had been operating against the exact same repository checkout
+and the exact same live Supabase project at the same time as this one,
+without coordination. Per this project's own instruction boundary --
+content this session didn't author or independently verify is treated as
+data to review, not as trusted prior work to build on unquestioned, even
+when it's technically "our own" codebase's output -- this was not folded
+into the Twelfth addition's commit or narrative. Instead: read in full,
+independently re-verified (not just trusted), and documented separately
+here so the historical record accurately reflects that two passes, not
+one, produced this session's final state.
+
+**Independent verification performed before trusting any of it:**
+sampled live Greenhouse/Lever data directly for five of the twenty
+companies (Roku, Rubrik, Oscar Health, Tripadvisor, N26) -- all five
+confirmed exactly as the migration's own header comment claimed
+(application URLs resolving to each company's real own domain --
+weareroku.com, rubrik.com, hioscar.com, n26.com -- or exact company_name
+matches), including Rubrik's non-obvious `company_name` of "Rubrik Job
+Board" rather than the bare name, correctly reflected in its config the
+same way this doc's IMC Trading/Old Mission Capital precedent requires.
+Independently re-fetched Coupa's Lever board directly and confirmed the
+claimed Tokyo/UK/Australia/Mexico City/Los Angeles office spread and
+sequential internal req-ID numbering (11378, 11689, 11832, 11849) are
+real, not fabricated. The other session's own rejects (MetLife, Blue
+Apron) exactly match this session's independent Twelfth-addition
+findings on the identical companies -- two independently-run checks
+agreeing is a meaningful cross-validation signal, not just a claim taken
+on faith.
+
+**Twenty real hits** (full per-company identity-verification detail --
+company_name/application-URL/office-footprint checks -- is in
+`20260901170000_greenhouse_thirteenth_addition.sql`'s own header comment,
+not duplicated here): **Roku** (NASDAQ: ROKU), **HelloFresh** (ETR: HFG),
+**FanDuel** (Flutter Entertainment), **Tripadvisor** (NASDAQ: TRIP),
+**Oscar Health** (NYSE: OSCR), **Zscaler** (NASDAQ: ZS), **GitLab**
+(NASDAQ: GTLB), **Elastic** (NYSE: ESTC), **Braze** (NASDAQ: BRZE),
+**PagerDuty** (NYSE: PD), **Rubrik** (NYSE: RBRK), **Samsara** (NYSE:
+IOT), **Vercel**, **Checkr**, **Rent the Runway** (NASDAQ: RENT),
+**Stitch Fix** (NASDAQ: SFIX), **Riot Games** (League of Legends/
+Valorant; Tencent), **New Relic**, **N26** (German neobank), **Monzo**
+(UK neobank), plus **Coupa** (Lever; Thoma Bravo portfolio, real
+spend-management software) as the pass's one Lever hit. All twenty-one
+are exactly the "recognizable name" category this pass targeted --
+several (Roku, FanDuel, Tripadvisor, Riot Games, GitLab) are
+mainstream-famous; the rest are well-known within tech/enterprise-
+software circles even if not household names, a reasonable middle tier
+between SpaceX-scale fame and the boutique-firm names prior passes had
+drifted toward.
+
+**Six real, identity-checked rejections in this pass** (three overlap
+exactly with this session's own independent Twelfth-addition finds --
+MetLife, Blue Apron -- confirming both sessions converged on the same
+conclusions independently): **"General Motors"** (bare "general" slug ->
+"General Interest," the same squat pattern General Catalyst's own guess
+hit); **"US Bank"** (bare "us" slug -> "itel - United States," an
+unrelated BPO); **"Western Union"** (Greenhouse board resolves but its
+one posting is literally titled "Senior Recruiter, Talent Acquisition
+(Test)" -- a stale test artifact, not a real job; the company's real
+careers page confirms it actually runs Workday); **"Capital Group"**
+(Lever slug "capital" resolves to the identical unrelated Cyprus/
+Bulgaria-based crypto/CFD firm already caught under Capital One's
+identical slug guess in the Fifth addition). One real-but-empty board:
+**Unilever** ("unilever", 0 postings, null company_name -- same class as
+Plaid/Indeed/Narmi/etc.).
+
+**A real bug this session found and fixed before trusting the pass as
+complete: several of the twenty companies were sitting well over the
+30-job cap when first checked.** Direct Postgres verification (`npx
+supabase db query --linked`) immediately after discovering the two
+migration files showed **Braze at 104 active, HelloFresh at 165, Samsara
+at 130, Zscaler at 125, Roku at 70, GitLab at 63** -- all far past
+`MAX_ACTIVE_JOBS_PER_COMPANY = 30` -- and **Coupa and Rubrik at zero
+active jobs**, meaning the other session's own fetch invocation(s) never
+ran to completion for every company in a single pass (most likely
+interrupted partway, the same "machine idle / process killed mid-run"
+failure mode this doc's Part 2 entry already documented once before).
+This is exactly the class of thing "trust but verify" is for: the other
+session's migration comments claimed correct behavior, but the live data
+didn't yet match that claim at the moment this session checked. Fixed by
+directly invoking `fetch-greenhouse-companies` and `fetch-lever-
+companies` once each via `curl` against the deployed endpoints (anon
+key) -- `enforceCompanyCap` ran cleanly this time (`capDeactivated: 369`
+for HelloFresh, `214` each for Zscaler/Samsara, `213` for Braze, `97` for
+GitLab, `81` for Roku, plus smaller corrections across the rest; Coupa
+`inserted: 31`, correctly landing at 30 active). Re-verified directly
+against Postgres afterward: **all twenty-one now sit at or under the
+cap** -- Vercel/Tripadvisor/Braze/HelloFresh/Elastic/FanDuel/Riot
+Games/GitLab/Coupa/Samsara/Oscar Health/Roku/Zscaler/N26/Rubrik ("Rubrik
+Job Board" in the `company` column) all at exactly 30 active; Monzo
+29/29, New Relic 28/28, PagerDuty 21/21, Checkr 20/20, Rent the Runway
+12/12, Stitch Fix 9/9 (all six under 30 because relevant volume doesn't
+reach it, `capDeactivated: 0` for these). Pulled a random 50-title
+sample across all twenty-one: zero manual-trade or clinical-care titles
+-- genuinely white-collar corporate/tech/sales/finance roles throughout
+(Deal Desk Strategist, Financial Analyst II, Employment and Commercial
+Counsel, Process Management Associate, HR Business Partner Manager,
+among them).
+
+`npm run test:server`: **123/123 green**, re-confirmed after the cap fix
+(config-only addition plus a live-data correction, no adapter/pipeline
+code touched).
+
+**Total company job-listing sources after this addition: 128** (120
+Greenhouse + 7 Lever + 1 Deloitte RSS feed), confirmed via a direct count
+against the live `sources` table grouped by `config->>'platform'`, up
+from 107 after the Twelfth addition and 95 at the very start of this
+overall pass -- combining both sessions' work, the largest two-pass total
+increase this doc has recorded (33 net new sources across the Twelfth
+and Thirteenth additions together).
+
+Committed and pushed per standing permission for this repo -- both
+migration pairs (Twelfth's and Thirteenth's) and this combined writeup
+together, in one commit, since by the time of commit both were equally
+real, equally verified, live database state, and splitting them across
+separate commits would have implied a false story about which session
+did what without adding any real clarity for a future reader.

@@ -1,0 +1,17 @@
+-- Removes the "Medium" Greenhouse source added earlier in this pass
+-- (20260901130000_greenhouse_twelfth_addition.sql), once live invocation
+-- showed it doesn't actually belong. Its board has exactly one posting
+-- ("Senior Data Platform Engineer"), and that title trips the existing
+-- SENIOR_TITLE_PATTERN denylist (skippedNotRelevant: 1, suspiciouslyEmpty:
+-- true on invocation) -- so it nets to zero active jobs, same practical
+-- outcome as the "real-but-empty" boards already documented and excluded
+-- across this doc's history (Plaid/Indeed/Narmi/Optiver/Apollo Global
+-- Management/American Securities/Marshall Wace/Kraken/Nubank/Increase/
+-- Wealthsimple/Compass Lexecon/Permira/Battery Ventures/Index Ventures/
+-- Fortress Investment Group/HPS Investment Partners). Identity was
+-- genuinely confirmed (the posting's own description text unambiguously
+-- self-describes as the real Medium.com) -- this isn't an identity
+-- rejection, just zero practical value once the relevance filter runs on
+-- its only posting. Deleted outright rather than left as a permanently
+-- inert row.
+delete from sources where name = 'Medium (Greenhouse Job Board API)';
