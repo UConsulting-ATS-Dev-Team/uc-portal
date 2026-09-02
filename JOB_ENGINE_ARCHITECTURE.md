@@ -4512,3 +4512,17 @@ far enough to deactivate anything), but worth a follow-up check next
 session.
 
 Committed and pushed per standing permission for this repo.
+
+**2026-09-01 -- Marqeta follow-up resolved.** Confirmed genuinely gone,
+not a transient failure: `scripts/check-company-source.mjs` and a direct
+`curl` against every plausible slug (`marqeta`, `marqetainc`,
+`marqeta-inc`) all 404 on Greenhouse, and the company's real careers
+page (marqeta.com/careers, HTTP 200) shows no detectable ATS signal at
+all -- they likely migrated off Greenhouse entirely. Disabled the source
+(`enabled = false`, `authorization_status = 'disabled'`, a note recorded
+on the row) via migration `20260901120000_disable_stale_marqeta_source.sql`
+so the daily cron stops hitting a dead endpoint, and deactivated the 2
+remaining active Marqeta postings (`active = false`, `status =
+'removed'`) since they're no longer verifiable as still-open. Verified
+live: `enabled`/`authorization_status` confirmed flipped, active Marqeta
+job count confirmed 0, `npm run test:server` still 123/123 green.
