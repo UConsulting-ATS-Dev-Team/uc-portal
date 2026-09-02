@@ -4857,3 +4857,31 @@ together, in one commit, since by the time of commit both were equally
 real, equally verified, live database state, and splitting them across
 separate commits would have implied a false story about which session
 did what without adding any real clarity for a future reader.
+
+**2026-09-02 -- Fourteenth addition, 6 more recognizable companies.**
+This pass's own agent process stalled mid-verification (an
+infrastructure hiccup, not a real error -- same class of interruption
+several earlier passes hit); its migration had already applied cleanly
+to the live database by that point, so this entry closes it out with an
+independent re-verification rather than assuming the interrupted
+agent's own in-progress checks were complete. Added: Fastly, Tenable
+Inc. (cybersecurity), Faire, StockX (e-commerce/marketplace), Bombas,
+MyFitnessPal (consumer/fitness) -- all real Greenhouse boards,
+identity-verified via exact `company_name` match.
+
+Real counts, independently confirmed via direct Postgres query (not
+taken from the interrupted agent's own claims): Bombas 10, Faire 12,
+Fastly 12, MyFitnessPal 5, StockX 27, Tenable Inc. 22 active jobs -- all
+at or under the 30-job cap. Spot-checked 15 random active titles across
+all six: genuinely white-collar corporate roles throughout (Strategy &
+Analytics Lead, Category Manager, Product Manager - Cloud Risk, Sales
+Operations Manager, Account Executive), with two borderline operational
+titles at StockX ("Sneaker Verification Expert," a physical-authentication
+role) -- a normal, expected amount of noise for a real company's board
+given the relevance filter's deliberately conservative "keep ambiguous"
+design, not a Carvana-scale problem (2 of 15 sampled, not the dominant
+pattern). `npm run test:server` -- 123/123 green, re-run independently
+as part of this closeout.
+
+Total now: **134 company job-listing sources** (126 Greenhouse + 7 Lever
++ 1 Deloitte RSS).
