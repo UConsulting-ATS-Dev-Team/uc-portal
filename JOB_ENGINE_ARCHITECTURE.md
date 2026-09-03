@@ -5642,3 +5642,282 @@ excluded from this count same as every prior addition's tally), up from
 139 at the start of this pass.
 
 Committed and pushed per standing permission for this repo.
+
+**2026-09-02 -- Seventeenth addition: nineteen more companies (seventeen
+Greenhouse, two Lever).** Continues the big-name-first direction the
+Twelfth-through-Sixteenth additions started (standing user direction,
+direct quote: "I want to get big name companies first. I've never heard of
+Marqeta.").
+
+Confirmed the live starting count via direct Postgres query first (136
+Greenhouse + 8 Lever + 1 Deloitte RSS = 145 total company sources,
+matching the Sixteenth addition's own closing figure exactly), then read
+every prior dated entry in this Part (Sixth through Sixteenth additions)
+to compile the roster of 200+ companies already added or checked-and-
+rejected, so nothing here re-checked settled ground. Re-checked `ls
+supabase/migrations | tail` immediately before writing each new migration,
+per this task's own standing instruction, to avoid a timestamp collision.
+
+**~38 candidates checked**, spanning verticals the task brief flagged as
+underexplored: energy/utilities, agriculture/food production, chemicals/
+industrials, construction/engineering, staffing/HR tech, legal tech,
+marketing/advertising agencies/adtech, semiconductor equipment, EV
+charging/clean energy, space/satellite beyond SpaceX/Rocket Lab, robotics
+beyond Zoox, crypto/web3 exchanges beyond Coinbase/Gemini/Kraken/Circle/
+Ripple, sports betting beyond FanDuel/DraftKings, luxury/beauty beyond
+Glossier.
+
+No usable board on any platform: Skydio, Firefly Aerospace, Varda Space
+Industries, Enphase Energy, Sunrun, QuantumScape, Procore Technologies,
+Rippling, Deel, Harvey AI, Ironclad, Criteo, Impossible Foods, Bowery
+Farming, Ulta Beauty, Coty, Penn Entertainment, Caesars Sportsbook,
+PointsBet, Allbirds, Chainalysis, OpenSea, Applied Materials, Lam
+Research, KLA Corporation, Cruise -- extending the "legacy/traditional-
+industry and Fortune-500-scale companies run Workday or nothing checkable"
+pattern into semiconductor equipment and legacy energy/agencies/agtech;
+also a genuine miss on a handful of famous newer-economy names (Harvey AI,
+Ironclad, Rippling, Deel, Skydio are all real, high-profile companies with
+simply no public Greenhouse/Lever board found under any plausible slug
+guess -- a useful negative result, not evidence they're unauthorized, just
+not technically reachable this way).
+
+**Four identity rejections/exclusions, all in the exact slug-squatting
+risk class the user's own standing warning names (short/generic-word
+slugs are the highest-risk category)**: "bloom" (Lever) resolves but every
+sampled posting ("Director of Brand & Social | Poppy & Peonies", remote
+gifting/e-commerce roles) is an unrelated flower/gifting brand, not Bloom
+Energy. "beyond" (Greenhouse, company_name "Beyond") resolves but every
+sampled posting is Barcelona/Spain-based SaaS-pricing roles, not Beyond
+Meat (real HQ El Segundo, CA). "axiom" (Greenhouse, company_name "Axiom")
+resolves with legal-staffing titles (Contracts Counsel, Corporate
+Controller) consistent with Axiom Law, a real but different company than
+the intended target Axiom Space -- not independently pursued as Axiom Law
+in its own right, same precedent as Coleman Research/Co-Star Astrology.
+"indigo" (Greenhouse, company_name "Indigo") resolves for the intended
+target Indigo Ag but with only 2 total postings and a bare-word slug too
+thin to independently confirm identity beyond the name match alone --
+excluded on the same rigor bar as Coleman Research. All four excluded.
+
+**A real duplicate caught by the database itself, not by this pass's own
+research**: two candidates researched, verified, and drafted into the
+first migration -- Checkr and Rent the Runway -- turned out to already be
+live approved sources from an earlier pass this doc's own Part 7 grep
+didn't surface under those exact terms. `supabase db push` failed outright
+on a `sources_name_key` unique-constraint violation on the first attempt
+("Checkr (Greenhouse Job Board API)" already exists); a follow-up query
+against `sources` for every remaining candidate name and slug confirmed
+Rent the Runway was also already live, both entries were removed from the
+migration before the (successful) second push, and no duplicate rows were
+ever created. Worth recording as a reminder that this doc's own prose is
+not a substitute for checking the live table directly when in doubt --
+which this pass did do at the start (confirming the 145 starting count),
+just not by name for every individual candidate up front.
+
+**Seventeen real Greenhouse hits**, each identity-verified the same way as
+every prior addition -- company_name exact match, plus sampled application
+URLs, office footprints, or self-referencing job content, never a slug
+guess alone. A local pure-JS estimate against the exact
+SENIOR_TITLE_PATTERN/MANUAL_TRADE_TITLE_PATTERN/CLINICAL_CARE_TITLE_PATTERN
+regexes in `server/src/relevance.ts` was run against every live posting
+for all nineteen (seventeen Greenhouse + two Lever) before writing either
+migration:
+
+- **Figure AI** -- real, extremely high-profile humanoid-robotics company
+  (~$39B valuation). Greenhouse slug "figureai" (the bare "figure" slug is
+  a different company, company_name "Figure Lending" -- excluded, same
+  slug-collision risk class as above), 112 postings, company_name "Figure"
+  (short form). San Jose, CA locations and titles ("AI Training
+  Infrastructure Engineer -- Humanoid Whole Body Control", "Apprentice
+  Robot Service Technician") confirm the real humanoid-robot company. 95
+  of 112 sampled titles survive the relevance filter locally; capped to 30
+  active.
+- **Planet Labs** -- real publicly-traded (NYSE: PL) satellite-imagery
+  company. Greenhouse slug "planetlabs", 114 postings, company_name
+  "Planet" (the brand's own short form). "Account Executive, Defence &
+  Intelligence" titles across many countries match Planet's real
+  government/defense customer base. 59 of 114 sampled titles survive the
+  relevance filter locally; capped to 30 active.
+- **Relativity Space** -- real 3D-printed-rocket aerospace company, well
+  known in the space industry. Greenhouse slug "relativity" (not
+  "relativityspace"), 342 postings, company_name "Relativity Space"
+  (exact). Long Beach, CA locations match the real company's actual HQ
+  exactly. 143 of 342 sampled titles survive the relevance filter locally
+  (49 correctly denylisted as manual-trade/manufacturing-technician roles,
+  not Carvana-scale dominant); capped to 30 active.
+- **Redwood Materials** -- real battery-recycling company founded by JB
+  Straubel (Tesla co-founder), well covered in cleantech press. Greenhouse
+  slug "redwoodmaterials", 145 postings, company_name exact.
+  McCarran/Carson City, NV locations match the real company's actual
+  Nevada facility. 83 of 145 sampled titles survive the relevance filter
+  locally, but the composition leans manufacturing/technician-heavy (20
+  correctly denylisted as manual-trade -- Electrician, Chemical Operator,
+  Maintenance Technician) alongside a genuine substantial corporate cohort
+  (Senior Software Engineer, Data Engineering Manager, Director of
+  Marketing, Senior HR Business Partner) -- worth noting honestly rather
+  than implying an all-corporate board, same class of note as Rocket
+  Lab/Sweetgreen. A live spot-check after ingestion also surfaced
+  "Electrician" and "Superintendent, Self Perform" among this company's
+  active postings -- neither trips `MANUAL_TRADE_TITLE_PATTERN` today (the
+  pattern's manual-trade vocabulary was built against Carvana/Rocket
+  Lab/Zoox's real titles, not Redwood's); flagged here as an honest
+  observation for a future relevance-filter pass, not fixed in this one --
+  scope stayed to source addition/verification, not relevance-regex
+  tuning, and changing that regex deserves the same "checked against every
+  active company's real titles" rigor the file's own comments describe,
+  not a one-off word add.
+- **ChargePoint** -- real publicly-traded (NYSE: CHPT) EV-charging-network
+  company, one of the most recognized EV charging brands in the US.
+  Greenhouse slug "chargepoint", 31 postings, company_name exact. Campbell,
+  CA location matches the real company's actual HQ. 12 of 31 sampled
+  titles survive the relevance filter locally.
+- **The Trade Desk** -- real publicly-traded (NASDAQ: TTD) programmatic
+  advertising company, one of the best-known names in adtech. Greenhouse
+  slug "thetradedesk", 177 postings, company_name exact. 54 of 177 sampled
+  titles survive the relevance filter locally; capped to 30 active.
+- **AppLovin** -- real publicly-traded (NASDAQ: APP) mobile-advertising
+  company, ~$100B+ market cap, now widely recognized. Greenhouse slug
+  "applovin", 35 postings, company_name exact. 29 of 35 sampled titles
+  survive the relevance filter locally.
+- **Amplitude** -- real publicly-traded (NASDAQ: AMPL) product-analytics
+  company. Greenhouse slug "amplitude", 36 postings, company_name exact.
+  San Francisco, CA locations match the real company's actual HQ. 13 of 36
+  sampled titles survive the relevance filter locally.
+- **DoubleVerify** -- real publicly-traded (NYSE: DV) ad-verification/
+  adtech company. Greenhouse slug "doubleverify", 29 postings,
+  company_name exact. "NYC Global HQ" appears directly in sampled
+  locations. 9 of 29 sampled titles survive the relevance filter locally.
+- **Attentive** -- real, well-funded marketing-technology unicorn (SMS/
+  email marketing platform). Greenhouse slug "attentive", 37 postings,
+  company_name exact. New York, NY locations match the real company's
+  actual HQ. 17 of 37 sampled titles survive the relevance filter locally.
+- **Everlaw** -- real legal-technology (e-discovery/litigation) company,
+  the one real hit in this pass's legal-tech vertical (Harvey AI, Ironclad
+  both had no usable board). Greenhouse slug "everlaw", 31 postings,
+  company_name exact. Oakland, CA locations match the real company's
+  actual HQ. 17 of 31 sampled titles survive the relevance filter locally.
+- **Culture Amp** -- real HR-tech (employee-engagement) company.
+  Greenhouse slug "cultureamp", 42 postings, company_name exact.
+  Melbourne/Sydney, Australia locations match the real company's actual
+  HQ. 25 of 42 sampled titles survive the relevance filter locally.
+- **Fireblocks** -- real crypto-custody/infrastructure company (~$8B
+  valuation), well known in crypto/fintech circles. Greenhouse slug
+  "fireblocks", 70 postings, company_name exact. Titles reference "Crypto
+  Services" directly. 35 of 70 sampled titles survive the relevance filter
+  locally.
+- **Consensys** -- real blockchain company, creator of MetaMask -- one of
+  the best-known names in crypto/web3. Greenhouse slug "consensys", 6
+  postings, company_name exact. One posting explicitly titled "Senior
+  Design Engineer - MetaMask" directly confirms identity. Small board: 1
+  of 6 sampled titles survives the relevance filter locally, added anyway
+  per the same small-but-real-and-famous precedent as SeatGeek (6/20)/
+  StubHub (8/17) from the Sixteenth addition.
+- **Astranis** -- real small-satellite company, growing recognition in the
+  space industry. Greenhouse slug "astranis", 81 postings, company_name
+  exact. San Francisco, CA locations match the real company's actual HQ.
+  54 of 81 sampled titles survive the relevance filter locally.
+- **Nuro** -- real autonomous-delivery-vehicle company backed by SoftBank,
+  well known in the AV space. Greenhouse slug "nuro", 110 postings,
+  company_name exact. "Mountain View, California (HQ)" appears directly in
+  sampled locations. 55 of 110 sampled titles survive the relevance filter
+  locally -- strong software/ML-engineering composition, alongside
+  Autonomous Vehicle Operator/Fleet Technician roles correctly denylisted
+  as manual-trade.
+- **Agility Robotics** -- real humanoid-robotics company (maker of the
+  "Digit" robot), well known in robotics circles. Greenhouse slug
+  "agilityrobotics", 68 postings, company_name exact. Salem, OR location
+  matches the real company's actual HQ. 14 of 68 sampled titles survive
+  the relevance filter locally.
+
+**Two real Lever hits**:
+
+- **Anchorage Digital** -- real federally-chartered digital-asset custody
+  company, well known in the crypto industry. Lever slug "anchorage" was
+  already surfaced once before, in the Fourteenth addition's PE/asset-
+  management vertical, but excluded there because that pass's search
+  target was Anchorage *Capital Group* (an unrelated hedge fund) -- this
+  pass targeted Anchorage Digital directly and re-verified the same board
+  on its own merits. No self-reported company name exists in Lever's
+  response (same limitation documented for Wealthfront/Belvedere
+  Trading/Tala/Spotify/Coupa/Zoox) -- identity verified instead via
+  strongly crypto-specific titles and locations ("APAC Regional Lead,
+  Stablecoin Solutions" | Singapore, "Credit Trader - Prime Finance" |
+  Cayman Islands, "Member of Technical Staff, Agentic Banking"). 23 of 29
+  sampled titles survive the relevance filter locally -- a genuinely
+  clean, entirely white-collar fintech/trading/legal/engineering board,
+  zero manual-trade or clinical-care hits.
+- **e.l.f. Beauty** -- real publicly-traded (NYSE: ELF) beauty company, an
+  extremely well-known consumer brand. Lever slug "elfbeauty", 71
+  postings. No self-reported company name field exists on a Lever posting
+  -- identity verified instead via Oakland, CA locations (e.l.f. Beauty's
+  real HQ) and titles directly referencing the company's real owned-brand
+  portfolio ("Sr. Brand Manager, e.l.f. Cosmetics", "e.l.f. SKIN",
+  "Naturium", "rhode" -- both real acquired brands, rhode most recently in
+  2025), an unusually strong identity signal for a Lever board. 37 of 71
+  sampled titles survive the relevance filter locally, only 1 manual-
+  trade/clinical hit.
+
+None of these nineteen match a `NAMED_COMPANY_RATES` entry in
+`data/industryBaseRates.js` (MBB / bulge-bracket IB / elite quant trading
+/ elite big tech) -- all fall through to that module's broader
+industry-tier fallback, same as most of this app's real sources today.
+
+Added via two migrations onto the existing config-driven mechanisms --
+`20260902180000_greenhouse_seventeenth_addition.sql` (the seventeen
+Greenhouse companies) and `20260902190000_lever_seventeenth_addition.sql`
+(the two Lever companies) -- no adapter code changes needed, all nineteen
+inherit Part 1's white-collar relevance filter and Part 2's
+`MAX_ACTIVE_JOBS_PER_COMPANY = 30` cap automatically, verified rather than
+assumed. Migrations pushed via `npx supabase db push --linked` after
+confirming no timestamp collision against `supabase/migrations`' actual
+tail immediately beforehand.
+
+Verified live end-to-end via direct `curl` against both deployed HTTPS
+Edge Function endpoints (anon key). An unscoped `fetch-greenhouse-
+companies` invocation (processing all 153 configured Greenhouse companies
+in one run) failed twice in a row with `WORKER_RESOURCE_LIMIT` -- the
+function's own optional `{ slug }` request-body parameter (already built
+for exactly this, see its "Optional { slug } body scopes this run to one
+company" comment) scoped each invocation to a single new company instead,
+which succeeded for all seventeen on the first attempt with `deferred: 0`
+throughout (no multi-invocation backlog-draining needed, unlike Anduril's
+2,207-posting board in the Sixteenth addition). A field-naming quirk
+already documented for Zoox recurred here too: the very first insert for
+every one of the seventeen Greenhouse companies landed under `refreshed`
+rather than `inserted` in the response JSON; a second per-company
+invocation returned byte-identical `inserted: 0` / matching `refreshed`
+counts for a 5-company spot-check (Figure AI, Relativity Space,
+ChargePoint, Consensys, Nuro), confirming genuine idempotency rather than
+duplicate inserts. `fetch-lever-companies` behaved normally for both
+Lever companies: real `inserted` counts on the first invocation (Anchorage
+Digital 22, e.l.f. Beauty 37), `inserted: 0` with matching `refreshed`
+counts on the second.
+
+Cross-checked directly against Postgres (`npx supabase db query
+--linked`), not just fetch summaries: **Astranis 30/53, Figure 30/95,
+Fireblocks 30/35, Nuro 30/55, Planet 30/52, Redwood Materials 30/78,
+Relativity Space 30/143, The Trade Desk 30/54, e.l.f. Beauty 30/37** (all
+nine hit the 30-job cap); **Agility Robotics 14/14, Amplitude 13/13,
+AppLovin 29/29, Attentive 17/17, ChargePoint 12/12, Consensys 1/1, Culture
+Amp 25/25, DoubleVerify 9/9, Everlaw 17/17, Anchorage Digital 22/22**
+(under 30 because relevant volume doesn't reach it). A 40-title random
+sample across all nineteen companies' active postings, pulled directly
+from Postgres, confirmed genuinely white-collar engineering/finance/
+product/marketing/legal/operations roles throughout (Deployment Engineer,
+Revenue Operations Analyst, Production Engineering Manager, Associate
+General Counsel, Content Marketing Manager, Software Engineer II, among
+them) -- with two Redwood Materials titles ("Field Service Electrician",
+"Superintendent, Self Perform") noted honestly above as a real gap in the
+current manual-trade denylist rather than glossed over.
+
+`npm run test:server`: **123/123 green**, unaffected (config-only
+addition, no adapter/pipeline code touched this pass).
+
+**Total company job-listing sources after this addition: 164** (153
+Greenhouse + 10 Lever + 1 Deloitte RSS feed), confirmed via a direct count
+against the live `sources` table grouped by `config->>'platform'` (the
+other 4 approved-but-`platform`-null rows -- UC Admin Submission, UC
+Member Submission, Link Health Checker, Job Board Snapshot -- are
+internal/system sources, excluded from this count same as every prior
+addition's tally), up from 145 at the start of this pass.
+
+Committed and pushed per standing permission for this repo.
