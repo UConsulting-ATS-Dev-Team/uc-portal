@@ -19,7 +19,11 @@
 .topbar__brand {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  /* Matches .topbar's own left padding exactly (both var(--space-7)) so
+     the bear mark sits centered in the gap between the page's left edge
+     and "UC Portal" -- was var(--space-3) (9px), noticeably tighter to
+     the wordmark than to the page edge (20px), reading as off-center. */
+  gap: var(--space-7);
   text-decoration: none;
   flex: 0 0 auto;
 }
@@ -35,6 +39,13 @@
   font-weight: var(--font-heading-weight);
   font-size: var(--text-title-min);
   color: var(--color-text);
+}
+
+/* UC's own reproduction rule (CLAUDE.md's Logo note): the "U" recolored
+   to accent blue, rest in primary navy -- matches how it renders in the
+   club's real logo files. */
+.topbar__wordmark-u {
+  color: var(--color-accent);
 }
 
 .topbar__search {

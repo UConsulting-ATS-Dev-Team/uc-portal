@@ -23,7 +23,9 @@ function Brand() {
   return (
     <div className="auth__brand">
       <img className="auth__mark" src={bearMark} alt="" />
-      <span className="auth__wordmark">UC Portal</span>
+      <span className="auth__wordmark">
+        <span className="auth__wordmark-u">U</span>C Portal
+      </span>
     </div>
   );
 }

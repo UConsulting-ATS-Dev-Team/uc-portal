@@ -148,7 +148,7 @@ export default function Home() {
               </div>
             </div>
           )}
-          <div className="chip-row" style={{ marginBottom: 0 }}>
+          <div className="chip-row" style={{ marginTop: "var(--space-4)", marginBottom: 0 }}>
             <Link to="/profile" className="chip chip-accent" style={{ textDecoration: "none" }}>
               Edit preferences
             </Link>

@@ -28,7 +28,9 @@ export default function TopBar() {
     <header className="topbar">
       <Link className="topbar__brand" to="/">
         <img className="topbar__mark" src={bearMark} alt="" />
-        <span className="topbar__wordmark">UC Portal</span>
+        <span className="topbar__wordmark">
+          <span className="topbar__wordmark-u">U</span>C Portal
+        </span>
       </Link>
 
       {isAdminMode && <span className="chip chip-accent">Admin mode</span>}

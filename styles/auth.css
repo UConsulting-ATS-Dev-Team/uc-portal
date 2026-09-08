@@ -35,6 +35,12 @@
   color: var(--color-text);
 }
 
+/* UC's own reproduction rule (CLAUDE.md's Logo note): the "U" recolored
+   to accent blue, rest in primary navy. */
+.auth__wordmark-u {
+  color: var(--color-accent);
+}
+
 .auth__card {
   background: var(--color-surface);
   border: var(--border-hairline);
