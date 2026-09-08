@@ -68,22 +68,9 @@ function capPerCompany(jobs, cap) {
   return { kept, overflowByCompany, lastKeptIdByCompany };
 }
 
-const DEFAULT_FILTERS = {
-  keyword: "",
-  recommendedForMe: false,
-  types: [],
-  gradYears: ["2027"],
-  industries: ["Management consulting"],
-  locations: ["Chicago", "New York"],
-  compMin: 25,
-  compMax: 60,
-  deadlines: ["This month"],
-};
-
-// A blank slate for natural-language search to build on -- unlike
-// DEFAULT_FILTERS above (a seeded demo default with a few chips
-// preselected, what "Clear all" resets to), a described search should
-// start from nothing and apply only what the query actually said.
+// A blank slate for natural-language search (and "Clear all") to build
+// on -- a described search, or an explicit reset, should start from
+// nothing and apply only what was actually asked for.
 const NEUTRAL_FILTERS = {
   keyword: "",
   recommendedForMe: false,
@@ -95,6 +82,31 @@ const NEUTRAL_FILTERS = {
   compMax: 75,
   deadlines: [],
 };
+
+// The Jobs board's actual first-load default. Used to hardcode a generic
+// seeded demo state (gradYears: ["2027"], industries: ["Management
+// consulting"], locations: ["Chicago", "New York"]) regardless of who was
+// signed in -- a member's first look at Jobs showed filters that had
+// nothing to do with their own onboarding answers. Now built from the
+// member's real preferences instead: their own class year, their own
+// ranked industries/locations, their own opportunity type, and their own
+// stated comp target as the floor (never a ceiling -- nothing here
+// should hide a role that pays *more* than what they asked for).
+// Deliberately still filters, not an empty NEUTRAL_FILTERS-style slate:
+// showing exactly what the member said they care about, out of the box,
+// is the whole point of having collected preferences during onboarding
+// in the first place -- "Clear all" (NEUTRAL_FILTERS above) is right
+// there for anyone who wants to start from nothing instead.
+function defaultFiltersFromPreferences(preferences, classYear) {
+  return {
+    ...NEUTRAL_FILTERS,
+    gradYears: classYear ? [String(classYear)] : [],
+    industries: preferences.industries ?? [],
+    locations: preferences.locations ?? [],
+    types: preferences.opportunityType === "Both" || !preferences.opportunityType ? [] : [preferences.opportunityType],
+    compMin: preferences.compTarget ?? NEUTRAL_FILTERS.compMin,
+  };
+}
 
 // Location (a physical place, matched against job.location) and work mode
 // (matched against job.workMode) used to render as one combined chip group
@@ -191,7 +203,16 @@ function pageWindow(current, total) {
 
 export default function Jobs() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const { savedJobIds, toggleSavedJob, preferences, savedSearches, saveSearch, removeSavedSearch, profileOverrides } = useAppState();
+  const classYear = resolvedClassYear(currentUser, profileOverrides);
+  // Lazy initializer -- runs once, off the member's real preferences at
+  // mount, not the old hardcoded DEFAULT_FILTERS (a generic seeded demo
+  // default -- gradYears: ["2027"], industries: ["Management
+  // consulting"], locations: ["Chicago", "New York"] -- that had nothing
+  // to do with whoever was actually signed in, so a member's first look
+  // at Jobs showed filters that didn't match their own onboarding
+  // answers at all).
+  const [filters, setFilters] = useState(() => defaultFiltersFromPreferences(preferences, classYear));
   const [tab, setTab] = useState("recommended");
   const [sortBy, setSortBy] = useState("bestMatch");
   const [page, setPage] = useState(1);
@@ -200,8 +221,6 @@ export default function Jobs() {
   const [showPostModal, setShowPostModal] = useState(false);
   const [nlQuery, setNlQuery] = useState("");
   const [nlResult, setNlResult] = useState(null);
-  const { savedJobIds, toggleSavedJob, preferences, savedSearches, saveSearch, removeSavedSearch, profileOverrides } = useAppState();
-  const classYear = resolvedClassYear(currentUser, profileOverrides);
 
   const [rawJobs, setRawJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(true);
@@ -325,9 +344,20 @@ export default function Jobs() {
       <aside className="filters">
         <div className="filters__header">
           <span>Filters</span>
-          <button className="btn-link" onClick={() => setFilters(NEUTRAL_FILTERS)}>
-            Clear all
-          </button>
+          <div style={{ display: "flex", gap: "var(--space-4)" }}>
+            <button
+              className="btn-link"
+              onClick={() => {
+                setFilters(defaultFiltersFromPreferences(preferences, classYear));
+                setTab("all");
+              }}
+            >
+              Match my profile
+            </button>
+            <button className="btn-link" onClick={() => setFilters(NEUTRAL_FILTERS)}>
+              Clear all
+            </button>
+          </div>
         </div>
 
         {savedSearches.length > 0 && (
