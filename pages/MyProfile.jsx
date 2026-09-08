@@ -66,6 +66,7 @@ export default function MyProfile() {
   const [tab, setTab] = useState("Personal");
   const [saved, setSaved] = useState(false);
   const [photoNote, setPhotoNote] = useState(false);
+  const [skillQuery, setSkillQuery] = useState("");
   const [companyQuery, setCompanyQuery] = useState("");
   const fileInput = useRef(null);
 
@@ -275,8 +276,17 @@ export default function MyProfile() {
                 Matched against each job's inferred skill profile -- feeds the "relevant skills" line on
                 the match checklist.
               </p>
+              <input
+                type="text"
+                placeholder={`Search ${SKILLS.length} skills…`}
+                value={skillQuery}
+                onChange={(e) => setSkillQuery(e.target.value)}
+                style={{ marginBottom: "var(--space-3)" }}
+              />
               <div className="chip-row">
-                {SKILLS.map((skill) => (
+                {SKILLS.filter(
+                  (skill) => preferences.skills.includes(skill) || skill.toLowerCase().includes(skillQuery.trim().toLowerCase())
+                ).map((skill) => (
                   <button
                     key={skill}
                     className={`chip-toggle${preferences.skills.includes(skill) ? " is-selected" : ""}`}
@@ -285,6 +295,9 @@ export default function MyProfile() {
                     {skill}
                   </button>
                 ))}
+                {SKILLS.every(
+                  (skill) => !preferences.skills.includes(skill) && !skill.toLowerCase().includes(skillQuery.trim().toLowerCase())
+                ) && <p className="meta">No skills match "{skillQuery}".</p>}
               </div>
 
               <p style={{ fontWeight: 700 }}>Target locations</p>

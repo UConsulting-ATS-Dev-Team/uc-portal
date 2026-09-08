@@ -25,7 +25,31 @@ export const ROLES = [
   "Program Manager",
 ];
 
-export const LOCATIONS = ["Chicago", "New York", "Los Angeles", "San Francisco", "Remote", "Hybrid"];
+export const LOCATIONS = [
+  "New York",
+  "Chicago",
+  "Los Angeles",
+  "San Francisco",
+  "Boston",
+  "Washington DC",
+  "Seattle",
+  "Austin",
+  "Dallas",
+  "Houston",
+  "Atlanta",
+  "Miami",
+  "Denver",
+  "Philadelphia",
+  "San Diego",
+  "Charlotte",
+  "Minneapolis",
+  "Phoenix",
+  "Nashville",
+  "Detroit",
+  "Remote",
+  "Hybrid",
+  "International",
+];
 
 // Part 10 / US-26 -- the exact vocabulary supabase/functions/_shared/
 // pipeline/taxonomy/occupationTaxonomy.ts's skillsForOccupation() actually
@@ -61,13 +85,13 @@ export const SKILLS = [
   "Microsoft PowerPoint",
   "SQL",
   "Bloomberg Terminal",
-  "Financial modeling software",
-  "Project management software",
+  "Financial Modeling Software",
+  "Project Management Software",
   "Python",
   "Git",
   "Adobe Creative Suite",
-  "Marketing analytics platforms",
-  "Statistical analysis software",
+  "Marketing Analytics Platforms",
+  "Statistical Analysis Software",
   "Administration and Management",
   "Economics and Accounting",
   "Sales and Marketing",
