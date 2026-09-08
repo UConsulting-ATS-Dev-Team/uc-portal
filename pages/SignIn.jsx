@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Skeleton from "../components/Skeleton.jsx";
 import { useAppState } from "../data/store.jsx";
 import { supabase } from "../data/supabaseClient.js";
-import bearMark from "../assets/uc-bear-mark-white.png";
+import bearMark from "../assets/uc-bear-mark-navy.png";
 import "../styles/auth.css";
 
 // Wireframe 3a — four states: sign-in, not-on-roster, access-pending,
@@ -22,9 +22,7 @@ const STATE = {
 function Brand() {
   return (
     <div className="auth__brand">
-      <span className="auth__mark">
-        <img src={bearMark} alt="" />
-      </span>
+      <img className="auth__mark" src={bearMark} alt="" />
       <span className="auth__wordmark">UC Portal</span>
     </div>
   );
@@ -40,7 +38,15 @@ export default function SignIn() {
   const [submittedAt, setSubmittedAt] = useState(null);
   const [resent, setResent] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { onboardingComplete } = useAppState();
+  // RequireAuth (see components/RequireAuth.jsx) redirects here with the
+  // page the member was actually trying to reach in router state -- land
+  // them back there instead of always at Home, same principle as any
+  // real "continue where you left off" sign-in flow.
+  const redirectTo = location.state?.from
+    ? `${location.state.from.pathname}${location.state.from.search || ""}`
+    : null;
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -67,7 +73,7 @@ export default function SignIn() {
       return;
     }
 
-    navigate(onboardingComplete ? "/" : "/onboarding");
+    navigate(onboardingComplete ? redirectTo || "/" : "/onboarding");
   }
 
   function requestAccess() {

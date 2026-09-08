@@ -5,7 +5,7 @@ import { CONVERSATIONS } from "../data/mockMessages.js";
 import { useAppState } from "../data/store.jsx";
 import { displayName, initialsFromName } from "../data/profileUtils.js";
 import RequestFeatureModal from "./modals/RequestFeatureModal.jsx";
-import bearMark from "../assets/uc-bear-mark-white.png";
+import bearMark from "../assets/uc-bear-mark-navy.png";
 
 const unreadMessageCount = CONVERSATIONS.filter((c) => c.unread).length;
 
@@ -27,9 +27,7 @@ export default function TopBar() {
   return (
     <header className="topbar">
       <Link className="topbar__brand" to="/">
-        <span className="topbar__mark">
-          <img src={bearMark} alt="" />
-        </span>
+        <img className="topbar__mark" src={bearMark} alt="" />
         <span className="topbar__wordmark">UC Portal</span>
       </Link>
 

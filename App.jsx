@@ -1,4 +1,5 @@
 import { Routes, Route } from "react-router-dom";
+import RequireAuth from "./components/RequireAuth.jsx";
 import NavShell from "./components/NavShell.jsx";
 import Placeholder from "./pages/Placeholder.jsx";
 import SignIn from "./pages/SignIn.jsx";
@@ -29,6 +30,19 @@ import NotFound from "./pages/NotFound.jsx";
 export default function App() {
   return (
     <Routes>
+      <Route path="/sign-in" element={<SignIn />} />
+      {/* Alias for the natural, unhyphenated spelling -- every other route
+          in the app is a single word (/jobs, /network, /profile, ...);
+          /sign-in is the one outlier, so this covers the typo/muscle-memory
+          case rather than renaming the canonical route out from under
+          anything that already links to it. */}
+      <Route path="/signin" element={<SignIn />} />
+
+      {/* Every route below requires a real Supabase session --
+          RequireAuth redirects to /sign-in otherwise. See its own header
+          comment for why this exists (it didn't, until real jobs/network/
+          etc. data started needing `authenticated`-only RLS). */}
+      <Route element={<RequireAuth />}>
       <Route
         path="/"
         element={
@@ -157,13 +171,6 @@ export default function App() {
           </NavShell>
         }
       />
-      <Route path="/sign-in" element={<SignIn />} />
-      {/* Alias for the natural, unhyphenated spelling -- every other route
-          in the app is a single word (/jobs, /network, /profile, ...);
-          /sign-in is the one outlier, so this covers the typo/muscle-memory
-          case rather than renaming the canonical route out from under
-          anything that already links to it. */}
-      <Route path="/signin" element={<SignIn />} />
       <Route path="/onboarding" element={<Onboarding />} />
 
       {/* Leadership only — see components/NavRail.jsx for the visibility gate */}
@@ -199,6 +206,8 @@ export default function App() {
           </NavShell>
         }
       />
+
+      </Route>
 
       <Route path="*" element={<NotFound />} />
     </Routes>

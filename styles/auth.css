@@ -23,18 +23,9 @@
 }
 
 .auth__mark {
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-primary);
+  width: auto;
+  height: 56px;
   flex: 0 0 auto;
-}
-
-.auth__mark img {
-  width: 17px;
-  height: auto;
 }
 
 .auth__wordmark {
