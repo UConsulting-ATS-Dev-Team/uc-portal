@@ -5,11 +5,13 @@ export function jobsAt(companyName) {
 }
 
 // Anti-domination cap: one company (e.g. Databricks/Carvana with hundreds+
-// of real postings) shouldn't fill an entire list of cards. Shared here so
-// pages/Jobs.jsx's whole-array capPerCompany() and
-// components/ContinuousJobFeed.jsx's incremental per-batch version (US-58)
-// both enforce exactly the same number instead of two independently
-// declared constants that could drift apart.
+// of real postings) shouldn't fill an entire list of cards. Read by
+// pages/Jobs.jsx's whole-array capPerCompany(). (Used to also be shared
+// with components/ContinuousJobFeed.jsx's incremental per-batch version,
+// US-58 -- that component/tab was removed Sept 2026 as redundant with
+// "All jobs"; left this constant in its own file rather than moving it
+// back into Jobs.jsx in case a future incremental-load feature wants it
+// again.)
 export const CAP_PER_COMPANY = 3;
 
 // Deadline math shared by the Jobs board's filter and its job cards.

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import JobCard from "../components/JobCard.jsx";
 import ErrorState from "../components/ErrorState.jsx";
-import ContinuousJobFeed from "../components/ContinuousJobFeed.jsx";
 import PostOpportunityModal from "../components/modals/PostOpportunityModal.jsx";
 import { INDUSTRIES, LOCATIONS } from "../data/careerOptions.js";
 import { daysUntil, matchesDeadlineBucket, CAP_PER_COMPANY } from "../data/jobUtils.js";
@@ -30,15 +29,20 @@ import "../styles/home.css";
 // anything would be worse than not having it.
 const GRAD_YEARS = ["2026", "2027", "2028", "2029"];
 const DEADLINE_BUCKETS = ["This week", "This month", "Rolling"];
+// "Scroll feed" (formerly "Continuous feed") removed per direct ask --
+// it read as doing the same thing as "All jobs" from a member's
+// perspective. It technically loaded differently under the hood (real
+// infinite-scroll pagination via components/ContinuousJobFeed.jsx's
+// .range() calls, vs. this page's own fetchAllRows() front-loading
+// everything for full client-side filtering), but that distinction
+// wasn't visible or valuable enough to justify a fourth tab once the
+// pagination-explosion problem it was partly working around got a real
+// fix (windowed pageWindow() below). ContinuousJobFeed.jsx itself is
+// deleted, not just unused -- its one real reusable idea (lighter-weight
+// incremental load instead of front-loading the whole table) is still
+// available in git history if a future feature wants it back.
 const TABS = [
   { key: "recommended", label: "Recommended for you" },
-  // Renamed from "Continuous feed" -- that name read as "this data updates
-  // live," when what actually distinguishes this tab is *how it loads*
-  // (real infinite scroll via ContinuousJobFeed.jsx's .range() pagination,
-  // ranked and capped-per-company as you go) rather than *how fresh the
-  // data is* (every tab reads the same live table). "Scroll feed" names
-  // the actual interaction instead.
-  { key: "continuous", label: "Scroll feed" },
   { key: "all", label: "All jobs" },
   { key: "saved", label: "Saved" },
 ];
@@ -50,8 +54,9 @@ const PAGE_SIZE = 5;
 // entry). Capping how many of one company's cards can appear at once keeps
 // the board diverse across companies instead of exhaustive within one --
 // the rest are one click away via "View N more at Company", not hidden.
-// (CAP_PER_COMPANY itself now lives in data/jobUtils.js, shared with
-// components/ContinuousJobFeed.jsx below, so both enforce the same number.)
+// (CAP_PER_COMPANY itself lives in data/jobUtils.js -- also read by the
+// now-unused components/ContinuousJobFeed.jsx, so if that ever comes
+// back both still enforce the same number.)
 
 // Applied to the already-sorted list, so which 3 "win" respects whatever
 // sort is active (bestMatch keeps each company's top 3 matches, etc.).
@@ -342,24 +347,12 @@ export default function Jobs() {
 
   return (
     <div className="jobs-layout">
-      {tab !== "continuous" && (
       <aside className="filters">
         <div className="filters__header">
           <span>Filters</span>
-          <div style={{ display: "flex", gap: "var(--space-4)" }}>
-            <button
-              className="btn-link"
-              onClick={() => {
-                setFilters(defaultFiltersFromPreferences(preferences, classYear));
-                setTab("all");
-              }}
-            >
-              Match my profile
-            </button>
-            <button className="btn-link" onClick={() => setFilters(NEUTRAL_FILTERS)}>
-              Clear all
-            </button>
-          </div>
+          <button className="btn-link" onClick={() => setFilters(NEUTRAL_FILTERS)}>
+            Clear all
+          </button>
         </div>
 
         {savedSearches.length > 0 && (
@@ -529,31 +522,36 @@ export default function Jobs() {
           </div>
         </div>
       </aside>
-      )}
 
       <div className="jobs-main">
         <div className="jobs-header">
           <div>
             <h1>Jobs</h1>
             <p className="jobs-header__count">
-              {tab === "continuous"
-                ? "A live, ranked stream — keep scrolling for more"
-                : jobsLoading
-                ? "Loading…"
-                : `${JOBS.length} opportunities · ${matchedCount} matched to your profile`}
+              {jobsLoading ? "Loading…" : `${JOBS.length} opportunities · ${matchedCount} matched to your profile`}
             </p>
           </div>
           <div className="jobs-header__actions">
-            {tab !== "continuous" && (
-              <>
-                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                  <option value="bestMatch">Best match</option>
-                  <option value="deadline">Deadline</option>
-                  <option value="newest">Newest</option>
-                </select>
-                <button className="btn btn-secondary" onClick={handleSaveSearch}>Save this search</button>
-              </>
-            )}
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <option value="bestMatch">Best match</option>
+              <option value="deadline">Deadline</option>
+              <option value="newest">Newest</option>
+            </select>
+            {/* A real button in the page's own header, not a small text
+                link buried in the filter sidebar -- member-reported as
+                "in a weird place and isn't super obvious." Visible on
+                every tab now too (the filter sidebar it used to live in
+                doesn't exist on every tab). */}
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                setFilters(defaultFiltersFromPreferences(preferences, classYear));
+                setTab("all");
+              }}
+            >
+              Match my profile
+            </button>
+            <button className="btn btn-secondary" onClick={handleSaveSearch}>Save this search</button>
             <button className="btn btn-primary" onClick={() => setShowPostModal(true)}>Post a job</button>
           </div>
         </div>
@@ -566,23 +564,13 @@ export default function Jobs() {
                 className={`jobs-tabs__tab${tab === t.key ? " is-active" : ""}`}
                 onClick={() => setTab(t.key)}
               >
-                {t.label}
-                {t.key !== "continuous" &&
-                  ` (${t.key === "recommended" ? matchedCount : t.key === "saved" ? savedJobIds.length : JOBS.length})`}
+                {t.label} ({t.key === "recommended" ? matchedCount : t.key === "saved" ? savedJobIds.length : JOBS.length})
               </button>
             ))}
           </div>
         </div>
 
-        {tab === "continuous" && (
-          <p className="meta" style={{ marginBottom: "var(--space-6)" }}>
-            Ranked by the same match formula as "Best match" sort, blended with freshness, deadline urgency and UC
-            relevance — ranked for you personally, so the sidebar filters don't apply here. Use "All jobs" to filter
-            manually.
-          </p>
-        )}
-
-        {tab !== "continuous" && activeChips.length > 0 && (
+        {activeChips.length > 0 && (
           <div className="active-filter-chips" style={{ marginBottom: "var(--space-6)" }}>
             {activeChips.map((chip, i) => (
               <span className="active-filter-chip" key={i}>
@@ -601,18 +589,9 @@ export default function Jobs() {
           <button className="btn-link">Learn more</button>
         </div>
 
-        {tab === "continuous" && (
-          <ContinuousJobFeed
-            preferences={preferences}
-            classYear={classYear}
-            savedJobIds={savedJobIds}
-            onToggleSave={toggleSavedJob}
-          />
-        )}
+        {jobsLoading && <p className="meta">Loading opportunities…</p>}
 
-        {tab !== "continuous" && jobsLoading && <p className="meta">Loading opportunities…</p>}
-
-        {tab !== "continuous" && !jobsLoading && pageJobs.length === 0 && (
+        {!jobsLoading && pageJobs.length === 0 && (
           <div className="no-results">
             <p style={{ fontWeight: 700 }}>0 results with these filters</p>
             {diagnostics.length > 0 ? (
@@ -643,7 +622,7 @@ export default function Jobs() {
           </div>
         )}
 
-        {tab !== "continuous" && pageJobs.map((job) => (
+        {pageJobs.map((job) => (
           <div key={job.id}>
             <JobCard job={job} saved={savedJobIds.includes(job.id)} onToggleSave={toggleSavedJob} />
             {lastKeptIdByCompany[job.company] === job.id && overflowByCompany[job.company] > 0 && (
@@ -658,7 +637,7 @@ export default function Jobs() {
           </div>
         ))}
 
-        {tab !== "continuous" && totalPages > 1 && (
+        {totalPages > 1 && (
           <div className="pagination">
             <button disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))} aria-label="Previous page">
               ‹
