@@ -157,11 +157,22 @@
 }
 
 .ranked-list__empty-slot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
   padding: var(--space-4);
   color: var(--color-text-muted);
   font-size: var(--text-secondary);
   font-style: italic;
   border-bottom: var(--border-hairline);
+}
+
+/* Empty slots show their own rank number (e.g. "3  Open slot") so it's
+   clear which position you're filling -- same .ranked-list__rank column
+   the real rows use, just not italic/muted like the label text next to
+   it, so the number itself stays legible at a glance. */
+.ranked-list__empty-slot .ranked-list__rank {
+  font-style: normal;
 }
 
 /* Up to 3 can render now (one per remaining slot, not just one total) --

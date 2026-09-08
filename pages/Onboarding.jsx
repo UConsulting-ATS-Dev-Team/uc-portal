@@ -109,7 +109,10 @@ function StepIndustries({ industries, onToggle, onReorder }) {
           );
         })}
         {Array.from({ length: 3 - industries.length }).map((_, i) => (
-          <li className="ranked-list__empty-slot" key={`empty-${i}`}>Open slot — pick another below</li>
+          <li className="ranked-list__empty-slot" key={`empty-${i}`}>
+            <span className="ranked-list__rank">{industries.length + i + 1}</span>
+            Open slot — pick another below
+          </li>
         ))}
       </ul>
 

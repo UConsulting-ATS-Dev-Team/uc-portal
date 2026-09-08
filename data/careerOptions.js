@@ -5,44 +5,70 @@
 // data/mockUser.js's clubStats) -- a member ranks up to 3 industries in
 // onboarding/preferences, so no single industry's count can exceed 52,
 // and the total across every industry can't meaningfully exceed roughly
-// 3x that (156) either. Rescaled proportionally (same relative ordering/
-// shape as before), anchored so Management consulting -- UC's own focus,
-// expected to still be most members' top pick even split against its new
-// sibling "Strategy consulting" -- lands high but not literally everyone.
-// Deliberately left existing `alumni` figures untouched: rescaling them
-// would mean asserting a precise per-industry alumni breakdown nobody's
-// actually counted (new industries below get a modest illustrative
-// alumni figure of their own, same non-precise spirit).
+// 3x that (156) either.
 //
-// 4 new industries added (member-requested, Sept 2026): the taxonomy was
-// too coarse -- some roles genuinely read as either "Strategy consulting"
-// or "Management consulting" depending who's describing them, and
-// several other real recruiting tracks (VC, data/analytics, ops) had no
-// option at all and were getting folded into a broader neighbor.
-// "Strategy consulting" is deliberately NOT modeled as a fully separate
-// classification: canonicalIndustry() below treats it as a synonym of
-// "Management consulting" everywhere real job matching happens, so a
-// member who prefers one sees roles tagged either way -- see that
-// function's own comment. The other 3 new industries (Venture capital,
-// Data & analytics, Operations & supply chain) are genuinely distinct
-// preference options; like the pre-existing Nonprofit/Healthcare/Real
-// estate rows, the real job-ingestion taxonomy
-// (server/src/taxonomy/occupationTaxonomy.ts) doesn't tag any real job
-// into them yet, so they're aspirational preference options for now,
-// same already-accepted gap as those three, not a new one.
+// Expanded twice, Sept 2026: first to 13 (Strategy consulting, Venture
+// capital, Data & analytics, Operations & supply chain), then to this
+// full 29-row list per direct request for at least 25 options, all
+// within consulting/finance/business/tech "and other similar" fields --
+// UC members recruit across a wider spread of specific tracks than the
+// original 8-9 broad buckets captured (e.g. "hedge funds" and "private
+// equity" are genuinely different processes; so are "product management"
+// and "tech / product strategy"). Grouped below by rough category for
+// readability; the app doesn't render these as sub-grouped, just a flat
+// chip list.
+//
+// Only 5 of these 29 are ever actually applied to a real ingested job by
+// server/src/taxonomy/occupationTaxonomy.ts today: Management consulting,
+// Investment banking, Private equity, Tech / product strategy, and
+// Marketing & brand strategy (Strategy consulting rides along via the
+// synonym below). Every other row -- old and new alike -- is a real,
+// selectable preference with no real-job coverage yet, same already-
+// accepted gap the original Nonprofit/Healthcare/Real estate rows always
+// had; added anyway per direct instruction ("even if they don't tag into
+// anything yet"), not a mistake. Extending occupationTaxonomy.ts to
+// actually classify jobs into more of these is real, separate follow-up
+// work (touches the live ingestion pipeline and its tests), not done
+// here.
 export const INDUSTRIES = [
-  { name: "Management consulting", members: 33, alumni: 61 },
-  { name: "Investment banking", members: 30, alumni: 48 },
-  { name: "Tech / product strategy", members: 15, alumni: 22 },
-  { name: "Private equity", members: 14, alumni: 19 },
-  { name: "Strategy consulting", members: 12, alumni: 25 },
-  { name: "Marketing & brand strategy", members: 10, alumni: 14 },
-  { name: "Data & analytics", members: 9, alumni: 10 },
-  { name: "Nonprofit / public sector", members: 8, alumni: 9 },
-  { name: "Venture capital", members: 6, alumni: 8 },
-  { name: "Healthcare", members: 6, alumni: 8 },
-  { name: "Operations & supply chain", members: 6, alumni: 5 },
-  { name: "Real estate", members: 5, alumni: 6 },
+  // --- Consulting ---
+  { name: "Management consulting", members: 24, alumni: 61 },
+  { name: "Strategy consulting", members: 8, alumni: 25 },
+  { name: "Technology consulting", members: 3, alumni: 6 },
+  { name: "Human capital consulting", members: 2, alumni: 4 },
+
+  // --- Finance ---
+  { name: "Investment banking", members: 20, alumni: 48 },
+  { name: "Private equity", members: 10, alumni: 19 },
+  { name: "Venture capital", members: 5, alumni: 8 },
+  { name: "Hedge funds / asset management", members: 3, alumni: 9 },
+  { name: "Corporate finance / FP&A", members: 3, alumni: 5 },
+  { name: "Commercial & retail banking", members: 3, alumni: 6 },
+  { name: "Fintech", members: 3, alumni: 7 },
+  { name: "Insurance & actuarial", members: 1, alumni: 3 },
+
+  // --- Business & corporate ---
+  { name: "Marketing & brand strategy", members: 7, alumni: 14 },
+  { name: "Corporate strategy & business development", members: 4, alumni: 6 },
+  { name: "Product management", members: 5, alumni: 9 },
+  { name: "Operations & supply chain", members: 3, alumni: 5 },
+  { name: "Sales & business development", members: 3, alumni: 5 },
+  { name: "Human resources / people operations", members: 2, alumni: 3 },
+
+  // --- Tech ---
+  { name: "Tech / product strategy", members: 12, alumni: 22 },
+  { name: "Data & analytics", members: 6, alumni: 10 },
+  { name: "Software engineering", members: 4, alumni: 8 },
+  { name: "Cybersecurity", members: 2, alumni: 4 },
+
+  // --- Other consulting/finance/business-adjacent ---
+  { name: "Consumer goods & retail", members: 3, alumni: 7 },
+  { name: "Media & entertainment", members: 2, alumni: 5 },
+  { name: "Energy & sustainability", members: 2, alumni: 4 },
+  { name: "Healthcare", members: 4, alumni: 8 },
+  { name: "Real estate", members: 3, alumni: 6 },
+  { name: "Nonprofit / public sector", members: 3, alumni: 9 },
+
   { name: "Still figuring it out", members: 0, alumni: 0 },
 ];
 
