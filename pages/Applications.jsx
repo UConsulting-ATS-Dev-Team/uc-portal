@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { JOBS } from "../data/mockJobs.js";
 import { daysUntil } from "../data/jobUtils.js";
-import { STAGES, outcomeLabel } from "../data/trackerUtils.js";
+import { STAGES, outcomeLabel, rejectionStageLabel } from "../data/trackerUtils.js";
 import { useAppState } from "../data/store.jsx";
 import TrackerBoard from "../components/TrackerBoard.jsx";
 import TrackerTable from "../components/TrackerTable.jsx";
@@ -16,14 +16,15 @@ import "../styles/home.css";
 const VIEWS = ["Board", "Table", "Timeline"];
 
 function toCsv(applications) {
-  const header = ["Company", "Role", "Stage", "Applied", "Deadline", "Outcome"];
-  const rows = applications.map(({ job, stage, addedAt, outcome }) => [
+  const header = ["Company", "Role", "Stage", "Applied", "Deadline", "Outcome", "Rejected at"];
+  const rows = applications.map(({ job, stage, addedAt, outcome, rejectionStage }) => [
     job.company,
     job.role,
     stage,
     addedAt ? new Date(addedAt).toISOString().slice(0, 10) : "",
     job.rolling ? "Rolling" : job.deadlineDate || "",
     outcome ? outcomeLabel(outcome) : "",
+    outcome === "rejected" && rejectionStage ? rejectionStageLabel(rejectionStage) : "",
   ]);
   return [header, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
 }
@@ -175,6 +176,8 @@ export default function Applications() {
           jobId={outcomeModalJobId}
           job={JOBS.find((j) => j.id === outcomeModalJobId)}
           currentOutcome={trackedJobs[outcomeModalJobId]?.outcome}
+          currentRejectionStage={trackedJobs[outcomeModalJobId]?.rejectionStage}
+          stageHistory={trackedJobs[outcomeModalJobId]?.stageHistory}
           onClose={() => setOutcomeModalJobId(null)}
         />
       )}

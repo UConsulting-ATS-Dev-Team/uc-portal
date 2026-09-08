@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { STAGES, INTERVIEW_STAGES, outcomeLabel } from "../data/trackerUtils.js";
+import { STAGES, INTERVIEW_STAGES, outcomeLabel, rejectionStageLabel } from "../data/trackerUtils.js";
 import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
 import CompanyLogo from "./CompanyLogo.jsx";
 
@@ -50,7 +50,7 @@ export default function TrackerBoard({ applications, onMoveStage, onRequestOutco
               onDragLeave={() => setDragOverStage(null)}
               onDrop={(e) => handleDrop(e, stage)}
             >
-              {cards.map(({ jobId, job, outcome }) => {
+              {cards.map(({ jobId, job, outcome, rejectionStage }) => {
                 const urgent = isUrgent(job);
                 return (
                   <div
@@ -67,7 +67,15 @@ export default function TrackerBoard({ applications, onMoveStage, onRequestOutco
                       <div className="board-card__role">{job.role}</div>
                     </Link>
                     <div className={`board-card__detail${urgent ? " is-urgent" : ""}`}>
-                      {stage === "Closed" ? (outcome ? outcomeLabel(outcome) : "Closed") : job.rolling ? "Rolling deadline" : deadlineLabel(job)}
+                      {stage === "Closed"
+                        ? outcome
+                          ? outcome === "rejected" && rejectionStage
+                            ? `${outcomeLabel(outcome)} — ${rejectionStageLabel(rejectionStage)}`
+                            : outcomeLabel(outcome)
+                          : "Closed"
+                        : job.rolling
+                        ? "Rolling deadline"
+                        : deadlineLabel(job)}
                     </div>
                     {stage === "Applied" && (
                       <button className="btn btn-secondary board-card__followup">Follow up</button>

@@ -388,12 +388,24 @@ export function AppStateProvider({ children }) {
   // "Record outcome" affordance on an already-Closed card with no outcome
   // yet (covers every pre-existing Closed application too, including the
   // seed data and anything added directly at Closed via AddApplicationModal).
-  function setApplicationOutcome(jobId, outcome) {
+  //
+  // rejectionStage (data/trackerUtils.js's REJECTION_STAGES) is only ever
+  // meaningful alongside outcome === "rejected" -- forced to null
+  // otherwise so switching an outcome away from "rejected" can't leave a
+  // stale stage behind. Local-only for now: the real
+  // tracked_applications.rejection_stage column (migration
+  // 20260908120000_tracked_application_rejection_stage.sql) exists as a
+  // migration file but hasn't been applied to the live Supabase project
+  // from this session (no DB-privileged credential available here) --
+  // syncTrackedApplicationToRemote() deliberately doesn't send it yet, so
+  // an unapplied migration can't break the already-working outcome/stage
+  // sync. Flagged as a real follow-up, not an oversight.
+  function setApplicationOutcome(jobId, outcome, rejectionStage = null) {
     let syncPayload = null;
     setState((prev) => {
       const existing = prev.trackedJobs[jobId];
       if (!existing) return prev;
-      const record = { ...existing, outcome };
+      const record = { ...existing, outcome, rejectionStage: outcome === "rejected" ? rejectionStage : null };
       syncPayload = { ...record, prepLoggedHours: prev.prepLogged[jobId] ?? 0, timelineShiftDays: prev.timelineShiftDays[jobId] ?? 0 };
       return { ...prev, trackedJobs: { ...prev.trackedJobs, [jobId]: record } };
     });

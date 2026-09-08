@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { nextActionForStage, formatDate, outcomeLabel } from "../data/trackerUtils.js";
+import { nextActionForStage, formatDate, outcomeLabel, rejectionStageLabel } from "../data/trackerUtils.js";
 import { deadlineLabel } from "../data/jobUtils.js";
 import CompanyLogo from "./CompanyLogo.jsx";
 
@@ -35,7 +35,7 @@ export default function TrackerTable({ applications, sortColumn, sortDirection, 
             </tr>
           </thead>
           <tbody>
-            {applications.map(({ jobId, job, stage, addedAt, outcome }) => (
+            {applications.map(({ jobId, job, stage, addedAt, outcome, rejectionStage }) => (
               <tr key={jobId} className={stage === "Closed" ? "is-closed" : ""}>
                 <td>
                   <Link to={`/jobs/${jobId}`} className="tracker-table__company" style={{ textDecoration: "none" }}>
@@ -55,7 +55,14 @@ export default function TrackerTable({ applications, sortColumn, sortDirection, 
                   {stage !== "Closed" ? (
                     "—"
                   ) : outcome ? (
-                    <span className="chip">{outcomeLabel(outcome)}</span>
+                    <>
+                      <span className="chip">{outcomeLabel(outcome)}</span>
+                      {outcome === "rejected" && rejectionStage && (
+                        <div className="meta" style={{ marginTop: "var(--space-1)" }}>
+                          {rejectionStageLabel(rejectionStage)}
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <button className="btn-link" onClick={() => onRequestOutcome?.(jobId)}>
                       Record outcome

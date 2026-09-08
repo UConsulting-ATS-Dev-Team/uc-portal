@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Modal from "../Modal.jsx";
-import { OUTCOMES } from "../../data/trackerUtils.js";
+import { OUTCOMES, REJECTION_STAGES, suggestRejectionStage } from "../../data/trackerUtils.js";
 import { useAppState } from "../../data/store.jsx";
 import "../../styles/onboarding.css";
 
@@ -23,14 +23,21 @@ import "../../styles/onboarding.css";
 // data/trackerSync.js already syncs to tracked_applications in the
 // background, so this follows that existing local-first pattern instead of
 // inventing a second write path for one field.
-export default function RecordOutcomeModal({ jobId, job, currentOutcome, onClose }) {
+export default function RecordOutcomeModal({ jobId, job, currentOutcome, currentRejectionStage, stageHistory, onClose }) {
   const { setApplicationOutcome } = useAppState();
   const [outcome, setOutcome] = useState(currentOutcome || null);
+  // Pre-select from the application's own real stageHistory when there's
+  // nothing recorded yet (suggestRejectionStage) -- a member can always
+  // override it, this just saves re-typing what the tracker already
+  // knows. Falls back to whatever was already recorded on a re-open.
+  const [rejectionStage, setRejectionStage] = useState(
+    currentRejectionStage || suggestRejectionStage(stageHistory)
+  );
   const [saved, setSaved] = useState(false);
 
   function handleSave() {
     if (!outcome) return;
-    setApplicationOutcome(jobId, outcome);
+    setApplicationOutcome(jobId, outcome, outcome === "rejected" ? rejectionStage : null);
     setSaved(true);
     setTimeout(onClose, 900);
   }
@@ -70,6 +77,26 @@ export default function RecordOutcomeModal({ jobId, job, currentOutcome, onClose
           </button>
         ))}
       </div>
+
+      {outcome === "rejected" && (
+        <>
+          <p className="meta" style={{ marginTop: "var(--space-5)", marginBottom: "var(--space-3)" }}>
+            Where did it end? This is what makes "rejected" a useful signal instead of a dead end.
+          </p>
+          <div className="chip-row">
+            {REJECTION_STAGES.map((r) => (
+              <button
+                key={r.key}
+                type="button"
+                className={`chip-toggle${rejectionStage === r.key ? " is-selected" : ""}`}
+                onClick={() => setRejectionStage(r.key)}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </Modal>
   );
 }

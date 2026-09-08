@@ -1,0 +1,35 @@
+-- A bare "Rejected" outcome (20260902130000_tracked_application_outcome.sql)
+-- doesn't say where in the process it happened -- rejected without ever
+-- hearing back after applying is a very different signal than rejected
+-- after a final round, and lumping them together threw away real
+-- information a member is perfectly willing to report at the moment they
+-- record the outcome (direct product ask, Sept 2026: "more specific
+-- follow up if someone gets rejected -- did they get rejected by resume/
+-- application, or after a first-round interview, or for some other
+-- reason").
+--
+-- text + a check constraint, same convention as `outcome` itself (not an
+-- enum -- matches this table's existing light-touch validation, and
+-- `stage` isn't enum-constrained at the DB level either since that list
+-- lives in data/trackerUtils.js). Five values, matching
+-- data/trackerUtils.js's REJECTION_STAGES exactly, chosen to mirror the
+-- tracker's own real stage taxonomy (STAGES) rather than invent a
+-- separate scale:
+--   - 'application'   -- resume / application screen, before any
+--                         assessment or interview
+--   - 'assessment'    -- after a case/skills assessment
+--   - 'first_round'   -- after a first-round interview
+--   - 'final_round'   -- after a final round
+--   - 'other'         -- doesn't fit the above (role cancelled, went with
+--                         an internal candidate, etc.) or the member isn't
+--                         sure -- an honest bucket, not a forced guess
+--
+-- Deliberately nullable with no dependency on `outcome = 'rejected'`
+-- enforced at the DB level (no trigger/compound check) -- same reasoning
+-- as `outcome` itself: keeps this simple and leaves room to correct
+-- either field independently without the DB fighting a legitimate edit.
+-- The UI (components/modals/RecordOutcomeModal.jsx) is what actually
+-- gates showing/asking for this to the 'rejected' case.
+alter table tracked_applications
+  add column rejection_stage text
+    check (rejection_stage is null or rejection_stage in ('application', 'assessment', 'first_round', 'final_round', 'other'));

@@ -46,3 +46,48 @@ export const OUTCOMES = [
 export function outcomeLabel(outcome) {
   return OUTCOMES.find((o) => o.key === outcome)?.label ?? null;
 }
+
+// A bare "Rejected" was too coarse -- see migration
+// 20260908_tracked_application_rejection_stage.sql for the full
+// reasoning. Five values, matching the tracker's own real stage taxonomy
+// above rather than a separately-invented scale, so "where it ended" is
+// always describable in the app's own vocabulary.
+export const REJECTION_STAGES = [
+  { key: "application", label: "Resume / application screen" },
+  { key: "assessment", label: "After an assessment" },
+  { key: "first_round", label: "After a first-round interview" },
+  { key: "final_round", label: "After a final round" },
+  { key: "other", label: "Other / not sure" },
+];
+
+export function rejectionStageLabel(rejectionStage) {
+  return REJECTION_STAGES.find((r) => r.key === rejectionStage)?.label ?? null;
+}
+
+// Suggests (never silently assumes) a rejection stage from the
+// application's own real stageHistory -- the tracker stage it was in
+// right before moving to Closed already answers "where did it end?" for
+// most cases, so asking a member to re-type information the app already
+// has would be redundant. Still just a pre-selected suggestion in
+// RecordOutcomeModal.jsx, not auto-saved -- a member can always correct
+// it (e.g. genuinely rejected at the application stage despite having
+// briefly viewed a later stage for some other reason).
+export function suggestRejectionStage(stageHistory) {
+  if (!stageHistory?.length) return null;
+  const priorStages = stageHistory.filter((h) => h.stage !== "Closed").map((h) => h.stage);
+  const lastRealStage = priorStages[priorStages.length - 1];
+  switch (lastRealStage) {
+    case "Assessment":
+      return "assessment";
+    case "First round":
+      return "first_round";
+    case "Final round":
+      return "final_round";
+    case "Applied":
+    case "Preparing":
+    case "Interested":
+      return "application";
+    default:
+      return null;
+  }
+}
