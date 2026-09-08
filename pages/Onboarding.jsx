@@ -48,7 +48,7 @@ function StepYou({ resumeName, onAttach }) {
       <div className="onboarding__kicker">Step 1 of 5</div>
       <h1 className="onboarding__title">Confirm your info</h1>
       <p className="onboarding__subtitle">
-        Pulled from the UC roster — let us know if anything's out of date at a GM.
+        Let us know if anything's out of date at a GM.
       </p>
       <ul className="auth__meta-list">
         <li>{displayName(currentUser, profileOverrides)}</li>

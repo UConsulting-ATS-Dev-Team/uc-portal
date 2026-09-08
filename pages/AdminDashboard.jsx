@@ -637,9 +637,9 @@ export default function AdminDashboard() {
             <p className="meta" style={{ marginTop: 0 }}>
               Real signed-up accounts, ranked least-active first. "Last active" is the most recent of: signing
               in, editing preferences/profile, tracker activity, saving a job, or a coffee-chat/connection
-              update -- presence only, never what a member actually did. Per CLAUDE.md's standing privacy rule,
-              this never surfaces an individual's application list or its contents, only whether they've
-              touched the platform at all. {engagementLoading ? "" : `${engagement.length} real account${engagement.length === 1 ? "" : "s"} exist today -- this list is genuinely small until real members sign up.`}
+              update -- presence only, never what a member actually did. This never surfaces an individual's
+              application list or its contents, only whether they've touched the platform at all.{" "}
+              {engagementLoading ? "" : `${engagement.length} real account${engagement.length === 1 ? "" : "s"} exist today -- this list is genuinely small until real members sign up.`}
             </p>
             {engagementError && <p className="meta" style={{ color: "#B3261E" }}>{engagementError}</p>}
             <div className="queue-table__scroll">

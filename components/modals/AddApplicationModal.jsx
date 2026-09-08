@@ -88,8 +88,8 @@ export default function AddApplicationModal({ onClose, onAdded }) {
           <input type="url" placeholder="https://" value="" onChange={() => setExternalNote(true)} />
           {externalNote && (
             <p className="meta">
-              External postings aren't in UC's job data yet, so this prototype can't pull details from a link —
-              use "Enter manually" instead, or ask Exec to add the posting via "Post a job."
+              We can't pull details from an outside link yet — use "Enter manually" instead, or ask Exec to
+              add the posting via "Post a job."
             </p>
           )}
         </>
@@ -108,8 +108,8 @@ export default function AddApplicationModal({ onClose, onAdded }) {
             </div>
           </div>
           <p className="meta">
-            Manual entries aren't backed by UC's job data (no odds model, no UC intelligence) in this prototype —
-            once saved they'd show up as a bare tracker card. Not wired up yet.
+            Manually entered roles won't have an odds model or UC intelligence attached — this isn't wired up
+            yet, so nothing will actually be saved.
           </p>
         </>
       )}
