@@ -133,10 +133,18 @@
   width: 100%;
   padding: var(--space-3) var(--space-4);
   border: var(--border-hairline);
-  background: var(--color-surface);
+  background-color: var(--color-surface);
   color: var(--color-text);
   margin-bottom: var(--space-5);
   font-family: inherit;
+}
+
+/* background-color above, not the `background` shorthand -- this needs
+   to layer on top of the global `select` rule's background-image (the
+   dropdown arrow, styles/global.css) without resetting it back to none.
+   Same reasoning for the extra padding-right: room for that arrow. */
+.modal__body select {
+  padding-right: calc(var(--space-4) * 2 + 14px);
 }
 
 .modal__body .field-row {

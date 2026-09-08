@@ -42,7 +42,13 @@
 .tracker-controls select {
   padding: var(--space-3) var(--space-4);
   border: var(--border-hairline);
-  background: var(--color-surface);
+  background-color: var(--color-surface);
+}
+
+/* background-color above (not `background`) and this extra padding-right
+   both exist to not fight the global select arrow, styles/global.css. */
+.tracker-controls select {
+  padding-right: calc(var(--space-4) * 2 + 14px);
 }
 
 /* Board */

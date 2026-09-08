@@ -24,6 +24,19 @@
   gap: var(--space-3);
 }
 
+/* Was entirely unstyled -- no border/background at all, just a bare
+   native <select> (the only one in the app like that once the sort
+   dropdown's arrow issue was traced to this same pattern elsewhere).
+   Matches the box every other header select uses, e.g. .jobs-header__
+   actions select in styles/jobs.css. background-color (not the
+   `background` shorthand) so it doesn't reset the global select arrow's
+   background-image, styles/global.css. */
+.companies-header__actions select {
+  padding: var(--space-3) calc(var(--space-4) * 2 + 14px) var(--space-3) var(--space-4);
+  border: var(--border-hairline);
+  background-color: var(--color-surface);
+}
+
 .companies-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

@@ -47,6 +47,30 @@ textarea {
   font-size: inherit;
 }
 
+/* Every <select> in the app -- the native dropdown arrow doesn't respect
+   a custom box's padding in every browser (reported: "the dropdown arrow
+   next to 'best match' is slightly not inside the box"), since nothing
+   here ever turned off the browser's own arrow before drawing a custom
+   border/background around it. appearance:none + a real drawn chevron
+   (same Lucide-style stroke the rest of the app uses) fixes it
+   everywhere at once instead of per page. Only the arrow itself lives
+   here -- border/background/padding stay owned by whichever page-
+   specific rule already draws that select's box (styles/jobs.css,
+   modal.css, network.css, tracker.css), each of which now reserves the
+   same right-side room for this arrow explicitly, rather than this rule
+   fighting their more specific padding shorthand with !important. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%235c5c60' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-4) center;
+  background-size: 14px;
+  padding-right: calc(var(--space-4) * 2 + 14px);
+  cursor: pointer;
+}
+
 /* Shared primitives — reused across every page */
 
 .btn {
