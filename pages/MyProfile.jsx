@@ -11,7 +11,7 @@ import "../styles/memberProfile.css";
 import "../styles/auth.css";
 import "../styles/myProfile.css";
 
-const TABS = ["Personal", "Career preferences", "Recruiting settings", "Privacy"];
+const TABS = ["Personal", "Career Preferences", "Recruiting Settings", "Privacy"];
 
 const RECRUITING_SETTINGS_COPY = [
   { key: "showOutsideTargetLocations", label: "Show jobs outside my target locations" },
@@ -228,9 +228,9 @@ export default function MyProfile() {
             </div>
           )}
 
-          {tab === "Career preferences" && (
+          {tab === "Career Preferences" && (
             <div className="detail-section">
-              <h2 className="detail-section__title">Career preferences</h2>
+              <h2 className="detail-section__title">Career Preferences</h2>
               <p className="meta" style={{ marginTop: "calc(-1 * var(--space-4))" }}>These drive your recommendations</p>
 
               <p style={{ fontWeight: 700 }}>Target industries (ranked)</p>
@@ -445,9 +445,9 @@ export default function MyProfile() {
             </div>
           )}
 
-          {tab === "Recruiting settings" && (
+          {tab === "Recruiting Settings" && (
             <div className="detail-section">
-              <h2 className="detail-section__title">Recruiting settings</h2>
+              <h2 className="detail-section__title">Recruiting Settings</h2>
               <div className="profile-fields-grid">
                 {RECRUITING_SETTINGS_COPY.map((s) => (
                   <div className="checkbox-row" key={s.key}>
@@ -475,7 +475,7 @@ export default function MyProfile() {
                 </li>
                 <li>
                   Coffee chat requests only reach you if "Open to coffee chat requests from members" is on
-                  (Recruiting settings tab).
+                  (Recruiting Settings tab).
                 </li>
                 <li>
                   Application outcomes are only added to UC's aggregate recruiting-intelligence data if "Share
