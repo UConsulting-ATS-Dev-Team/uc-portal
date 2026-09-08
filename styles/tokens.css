@@ -9,12 +9,30 @@
   --color-surface: #ffffff;
   --color-text: #042742; /* UC primary navy — "for primary elements and most text" */
   --color-text-secondary: #3a4b5c;
-  --color-text-muted: #7a7a7d;
-  --color-placeholder: #b7b7ba;
-  --color-neutral: #98989b;
+  /* Contrast pass (member-reported, Sept 2026: "the gray is very light and
+     the font is very thin"). These four were never covered by UC's own
+     brand guide (that only specifies navy/blue -- see this file's header
+     comment), so they were free to fix without contradicting the brand
+     source. Verified against WCAG 2.1's contrast formula directly (a
+     throwaway node script computing relative luminance) rather than
+     eyeballing: text-muted/placeholder/neutral now clear 4.1-6.7:1 against
+     white, up from 2.0-4.3:1 -- text-muted alone was used at 11-12px
+     (--text-meta/--text-secondary) across nearly every "meta" label in the
+     app and was failing WCAG AA's 4.5:1 normal-text minimum outright.
+     border/border-inner are non-text UI dividers (WCAG's lower 3:1
+     component-boundary bar applies, not the text ratio), darkened by the
+     same proportion so hairlines read as intentional lines again instead
+     of nearly vanishing against white surfaces -- not pushed further than
+     that; these are meant to stay subtle, not become bold rules.
+     --color-ground/--color-surface (the actual page/card backgrounds, not
+     text) are untouched -- the reported problem was text and lines being
+     too faint to read, not the base page wash. */
+  --color-text-muted: #5c5c60;
+  --color-placeholder: #7d7d80;
+  --color-neutral: #6e6e72;
 
-  --color-border: #d4d4d7;
-  --color-border-inner: #e7e7ea;
+  --color-border: #b8b8bc;
+  --color-border-inner: #d3d3d7;
   --color-table-header: #f5f5f8;
 
   --color-primary: #042742; /* UC navy */
@@ -26,7 +44,12 @@
   --font-heading: "Montserrat", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-heading-weight: 700; /* Montserrat Bold */
   --font-body: "Montserrat", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-body-weight: 300; /* Montserrat Light */
+  /* Was 300 (Montserrat Light, the brand guide's literal spec) -- bumped
+     to Regular per the same report ("the font is very thin"). Still
+     reads clearly distinct from Bold headings; a direct product call
+     overriding the 2020 style guide's specific weight choice, not a
+     mechanical fix -- see CLAUDE.md's Type section, updated to match. */
+  --font-body-weight: 400; /* Montserrat Regular */
 
   --text-meta: 11px;
   --text-secondary: 12px;

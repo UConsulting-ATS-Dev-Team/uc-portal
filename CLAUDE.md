@@ -195,14 +195,23 @@ UConsulting Drive > Committees > Marketing > Branding, accessed read-only).
 - **Palette (UC brand)**: primary navy `#042742` (headings, most text,
   primary elements), accent blue `#0C74C1` (accents — links, active
   states, CTAs). Neutrals/surfaces borrowed from the wireframes' grayscale
-  since UC's style guide doesn't define a full neutral scale: ground
-  `#f2f2f3`, surface `#ffffff`, borders `#d4d4d7`, inner rules `#e7e7ea`,
-  table headers `#f5f5f8`.
-- **Type (UC brand)**: Montserrat Bold for headings, Montserrat Light for
-  body (loaded via Google Fonts). Size scale borrowed from the wireframes
-  since the style guide doesn't specify sizes: body 13px, secondary 12px,
-  meta 11px, section kickers 9.5px uppercase (0.12em tracking), page
-  titles 22–30px, display numerals 20–46px.
+  since UC's style guide doesn't define a full neutral scale — darkened
+  once, Sept 2026, for a real contrast problem (a member-reported "the
+  gray is very light"; text-muted was failing WCAG AA's 4.5:1 minimum for
+  the 11-13px sizes it's used at, verified against the actual contrast
+  formula, not eyeballed): ground `#f2f2f3`, surface `#ffffff`, borders
+  `#b8b8bc`, inner rules `#d3d3d7`, table headers `#f5f5f8`, muted text
+  `#5c5c60`, placeholder text `#7d7d80`, neutral `#6e6e72`. Only the
+  ground/surface backgrounds are untouched — see `styles/tokens.css`'s own
+  comment for the full before/after and reasoning.
+- **Type (UC brand)**: Montserrat Bold for headings, Montserrat **Regular**
+  for body (loaded via Google Fonts) — the style guide's literal spec was
+  Montserrat Light, changed Sept 2026 per the same contrast/legibility
+  report ("the font is very thin"), a direct override of the guide's
+  weight choice, not a mechanical fix. Size scale borrowed from the
+  wireframes since the style guide doesn't specify sizes: body 13px,
+  secondary 12px, meta 11px, section kickers 9.5px uppercase (0.12em
+  tracking), page titles 22–30px, display numerals 20–46px.
 - **Logo**: wordmark is "UConsulting" in Montserrat Bold, the "U"
   recolored to accent blue, rest in primary navy (style guide's
   reproduction rule) — built as CSS/markup, no image needed. There's also
