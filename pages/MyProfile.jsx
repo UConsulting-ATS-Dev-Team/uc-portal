@@ -34,6 +34,24 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+// Accepts either a bare handle ("joshualowenberg") or a full/partial URL
+// ("linkedin.com/in/joshualowenberg", "https://www.linkedin.com/in/joshualowenberg/")
+// and normalizes to a canonical, clickable https://www.linkedin.com/in/<handle>/
+// URL. Runs on blur, not on every keystroke -- reformatting while someone's
+// still typing is exactly the class of bug the Full name field just had.
+function normalizeLinkedInUrl(raw) {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  const withoutAt = trimmed.replace(/^@/, "");
+  const inMatch = withoutAt.match(/linkedin\.com\/in\/([^/?#\s]+)/i);
+  if (inMatch) return `https://www.linkedin.com/in/${inMatch[1]}/`;
+  if (/linkedin\.com/i.test(withoutAt)) {
+    return /^https?:\/\//i.test(withoutAt) ? withoutAt : `https://${withoutAt}`;
+  }
+  const handle = withoutAt.replace(/^in\//i, "").replace(/^\/+|\/+$/g, "");
+  return handle ? `https://www.linkedin.com/in/${handle}/` : "";
+}
+
 export default function MyProfile() {
   const {
     preferences,
@@ -60,7 +78,9 @@ export default function MyProfile() {
   });
 
   function handleSaveChanges() {
-    updateProfileOverrides({ linkedIn: form.linkedIn, resumeFileName: form.resumeFileName });
+    const linkedIn = normalizeLinkedInUrl(form.linkedIn);
+    setForm((f) => ({ ...f, linkedIn }));
+    updateProfileOverrides({ linkedIn, resumeFileName: form.resumeFileName });
     touchProfileUpdated();
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
@@ -171,9 +191,10 @@ export default function MyProfile() {
                   <label>LinkedIn</label>
                   <input
                     type="text"
-                    placeholder="linkedin.com/in/…"
+                    placeholder="linkedin.com/in/… or just your handle"
                     value={form.linkedIn}
                     onChange={(e) => setForm((f) => ({ ...f, linkedIn: e.target.value }))}
+                    onBlur={(e) => setForm((f) => ({ ...f, linkedIn: normalizeLinkedInUrl(e.target.value) }))}
                   />
                 </div>
                 <div className="field">
