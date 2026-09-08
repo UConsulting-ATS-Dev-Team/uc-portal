@@ -15,7 +15,10 @@ export const navCounts = {
   notificationsUnread: 4,
 };
 
+// Real ballpark figures per the club website (not an exact live count --
+// there's no membership-roster backend to compute this from), so these
+// are "+" floors rather than precise numbers.
 export const clubStats = {
-  members: 142,
-  alumni: 380,
+  members: "50+",
+  alumni: "150+",
 };
