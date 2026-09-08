@@ -12,6 +12,7 @@ import {
   HELP_OPTIONS,
   computeMatches,
 } from "../data/careerOptions.js";
+import bearMark from "../assets/uc-bear-mark-navy.png";
 import "../styles/onboarding.css";
 
 const STEPS = ["You", "Industries", "Roles & locations", "Companies", "Timeline"];
@@ -24,12 +25,16 @@ function move(list, index, direction) {
   return next;
 }
 
+// This had never been updated to the real bear-mark asset TopBar.jsx and
+// SignIn.jsx both use (components/TopBar.jsx + pages/SignIn.jsx) -- a
+// separate, older copy of the brand block still rendering literal "U"/"C"
+// letter-text. Once shared styles/auth.css's .auth__mark was resized/
+// re-styled for an <img> (dropping the old navy-box treatment), this
+// text version rendered broken -- no box, no accent color, no image.
 function Brand() {
   return (
     <div className="auth__brand" style={{ marginBottom: "var(--space-2)" }}>
-      <span className="auth__mark">
-        U<span>C</span>
-      </span>
+      <img className="auth__mark" src={bearMark} alt="" />
       <span className="auth__wordmark">UC Portal</span>
     </div>
   );
@@ -300,16 +305,21 @@ function StepTimeline({ preferences, onSetCycle, onToggleHelp, onToggleFlag }) {
   );
 }
 
-function Completion({ preferences, onFinish }) {
+function Completion({ preferences, profileOverrides, onFinish }) {
   const matches = computeMatches(preferences);
   const tracksQueued = Math.max(1, preferences.helpNeeded.length);
   const featuredCompany = preferences.followedCompanies[0] || COMPANIES[0].name;
   const featuredIndustry = preferences.industries[0] || "your target industry";
   const featuredHelp = preferences.helpNeeded[0] || "Case Interview Track";
+  // First name only, for a greeting -- displayName() gives the full name
+  // (real override or the mock currentUser fallback), same as every other
+  // avatar in the app reads through, but "You're set up, Jordan Ellis"
+  // reads stiffer than "You're set up, Jordan" for this one greeting.
+  const firstName = displayName(currentUser, profileOverrides).split(" ")[0];
 
   return (
     <>
-      <h1 className="onboarding__title">You're set up, {currentUser.firstName}</h1>
+      <h1 className="onboarding__title">You're set up, {firstName}</h1>
       <p className="onboarding__subtitle">Here's what's already waiting for you.</p>
 
       <div className="completion__stats">
@@ -352,7 +362,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [showCompletion, setShowCompletion] = useState(false);
   const [resumeName, setResumeName] = useState(null);
-  const { preferences, updatePreferences, completeOnboarding } = useAppState();
+  const { preferences, updatePreferences, completeOnboarding, profileOverrides } = useAppState();
   const navigate = useNavigate();
 
   function toggleIndustry(name) {
@@ -424,7 +434,7 @@ export default function Onboarding() {
       <div className="onboarding">
         <div className="onboarding__content" style={{ marginTop: "var(--space-8)" }}>
           <Brand />
-          <Completion preferences={preferences} onFinish={handleFinish} />
+          <Completion preferences={preferences} profileOverrides={profileOverrides} onFinish={handleFinish} />
         </div>
       </div>
     );
