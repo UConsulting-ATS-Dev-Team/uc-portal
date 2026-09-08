@@ -57,6 +57,22 @@
   flex-wrap: wrap;
 }
 
+/* Reported as looking tight: a bare <p class="meta"> right under a
+   heading was left to the browser's own default paragraph margin (a
+   plain UA-stylesheet ~1em, ~12px here since .meta's own font-size is
+   12px -- not a value actually drawn from this app's own spacing scale)
+   instead of a deliberate one -- headings themselves have zero margin
+   (styles/global.css). space-5 (14px) over the ~12px default is a
+   modest, deliberate bump, not a big jump. Applies to every
+   heading-then-subtitle pair on this page: the page title, and each
+   section heading with a one-line description under it (e.g. "Free
+   certifications"). */
+.resources-main h1 + .meta,
+.resources-main h2 + .meta,
+.resources-main .rail-card__title + .meta {
+  margin-top: var(--space-5);
+}
+
 .progress-bar-track {
   height: 6px;
   background: var(--color-border-inner);
