@@ -6,7 +6,7 @@ export const currentUser = {
   initials: "JE",
   classYear: 2027,
   majors: "Business Economics, Data Science",
-  ucCommittee: "Careers Committee",
+  ucCommittee: "Recruitment Committee",
   role: "member", // "member" | "alumnus" | "exec" | "careers-committee"
 };
 

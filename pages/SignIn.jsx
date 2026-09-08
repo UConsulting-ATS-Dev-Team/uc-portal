@@ -99,8 +99,8 @@ export default function SignIn() {
             <h1 className="auth__title">We couldn't find you on the roster</h1>
             <p className="auth__subtitle">
               This account ({email || "you@university.edu"}) isn't on the current member or alumni
-              roster. If you've recently joined UC or just graduated, request access below and the
-              Careers Committee will confirm.
+              roster. If you've recently joined UC or just graduated, request access below and
+              Exec will confirm.
             </p>
             <div className="auth__actions">
               <button className="btn btn-primary" onClick={submitAccessRequest}>
@@ -132,12 +132,12 @@ export default function SignIn() {
               <span className="chip chip-accent">Pending</span>
             </div>
             <p className="auth__subtitle">
-              Your request is in with the Careers Committee. You'll get an email as soon as it's
+              Your request is in with Exec. You'll get an email as soon as it's
               approved.
             </p>
             <ul className="auth__meta-list">
               <li>Submitted {submittedAt?.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}</li>
-              <li>Reviewed by the Careers Committee at the weekly Exec meeting</li>
+              <li>Reviewed at the weekly Exec meeting</li>
             </ul>
             <div className="auth__actions">
               <button

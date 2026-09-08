@@ -89,7 +89,7 @@ export default function AddApplicationModal({ onClose, onAdded }) {
           {externalNote && (
             <p className="meta">
               External postings aren't in UC's job data yet, so this prototype can't pull details from a link —
-              use "Enter manually" instead, or ask Careers Committee to add the posting via "Post a job."
+              use "Enter manually" instead, or ask Exec to add the posting via "Post a job."
             </p>
           )}
         </>

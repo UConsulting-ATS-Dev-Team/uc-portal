@@ -49,7 +49,7 @@ function StepYou({ resumeName, onAttach }) {
         <li>{displayName(currentUser, profileOverrides)}</li>
         <li>Class of {resolvedClassYear(currentUser, profileOverrides)}</li>
         <li>{resolvedMajors(currentUser, profileOverrides) || "Business Economics, Data Science"}</li>
-        <li>{resolvedUcCommittee(currentUser, profileOverrides) || "Careers Committee"}</li>
+        <li>{resolvedUcCommittee(currentUser, profileOverrides) || "Recruitment Committee"}</li>
       </ul>
       <div
         onClick={() => fileInput.current?.click()}

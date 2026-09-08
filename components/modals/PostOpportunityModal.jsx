@@ -84,11 +84,11 @@ export default function PostOpportunityModal({ onClose }) {
       width={640}
       footer={
         submitted ? (
-          <span className="modal__footer-note">Sent to the Careers Committee review queue.</span>
+          <span className="modal__footer-note">Sent to the Exec review queue.</span>
         ) : (
           <>
             <span className="modal__footer-note">
-              {submitError ? <span style={{ color: "#B3261E" }}>{submitError}</span> : "Goes to the Careers Committee for review before it's live."}
+              {submitError ? <span style={{ color: "#B3261E" }}>{submitError}</span> : "Goes to Exec for review before it's live."}
             </span>
             <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
             <button className="btn btn-primary" disabled={!canSubmit} onClick={handleSubmit}>

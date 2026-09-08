@@ -56,7 +56,7 @@ export default function RequestFeatureModal({ onClose }) {
       width={560}
       footer={
         submitted ? (
-          <span className="modal__footer-note">Sent to the Careers Committee for review.</span>
+          <span className="modal__footer-note">Sent to Exec for review.</span>
         ) : (
           <>
             <span className="modal__footer-note">

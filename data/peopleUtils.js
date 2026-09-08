@@ -56,7 +56,7 @@ export function experienceFor(person) {
 
 export function ucExperienceFor(person) {
   const seed = hashString(person.id + "uc");
-  const roles = ["Careers Committee", "Marketing Committee", "Recruitment Committee", "Alumni Relations"];
+  const roles = ["Marketing Committee", "Recruitment Committee", "Alumni Relations"];
   return [
     {
       role: roles[seed % roles.length],

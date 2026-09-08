@@ -9,7 +9,7 @@ export default function ErrorState({ what = "jobs", onRetry }) {
       <p>Your tracked data is safe — this is just a loading problem, not a data problem.</p>
       <div style={{ display: "flex", gap: "var(--space-3)", justifyContent: "center", marginTop: "var(--space-5)" }}>
         <button className="btn btn-primary" onClick={onRetry}>Try again</button>
-        <button className="btn btn-secondary">Report to Careers Committee</button>
+        <button className="btn btn-secondary">Report to Exec</button>
       </div>
     </div>
   );

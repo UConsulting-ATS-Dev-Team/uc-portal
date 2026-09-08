@@ -83,7 +83,7 @@ export default function ContributeModal({ onClose, job }) {
           <p className="meta" style={{ fontWeight: 400, marginTop: "var(--space-3)" }}>
             {isWriteup
               ? `${anonymous ? "Posted anonymously." : "Posted under your name."} Visible now on ${effectiveCompany}'s real job listings.`
-              : `${anonymous ? "Posted anonymously." : "Posted under your name."} It'll be visible to the Careers Committee for the library shortly.`}
+              : `${anonymous ? "Posted anonymously." : "Posted under your name."} It'll be visible to Exec for the library shortly.`}
           </p>
         </div>
       </Modal>

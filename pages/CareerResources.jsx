@@ -144,7 +144,7 @@ export default function CareerResources() {
               })}
             </div>
 
-            <h2>Free certifications — vetted by the Careers Committee</h2>
+            <h2>Free certifications — vetted by Exec</h2>
             <p className="meta">{CERTIFICATIONS.length} free · browse all</p>
             <div className="cert-table__scroll">
               <table className="cert-table">

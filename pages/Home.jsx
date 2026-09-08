@@ -101,7 +101,9 @@ export default function Home() {
   }
   actions.push({ title: "Update your interests", detail: "Last confirmed this spring — takes 90 seconds", to: "/onboarding" });
 
-  const suggestedPeople = PEOPLE.filter((p) => !savedConnections.includes(p.id) && p.openToCoffeeChats).slice(0, 3);
+  const suggestedPeople = PEOPLE.filter(
+    (p) => !savedConnections.includes(p.id) && p.openToCoffeeChats && (p.status === "Alumna" || p.status === "Alumnus")
+  ).slice(0, 3);
 
   const upcomingDeadlines = [...trackedEntries]
     .filter((e) => e.stage !== "Closed" && !e.job.rolling)
@@ -221,7 +223,7 @@ export default function Home() {
           </div>
 
           <div className="rail-card">
-            <div className="rail-card__title">UC people you should meet</div>
+            <div className="rail-card__title">UC alumni you should meet</div>
             {suggestedPeople.map((p) => (
               <div className="meet-person-row" key={p.id}>
                 <div>
