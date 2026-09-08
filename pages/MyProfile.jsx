@@ -71,6 +71,8 @@ export default function MyProfile() {
   const [roleQuery, setRoleQuery] = useState("");
   const [locationQuery, setLocationQuery] = useState("");
   const [companyQuery, setCompanyQuery] = useState("");
+  const [showAllSkills, setShowAllSkills] = useState(false);
+  const [showAllLocations, setShowAllLocations] = useState(false);
   const fileInput = useRef(null);
 
   const [form, setForm] = useState({
@@ -310,7 +312,7 @@ export default function MyProfile() {
                 onChange={(e) => setSkillQuery(e.target.value)}
                 style={{ marginBottom: "var(--space-3)" }}
               />
-              <div className="chip-row">
+              <div className={`chip-row${showAllSkills ? "" : " chip-row--collapsed"}`}>
                 {SKILLS.filter(
                   (skill) => preferences.skills.includes(skill) || skill.toLowerCase().includes(skillQuery.trim().toLowerCase())
                 ).map((skill) => (
@@ -326,6 +328,9 @@ export default function MyProfile() {
                   (skill) => !preferences.skills.includes(skill) && !skill.toLowerCase().includes(skillQuery.trim().toLowerCase())
                 ) && <p className="meta">No skills match "{skillQuery}".</p>}
               </div>
+              <button className="btn-link" style={{ marginBottom: "var(--space-6)" }} onClick={() => setShowAllSkills((v) => !v)}>
+                {showAllSkills ? "Show fewer" : "Show more"}
+              </button>
 
               <p style={{ fontWeight: 700 }}>Target locations</p>
               <input
@@ -335,7 +340,7 @@ export default function MyProfile() {
                 onChange={(e) => setLocationQuery(e.target.value)}
                 style={{ marginBottom: "var(--space-3)" }}
               />
-              <div className="chip-row">
+              <div className={`chip-row${showAllLocations ? "" : " chip-row--collapsed"}`}>
                 {LOCATIONS.filter((loc) => preferences.locations.includes(loc) || loc.toLowerCase().includes(locationQuery.trim().toLowerCase())).map(
                   (loc) => (
                     <button
@@ -348,6 +353,9 @@ export default function MyProfile() {
                   )
                 )}
               </div>
+              <button className="btn-link" style={{ marginBottom: "var(--space-6)" }} onClick={() => setShowAllLocations((v) => !v)}>
+                {showAllLocations ? "Show fewer" : "Show more"}
+              </button>
               <div className="checkbox-row">
                 <input
                   type="checkbox"

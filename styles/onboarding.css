@@ -84,6 +84,22 @@
   margin-bottom: var(--space-6);
 }
 
+/* Collapses a chip-row to roughly one visual line -- for a picker that
+   already has its own search box attached (My Profile's Skills/Target
+   locations), showing every option at once wasted a lot of vertical
+   space for no reason; search already narrows the list down when you
+   need something specific. max-height + overflow (not slicing the
+   array to a fixed count) so it collapses to a real one-line-tall box
+   regardless of how many chips actually fit at the current width,
+   rather than guessing a magic item count. ~40px is one chip's own
+   height (13px text * 1.5 line-height + 2*9px vertical padding + 2*1px
+   border); 42px gives it a hair of headroom so row 2 doesn't peek
+   through as a sliver. */
+.chip-row--collapsed {
+  max-height: 42px;
+  overflow: hidden;
+}
+
 .chip-toggle {
   padding: var(--space-3) var(--space-5);
   border: var(--border-hairline);
