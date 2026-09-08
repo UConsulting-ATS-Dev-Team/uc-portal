@@ -86,6 +86,18 @@ describe("matchJob — soft preferences and explainability (US-34)", () => {
     expect(strongResult.score).toBeGreaterThan(weakResult.score);
   });
 
+  it("matches a job tagged \"Management consulting\" against a \"Strategy consulting\" preference (industry synonym)", () => {
+    // Real ingested jobs only ever get tagged "Management consulting" by
+    // the taxonomy (server/src/taxonomy/occupationTaxonomy.ts) -- a
+    // member who prefers "Strategy consulting" (added Sept 2026 as a
+    // synonym, see match.ts's own comment) still needs to see them.
+    const job = normalizeJob(rawJob());
+    expect(job.relevantIndustries).toContain("Management consulting");
+    const result = matchJob(job, profile({ industries: ["Strategy consulting"] }));
+    const industryFactor = result.factors.find((f) => f.key === "industry")!;
+    expect(industryFactor.match).toBe(true);
+  });
+
   it("counts a preferred (not just required) skill toward the skills factor (Part 7 Stage 5)", () => {
     // "Business Analyst" classifies to the consulting occupation, whose
     // preferredSkills includes "Administration and Management" (a Knowledge

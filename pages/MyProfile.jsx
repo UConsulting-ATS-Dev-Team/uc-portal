@@ -246,6 +246,9 @@ export default function MyProfile() {
                     </div>
                   </li>
                 ))}
+                {Array.from({ length: 3 - preferences.industries.length }).map((_, i) => (
+                  <li className="ranked-list__empty-slot" key={`empty-${i}`}>Open slot — pick another below</li>
+                ))}
               </ul>
               <input
                 type="text"

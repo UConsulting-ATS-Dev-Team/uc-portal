@@ -3,27 +3,68 @@
 // hand-counted alumni by industry). `members` is rescaled to stay
 // realistic against the club's real, exact headcount (52, see
 // data/mockUser.js's clubStats) -- a member ranks up to 3 industries in
-// onboarding, so no single industry's count can exceed 52, and these
-// were previously as high as 101 against an old fictional 142-member
-// baseline. Rescaled proportionally (same relative ordering/shape),
-// anchored so Management consulting -- UC's own focus, expected to be
-// most members' top pick -- lands high but not literally everyone.
-// Deliberately left `alumni` untouched: rescaling it would mean
-// asserting a precise per-industry alumni breakdown nobody's actually
-// counted, and it doesn't need to sum to any particular total anyway
-// (data/mockAdmin.js's biggestGap() insight -- Tech / product strategy --
-// is unaffected by this change either way).
+// onboarding/preferences, so no single industry's count can exceed 52,
+// and the total across every industry can't meaningfully exceed roughly
+// 3x that (156) either. Rescaled proportionally (same relative ordering/
+// shape as before), anchored so Management consulting -- UC's own focus,
+// expected to still be most members' top pick even split against its new
+// sibling "Strategy consulting" -- lands high but not literally everyone.
+// Deliberately left existing `alumni` figures untouched: rescaling them
+// would mean asserting a precise per-industry alumni breakdown nobody's
+// actually counted (new industries below get a modest illustrative
+// alumni figure of their own, same non-precise spirit).
+//
+// 4 new industries added (member-requested, Sept 2026): the taxonomy was
+// too coarse -- some roles genuinely read as either "Strategy consulting"
+// or "Management consulting" depending who's describing them, and
+// several other real recruiting tracks (VC, data/analytics, ops) had no
+// option at all and were getting folded into a broader neighbor.
+// "Strategy consulting" is deliberately NOT modeled as a fully separate
+// classification: canonicalIndustry() below treats it as a synonym of
+// "Management consulting" everywhere real job matching happens, so a
+// member who prefers one sees roles tagged either way -- see that
+// function's own comment. The other 3 new industries (Venture capital,
+// Data & analytics, Operations & supply chain) are genuinely distinct
+// preference options; like the pre-existing Nonprofit/Healthcare/Real
+// estate rows, the real job-ingestion taxonomy
+// (server/src/taxonomy/occupationTaxonomy.ts) doesn't tag any real job
+// into them yet, so they're aspirational preference options for now,
+// same already-accepted gap as those three, not a new one.
 export const INDUSTRIES = [
-  { name: "Management consulting", members: 45, alumni: 61 },
-  { name: "Investment banking", members: 33, alumni: 48 },
-  { name: "Tech / product strategy", members: 24, alumni: 22 },
-  { name: "Private equity", members: 17, alumni: 19 },
-  { name: "Marketing & brand strategy", members: 12, alumni: 14 },
+  { name: "Management consulting", members: 33, alumni: 61 },
+  { name: "Investment banking", members: 30, alumni: 48 },
+  { name: "Tech / product strategy", members: 15, alumni: 22 },
+  { name: "Private equity", members: 14, alumni: 19 },
+  { name: "Strategy consulting", members: 12, alumni: 25 },
+  { name: "Marketing & brand strategy", members: 10, alumni: 14 },
+  { name: "Data & analytics", members: 9, alumni: 10 },
   { name: "Nonprofit / public sector", members: 8, alumni: 9 },
-  { name: "Healthcare", members: 7, alumni: 8 },
+  { name: "Venture capital", members: 6, alumni: 8 },
+  { name: "Healthcare", members: 6, alumni: 8 },
+  { name: "Operations & supply chain", members: 6, alumni: 5 },
   { name: "Real estate", members: 5, alumni: 6 },
   { name: "Still figuring it out", members: 0, alumni: 0 },
 ];
+
+// "Strategy consulting" and "Management consulting" are the same
+// real-world work, just named differently depending who you ask (the
+// reason it was added in the first place) -- real ingested jobs
+// (server/src/taxonomy/occupationTaxonomy.ts) only ever tag
+// "Management consulting", so without this a member who prefers
+// "Strategy consulting" would see zero real-job matches, which defeats
+// the point of adding it. Every industry-equality check against real job
+// data (data/jobMatch.js's industry match factor, and any future one)
+// should compare canonicalIndustry() output, not raw strings, so a
+// preference and a job tag that mean the same thing always match --
+// "some roles genuinely do apply to multiple industry filters" in
+// practice, without needing every job double-tagged by hand.
+const INDUSTRY_SYNONYMS = {
+  "Strategy consulting": "Management consulting",
+};
+
+export function canonicalIndustry(name) {
+  return INDUSTRY_SYNONYMS[name] ?? name;
+}
 
 export const ROLES = [
   "Consultant",

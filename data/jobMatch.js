@@ -16,6 +16,8 @@
 // version of this used to live here with a different, simpler formula
 // than server/src/rank.ts's real one -- see finalScore()'s own comment.
 
+import { canonicalIndustry } from "./careerOptions.js";
+
 // --- Hard constraints (US-33): filter out entirely, never just down-rank ---
 function isEligible(job, preferences, classYear) {
   const gradEligible = !job.graduation_years?.length || job.graduation_years.includes(classYear);
@@ -44,7 +46,13 @@ export function matchJob(job, preferences, classYear) {
 
   let score = 0;
 
-  const industryMatch = (job.relevant_industries ?? []).some((i) => preferences.industries.includes(i));
+  // canonicalIndustry(), not raw string equality -- "Strategy consulting"
+  // and "Management consulting" are the same real-world work (see that
+  // function's comment in data/careerOptions.js), and real jobs only
+  // ever get tagged "Management consulting" by the ingestion taxonomy.
+  const industryMatch = (job.relevant_industries ?? []).some((i) =>
+    preferences.industries.some((p) => canonicalIndustry(p) === canonicalIndustry(i))
+  );
   factors.push({ key: "industry", match: industryMatch, label: job.relevant_industries?.join(", ") || "Not classified" });
   score += industryMatch ? 30 : 0;
 

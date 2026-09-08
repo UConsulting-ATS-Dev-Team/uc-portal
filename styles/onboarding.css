@@ -161,6 +161,14 @@
   color: var(--color-text-muted);
   font-size: var(--text-secondary);
   font-style: italic;
+  border-bottom: var(--border-hairline);
+}
+
+/* Up to 3 can render now (one per remaining slot, not just one total) --
+   give them the same row-divider rhythm as .ranked-list__item, and drop
+   the border off the actual last row in the list either way. */
+.ranked-list__empty-slot:last-child {
+  border-bottom: none;
 }
 
 .payoff-card {

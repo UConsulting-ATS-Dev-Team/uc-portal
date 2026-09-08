@@ -1,5 +1,21 @@
 import type { MatchFactor, MatchResult, MemberProfile, NormalizedJob } from "./types.js";
 
+// "Strategy consulting" and "Management consulting" are the same
+// real-world work, just named differently depending who's describing it
+// -- mirrors data/careerOptions.js's canonicalIndustry() on the frontend
+// (kept in sync by hand per this file's own header, not a shared import,
+// since this package and the frontend don't share a module system).
+// Real ingested jobs only ever get tagged "Management consulting" by the
+// taxonomy, so without this a profile preferring "Strategy consulting"
+// would never match one.
+const INDUSTRY_SYNONYMS: Record<string, string> = {
+  "Strategy consulting": "Management consulting",
+};
+
+function canonicalIndustry(name: string): string {
+  return INDUSTRY_SYNONYMS[name] ?? name;
+}
+
 // US-32/33/34 -- job-member matching. Hard constraints filter out entirely
 // (§3.9); soft preferences only affect score. Every factor is returned
 // alongside the score so it's always explainable (US-34) -- mirrors the
@@ -33,7 +49,9 @@ export function matchJob(job: NormalizedJob, profile: MemberProfile): MatchResul
   // --- Soft preferences (§3.9) -- weights sum to 100 ---
   let weightedSum = 0;
 
-  const industryMatch = job.relevantIndustries.some((i) => profile.industries.includes(i));
+  const industryMatch = job.relevantIndustries.some((i) =>
+    profile.industries.some((p) => canonicalIndustry(p) === canonicalIndustry(i))
+  );
   factors.push({
     key: "industry",
     label: "Target industry",

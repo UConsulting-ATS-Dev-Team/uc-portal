@@ -108,7 +108,9 @@ function StepIndustries({ industries, onToggle, onReorder }) {
             </li>
           );
         })}
-        {industries.length < 3 && <li className="ranked-list__empty-slot">Open slot — pick another below</li>}
+        {Array.from({ length: 3 - industries.length }).map((_, i) => (
+          <li className="ranked-list__empty-slot" key={`empty-${i}`}>Open slot — pick another below</li>
+        ))}
       </ul>
 
       <div className="chip-row">
