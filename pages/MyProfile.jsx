@@ -326,7 +326,7 @@ export default function MyProfile() {
               <input
                 type="range"
                 min={15}
-                max={60}
+                max={75}
                 value={preferences.compTarget}
                 onChange={(e) => updatePreferences({ compTarget: Number(e.target.value) })}
               />

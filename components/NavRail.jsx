@@ -82,7 +82,7 @@ export default function NavRail() {
       <div className="rail__spacer" />
 
       <div className="rail__stats">
-        {clubStats.members} members · {clubStats.alumni} alumni · {clubStats.tagline}
+        {clubStats.members} members · {clubStats.alumni} alumni
       </div>
     </nav>
   );

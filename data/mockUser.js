@@ -18,5 +18,4 @@ export const navCounts = {
 export const clubStats = {
   members: 142,
   alumni: 380,
-  tagline: "invite only",
 };

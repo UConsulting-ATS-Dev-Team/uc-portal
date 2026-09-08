@@ -92,7 +92,7 @@ const NEUTRAL_FILTERS = {
   industries: [],
   locations: [],
   compMin: 15,
-  compMax: 60,
+  compMax: 75,
   deadlines: [],
 };
 
@@ -127,11 +127,11 @@ const DROPPABLE_FILTERS = [
   { key: "gradYears", label: (f) => `Class of ${f.gradYears.join(", ")}`, clear: (f) => ({ ...f, gradYears: [] }) },
   { key: "types", label: (f) => f.types.join(", "), clear: (f) => ({ ...f, types: [] }) },
   { key: "deadlines", label: (f) => f.deadlines.join(", "), clear: (f) => ({ ...f, deadlines: [] }) },
-  { key: "comp", label: (f) => `$${f.compMax}/hr+`, clear: (f) => ({ ...f, compMin: 15, compMax: 60 }) },
+  { key: "comp", label: (f) => `$${f.compMax}/hr+`, clear: (f) => ({ ...f, compMin: 15, compMax: 75 }) },
 ];
 
 function diagnoseEmptyFilters(filters, jobs) {
-  return DROPPABLE_FILTERS.filter((d) => (d.key === "comp" ? filters.compMin > 15 || filters.compMax < 60 : filters[d.key].length > 0))
+  return DROPPABLE_FILTERS.filter((d) => (d.key === "comp" ? filters.compMin > 15 || filters.compMax < 75 : filters[d.key].length > 0))
     .map((d) => ({ ...d, count: jobs.filter((j) => matchesFilters(j, d.clear(filters))).length, currentLabel: d.label(filters) }))
     .sort((a, b) => b.count - a.count);
 }
@@ -436,14 +436,14 @@ export default function Jobs() {
           <input
             type="range"
             min={15}
-            max={60}
+            max={75}
             value={filters.compMin}
             onChange={(e) => patchFilters({ compMin: Math.min(Number(e.target.value), filters.compMax) })}
           />
           <input
             type="range"
             min={15}
-            max={60}
+            max={75}
             value={filters.compMax}
             onChange={(e) => patchFilters({ compMax: Math.max(Number(e.target.value), filters.compMin) })}
           />
