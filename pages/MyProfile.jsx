@@ -71,9 +71,9 @@ export default function MyProfile() {
 
   const [form, setForm] = useState({
     fullName: displayName(currentUser, profileOverrides),
-    classYear: currentUser.classYear,
-    majors: currentUser.majors,
-    ucCommittee: currentUser.ucCommittee,
+    classYear: profileOverrides.classYear ?? currentUser.classYear,
+    majors: profileOverrides.majors || currentUser.majors,
+    ucCommittee: profileOverrides.ucCommittee || currentUser.ucCommittee,
     linkedIn: profileOverrides.linkedIn,
     resumeFileName: profileOverrides.resumeFileName,
   });
@@ -81,7 +81,14 @@ export default function MyProfile() {
   function handleSaveChanges() {
     const linkedIn = normalizeLinkedInUrl(form.linkedIn);
     setForm((f) => ({ ...f, linkedIn }));
-    updateProfileOverrides({ fullName: form.fullName, linkedIn, resumeFileName: form.resumeFileName });
+    updateProfileOverrides({
+      fullName: form.fullName,
+      classYear: form.classYear,
+      majors: form.majors,
+      ucCommittee: form.ucCommittee,
+      linkedIn,
+      resumeFileName: form.resumeFileName,
+    });
     touchProfileUpdated();
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
@@ -323,7 +330,9 @@ export default function MyProfile() {
                 value={preferences.compTarget}
                 onChange={(e) => updatePreferences({ compTarget: Number(e.target.value) })}
               />
-              <p className="meta" style={{ marginTop: 0 }}>${preferences.compTarget}/hr</p>
+              <p className="meta" style={{ marginTop: 0 }}>
+                ${preferences.compTarget}/hr (~${(preferences.compTarget * 2080).toLocaleString()}/yr at full-time hours)
+              </p>
 
               <p style={{ fontWeight: 700 }}>Companies of interest</p>
               <div className="chip-row">

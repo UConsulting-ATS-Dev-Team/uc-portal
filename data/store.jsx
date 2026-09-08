@@ -134,6 +134,9 @@ const DEFAULT_STATE = {
   },
   profileOverrides: {
     fullName: "",
+    classYear: null,
+    majors: "",
+    ucCommittee: "",
     linkedIn: "",
     resumeFileName: null,
   },
