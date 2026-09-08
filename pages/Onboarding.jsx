@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppState } from "../data/store.jsx";
 import { currentUser } from "../data/mockUser.js";
+import { displayName, resolvedClassYear, resolvedMajors, resolvedUcCommittee } from "../data/profileUtils.js";
 import {
   INDUSTRIES,
   ROLES,
@@ -36,6 +37,7 @@ function Brand() {
 
 function StepYou({ resumeName, onAttach }) {
   const fileInput = useRef(null);
+  const { profileOverrides } = useAppState();
   return (
     <>
       <div className="onboarding__kicker">Step 1 of 5</div>
@@ -44,12 +46,10 @@ function StepYou({ resumeName, onAttach }) {
         Pulled from the UC roster — let us know if anything's out of date at a GM.
       </p>
       <ul className="auth__meta-list">
-        <li>
-          {currentUser.firstName} {currentUser.lastName}
-        </li>
-        <li>Class of {currentUser.classYear}</li>
-        <li>{currentUser.majors || "Business Economics, Data Science"}</li>
-        <li>{currentUser.ucCommittee || "Careers Committee"}</li>
+        <li>{displayName(currentUser, profileOverrides)}</li>
+        <li>Class of {resolvedClassYear(currentUser, profileOverrides)}</li>
+        <li>{resolvedMajors(currentUser, profileOverrides) || "Business Economics, Data Science"}</li>
+        <li>{resolvedUcCommittee(currentUser, profileOverrides) || "Careers Committee"}</li>
       </ul>
       <div
         onClick={() => fileInput.current?.click()}

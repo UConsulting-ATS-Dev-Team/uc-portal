@@ -9,6 +9,7 @@ import { fetchRealPeopleAtCompany } from "../data/realPeople.js";
 import { COMPANIES } from "../data/mockCompanies.js";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
+import { resolvedClassYear } from "../data/profileUtils.js";
 import Placeholder from "./Placeholder.jsx";
 import CompanyLogo from "../components/CompanyLogo.jsx";
 import "../styles/jobs.css";
@@ -24,7 +25,8 @@ const PREP_RESOURCES = ["Case Interview Fundamentals", "Behavioral Prep Guide", 
 export default function CompanyPage() {
   const { companyId } = useParams();
   const company = findCompany(companyId);
-  const { preferences, updatePreferences } = useAppState();
+  const { preferences, updatePreferences, profileOverrides } = useAppState();
+  const classYear = resolvedClassYear(currentUser, profileOverrides);
   const navigate = useNavigate();
   const [tab, setTab] = useState("Overview");
 
@@ -166,7 +168,7 @@ export default function CompanyPage() {
               {liveJobs !== undefined && hasLiveFeed &&
                 liveJobs.map((rawJob) => {
                   const j = realJobToCardShape(rawJob);
-                  const isYourYear = j.classYears.includes(currentUser.classYear);
+                  const isYourYear = j.classYears.includes(classYear);
                   return (
                     <div className="opportunity-row" key={j.id}>
                       <div>

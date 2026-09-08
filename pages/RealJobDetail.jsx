@@ -5,6 +5,7 @@ import { matchJob } from "../data/jobMatch.js";
 import { fetchRealOddsInputs, computeRealOdds } from "../data/realOddsModel.js";
 import { useAppState } from "../data/store.jsx";
 import { currentUser } from "../data/mockUser.js";
+import { resolvedClassYear } from "../data/profileUtils.js";
 import { fetchRealPeopleAtCompany } from "../data/realPeople.js";
 import { fetchRealWriteupsForJob } from "../data/realWriteups.js";
 import { COMPANIES } from "../data/mockCompanies.js";
@@ -68,7 +69,8 @@ const CLASSIFICATION_METHOD_LABEL = {
 // (tracked_applications has no offer outcome to read).
 export default function RealJobDetail({ jobId }) {
   const [job, setJob] = useState(undefined); // undefined = loading, null = not found
-  const { preferences, savedConnections, coffeeChatStatus, prepLogged } = useAppState();
+  const { preferences, savedConnections, coffeeChatStatus, prepLogged, profileOverrides } = useAppState();
+  const classYear = resolvedClassYear(currentUser, profileOverrides);
   const [showLogPrepModal, setShowLogPrepModal] = useState(false);
 
   // Real UConsulting Directory people at this company (see JOB_ENGINE_
@@ -153,7 +155,7 @@ export default function RealJobDetail({ jobId }) {
     if (!job || people === undefined) return;
     let cancelled = false;
     setOddsInputs(undefined);
-    const matchScore = matchJob(job, preferences, currentUser.classYear).score;
+    const matchScore = matchJob(job, preferences, classYear).score;
     fetchRealOddsInputs(job, { matchScore, people, savedConnections, coffeeChatStatus })
       .then((inputs) => {
         if (!cancelled) setOddsInputs(inputs);
@@ -172,7 +174,7 @@ export default function RealJobDetail({ jobId }) {
 
   const companyPage = COMPANIES.find((c) => c.name === job.company);
 
-  const match = matchJob(job, preferences, currentUser.classYear);
+  const match = matchJob(job, preferences, classYear);
   const extraPrepHours = prepLogged[job.id] || 0;
   const odds = oddsInputs ? computeRealOdds(oddsInputs, { extraPrepHours }) : null;
   const oddsComputeFn = (_j, opts) => computeRealOdds(oddsInputs, opts);

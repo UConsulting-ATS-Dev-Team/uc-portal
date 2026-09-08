@@ -12,6 +12,25 @@ export function displayName(currentUser, profileOverrides) {
   return profileOverrides?.fullName?.trim() || `${currentUser.firstName} ${currentUser.lastName}`;
 }
 
+// Same fallback pattern as displayName() above, for the other three
+// Personal-tab fields that can now be overridden (My Profile's
+// handleSaveChanges) but are still read directly off the mock currentUser
+// in several functional (not just display) call sites -- real job matching
+// (data/jobMatch.js's matchJob(), used by both Jobs.jsx and
+// RealJobDetail.jsx) takes a member's class year as a hard constraint, so a
+// saved grad-year change needs to actually reach it, not just redraw text.
+export function resolvedClassYear(currentUser, profileOverrides) {
+  return profileOverrides?.classYear ?? currentUser.classYear;
+}
+
+export function resolvedMajors(currentUser, profileOverrides) {
+  return profileOverrides?.majors || currentUser.majors;
+}
+
+export function resolvedUcCommittee(currentUser, profileOverrides) {
+  return profileOverrides?.ucCommittee || currentUser.ucCommittee;
+}
+
 export function initialsFromName(fullName) {
   return fullName
     .trim()

@@ -4,7 +4,7 @@ import { useAppState } from "../data/store.jsx";
 import { JOBS } from "../data/mockJobs.js";
 import { FEED_POSTS } from "../data/mockFeed.js";
 import { PEOPLE } from "../data/mockPeople.js";
-import { computeProfileStrength, displayName, initialsFromName } from "../data/profileUtils.js";
+import { computeProfileStrength, displayName, initialsFromName, resolvedClassYear, resolvedMajors } from "../data/profileUtils.js";
 import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
 import { nextActionForStage } from "../data/trackerUtils.js";
 import JobCard from "../components/JobCard.jsx";
@@ -39,8 +39,8 @@ export default function Home() {
     const { pct } = computeProfileStrength(preferences, profileOverrides.linkedIn);
     return (
       <div className="empty-state">
-        <h1>Welcome to UC Portal, {currentUser.firstName}</h1>
-        <p className="meta">Class of {currentUser.classYear} · new member · nothing tracked yet</p>
+        <h1>Welcome to UC Portal, {displayName(currentUser, profileOverrides).split(" ")[0]}</h1>
+        <p className="meta">Class of {resolvedClassYear(currentUser, profileOverrides)} · new member · nothing tracked yet</p>
         <p>You don't need to be recruiting yet to use this — browse jobs, meet alumni, or start a learning track whenever you're ready.</p>
         <p className="meta">Profile strength: {pct}%</p>
         <div className="empty-state__tiles">
@@ -117,7 +117,7 @@ export default function Home() {
             <div>
               <h1>Welcome back, {displayName(currentUser, profileOverrides).split(" ")[0]}</h1>
               <p className="welcome-card__subtitle">
-                Class of {currentUser.classYear} · {currentUser.majors} · Recruiting focus:{" "}
+                Class of {resolvedClassYear(currentUser, profileOverrides)} · {resolvedMajors(currentUser, profileOverrides)} · Recruiting focus:{" "}
                 {preferences.recruitingCycle || "Not set"}
               </p>
             </div>

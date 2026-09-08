@@ -5,7 +5,7 @@ import { JOBS } from "../data/mockJobs.js";
 import { PEOPLE } from "../data/mockPeople.js";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
-import { displayName, initialsFromName } from "../data/profileUtils.js";
+import { displayName, initialsFromName, resolvedClassYear } from "../data/profileUtils.js";
 import JobCard from "../components/JobCard.jsx";
 import "../styles/jobDetail.css";
 import "../styles/feed.css";
@@ -42,7 +42,7 @@ export default function Feed() {
       author: displayName(currentUser, profileOverrides),
       roleChip: "Member",
       postType: selectedType,
-      roleLine: `Class of ${currentUser.classYear}`,
+      roleLine: `Class of ${resolvedClassYear(currentUser, profileOverrides)}`,
       timestamp: "Just now",
       body: composerText.trim(),
       isEvent: selectedType === "Event",

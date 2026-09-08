@@ -13,6 +13,7 @@ import {
 } from "../data/peopleUtils.js";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
+import { resolvedUcCommittee } from "../data/profileUtils.js";
 import Placeholder from "./Placeholder.jsx";
 import RealMemberProfile from "./RealMemberProfile.jsx";
 import RequestCoffeeChatModal from "../components/modals/RequestCoffeeChatModal.jsx";
@@ -31,7 +32,8 @@ function initials(name) {
 export default function MemberProfile() {
   const { personId } = useParams();
   const person = findPerson(personId);
-  const { preferences, savedConnections, coffeeChatStatus, toggleSavedConnection } = useAppState();
+  const { preferences, savedConnections, coffeeChatStatus, toggleSavedConnection, profileOverrides } = useAppState();
+  const ucCommittee = resolvedUcCommittee(currentUser, profileOverrides);
   const [showChatModal, setShowChatModal] = useState(false);
 
   if (!person) {
@@ -46,7 +48,7 @@ export default function MemberProfile() {
   const help = happyToHelpFor(person);
 
   const sharedContext = [];
-  if (ucExperience[0].role === currentUser.ucCommittee) sharedContext.push(`Both on ${currentUser.ucCommittee}`);
+  if (ucExperience[0].role === ucCommittee) sharedContext.push(`Both on ${ucCommittee}`);
   if (person.mutualConnections > 0) sharedContext.push(`${person.mutualConnections} mutual UC connections`);
   if (preferences.industries.includes(person.industry)) sharedContext.push("Same target industry");
   if (preferences.followedCompanies.includes(person.company)) sharedContext.push("Works at a company you track");

@@ -11,6 +11,7 @@ import { fetchAllRows } from "../data/fetchAllRows.js";
 import { matchJob, finalScore } from "../data/jobMatch.js";
 import { realJobToCardShape } from "../data/realJobAdapter.js";
 import { currentUser } from "../data/mockUser.js";
+import { resolvedClassYear } from "../data/profileUtils.js";
 import { parseJobQuery } from "../data/nlSearchParser.js";
 import "../styles/jobs.css";
 import "../styles/search.css";
@@ -170,7 +171,8 @@ export default function Jobs() {
   const [showPostModal, setShowPostModal] = useState(false);
   const [nlQuery, setNlQuery] = useState("");
   const [nlResult, setNlResult] = useState(null);
-  const { savedJobIds, toggleSavedJob, preferences, savedSearches, saveSearch, removeSavedSearch } = useAppState();
+  const { savedJobIds, toggleSavedJob, preferences, savedSearches, saveSearch, removeSavedSearch, profileOverrides } = useAppState();
+  const classYear = resolvedClassYear(currentUser, profileOverrides);
 
   const [rawJobs, setRawJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(true);
@@ -187,8 +189,8 @@ export default function Jobs() {
   }, []);
 
   const JOBS = useMemo(
-    () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, currentUser.classYear))),
-    [rawJobs, preferences]
+    () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear))),
+    [rawJobs, preferences, classYear]
   );
 
   useEffect(() => {
@@ -542,7 +544,7 @@ export default function Jobs() {
         {tab === "continuous" && (
           <ContinuousJobFeed
             preferences={preferences}
-            classYear={currentUser.classYear}
+            classYear={classYear}
             savedJobIds={savedJobIds}
             onToggleSave={toggleSavedJob}
           />
