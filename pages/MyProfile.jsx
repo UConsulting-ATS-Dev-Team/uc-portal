@@ -514,17 +514,6 @@ export default function MyProfile() {
               ))}
             </ul>
           </div>
-
-          <div className="rail-card">
-            <div className="rail-card__title">What this changes</div>
-            <p style={{ margin: 0 }}>
-              These preferences drive your recommended jobs, match scores, suggested alumni, and your odds
-              estimate.
-            </p>
-            <p className="meta" style={{ marginTop: "var(--space-3)" }}>
-              Exec sees aggregate interest only — never your applications.
-            </p>
-          </div>
         </div>
       </div>
     </div>
