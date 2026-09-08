@@ -32,7 +32,13 @@ const GRAD_YEARS = ["2026", "2027", "2028", "2029"];
 const DEADLINE_BUCKETS = ["This week", "This month", "Rolling"];
 const TABS = [
   { key: "recommended", label: "Recommended for you" },
-  { key: "continuous", label: "Continuous feed" },
+  // Renamed from "Continuous feed" -- that name read as "this data updates
+  // live," when what actually distinguishes this tab is *how it loads*
+  // (real infinite scroll via ContinuousJobFeed.jsx's .range() pagination,
+  // ranked and capped-per-company as you go) rather than *how fresh the
+  // data is* (every tab reads the same live table). "Scroll feed" names
+  // the actual interaction instead.
+  { key: "continuous", label: "Scroll feed" },
   { key: "all", label: "All jobs" },
   { key: "saved", label: "Saved" },
 ];
@@ -73,7 +79,6 @@ function capPerCompany(jobs, cap) {
 // nothing and apply only what was actually asked for.
 const NEUTRAL_FILTERS = {
   keyword: "",
-  recommendedForMe: false,
   types: [],
   gradYears: [],
   industries: [],
@@ -127,7 +132,6 @@ function matchesFilters(job, filters) {
     const q = filters.keyword.toLowerCase();
     if (!job.role.toLowerCase().includes(q) && !job.company.toLowerCase().includes(q)) return false;
   }
-  if (filters.recommendedForMe && job.matchScore < 70) return false;
   if (filters.types.length && !filters.types.includes(job.type)) return false;
   // A job with no graduation-year requirement listed passes every grad-year
   // filter rather than being excluded -- "unknown" isn't "ineligible."
@@ -317,8 +321,6 @@ export default function Jobs() {
 
   const activeChips = [];
   if (filters.keyword) activeChips.push({ label: `"${filters.keyword}"`, onRemove: () => patchFilters({ keyword: "" }) });
-  if (filters.recommendedForMe)
-    activeChips.push({ label: "Recommended for me", onRemove: () => patchFilters({ recommendedForMe: false }) });
   filters.types.forEach((t) => activeChips.push({ label: t, onRemove: () => toggleChip("types", t) }));
   filters.gradYears.forEach((y) => activeChips.push({ label: `Class of ${y}`, onRemove: () => toggleChip("gradYears", y) }));
   filters.industries.forEach((i) => activeChips.push({ label: i, onRemove: () => toggleChip("industries", i) }));
@@ -397,28 +399,6 @@ export default function Jobs() {
             </p>
           )}
         </form>
-
-        <div className="filters__group">
-          <input
-            type="text"
-            placeholder="Keyword, role or company"
-            value={filters.keyword}
-            onChange={(e) => patchFilters({ keyword: e.target.value })}
-          />
-        </div>
-
-        <div className="filters__group">
-          <label className="filters__checkbox">
-            <span>
-              <input
-                type="checkbox"
-                checked={filters.recommendedForMe}
-                onChange={() => patchFilters({ recommendedForMe: !filters.recommendedForMe })}
-              />{" "}
-              Recommended for me
-            </span>
-          </label>
-        </div>
 
         <div className="filters__group">
           <div className="filters__group-title">Opportunity type</div>
