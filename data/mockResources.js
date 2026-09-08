@@ -49,7 +49,7 @@ export const RESOURCES = [
     contributors: 3,
     views: 289,
     completions: 203,
-    description: "The exact checklist UC's Careers Committee uses when reviewing member resumes before recruiting season.",
+    description: "The exact checklist UC's Recruitment Committee uses when reviewing member resumes before recruiting season.",
     sections: ["Formatting", "Bullet structure", "Quantifying impact"],
     ucNotes: ["Resumes reviewed with this checklist before round 1 had noticeably fewer early rejections last cycle."],
   },
