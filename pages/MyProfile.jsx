@@ -51,8 +51,7 @@ export default function MyProfile() {
   const fileInput = useRef(null);
 
   const [form, setForm] = useState({
-    firstName: currentUser.firstName,
-    lastName: currentUser.lastName,
+    fullName: `${currentUser.firstName} ${currentUser.lastName}`,
     classYear: currentUser.classYear,
     majors: currentUser.majors,
     ucCommittee: currentUser.ucCommittee,
@@ -144,11 +143,8 @@ export default function MyProfile() {
                   <label>Full name</label>
                   <input
                     type="text"
-                    value={`${form.firstName} ${form.lastName}`}
-                    onChange={(e) => {
-                      const [firstName, ...rest] = e.target.value.split(" ");
-                      setForm((f) => ({ ...f, firstName, lastName: rest.join(" ") }));
-                    }}
+                    value={form.fullName}
+                    onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
                   />
                 </div>
                 <div className="field">
@@ -164,7 +160,7 @@ export default function MyProfile() {
                   <input type="text" value={form.majors} onChange={(e) => setForm((f) => ({ ...f, majors: e.target.value }))} />
                 </div>
                 <div className="field">
-                  <label>UC role</label>
+                  <label>UC Role(s)</label>
                   <input
                     type="text"
                     value={form.ucCommittee}
