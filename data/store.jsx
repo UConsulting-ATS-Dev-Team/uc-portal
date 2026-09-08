@@ -133,6 +133,7 @@ const DEFAULT_STATE = {
     },
   },
   profileOverrides: {
+    fullName: "",
     linkedIn: "",
     resumeFileName: null,
   },

@@ -5,6 +5,7 @@ import { JOBS } from "../data/mockJobs.js";
 import { PEOPLE } from "../data/mockPeople.js";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
+import { displayName, initialsFromName } from "../data/profileUtils.js";
 import JobCard from "../components/JobCard.jsx";
 import "../styles/jobDetail.css";
 import "../styles/feed.css";
@@ -22,7 +23,7 @@ function initials(name) {
 }
 
 export default function Feed() {
-  const { savedJobIds, toggleSavedJob, savedConnections, toggleSavedConnection } = useAppState();
+  const { savedJobIds, toggleSavedJob, savedConnections, toggleSavedConnection, profileOverrides } = useAppState();
   const location = useLocation();
   const [tab, setTab] = useState("All");
   // "Ask the network" from Global search's no-results state hands off a
@@ -38,7 +39,7 @@ export default function Feed() {
     if (!composerText.trim()) return;
     const newPost = {
       id: `post-${Date.now()}`,
-      author: `${currentUser.firstName} ${currentUser.lastName}`,
+      author: displayName(currentUser, profileOverrides),
       roleChip: "Member",
       postType: selectedType,
       roleLine: `Class of ${currentUser.classYear}`,
@@ -85,7 +86,7 @@ export default function Feed() {
       <div className="feed-main">
         <div className="composer">
           <div className="composer__top">
-            <div className="composer__avatar">{currentUser.initials}</div>
+            <div className="composer__avatar">{initialsFromName(displayName(currentUser, profileOverrides))}</div>
             <textarea
               placeholder="Share something with UC…"
               value={composerText}

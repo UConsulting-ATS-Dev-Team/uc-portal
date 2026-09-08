@@ -1,6 +1,25 @@
 // Shared with pages/MyProfile.jsx (2g) and pages/Home.jsx (1a) -- both
 // need the same "profile strength" computation, so it lives here once
 // rather than being duplicated.
+
+// Real name overrides live in store.jsx's profileOverrides.fullName once a
+// member has actually saved a change on My Profile's Personal tab -- falls
+// back to the mock currentUser identity otherwise. Every avatar across the
+// app (TopBar, Home, Feed, My Profile) should read through this rather than
+// currentUser directly, so a saved name change is reflected everywhere
+// consistently instead of only on the page where it was edited.
+export function displayName(currentUser, profileOverrides) {
+  return profileOverrides?.fullName?.trim() || `${currentUser.firstName} ${currentUser.lastName}`;
+}
+
+export function initialsFromName(fullName) {
+  return fullName
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase())
+    .join("");
+}
 export function computeProfileStrength(preferences, linkedIn) {
   const checks = [
     { label: "Resume attached", done: preferences.resumeAttached },

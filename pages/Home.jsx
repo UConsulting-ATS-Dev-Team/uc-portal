@@ -4,7 +4,7 @@ import { useAppState } from "../data/store.jsx";
 import { JOBS } from "../data/mockJobs.js";
 import { FEED_POSTS } from "../data/mockFeed.js";
 import { PEOPLE } from "../data/mockPeople.js";
-import { computeProfileStrength } from "../data/profileUtils.js";
+import { computeProfileStrength, displayName, initialsFromName } from "../data/profileUtils.js";
 import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
 import { nextActionForStage } from "../data/trackerUtils.js";
 import JobCard from "../components/JobCard.jsx";
@@ -113,9 +113,9 @@ export default function Home() {
       <div className="welcome-card">
         <div>
           <div className="welcome-card__greeting">
-            <div className="avatar-card__avatar" style={{ margin: 0 }}>{currentUser.initials}</div>
+            <div className="avatar-card__avatar" style={{ margin: 0 }}>{initialsFromName(displayName(currentUser, profileOverrides))}</div>
             <div>
-              <h1>Welcome back, {currentUser.firstName}</h1>
+              <h1>Welcome back, {displayName(currentUser, profileOverrides).split(" ")[0]}</h1>
               <p className="welcome-card__subtitle">
                 Class of {currentUser.classYear} · {currentUser.majors} · Recruiting focus:{" "}
                 {preferences.recruitingCycle || "Not set"}

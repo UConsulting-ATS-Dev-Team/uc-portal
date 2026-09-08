@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
 import { INDUSTRIES, ROLES, SKILLS, LOCATIONS, COMPANIES, RECRUITING_CYCLES } from "../data/careerOptions.js";
-import { computeProfileStrength } from "../data/profileUtils.js";
+import { computeProfileStrength, displayName, initialsFromName } from "../data/profileUtils.js";
 import "../styles/jobDetail.css";
 import "../styles/onboarding.css";
 import "../styles/tracker.css";
@@ -65,11 +65,12 @@ export default function MyProfile() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("Personal");
   const [saved, setSaved] = useState(false);
+  const [photoNote, setPhotoNote] = useState(false);
   const [companyQuery, setCompanyQuery] = useState("");
   const fileInput = useRef(null);
 
   const [form, setForm] = useState({
-    fullName: `${currentUser.firstName} ${currentUser.lastName}`,
+    fullName: displayName(currentUser, profileOverrides),
     classYear: currentUser.classYear,
     majors: currentUser.majors,
     ucCommittee: currentUser.ucCommittee,
@@ -80,7 +81,7 @@ export default function MyProfile() {
   function handleSaveChanges() {
     const linkedIn = normalizeLinkedInUrl(form.linkedIn);
     setForm((f) => ({ ...f, linkedIn }));
-    updateProfileOverrides({ linkedIn, resumeFileName: form.resumeFileName });
+    updateProfileOverrides({ fullName: form.fullName, linkedIn, resumeFileName: form.resumeFileName });
     touchProfileUpdated();
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
@@ -435,8 +436,15 @@ export default function MyProfile() {
 
         <div className="detail-rail">
           <div className="avatar-card">
-            <div className="avatar-card__avatar">{currentUser.initials}</div>
-            <button className="btn-link">Change photo</button>
+            <div className="avatar-card__avatar">{initialsFromName(form.fullName)}</div>
+            <button className="btn-link" onClick={() => setPhotoNote(true)}>
+              Change photo
+            </button>
+            {photoNote && (
+              <p className="meta" style={{ marginTop: "var(--space-2)" }}>
+                Profile photos aren't supported yet — members are shown by initials for now.
+              </p>
+            )}
           </div>
 
           <div className="rail-card">

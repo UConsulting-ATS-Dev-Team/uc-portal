@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { currentUser, navCounts } from "../data/mockUser.js";
 import { CONVERSATIONS } from "../data/mockMessages.js";
+import { useAppState } from "../data/store.jsx";
+import { displayName, initialsFromName } from "../data/profileUtils.js";
 import RequestFeatureModal from "./modals/RequestFeatureModal.jsx";
 import bearMark from "../assets/uc-bear-mark-white.png";
 
@@ -10,6 +12,8 @@ const unreadMessageCount = CONVERSATIONS.filter((c) => c.unread).length;
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showRequestFeature, setShowRequestFeature] = useState(false);
+  const { profileOverrides } = useAppState();
+  const initials = initialsFromName(displayName(currentUser, profileOverrides));
   const navigate = useNavigate();
   const location = useLocation();
   const isAdminMode = location.pathname.startsWith("/admin");
@@ -58,7 +62,7 @@ export default function TopBar() {
             aria-haspopup="menu"
             aria-expanded={menuOpen}
           >
-            {currentUser.initials}
+            {initials}
           </button>
           {menuOpen && (
             <div className="topbar__menu" role="menu" onMouseLeave={() => setMenuOpen(false)}>
