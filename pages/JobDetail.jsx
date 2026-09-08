@@ -118,8 +118,11 @@ export default function JobDetail() {
                 <button className="btn btn-secondary" onClick={() => addToTracker(job.id, "Interested")}>
                   {isTracked ? "In tracker ✓" : "Add to my tracker"}
                 </button>
-                <button className="btn btn-secondary" onClick={() => toggleSavedJob(job.id)}>
-                  {isSaved ? "Saved ★" : "Save ★"}
+                <button
+                  className={`btn btn-secondary${isSaved ? " is-saved" : ""}`}
+                  onClick={() => toggleSavedJob(job.id)}
+                >
+                  {isSaved ? "✓ Saved" : "Save"}
                 </button>
                 <button className="btn btn-secondary" onClick={() => addToTracker(job.id, "Interested")}>
                   {isTracked ? "Interested ✓" : "Mark interested"}

@@ -214,14 +214,19 @@ export default function Jobs() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { savedJobIds, toggleSavedJob, preferences, savedSearches, saveSearch, removeSavedSearch, profileOverrides } = useAppState();
   const classYear = resolvedClassYear(currentUser, profileOverrides);
-  // Lazy initializer -- runs once, off the member's real preferences at
-  // mount, not the old hardcoded DEFAULT_FILTERS (a generic seeded demo
-  // default -- gradYears: ["2027"], industries: ["Management
-  // consulting"], locations: ["Chicago", "New York"] -- that had nothing
-  // to do with whoever was actually signed in, so a member's first look
-  // at Jobs showed filters that didn't match their own onboarding
-  // answers at all).
-  const [filters, setFilters] = useState(() => defaultFiltersFromPreferences(preferences, classYear));
+  // Starts fully neutral (no filters at all) -- was previously seeded
+  // from the member's own preferences at mount, but that's a step
+  // further than asked and had its own real cost (e.g. it's exactly why
+  // a saved job could go missing under the Saved tab: a genuinely-saved
+  // job that didn't match the profile-derived default filters vanished
+  // from the list even though its own tab count still said 1 -- fixed
+  // separately above by having Saved bypass filters entirely regardless
+  // of this default, but the underlying complaint was "why does Jobs
+  // start filtered by my profile at all"). Profile-based filtering is
+  // still one click away via "Match my profile" in the header, which
+  // reuses this same defaultFiltersFromPreferences() function on demand
+  // instead of applying it automatically.
+  const [filters, setFilters] = useState(NEUTRAL_FILTERS);
   const [tab, setTab] = useState("recommended");
   const [sortBy, setSortBy] = useState("bestMatch");
   const [page, setPage] = useState(1);
@@ -295,10 +300,21 @@ export default function Jobs() {
   // reveals.
   const matchedCount = useMemo(() => filteredForCount.filter((j) => j.matchScore >= 70).length, [filteredForCount]);
 
-  const tabbed = useMemo(
-    () => filteredForCount.filter((j) => matchesTab(j, tab, savedJobIds)),
-    [filteredForCount, tab, savedJobIds]
-  );
+  const tabbed = useMemo(() => {
+    // "Saved" is a personal bookmark list, not another search view -- it
+    // shouldn't be additionally narrowed by whatever industry/location/
+    // comp/grad-year/type filters happen to be active, since those
+    // describe a *search*, not "which of my saved jobs to show." Reads
+    // straight off JOBS, bypassing filteredForCount entirely, so a saved
+    // job stays visible under Saved no matter the current filter state.
+    // Reported directly: the tab's own count (savedJobIds.length) said
+    // 1, the list showed 0 -- the one saved job simply didn't match
+    // whatever filters happened to be active (seeded from the member's
+    // own profile by default, but still a "current search," same
+    // reasoning as the Recommended-tab count fix above).
+    if (tab === "saved") return JOBS.filter((j) => savedJobIds.includes(j.id));
+    return filteredForCount.filter((j) => matchesTab(j, tab, savedJobIds));
+  }, [filteredForCount, JOBS, tab, savedJobIds]);
   const sorted = useMemo(
     () => sortJobs(tabbed, sortBy, preferences, filters.keyword),
     [tabbed, sortBy, preferences, filters.keyword]
@@ -306,10 +322,16 @@ export default function Jobs() {
   // Skip capping once a keyword search is active -- "View N more at
   // Company" works by setting the keyword filter to that company's name,
   // and re-capping on top of an already-explicit narrowing would show the
-  // same 3 cards every time, making "view more" a dead end.
+  // same 3 cards every time, making "view more" a dead end. Also skipped
+  // on the Saved tab, same reasoning as bypassing filters above -- a
+  // member who saved 4 jobs at one company should see all 4 under
+  // Saved, not 3 with the rest silently hidden behind "View more."
   const { kept: displayJobs, overflowByCompany, lastKeptIdByCompany } = useMemo(
-    () => (filters.keyword ? { kept: sorted, overflowByCompany: {}, lastKeptIdByCompany: {} } : capPerCompany(sorted, CAP_PER_COMPANY)),
-    [sorted, filters.keyword]
+    () =>
+      filters.keyword || tab === "saved"
+        ? { kept: sorted, overflowByCompany: {}, lastKeptIdByCompany: {} }
+        : capPerCompany(sorted, CAP_PER_COMPANY),
+    [sorted, filters.keyword, tab]
   );
 
   const totalPages = Math.max(1, Math.ceil(displayJobs.length / PAGE_SIZE));

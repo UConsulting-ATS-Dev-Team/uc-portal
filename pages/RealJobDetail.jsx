@@ -69,7 +69,7 @@ const CLASSIFICATION_METHOD_LABEL = {
 // (tracked_applications has no offer outcome to read).
 export default function RealJobDetail({ jobId }) {
   const [job, setJob] = useState(undefined); // undefined = loading, null = not found
-  const { preferences, savedConnections, coffeeChatStatus, prepLogged, profileOverrides } = useAppState();
+  const { preferences, savedConnections, coffeeChatStatus, prepLogged, profileOverrides, savedJobIds, toggleSavedJob } = useAppState();
   const classYear = resolvedClassYear(currentUser, profileOverrides);
   const [showLogPrepModal, setShowLogPrepModal] = useState(false);
 
@@ -206,6 +206,21 @@ export default function RealJobDetail({ jobId }) {
                 <a href={job.application_url} target="_blank" rel="noreferrer" className="btn btn-primary">
                   Apply on {job.company}'s site
                 </a>
+                {/* Was missing entirely on this, the real page nearly
+                    every job click actually lands on (JobDetail.jsx only
+                    renders this for the 8 legacy mock jobs) -- only the
+                    Jobs board's own JobCard had a working Save toggle.
+                    Same savedJobIds/toggleSavedJob store state, same
+                    .is-saved treatment as JobCard.jsx, so saving a job
+                    looks identical whether it's done from the board or
+                    from a specific job's own page. */}
+                <button
+                  type="button"
+                  className={`btn btn-secondary${savedJobIds.includes(job.id) ? " is-saved" : ""}`}
+                  onClick={() => toggleSavedJob(job.id)}
+                >
+                  {savedJobIds.includes(job.id) ? "✓ Saved" : "Save"}
+                </button>
                 {job.application_deadline && (
                   <span className="detail-header__deadline">
                     Applications close · {new Date(job.application_deadline).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
