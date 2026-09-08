@@ -284,7 +284,16 @@ export default function Jobs() {
   }, [JOBS]);
 
   const filteredForCount = useMemo(() => JOBS.filter((j) => matchesFilters(j, filters)), [JOBS, filters]);
-  const matchedCount = useMemo(() => JOBS.filter((j) => j.matchScore >= 70).length, [JOBS]);
+  // Was JOBS.filter(...) -- every job app-wide scoring >= 70, ignoring
+  // the sidebar filters entirely. That's a different number than what
+  // the Recommended tab (matchesTab requires the same >= 70 AND
+  // matchesFilters, see `tabbed` below) can actually show, so the tab's
+  // "(10)" badge and subtitle could claim a count nothing on the page
+  // ever displayed -- reported directly ("says 10... but only show[s]
+  // 1"). Now counted off the same post-filter set the tab itself reads
+  // from, so this number is always exactly what clicking that tab
+  // reveals.
+  const matchedCount = useMemo(() => filteredForCount.filter((j) => j.matchScore >= 70).length, [filteredForCount]);
 
   const tabbed = useMemo(
     () => filteredForCount.filter((j) => matchesTab(j, tab, savedJobIds)),

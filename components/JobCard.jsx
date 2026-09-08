@@ -56,8 +56,8 @@ export default function JobCard({ job, saved, onToggleSave }) {
         <Link to={`/jobs/${job.id}`} className="btn btn-primary">
           View & apply
         </Link>
-        <button type="button" className="btn btn-secondary" onClick={() => onToggleSave(job.id)}>
-          {saved ? "Saved" : "Save"}
+        <button type="button" className={`btn btn-secondary${saved ? " is-saved" : ""}`} onClick={() => onToggleSave(job.id)}>
+          {saved ? "✓ Saved" : "Save"}
         </button>
         <span className="job-card__posted">Posted {job.postedDaysAgo}d ago</span>
       </div>

@@ -103,6 +103,19 @@ select {
   color: var(--color-primary);
 }
 
+/* A toggled-on save/follow-style action -- reported: JobCard's Save
+   button only changed its text ("Save" -> "Saved"), no visual
+   difference, "annoying to differentiate". Same accent border/tint/bold
+   treatment .chip-toggle.is-selected already uses everywhere else in
+   the app for "this is now on", not a one-off color invented for this
+   button alone. */
+.btn-secondary.is-saved {
+  border-color: var(--color-accent);
+  background: var(--color-accent-tint);
+  color: var(--color-accent-deep);
+  font-weight: 700;
+}
+
 .btn-link {
   background: none;
   border: none;
