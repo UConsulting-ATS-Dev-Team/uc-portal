@@ -91,8 +91,8 @@ export default function CareerResources() {
             <p className="meta">The education hub — recruiting prep, skills, and free certifications.</p>
           </div>
           <div style={{ display: "flex", gap: "var(--space-3)" }}>
-            <input type="text" placeholder="Search resources" value={search} onChange={(e) => setSearch(e.target.value)} />
-            <span className="chip chip-accent">My saved ({savedResourceIds.length})</span>
+            <input type="text" placeholder="Search Resources" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <span className="chip chip-accent">My Saved ({savedResourceIds.length})</span>
             <button className="btn btn-primary" onClick={() => setShowContributeModal(true)}>+ Contribute</button>
           </div>
         </div>
