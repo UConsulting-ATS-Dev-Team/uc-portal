@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { MapPin } from "lucide-react";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
 import { JOBS } from "../data/mockJobs.js";
@@ -124,13 +125,30 @@ export default function Home() {
               </p>
             </div>
           </div>
+          {preferences.industries.length > 0 && (
+            <div className="pref-summary-row">
+              <span className="pref-summary-row__label">Industries</span>
+              <div className="chip-row" style={{ marginBottom: 0 }}>
+                {preferences.industries.map((i) => (
+                  <span className="chip" key={i}>{i}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {preferences.locations.length > 0 && (
+            <div className="pref-summary-row">
+              <span className="pref-summary-row__label">Locations</span>
+              <div className="chip-row" style={{ marginBottom: 0 }}>
+                {preferences.locations.map((l) => (
+                  <span className="chip chip-location" key={l}>
+                    <MapPin size={11} strokeWidth={1.5} aria-hidden="true" />
+                    {l}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="chip-row" style={{ marginBottom: 0 }}>
-            {preferences.industries.map((i) => (
-              <span className="chip" key={i}>{i}</span>
-            ))}
-            {preferences.locations.map((l) => (
-              <span className="chip" key={l}>{l}</span>
-            ))}
             <Link to="/profile" className="chip chip-accent" style={{ textDecoration: "none" }}>
               Edit preferences
             </Link>

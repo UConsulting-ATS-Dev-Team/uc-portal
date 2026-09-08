@@ -322,6 +322,21 @@
   color: var(--color-surface);
 }
 
+.pagination button:disabled {
+  cursor: default;
+  color: var(--color-text-muted);
+  opacity: 0.5;
+}
+
+.pagination__gap {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+
 .active-filter-chips {
   display: flex;
   flex-wrap: wrap;

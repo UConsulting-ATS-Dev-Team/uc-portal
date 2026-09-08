@@ -96,7 +96,18 @@ const NEUTRAL_FILTERS = {
   deadlines: [],
 };
 
-const LOCATION_CHIPS = [...new Set([...LOCATIONS, "Los Angeles", "San Francisco"])];
+// Location (a physical place, matched against job.location) and work mode
+// (matched against job.workMode) used to render as one combined chip group
+// under a single "Location & work mode" heading, both writing into the
+// same filters.locations array -- confusing to scan since they're
+// filtering two different job fields. Still one shared filters.locations
+// array under the hood (matchesFilters below already ORs across
+// location-or-workMode, unchanged), just rendered as two separate groups
+// now so it's clear which kind of thing each chip is.
+const WORK_MODE_CHIPS = ["Remote", "Hybrid", "In-person"];
+const LOCATION_CHIPS = [...new Set([...LOCATIONS, "Los Angeles", "San Francisco"])].filter(
+  (loc) => !WORK_MODE_CHIPS.includes(loc)
+);
 const INDUSTRY_OPTIONS = INDUSTRIES.filter((i) => i.name !== "Still figuring it out");
 
 function matchesFilters(job, filters) {
@@ -161,6 +172,23 @@ function toggleInArray(array, value) {
   return array.includes(value) ? array.filter((v) => v !== value) : [...array, value];
 }
 
+// Windowed pagination -- totalPages can run into the hundreds against the
+// real jobs table (thousands of rows / PAGE_SIZE), so listing every page
+// number (the old behavior) meant hundreds of buttons spilling across the
+// whole screen. Always keeps the first and last page, the current page
+// and its immediate neighbors, and collapses any gap into a single
+// non-interactive "…".
+function pageWindow(current, total) {
+  const kept = new Set([1, total, current - 1, current, current + 1]);
+  const sorted = [...kept].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b);
+  const withGaps = [];
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0 && sorted[i] - sorted[i - 1] > 1) withGaps.push("…");
+    withGaps.push(sorted[i]);
+  }
+  return withGaps;
+}
+
 export default function Jobs() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
@@ -168,6 +196,7 @@ export default function Jobs() {
   const [sortBy, setSortBy] = useState("bestMatch");
   const [page, setPage] = useState(1);
   const [showMoreIndustries, setShowMoreIndustries] = useState(false);
+  const [showMoreLocations, setShowMoreLocations] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
   const [nlQuery, setNlQuery] = useState("");
   const [nlResult, setNlResult] = useState(null);
@@ -416,9 +445,9 @@ export default function Jobs() {
         </div>
 
         <div className="filters__group">
-          <div className="filters__group-title">Location & work mode</div>
+          <div className="filters__group-title">Location</div>
           <div className="filters__chip-group">
-            {LOCATION_CHIPS.map((loc) => (
+            {(showMoreLocations ? LOCATION_CHIPS : LOCATION_CHIPS.slice(0, 8)).map((loc) => (
               <button
                 type="button"
                 key={loc}
@@ -426,6 +455,27 @@ export default function Jobs() {
                 onClick={() => toggleChip("locations", loc)}
               >
                 {loc}
+              </button>
+            ))}
+          </div>
+          {!showMoreLocations && LOCATION_CHIPS.length > 8 && (
+            <button className="btn-link filters__show-more" onClick={() => setShowMoreLocations(true)}>
+              Show {LOCATION_CHIPS.length - 8} more
+            </button>
+          )}
+        </div>
+
+        <div className="filters__group">
+          <div className="filters__group-title">Work mode</div>
+          <div className="filters__chip-group">
+            {WORK_MODE_CHIPS.map((mode) => (
+              <button
+                type="button"
+                key={mode}
+                className={`filters__chip${filters.locations.includes(mode) ? " is-selected" : ""}`}
+                onClick={() => toggleChip("locations", mode)}
+              >
+                {mode}
               </button>
             ))}
           </div>
@@ -600,11 +650,23 @@ export default function Jobs() {
 
         {tab !== "continuous" && totalPages > 1 && (
           <div className="pagination">
-            {Array.from({ length: totalPages }).map((_, i) => (
-              <button key={i} className={page === i + 1 ? "is-active" : ""} onClick={() => setPage(i + 1)}>
-                {i + 1}
-              </button>
-            ))}
+            <button disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))} aria-label="Previous page">
+              ‹
+            </button>
+            {pageWindow(page, totalPages).map((p, i) =>
+              p === "…" ? (
+                <span className="pagination__gap" key={`gap-${i}`}>
+                  …
+                </span>
+              ) : (
+                <button key={p} className={page === p ? "is-active" : ""} onClick={() => setPage(p)}>
+                  {p}
+                </button>
+              )
+            )}
+            <button disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} aria-label="Next page">
+              ›
+            </button>
           </div>
         )}
       </div>

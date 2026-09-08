@@ -37,6 +37,37 @@
   margin: var(--space-1) 0 0;
 }
 
+/* Industries and locations used to render as one flat row of
+   identical-looking chips -- easy to mistake one attribute for the
+   other. Now each gets its own labeled row (same kicker treatment as
+   filter-group labels elsewhere, e.g. styles/jobs.css's
+   .filters__group-title) and location chips get a map-pin icon too, so
+   the two read as clearly different kinds of thing, not just different
+   words in the same row. */
+.pref-summary-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.pref-summary-row__label {
+  flex: 0 0 auto;
+  font-size: var(--text-kicker);
+  letter-spacing: var(--tracking-kicker);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.chip-location {
+  gap: var(--space-1);
+}
+
+.chip-location svg {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+}
+
 .welcome-card__strength {
   flex: 0 0 auto;
   text-align: center;
