@@ -67,6 +67,9 @@ export default function MyProfile() {
   const [saved, setSaved] = useState(false);
   const [photoNote, setPhotoNote] = useState(false);
   const [skillQuery, setSkillQuery] = useState("");
+  const [industryQuery, setIndustryQuery] = useState("");
+  const [roleQuery, setRoleQuery] = useState("");
+  const [locationQuery, setLocationQuery] = useState("");
   const [companyQuery, setCompanyQuery] = useState("");
   const fileInput = useRef(null);
 
@@ -244,31 +247,49 @@ export default function MyProfile() {
                   </li>
                 ))}
               </ul>
+              <input
+                type="text"
+                placeholder="Search industries…"
+                value={industryQuery}
+                onChange={(e) => setIndustryQuery(e.target.value)}
+                style={{ marginBottom: "var(--space-3)" }}
+              />
               <div className="chip-row">
-                {INDUSTRIES.filter((i) => i.name !== "Still figuring it out").map((ind) => (
-                  <button
-                    key={ind.name}
-                    className={`chip-toggle${preferences.industries.includes(ind.name) ? " is-selected" : ""}`}
-                    disabled={!preferences.industries.includes(ind.name) && preferences.industries.length >= 3}
-                    onClick={() => toggleIndustry(ind.name)}
-                  >
-                    {ind.name}
-                  </button>
-                ))}
+                {INDUSTRIES.filter((i) => i.name !== "Still figuring it out")
+                  .filter((ind) => preferences.industries.includes(ind.name) || ind.name.toLowerCase().includes(industryQuery.trim().toLowerCase()))
+                  .map((ind) => (
+                    <button
+                      key={ind.name}
+                      className={`chip-toggle${preferences.industries.includes(ind.name) ? " is-selected" : ""}`}
+                      disabled={!preferences.industries.includes(ind.name) && preferences.industries.length >= 3}
+                      onClick={() => toggleIndustry(ind.name)}
+                    >
+                      {ind.name}
+                    </button>
+                  ))}
               </div>
 
               <p style={{ fontWeight: 700 }}>Target roles</p>
+              <input
+                type="text"
+                placeholder="Search roles…"
+                value={roleQuery}
+                onChange={(e) => setRoleQuery(e.target.value)}
+                style={{ marginBottom: "var(--space-3)" }}
+              />
               <div className="chip-row">
-                {ROLES.map((role) => (
-                  <button
-                    key={role}
-                    className={`chip-toggle${preferences.roles.includes(role) ? " is-selected" : ""}`}
-                    disabled={!preferences.roles.includes(role) && preferences.roles.length >= 5}
-                    onClick={() => toggleRole(role)}
-                  >
-                    {role}
-                  </button>
-                ))}
+                {ROLES.filter((role) => preferences.roles.includes(role) || role.toLowerCase().includes(roleQuery.trim().toLowerCase())).map(
+                  (role) => (
+                    <button
+                      key={role}
+                      className={`chip-toggle${preferences.roles.includes(role) ? " is-selected" : ""}`}
+                      disabled={!preferences.roles.includes(role) && preferences.roles.length >= 5}
+                      onClick={() => toggleRole(role)}
+                    >
+                      {role}
+                    </button>
+                  )
+                )}
               </div>
 
               <p style={{ fontWeight: 700 }}>Skills</p>
@@ -301,16 +322,25 @@ export default function MyProfile() {
               </div>
 
               <p style={{ fontWeight: 700 }}>Target locations</p>
+              <input
+                type="text"
+                placeholder="Search locations…"
+                value={locationQuery}
+                onChange={(e) => setLocationQuery(e.target.value)}
+                style={{ marginBottom: "var(--space-3)" }}
+              />
               <div className="chip-row">
-                {LOCATIONS.map((loc) => (
-                  <button
-                    key={loc}
-                    className={`chip-toggle${preferences.locations.includes(loc) ? " is-selected" : ""}`}
-                    onClick={() => toggleLocation(loc)}
-                  >
-                    {loc}
-                  </button>
-                ))}
+                {LOCATIONS.filter((loc) => preferences.locations.includes(loc) || loc.toLowerCase().includes(locationQuery.trim().toLowerCase())).map(
+                  (loc) => (
+                    <button
+                      key={loc}
+                      className={`chip-toggle${preferences.locations.includes(loc) ? " is-selected" : ""}`}
+                      onClick={() => toggleLocation(loc)}
+                    >
+                      {loc}
+                    </button>
+                  )
+                )}
               </div>
               <div className="checkbox-row">
                 <input
