@@ -1,23 +1,29 @@
 import { INDUSTRIES } from "./careerOptions.js";
 
 // Admin Dashboard (2h) aggregate data. Unlike Jobs/Companies/Network,
-// these numbers describe club-wide analytics no single browser session
-// could actually compute (survey responses across ~142 members) -- so
-// unlike elsewhere in this app, they're illustrative mock figures rather
-// than derived from browsable records. Where we *can* derive something
-// real (the industry-interest gap below), we do.
+// most of these numbers describe club-wide analytics no single browser
+// session could actually compute -- so unlike elsewhere in this app,
+// they're illustrative mock figures rather than derived from browsable
+// records. Where we *can* derive something real (the industry-interest
+// gap below), we do. activeMembers is the one exception: 52 is a real,
+// exact count (hand-counted from the club directory Google Sheet, Sept
+// 2026 -- same figure data/mockUser.js's clubStats uses), not illustrative.
+// Every other figure here is rescaled proportionally from the old
+// (fictional, wireframe-placeholder) 142-member baseline to stay
+// internally consistent with the real headcount, e.g.
+// applicationsPerMember still equals applicationsTracked / activeMembers.
 export const KPIS = {
-  activeMembers: 142,
-  activeMembersChange: 16,
+  activeMembers: 52,
+  activeMembersChange: 6,
   profilesUpToDatePct: 88,
-  staleProfiles: 17,
-  applicationsTracked: 614,
+  staleProfiles: 6,
+  applicationsTracked: 225,
   applicationsPerMember: 4.3,
-  coffeeChatsBooked: 73,
-  coffeeChatsChange: 31,
-  offersReported: 29,
-  offersInternship: 21,
-  offersFullTime: 8,
+  coffeeChatsBooked: 27,
+  coffeeChatsChange: 11,
+  offersReported: 11,
+  offersInternship: 8,
+  offersFullTime: 3,
 };
 
 // Reuses the same member/alumni counts onboarding shows per industry, so
@@ -35,28 +41,29 @@ export function biggestGap() {
   });
 }
 
+// Only 3 active class years right now, not 4 -- the class of 2026 just
+// graduated (they're alumni now, no longer in this breakdown) and the
+// incoming freshman class hasn't been recruited/onboarded yet. Sums to
+// the real 52-member headcount above.
 export const CLASS_YEAR_BREAKDOWN = [
-  { year: 2029, members: 38, label: "onboarding", profileCompletePct: 62 },
-  { year: 2028, members: 41, label: "peak recruiting", profileCompletePct: 79 },
-  { year: 2027, members: 35, label: "peak recruiting", profileCompletePct: 91 },
-  { year: 2026, members: 28, label: "full-time", profileCompletePct: 95 },
+  { year: 2029, members: 20, label: "onboarding", profileCompletePct: 62 },
+  { year: 2028, members: 18, label: "peak recruiting", profileCompletePct: 79 },
+  { year: 2027, members: 14, label: "full-time", profileCompletePct: 91 },
 ];
 
 export const MOST_TARGETED_COMPANIES = [
-  { company: "Bain & Company", members: 34 },
-  { company: "McKinsey & Company", members: 29 },
-  { company: "Goldman Sachs", members: 22 },
-  { company: "Deloitte", members: 19 },
-  { company: "BCG", members: 17 },
+  { company: "Bain & Company", members: 12 },
+  { company: "McKinsey & Company", members: 11 },
+  { company: "Goldman Sachs", members: 8 },
+  { company: "Deloitte", members: 7 },
+  { company: "BCG", members: 6 },
 ];
 
-export const MEMBER_ENGAGEMENT = {
-  loggedInThisWeek: 98,
-  trackingAtLeastOne: 87,
-  bookedCoffeeChat: 41,
-  contributedResource: 12,
-  neverOpened: 9,
-};
+// NOTE: MEMBER_ENGAGEMENT (a mock figure set) used to be exported here but
+// was removed -- pages/AdminDashboard.jsx's "Member engagement" section
+// reads real data now (member_engagement_report(), a security-definer
+// RPC), see that page's own comment and JOB_ENGINE_ARCHITECTURE.md's
+// dated entry for the real-feature build. Left no dead export behind.
 
 export const ACCESS_CONTROL = {
   provisioned: "Roster-provisioned",

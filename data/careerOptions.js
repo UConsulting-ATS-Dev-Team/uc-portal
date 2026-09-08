@@ -1,14 +1,27 @@
 // Static reference data for onboarding, profile preferences, and (later)
-// Jobs/Companies filtering. Counts are illustrative mock data.
+// Jobs/Companies filtering. `alumni` is illustrative mock data (nobody's
+// hand-counted alumni by industry). `members` is rescaled to stay
+// realistic against the club's real, exact headcount (52, see
+// data/mockUser.js's clubStats) -- a member ranks up to 3 industries in
+// onboarding, so no single industry's count can exceed 52, and these
+// were previously as high as 101 against an old fictional 142-member
+// baseline. Rescaled proportionally (same relative ordering/shape),
+// anchored so Management consulting -- UC's own focus, expected to be
+// most members' top pick -- lands high but not literally everyone.
+// Deliberately left `alumni` untouched: rescaling it would mean
+// asserting a precise per-industry alumni breakdown nobody's actually
+// counted, and it doesn't need to sum to any particular total anyway
+// (data/mockAdmin.js's biggestGap() insight -- Tech / product strategy --
+// is unaffected by this change either way).
 export const INDUSTRIES = [
-  { name: "Management consulting", members: 101, alumni: 61 },
-  { name: "Investment banking", members: 74, alumni: 48 },
-  { name: "Tech / product strategy", members: 54, alumni: 22 },
-  { name: "Private equity", members: 38, alumni: 19 },
-  { name: "Marketing & brand strategy", members: 26, alumni: 14 },
-  { name: "Nonprofit / public sector", members: 18, alumni: 9 },
-  { name: "Healthcare", members: 15, alumni: 8 },
-  { name: "Real estate", members: 11, alumni: 6 },
+  { name: "Management consulting", members: 45, alumni: 61 },
+  { name: "Investment banking", members: 33, alumni: 48 },
+  { name: "Tech / product strategy", members: 24, alumni: 22 },
+  { name: "Private equity", members: 17, alumni: 19 },
+  { name: "Marketing & brand strategy", members: 12, alumni: 14 },
+  { name: "Nonprofit / public sector", members: 8, alumni: 9 },
+  { name: "Healthcare", members: 7, alumni: 8 },
+  { name: "Real estate", members: 5, alumni: 6 },
   { name: "Still figuring it out", members: 0, alumni: 0 },
 ];
 

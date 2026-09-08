@@ -15,10 +15,14 @@ export const navCounts = {
   notificationsUnread: 4,
 };
 
-// Real ballpark figures per the club website (not an exact live count --
-// there's no membership-roster backend to compute this from), so these
-// are "+" floors rather than precise numbers.
+// members is a real, exact count (hand-counted from the club directory
+// Google Sheet, Sept 2026: 52 -- only 3 active class years right now,
+// since the graduating seniors just left and the new freshman class
+// hasn't been onboarded yet, see data/mockAdmin.js's CLASS_YEAR_BREAKDOWN
+// for the same 3-year split). alumni stays an approximate "+" floor per
+// the club website -- there's no membership-roster backend to compute an
+// exact historical alumni count from, and nobody's counted it by hand.
 export const clubStats = {
-  members: "50+",
+  members: 52,
   alumni: "150+",
 };
