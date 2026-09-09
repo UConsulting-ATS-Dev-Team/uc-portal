@@ -1,13 +1,17 @@
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { MapPin } from "lucide-react";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
-import { JOBS } from "../data/mockJobs.js";
+import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { FEED_POSTS } from "../data/mockFeed.js";
 import { PEOPLE } from "../data/mockPeople.js";
 import { computeProfileStrength, displayName, initialsFromName, resolvedClassYear, resolvedMajors } from "../data/profileUtils.js";
 import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
 import { nextActionForStage } from "../data/trackerUtils.js";
+import { fetchAllRows } from "../data/fetchAllRows.js";
+import { matchJob } from "../data/jobMatch.js";
+import { realJobToCardShape } from "../data/realJobAdapter.js";
 import JobCard from "../components/JobCard.jsx";
 import "../styles/jobs.css";
 import "../styles/jobDetail.css";
@@ -31,8 +35,37 @@ export default function Home() {
     prepLogged,
   } = useAppState();
 
+  // "Recommended for you" and the tracked-job lookup below both used to
+  // read data/mockJobs.js's 8 demo jobs, unchanged since before the real
+  // Jobs board (Stage 2) existed -- meaning Home showed fictional
+  // "recommended" jobs no matter what was actually live, and saving one
+  // wrote a mock id into savedJobIds that could never match anything in
+  // the real Jobs board's Saved tab (reported directly: "only happens
+  // when I save a job from home page... from the jobs page it's fine").
+  // Real jobs fetched here the same way pages/Jobs.jsx does (same
+  // fetchAllRows + matchJob + realJobToCardShape pipeline) so the two
+  // pages agree on what a "real job" and its match score even are.
+  const classYear = resolvedClassYear(currentUser, profileOverrides);
+  const [rawJobs, setRawJobs] = useState([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
+  useEffect(() => {
+    fetchAllRows("jobs", "*", (q) => q.eq("active", true))
+      .then(setRawJobs)
+      .catch(() => {}) // Recommended/counts below degrade to "0 real jobs" rather than crashing Home
+      .finally(() => setJobsLoading(false));
+  }, []);
+  const realJobs = useMemo(
+    () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear))),
+    [rawJobs, preferences, classYear]
+  );
+
+  // Tracked jobs can be either a real one (a real UUID, once a real
+  // "add to tracker" entry point exists) or one of the seeded demo
+  // entries in data/store.jsx's SEED_TRACKED_JOBS (legitimately mock
+  // ids, meant to keep the tracker non-empty on first load) -- checks
+  // real jobs first, falls back to mock, so either kind resolves.
   const trackedEntries = Object.entries(trackedJobs)
-    .map(([jobId, info]) => ({ jobId, job: JOBS.find((j) => j.id === jobId), ...info }))
+    .map(([jobId, info]) => ({ jobId, job: realJobs.find((j) => j.id === jobId) || MOCK_JOBS.find((j) => j.id === jobId), ...info }))
     .filter((e) => e.job);
 
   // First login / nothing tracked yet -- empty state per wireframe 3e.
@@ -67,7 +100,7 @@ export default function Home() {
 
   const { pct: strengthPct } = computeProfileStrength(preferences, profileOverrides.linkedIn);
 
-  const recommended = [...JOBS].sort((a, b) => b.matchScore - a.matchScore).slice(0, 2);
+  const recommended = [...realJobs].sort((a, b) => b.matchScore - a.matchScore).slice(0, 2);
 
   const activeApps = trackedEntries.filter((e) => e.stage !== "Closed");
   const interviewingApps = trackedEntries.filter((e) => ["First round", "Final round"].includes(e.stage));
@@ -167,12 +200,16 @@ export default function Home() {
         <div className="home-main">
           <div className="section-header">
             <h2>Recommended for you</h2>
-            <Link to="/jobs">Based on your interests · View all {JOBS.length}</Link>
+            <Link to="/jobs">Based on your interests · View all {realJobs.length}</Link>
           </div>
           <div className="recommended-grid">
-            {recommended.map((job) => (
-              <JobCard key={job.id} job={job} saved={savedJobIds.includes(job.id)} onToggleSave={toggleSavedJob} />
-            ))}
+            {jobsLoading ? (
+              <p className="meta">Loading…</p>
+            ) : (
+              recommended.map((job) => (
+                <JobCard key={job.id} job={job} saved={savedJobIds.includes(job.id)} onToggleSave={toggleSavedJob} />
+              ))
+            )}
           </div>
 
           <div className="detail-section">
