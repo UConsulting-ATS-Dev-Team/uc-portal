@@ -143,7 +143,18 @@ export function jobInsertFromNormalized(
     salary_currency: normalized.salaryCurrency,
     compensation_type: normalized.compensationType,
     compensation_text: normalized.compensationText,
-    posted_date: new Date().toISOString().slice(0, 10),
+    // Was hardcoded to today's date regardless of source data -- normalized
+    // .postedDate/.updatedDate were parsed all the way through RawJob ->
+    // NormalizedJob (fetch-lever-companies sets postedDate from Lever's own
+    // createdAt; fetch-deloitte-jobs sets updatedDate from the posting's
+    // real schema.org datePosted) and then simply never read here, so
+    // "posted X days ago" was measuring when this pipeline first inserted
+    // the row, not when the job was actually posted on its source site.
+    // Prefer a genuine posted date, fall back to the best proxy a source
+    // does supply (Greenhouse's public Job Board API has no true
+    // first-published field, only updated_at, mapped to updatedDate), and
+    // only fall back to today when a source gives neither.
+    posted_date: normalized.postedDate ?? normalized.updatedDate ?? new Date().toISOString().slice(0, 10),
     application_deadline: normalized.applicationDeadline,
     graduation_years: normalized.graduationYears,
     required_skills: normalized.requiredSkills,
