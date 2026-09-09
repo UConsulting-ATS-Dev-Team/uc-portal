@@ -9,7 +9,7 @@ import { fetchCompanyTiers, capForCompanyTier } from "../data/companyTiers.js";
 import { useAppState } from "../data/store.jsx";
 import { fetchAllRows } from "../data/fetchAllRows.js";
 import { matchJob, finalScore } from "../data/jobMatch.js";
-import { realJobToCardShape } from "../data/realJobAdapter.js";
+import { realJobToCardShape, JOB_LIST_COLUMNS } from "../data/realJobAdapter.js";
 import { currentUser } from "../data/mockUser.js";
 import { resolvedClassYear } from "../data/profileUtils.js";
 import { parseJobQuery } from "../data/nlSearchParser.js";
@@ -269,7 +269,12 @@ export default function Jobs() {
     // fetchAllRows(), not a bare .select() -- a plain select silently
     // truncates at PostgREST's default 1000-row page, which real active-job
     // volume now exceeds (see data/fetchAllRows.js's header comment).
-    fetchAllRows("jobs", "*", (q) => q.eq("active", true))
+    // JOB_LIST_COLUMNS, not "*" -- see its own comment in
+    // data/realJobAdapter.js: this cuts the real payload by ~58% (measured
+    // live, 2026-09-09) by skipping columns the board never reads
+    // (description, qualifications_text, etc.), safe because
+    // RealJobDetail.jsx does its own full select("*") by id.
+    fetchAllRows("jobs", JOB_LIST_COLUMNS, (q) => q.eq("active", true))
       .then((data) => setRawJobs(data))
       .catch((err) => setJobsError(err.message))
       .finally(() => setJobsLoading(false));

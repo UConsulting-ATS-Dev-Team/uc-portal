@@ -1,4 +1,5 @@
 import { fetchAllRows } from "./fetchAllRows.js";
+import { JOB_LIST_COLUMNS } from "./realJobAdapter.js";
 
 // Determines which of the app's known company profiles (data/mockCompanies.js)
 // have real automated sourcing in the live `jobs` table, keyed by company name.
@@ -21,7 +22,13 @@ import { fetchAllRows } from "./fetchAllRows.js";
 // invented specifics), and erring toward the more conservative label is the
 // safer of the two possible mistakes.
 export async function fetchLiveJobsByCompany(companyNames) {
-  const rows = await fetchAllRows("jobs", "*", (q) => q.eq("active", true).in("company", companyNames));
+  // JOB_LIST_COLUMNS, not "*" -- same trim as pages/Jobs.jsx's board fetch
+  // (see data/realJobAdapter.js's own comment): CompanyPage.jsx reads these
+  // rows through the same realJobToCardShape(), and this call gets far
+  // bigger once the Companies directory covers real companies, not just 8
+  // mock ones (data/companyTiers.js) -- worth trimming before that growth,
+  // not after.
+  const rows = await fetchAllRows("jobs", JOB_LIST_COLUMNS, (q) => q.eq("active", true).in("company", companyNames));
   const byCompany = new Map(companyNames.map((name) => [name, []]));
   for (const row of rows) {
     if (!byCompany.has(row.company)) byCompany.set(row.company, []);

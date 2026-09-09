@@ -6,7 +6,7 @@ import { STAGES, outcomeLabel, rejectionStageLabel } from "../data/trackerUtils.
 import { useAppState } from "../data/store.jsx";
 import { fetchAllRows } from "../data/fetchAllRows.js";
 import { matchJob } from "../data/jobMatch.js";
-import { realJobToCardShape } from "../data/realJobAdapter.js";
+import { realJobToCardShape, JOB_LIST_COLUMNS } from "../data/realJobAdapter.js";
 import { currentUser } from "../data/mockUser.js";
 import { resolvedClassYear } from "../data/profileUtils.js";
 import TrackerBoard from "../components/TrackerBoard.jsx";
@@ -63,7 +63,11 @@ export default function Applications() {
   const classYear = resolvedClassYear(currentUser, profileOverrides);
   const [rawJobs, setRawJobs] = useState([]);
   useEffect(() => {
-    fetchAllRows("jobs", "*", (q) => q.eq("active", true))
+    // JOB_LIST_COLUMNS, not "*" -- same ~58% payload cut as pages/Jobs.jsx's
+    // identical fetch (see data/realJobAdapter.js's own comment); this page
+    // reads the exact same fields via the same realJobToCardShape/matchJob
+    // pipeline, so the trim is safe here for the same reason.
+    fetchAllRows("jobs", JOB_LIST_COLUMNS, (q) => q.eq("active", true))
       .then(setRawJobs)
       .catch(() => {});
   }, []);

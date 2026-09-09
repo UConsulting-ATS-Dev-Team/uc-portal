@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchAllRows } from "./fetchAllRows.js";
 import { matchJob } from "./jobMatch.js";
-import { realJobToCardShape } from "./realJobAdapter.js";
+import { realJobToCardShape, JOB_LIST_COLUMNS } from "./realJobAdapter.js";
 
 // Shared by every page/component that needs to resolve a trackedJobs
 // entry (or otherwise look up a job by id) against real data, not just
@@ -25,7 +25,11 @@ export function useRealJobs(preferences, classYear) {
   const [rawJobs, setRawJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(true);
   useEffect(() => {
-    fetchAllRows("jobs", "*", (q) => q.eq("active", true))
+    // JOB_LIST_COLUMNS, not "*" -- same ~58% payload cut as pages/Jobs.jsx's
+    // identical fetch (see data/realJobAdapter.js's own comment), which
+    // this shared hook's callers all read through the same
+    // realJobToCardShape/matchJob pipeline, so the trim is safe here too.
+    fetchAllRows("jobs", JOB_LIST_COLUMNS, (q) => q.eq("active", true))
       .then(setRawJobs)
       .catch(() => {}) // callers degrade to "0 real jobs" (mock fallback still works) rather than crashing
       .finally(() => setJobsLoading(false));
