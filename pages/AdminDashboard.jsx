@@ -170,6 +170,25 @@ export default function AdminDashboard() {
     setBrokenLinkLoading(false);
   }
 
+  // The missing other half of this panel: check-job-links deliberately
+  // never auto-deactivates on link_health alone (real false-positive risk
+  // confirmed live -- Carvana's bot-protection 403s every automated
+  // request, live posting or not), so a flagged job just sat here with no
+  // way to actually finish the job once a human clicks through and
+  // confirms it's really gone. status: 'removed' (not 'expired') to keep
+  // the provenance distinct from the system-inferred expiration paths
+  // (missed-fetch, past-deadline) -- this one's a human decision. Direct
+  // client update, same reasoning as the read above -- jobs_admin_update's
+  // RLS already covers it, no Edge Function needed for a single-column
+  // change only an admin can reach in the first place.
+  async function handleDeactivateBrokenLink(jobId) {
+    setActioningId(jobId);
+    const { error } = await supabase.from("jobs").update({ active: false, status: "removed" }).eq("id", jobId);
+    if (error) setBrokenLinkError(error.message);
+    else setBrokenLinkJobs((prev) => prev.filter((j) => j.id !== jobId));
+    setActioningId(null);
+  }
+
   // Real member-engagement visibility (member_engagement_report(), a
   // security definer function -- see its own migration comment for the
   // full privacy reasoning). This is a deliberately narrower carve-out
@@ -615,8 +634,16 @@ export default function AdminDashboard() {
                         ? new Date(j.last_link_checked_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
                         : "Never"}
                     </td>
-                    <td>
+                    <td style={{ display: "flex", gap: "var(--space-2)" }}>
                       <Link to={`/jobs/${j.id}`} className="btn btn-secondary">View</Link>
+                      <button
+                        className="btn btn-secondary"
+                        disabled={actioningId === j.id}
+                        onClick={() => handleDeactivateBrokenLink(j.id)}
+                        title="Confirms this posting is actually gone -- pulls it from the board"
+                      >
+                        {actioningId === j.id ? "Deactivating…" : "Deactivate"}
+                      </button>
                     </td>
                   </tr>
                 ))}
