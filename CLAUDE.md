@@ -885,6 +885,85 @@ longer breaks down to phone width either.
   [JOB_ENGINE_ARCHITECTURE.md](JOB_ENGINE_ARCHITECTURE.md)'s dated entry
   for the full design writeup and verification transcript.
 
+- **Real cross-device profile/onboarding sync** (`data/profileOverridesSync.js`)
+  — closed the last gap in member identity that hadn't gotten the
+  fetch-on-mount/background-sync treatment already covering preferences,
+  tracked applications, saved jobs, and network connections:
+  `onboardingComplete` and My Profile's Personal-tab fields
+  (`profileOverrides`) lived only in `localStorage`, so a member's real
+  profile info didn't follow them to a second device. New columns on
+  `profiles` (`class_year`, `majors`, `uc_committee`, `linkedin`,
+  `resume_file_name`, `onboarding_complete`, `profile_last_updated`);
+  `data/store.jsx` hydrates them once on mount and background-syncs on
+  change, same pattern as every other slice. Caught a real RLS bug live:
+  `.upsert()` against `profiles` 403'd, since Postgres/PostgREST's upsert
+  needs INSERT privilege to plan the ON CONFLICT attempt even when it
+  always resolves to an UPDATE, and members correctly have no INSERT
+  policy on that table — fixed to a plain `.update().eq("id", ...)` (the
+  row always already exists via `handle_new_user()`). Verified with a true
+  "different device" simulation: edited the Personal tab, confirmed the
+  real DB row, then fully wiped `localStorage` and reloaded to confirm the
+  same values re-hydrated from Supabase.
+
+- **Broken-link admin deactivate action** (`pages/AdminDashboard.jsx`) —
+  `check-job-links`'s daily link-health check already flagged postings
+  broken (3+ consecutive failed HEAD/GET checks) but deliberately never
+  auto-deactivated them, given a real documented false-positive risk
+  (Carvana's bot protection 403s every automated request, live or dead) —
+  surfaced to admins with no way to act on it. Added a Deactivate button
+  next to the existing broken-link queue's View link
+  (`active: false, status: "removed"`), reusing the page's existing
+  `actioningId` state. Uses `status: "removed"`, not `"expired"` —
+  `"expired"` is reserved for system-inferred expiration (missed-fetch
+  counter, past-deadline), `"removed"` for a human-confirmed admin call —
+  keeping provenance distinguishable, same convention the deadline-
+  expiration feature established. Verified live via the session's standard
+  safe-test pattern: temporarily set one real job's `link_health` to
+  `"broken"`, confirmed the button, restored the row exactly afterward.
+
+- **Odds model: stacked-card layout at phone width** (`components/OddsModel.jsx`,
+  `styles/jobDetail.css`) — a live 375px audit flagged the 4-column factor
+  table (Factor/Where you stand/Weight/Contribution) as genuinely cramped,
+  not just dense. Converts to one bordered card per factor below 640px
+  instead of the horizontal-scroll pattern used elsewhere — this table's
+  content (a label, a sentence of context, a weight, a bar) reads
+  naturally top-to-bottom already, unlike the denser admin tables scroll
+  suits. `<thead>` hides and each `<td>` regrows its own label via
+  `content: attr(data-label)`. Shared by both `JobDetail.jsx` (mock) and
+  `RealJobDetail.jsx` (real). Verified live at both 375px (clean stacked
+  cards, zero overflow) and 1280px (original table, no regression).
+
+- **Job-board relevance at scale: tiered per-company active-job cap**
+  (`supabase/migrations/20260909070000_company_tiers.sql`,
+  `data/companyTiers.js`) — the existing per-company cap
+  (`supabase/functions/_shared/pipeline/companyCap.ts`) was flat, 30
+  active postings for every company regardless of relevance; direct
+  product direction was "only the really relevant consulting/similar
+  companies can get over 10 job postings... go off name brand relevance,"
+  refined to 4 tiers so core consulting sits strictly above other elite
+  name-brand companies, with a PwC-style rule that a Big 4 firm counts as
+  core consulting even where its larger revenue line is audit/tax. Tier →
+  cap: 0 (core consulting) 25, 1 (other elite name-brand — bulge-bracket/
+  boutique IB, Citadel-tier quant, marquee big tech/AI, major VC) 15, 2
+  (recognizable corporate/finance-adjacent) 10, 3 (everyone else, also the
+  default for anything unlisted) 3. The company → tier mapping lives in a
+  real `company_tiers` table, seeded with all 86 companies live in `jobs`
+  at the time (not an exact science for the tier-2/tier-3 middle of the
+  pack, per direct instruction) — a table rather than a hardcoded
+  constant, since it has to be read from two runtimes with no shared
+  import path (the Deno ingestion Edge Functions and the React frontend's
+  own display cap). `companyCap.ts` gained `capForCompanyTier()`,
+  orthogonal to its existing `tierForJobFunction()` (that decides *which*
+  postings survive within a company; this decides *how many* are allowed
+  before that ranking kicks in) — mirrored again in `server/src/companyCap.ts`
+  and a third time in `data/companyTiers.js` for the frontend, same
+  Deno/Node/browser split every other piece of shared pipeline logic here
+  already has. Verified live against real production data: invoking
+  `fetch-lever-companies` scoped to Palantir (162 active, by far the
+  largest single-company backlog) dropped it to exactly 15; invoking
+  `fetch-deloitte-jobs` dropped Deloitte from the old flat 30 to exactly
+  25. `npm run test:server`: 128/128 (4 new `capForCompanyTier` tests).
+
 Run locally:
 ```bash
 npm install
