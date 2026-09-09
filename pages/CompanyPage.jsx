@@ -6,6 +6,8 @@ import { deadlineLabel } from "../data/jobUtils.js";
 import { fetchLiveJobsByCompany } from "../data/companyLiveJobs.js";
 import { realJobToCardShape } from "../data/realJobAdapter.js";
 import { fetchRealPeopleAtCompany } from "../data/realPeople.js";
+import { deriveCompanyProfile, fetchRealCompanySummaries, fetchRealCompanyStats } from "../data/realCompanies.js";
+import { fetchRealWriteupsForCompany } from "../data/realWriteups.js";
 import { COMPANIES } from "../data/mockCompanies.js";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
@@ -23,8 +25,14 @@ const TIMELINE_STAGES = ["Interested", "Preparing", "Applied", "Interviews", "Of
 const PREP_RESOURCES = ["Case Interview Fundamentals", "Behavioral Prep Guide", "Company Interview Playbook"];
 
 export default function CompanyPage() {
-  const { companyId } = useParams();
-  const company = findCompany(companyId);
+  const { companyId, companyName: companyNameParam } = useParams();
+  // Two distinct routes share this one page (see App.jsx's own comment):
+  // /companies/:companyId for the 8 hand-authored mock companies, and
+  // /companies/real/:companyName for every other real company, derived
+  // fresh from real job data rather than looked up by a stored id.
+  const isRealRoute = companyNameParam !== undefined;
+  const realCompanyName = isRealRoute ? decodeURIComponent(companyNameParam) : null;
+  const mockCompany = isRealRoute ? null : findCompany(companyId);
   const { preferences, updatePreferences, profileOverrides } = useAppState();
   const classYear = resolvedClassYear(currentUser, profileOverrides);
   const navigate = useNavigate();
@@ -48,45 +56,135 @@ export default function CompanyPage() {
   // flash "0" before the real fetch resolves).
   const [realPeople, setRealPeople] = useState(undefined);
 
+  // Real-company-only state (2026-09-09) -- see this file's header comment
+  // above findCompany's old sole use. Never populated on the mock route,
+  // since mock companies keep statsFor()/quotesFor()/activityFor() exactly
+  // as before (a pre-existing, separately-flagged fabrication issue, not
+  // something this change fixes or makes worse).
+  const [realStats, setRealStats] = useState(undefined);
+  const [realWriteups, setRealWriteups] = useState(undefined);
+  const [similarRealCompanies, setSimilarRealCompanies] = useState([]);
+
+  const companyNameToFetch = isRealRoute ? realCompanyName : mockCompany?.name;
+
   useEffect(() => {
-    if (!company) return;
+    if (!companyNameToFetch) return;
     let cancelled = false;
     setLiveJobs(undefined);
-    fetchLiveJobsByCompany([company.name])
+    fetchLiveJobsByCompany([companyNameToFetch])
       .then((byCompany) => {
-        if (!cancelled) setLiveJobs(byCompany.get(company.name) ?? []);
+        if (!cancelled) setLiveJobs(byCompany.get(companyNameToFetch) ?? []);
       })
       .catch(() => {
         if (!cancelled) setLiveJobs([]);
       });
     setRealPeople(undefined);
-    fetchRealPeopleAtCompany(company.name)
+    fetchRealPeopleAtCompany(companyNameToFetch)
       .then((people) => {
         if (!cancelled) setRealPeople(people);
       })
       .catch(() => {
         if (!cancelled) setRealPeople([]);
       });
+    if (isRealRoute) {
+      setRealStats(undefined);
+      fetchRealCompanyStats(companyNameToFetch)
+        .then((s) => {
+          if (!cancelled) setRealStats(s);
+        })
+        .catch(() => {
+          if (!cancelled) setRealStats({ ucApplicants: 0, interviewCount: 0, offerCount: 0, offerRate: 0 });
+        });
+      setRealWriteups(undefined);
+      fetchRealWriteupsForCompany(companyNameToFetch)
+        .then((rows) => {
+          if (!cancelled) setRealWriteups(rows);
+        })
+        .catch(() => {
+          if (!cancelled) setRealWriteups([]);
+        });
+      fetchRealCompanySummaries(COMPANIES.map((c) => c.name))
+        .then((summaries) => {
+          if (cancelled) return;
+          setSimilarRealCompanies(summaries.filter((c) => c.name !== companyNameToFetch));
+        })
+        .catch(() => {});
+    }
     return () => {
       cancelled = true;
     };
-  }, [company]);
+  }, [companyNameToFetch, isRealRoute]);
 
-  if (!company) {
+  if (!isRealRoute && !mockCompany) {
     return <Placeholder title="Company not found" />;
   }
 
   const people = realPeople ?? [];
-  const stats = { ...statsFor(company), ucAlumni: realPeople === undefined ? "…" : people.length };
   const hasLiveFeed = Array.isArray(liveJobs) && liveJobs.length > 0;
+
+  // Real companies get a profile derived entirely from their own real
+  // postings (data/realCompanies.js) -- never a hand-authored
+  // characterization/description/size, matching the Opportunities tab's
+  // own "no invented specifics" rule below. industry/offices only resolve
+  // once liveJobs loads (same fetch the Opportunities tab already needs),
+  // so this reads "…"/empty briefly on first render, same loading pattern
+  // as every other real figure on this page.
+  const company = isRealRoute
+    ? {
+        id: `real/${encodeURIComponent(realCompanyName)}`,
+        name: realCompanyName,
+        isReal: true,
+        ...(liveJobs ? deriveCompanyProfile(realCompanyName, liveJobs) : { logoInitials: realCompanyName.slice(0, 3).toUpperCase(), industry: "…", offices: [] }),
+        size: undefined,
+        recruitingStatus: hasLiveFeed ? "Actively hiring" : liveJobs === undefined ? "…" : "No live feed",
+        characterization: null,
+        description: null,
+        careersUrl: liveJobs?.[0]?.application_url ?? null,
+      }
+    : { ...mockCompany, isReal: false };
+
+  // Real stats replace statsFor()'s mock-derived numbers on the real route
+  // -- see fetchRealCompanyStats's own comment for why (job_track_record_report(),
+  // the same real security-definer aggregate the real odds model uses, not
+  // a second fabricated figure). "finalRounds"/"offers" have no real
+  // equivalent from that RPC (it reports interview-stage progress and a
+  // genuine offer count, not a rounds breakdown) -- interviewCount fills
+  // the analogous "how far did people get" role in the JSX below instead.
+  const stats = isRealRoute
+    ? {
+        ucApplicants: realStats?.ucApplicants ?? 0,
+        offerRate: realStats?.offerRate ?? 0,
+        offers: realStats?.offerCount ?? 0,
+        finalRounds: realStats?.interviewCount ?? 0,
+        medianPrepHours: null,
+        ucAlumni: realPeople === undefined ? "…" : people.length,
+      }
+    : { ...statsFor(mockCompany), ucAlumni: realPeople === undefined ? "…" : people.length };
   const openRolesDisplay = liveJobs === undefined ? "…" : hasLiveFeed ? String(liveJobs.length) : "—";
   const openRolesLabel = liveJobs !== undefined && !hasLiveFeed ? "No live feed" : "Open roles";
   const isWatched = preferences.followedCompanies.includes(company.name);
   const stageCount = stats.offers > 0 ? 5 : stats.ucApplicants >= 5 ? 3 : stats.ucApplicants > 0 ? 2 : 1;
-  const quotes = quotesFor(company);
-  const activity = activityFor(company);
+  // Real companies show genuine submitted interview write-ups in place of
+  // quotesFor()'s fabricated ones (attributed to invented people) --
+  // reshaped to the {author, classYear, body} shape the JSX below already
+  // renders, honoring is_anonymous the same way RealJobDetail.jsx's own
+  // write-up section does.
+  const quotes = isRealRoute
+    ? (realWriteups ?? [])
+        .slice(0, 3)
+        .map((w) => ({ id: w.id, author: w.is_anonymous ? "Anonymous UC member" : w.submitted_by_name || "A UC member", classYear: null, body: w.body }))
+    : quotesFor(mockCompany).map((q) => ({ ...q, id: q.author }));
+  // No real "community activity feed" data source exists yet -- real
+  // companies get the honest empty state below (activity.length === 0),
+  // never activityFor()'s fabricated posts about invented people.
+  const activity = isRealRoute ? [] : activityFor(mockCompany);
   const officeCounts = company.offices.map((o) => ({ office: o, count: people.filter((p) => p.office === o).length }));
-  const similar = COMPANIES.filter((c) => c.industry === company.industry && c.id !== company.id).slice(0, 2);
+  const similar = isRealRoute
+    ? similarRealCompanies
+        .filter((c) => c.industry === company.industry)
+        .slice(0, 2)
+        .map((c) => ({ id: `real/${encodeURIComponent(c.name)}`, name: c.name, logoInitials: c.logoInitials }))
+    : COMPANIES.filter((c) => c.industry === company.industry && c.id !== company.id).slice(0, 2);
 
   function toggleWatch() {
     updatePreferences({
@@ -107,9 +205,12 @@ export default function CompanyPage() {
             <span className="chip">{stats.ucAlumni} UC alumni</span>
           </div>
           <p className="company-header__meta">
-            {company.industry} · {company.size} · {company.offices.join(", ")}
+            {[company.industry, company.size, company.offices.join(", ")].filter(Boolean).join(" · ")}
           </p>
-          <p style={{ marginBottom: "var(--space-5)" }}>{company.description}</p>
+          {/* Real companies (company.isReal) have no hand-authored
+              description -- never invented, see this file's header
+              comment on the real-company branch above. */}
+          {company.description && <p style={{ marginBottom: "var(--space-5)" }}>{company.description}</p>}
           <div className="company-header__actions">
             <button className="btn btn-primary" onClick={toggleWatch}>
               {isWatched ? "Watching ✓" : "Add to watchlist"}
@@ -161,7 +262,7 @@ export default function CompanyPage() {
                   <div className="stat-strip__label">UC alumni here</div>
                 </div>
               </div>
-              <p>{company.characterization}</p>
+              {company.characterization && <p>{company.characterization}</p>}
             </div>
           )}
 
@@ -210,14 +311,24 @@ export default function CompanyPage() {
                 <div className="empty-state" style={{ textAlign: "left" }}>
                   <h3 style={{ marginTop: 0 }}>We don't have a live jobs feed for {company.name}</h3>
                   <p className="meta">
-                    {company.name} doesn't publish postings through a source UC can pull from automatically yet — no
+                    {company.isReal
+                      ? // Distinct from the mock-company copy below -- a real
+                        // company only reaches this page because it DOES have
+                        // an automated source; zero active postings here means
+                        // its feed is genuinely empty right now (or over its
+                        // company-tier cap, see data/companyTiers.js), not that
+                        // no source exists.
+                        `${company.name} has an automated source, but it isn't returning any active postings right now.`
+                      : `${company.name} doesn't publish postings through a source UC can pull from automatically yet — no
                     public API or syndicated feed we've verified. Rather than guess at specific openings, here's
-                    their own careers page directly.
+                    their own careers page directly.`}
                   </p>
                   <div style={{ display: "flex", gap: "var(--space-3)", margin: "var(--space-5) 0" }}>
-                    <a className="btn btn-primary" href={company.careersUrl} target="_blank" rel="noreferrer">
-                      Open {company.name}'s careers page ↗
-                    </a>
+                    {company.careersUrl && (
+                      <a className="btn btn-primary" href={company.careersUrl} target="_blank" rel="noreferrer">
+                        Open {company.name}'s careers page ↗
+                      </a>
+                    )}
                     <button
                       className="btn-link"
                       onClick={() =>
@@ -231,10 +342,10 @@ export default function CompanyPage() {
                     <>
                       <p style={{ fontWeight: 700, marginBottom: "var(--space-3)" }}>What UC members have said about recruiting here</p>
                       {quotes.map((q) => (
-                        <div className="writeup-card" key={q.author}>
+                        <div className="writeup-card" key={q.id}>
                           <div className="writeup-card__meta">
                             <strong>{q.author}</strong>
-                            <span className="meta">'{String(q.classYear).slice(2)}</span>
+                            {q.classYear && <span className="meta">'{String(q.classYear).slice(2)}</span>}
                           </div>
                           <p style={{ margin: 0 }}>"{q.body}"</p>
                         </div>
@@ -276,16 +387,29 @@ export default function CompanyPage() {
                 </div>
                 <div className="stat-strip__cell">
                   <div className="stat-strip__number">{stats.finalRounds}</div>
-                  <div className="stat-strip__label">Reached final round</div>
+                  {/* Real companies: job_track_record_report()'s real
+                      interview_count measures reaching First/Final round
+                      combined (see data/realOddsModel.js's identical
+                      "reached an interview" label) -- distinct from the
+                      mock stat strip's finer-grained (but fabricated)
+                      "final round" figure, so the label says what the real
+                      number actually is. */}
+                  <div className="stat-strip__label">{company.isReal ? "Reached interview stage" : "Reached final round"}</div>
                 </div>
                 <div className="stat-strip__cell">
                   <div className="stat-strip__number">{stats.offerRate}%</div>
                   <div className="stat-strip__label">UC offer rate</div>
                 </div>
-                <div className="stat-strip__cell">
-                  <div className="stat-strip__number">{stats.medianPrepHours} hrs</div>
-                  <div className="stat-strip__label">Median prep, offer-holders</div>
-                </div>
+                {/* No real equivalent exists for "median prep hours" (the
+                    tracker records no such field) -- omitted for real
+                    companies rather than shown as "null hrs" or a
+                    fabricated number. */}
+                {!company.isReal && (
+                  <div className="stat-strip__cell">
+                    <div className="stat-strip__number">{stats.medianPrepHours} hrs</div>
+                    <div className="stat-strip__label">Median prep, offer-holders</div>
+                  </div>
+                )}
               </div>
               <div className="recruiting-timeline">
                 {TIMELINE_STAGES.map((stage, i) => (
@@ -295,16 +419,22 @@ export default function CompanyPage() {
                   </div>
                 ))}
               </div>
-              <p style={{ fontWeight: 700, marginBottom: "var(--space-3)" }}>What UC members say</p>
-              {quotes.map((q) => (
-                <div className="writeup-card" key={q.author}>
-                  <div className="writeup-card__meta">
-                    <strong>{q.author}</strong>
-                    <span className="meta">'{String(q.classYear).slice(2)}</span>
-                  </div>
-                  <p style={{ margin: 0 }}>"{q.body}"</p>
-                </div>
-              ))}
+              {quotes.length === 0 && company.isReal ? (
+                <p className="meta">No interview write-ups shared for {company.name} yet.</p>
+              ) : (
+                <>
+                  <p style={{ fontWeight: 700, marginBottom: "var(--space-3)" }}>What UC members say</p>
+                  {quotes.map((q) => (
+                    <div className="writeup-card" key={q.id}>
+                      <div className="writeup-card__meta">
+                        <strong>{q.author}</strong>
+                        {q.classYear && <span className="meta">'{String(q.classYear).slice(2)}</span>}
+                      </div>
+                      <p style={{ margin: 0 }}>"{q.body}"</p>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           )}
 

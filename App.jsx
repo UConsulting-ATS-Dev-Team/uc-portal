@@ -116,6 +116,19 @@ export default function App() {
           </NavShell>
         }
       />
+      {/* Real (auto-derived, non-mock) companies route by their real name,
+          not a stored slug -- data/realCompanies.js derives their profile
+          fresh from real job data on every load, so there's no id to look
+          up ahead of time the way mock companies' data/mockCompanies.js ids
+          are. See CompanyPage.jsx's own branch on useParams(). */}
+      <Route
+        path="/companies/real/:companyName"
+        element={
+          <NavShell>
+            <CompanyPage />
+          </NavShell>
+        }
+      />
       <Route
         path="/resources"
         element={

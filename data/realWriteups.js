@@ -32,6 +32,23 @@ export async function fetchRealWriteupsForJob(job) {
   });
 }
 
+// Company-page counterpart to fetchRealWriteupsForJob above -- no specific
+// job to tie an exact match to, so this is the company-token match alone
+// (same as that function's own fallback branch). Real companies' Company
+// Page (data/realCompanies.js) uses these in place of
+// data/companyUtils.js's fabricated quotesFor() -- genuine submitted
+// write-ups instead of quotes attributed to invented people.
+export async function fetchRealWriteupsForCompany(companyName) {
+  const token = companyMatchToken(companyName);
+  const { data, error } = await supabase
+    .from("interview_writeups")
+    .select("*")
+    .ilike("company", `${token}%`)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`Fetching interview_writeups failed: ${error.message}`);
+  return data ?? [];
+}
+
 // Shared by ContributeModal.jsx for both entry points: from a specific real
 // job's detail page (job_id set) and from Career Resources' generic
 // "+ Contribute" (job_id null, company typed freehand). submitted_by is

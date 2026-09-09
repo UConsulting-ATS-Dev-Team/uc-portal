@@ -26,6 +26,24 @@ export function companyMatchToken(canonicalName) {
   return canonicalName.split(/\s*&\s*|\s+/)[0];
 }
 
+// Grid-scale counterpart to fetchRealPeopleAtCompany below -- pages/
+// Companies.jsx needs a "UC alumni" figure on every real-company card
+// (potentially dozens of companies), and firing one fetchRealPeopleAtCompany
+// round trip per card would mean dozens of sequential/parallel queries just
+// to render a directory grid. Real people are cheap enough to fetch once (150
+// rows total, fetchRealPeople() below) and bucket client-side with the exact
+// same token-prefix rule fetchRealPeopleAtCompany applies server-side, same
+// "good enough at this data scale" call this file's own header comment
+// already makes for client-side substring search at 150 rows.
+export function alumniCountsByCompany(people, companyNames) {
+  const counts = new Map(companyNames.map((name) => [name, 0]));
+  for (const name of companyNames) {
+    const token = companyMatchToken(name).toLowerCase();
+    counts.set(name, people.filter((p) => p.company?.toLowerCase().startsWith(token)).length);
+  }
+  return counts;
+}
+
 export async function fetchRealPeopleAtCompany(companyName) {
   const token = companyMatchToken(companyName);
   const rows = await fetchAllRows("people", "*", (q) => q.ilike("company", `${token}%`));
