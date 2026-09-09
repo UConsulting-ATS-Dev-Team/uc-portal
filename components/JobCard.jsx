@@ -13,7 +13,13 @@ export default function JobCard({ job, saved, onToggleSave }) {
         <div className="job-card__title-row">
           <span className="job-card__role">{job.role}</span>
           <span className="job-card__match">{job.matchScore}% match</span>
-          {job.ucPosted && <span className="chip chip-accent">UC-posted</span>}
+          {/* "UC alumni here", not "UC-posted" -- the real board (Stage 2)
+              never sets this (data/realJobAdapter.js hardcodes it false),
+              and even for the mock jobs that still can, implying an alum
+              personally posted a specific listing overclaims what's
+              actually known. What's real and worth surfacing is alumni
+              presence at the company, not a posting's origin. */}
+          {job.ucPosted && <span className="chip chip-accent">UC alumni here</span>}
           {job.possiblyClosed && <span className="chip">Possibly no longer open</span>}
         </div>
         {/* .filter(Boolean), not a bare template join -- a real job with

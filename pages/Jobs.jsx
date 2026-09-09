@@ -322,6 +322,16 @@ export default function Jobs() {
     if (tab === "saved") return JOBS.filter((j) => savedJobIds.includes(j.id));
     return filteredForCount.filter((j) => matchesTab(j, tab, savedJobIds));
   }, [filteredForCount, JOBS, tab, savedJobIds]);
+  // Same fix as matchedCount above, for the same reason: the Saved tab's
+  // badge used to be a bare savedJobIds.length -- a saved id that no
+  // longer resolves to any job in JOBS (the job's posting closed, or, as
+  // happened once already, the app's whole data source got swapped to a
+  // different backend project) would still count toward the badge while
+  // never actually appearing in the list, reproducing the exact "count
+  // says N, tab shows 0" bug this file already fixed once for Recommended.
+  // Counting off the same resolved set the tab itself reads from keeps
+  // the badge honest regardless of why an id stopped resolving.
+  const savedCount = useMemo(() => JOBS.filter((j) => savedJobIds.includes(j.id)).length, [JOBS, savedJobIds]);
   const sorted = useMemo(
     () => sortJobs(tabbed, sortBy, preferences, filters.keyword),
     [tabbed, sortBy, preferences, filters.keyword]
@@ -613,7 +623,7 @@ export default function Jobs() {
                 className={`jobs-tabs__tab${tab === t.key ? " is-active" : ""}`}
                 onClick={() => setTab(t.key)}
               >
-                {t.label} ({t.key === "recommended" ? matchedCount : t.key === "saved" ? savedJobIds.length : JOBS.length})
+                {t.label} ({t.key === "recommended" ? matchedCount : t.key === "saved" ? savedCount : JOBS.length})
               </button>
             ))}
           </div>
@@ -631,15 +641,6 @@ export default function Jobs() {
             ))}
           </div>
         )}
-
-        <div className="jobs-banner">
-          <strong>UC-POSTED OPPORTUNITY</strong>
-          <span>— Alumni-referred roles are posted by UC members and never appear on Handshake.</span>
-          {/* Had a "Learn more" button with nothing behind it -- no
-              explainer page/modal exists, so it was a dead click sitting
-              right next to real controls. Removed rather than faked;
-              the two lines of text already say what this means. */}
-        </div>
 
         {jobsLoading && <p className="meta">Loading opportunities…</p>}
 

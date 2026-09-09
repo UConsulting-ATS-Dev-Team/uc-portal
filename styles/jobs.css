@@ -170,22 +170,6 @@
   border-bottom-color: var(--color-accent);
 }
 
-.jobs-banner {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  padding: var(--space-5);
-  margin-bottom: var(--space-6);
-  border: var(--border-hairline);
-  border-left: var(--border-accent-emphasis);
-  background: var(--color-accent-tint);
-  font-size: var(--text-secondary);
-}
-
-.jobs-banner strong {
-  color: var(--color-accent-deep);
-}
-
 .job-card {
   display: flex;
   gap: var(--space-5);

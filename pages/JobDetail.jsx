@@ -108,7 +108,9 @@ export default function JobDetail() {
               <div className="detail-header__title-row">
                 <h1 className="detail-header__role">{job.role}</h1>
                 <span className="job-card__match">{job.matchScore}% match</span>
-                {job.ucPosted && <span className="chip chip-accent">UC-posted</span>}
+                {/* "UC alumni here", not "UC-posted" -- see components/
+                    JobCard.jsx's identical chip for why. */}
+                {job.ucPosted && <span className="chip chip-accent">UC alumni here</span>}
               </div>
               {/* .filter(Boolean), not a bare template join -- see
                   components/JobCard.jsx's identical fix for why (an empty
