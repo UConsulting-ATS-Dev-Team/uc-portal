@@ -3,6 +3,7 @@ import { fetchRemotePreferences, syncPreferencesToRemote } from "./memberPrefere
 import { fetchRemoteTrackedApplications, syncTrackedApplicationToRemote } from "./trackerSync.js";
 import { fetchRemoteNetworkConnections, syncNetworkConnectionToRemote } from "./networkSync.js";
 import { fetchRemoteSavedJobs, syncSavedJobToRemote } from "./savedJobsSync.js";
+import { fetchRealRole } from "./profileRoleSync.js";
 
 // Prototype-wide shared state (career preferences, onboarding progress,
 // and later: saved jobs, tracker stage, etc.) -- persisted to
@@ -184,10 +185,23 @@ const AppStateContext = createContext(null);
 export function AppStateProvider({ children }) {
   const [state, setState] = useState(loadState);
   const [hydratedFromRemote, setHydratedFromRemote] = useState(false);
+  // The real signed-in member's real profiles.role -- not part of `state`
+  // (never persisted to localStorage or the mock-data blob; it's live
+  // auth-derived data, re-fetched fresh each session). Replaces the fully
+  // disconnected data/mockUser.js#currentUser.role NavRail.jsx/
+  // BottomTabBar.jsx used to gate the Leadership nav section on, which
+  // never reflected who was actually signed in. null until the fetch
+  // resolves (not signed in, or not yet loaded) -- treated as "not admin",
+  // never as "admin" by default.
+  const [realRole, setRealRole] = useState(null);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
+
+  useEffect(() => {
+    fetchRealRole().then(setRealRole);
+  }, []);
 
   // Stage 2: one-time hydration from Supabase on mount, if this signed-in
   // member has a real member_preferences row already (e.g. set on another
@@ -477,6 +491,8 @@ export function AppStateProvider({ children }) {
     <AppStateContext.Provider
       value={{
         ...state,
+        realRole,
+        isAdmin: realRole === "admin",
         updatePreferences,
         updateRecruitingSetting,
         updateProfileOverrides,

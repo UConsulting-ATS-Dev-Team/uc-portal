@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
-import { currentUser, clubStats } from "../data/mockUser.js";
-import { MAIN_ITEMS, LEADERSHIP_ITEMS, LEADERSHIP_ROLES } from "../data/navItems.js";
+import { clubStats } from "../data/mockUser.js";
+import { MAIN_ITEMS, LEADERSHIP_ITEMS } from "../data/navItems.js";
+import { useAppState } from "../data/store.jsx";
 
 // Lucide, stroke-width 1.5, per CLAUDE.md's icon spec ("wireframes use text
 // labels as stand-ins; target system is Lucide"). Only actually needed once
@@ -29,7 +30,10 @@ function RailLink({ label, to, icon: Icon, badge }) {
 }
 
 export default function NavRail() {
-  const isLeadership = LEADERSHIP_ROLES.includes(currentUser.role);
+  // Real profiles.role, not the disconnected mock data/mockUser.js#
+  // currentUser.role every session used to see the exact same hardcoded
+  // "member" for regardless of who was actually signed in.
+  const { isAdmin } = useAppState();
 
   return (
     <nav className="rail">
@@ -39,7 +43,7 @@ export default function NavRail() {
         ))}
       </ul>
 
-      {isLeadership && (
+      {isAdmin && (
         <div className="rail__section">
           <div className="rail__kicker">Leadership</div>
           <ul className="rail__items">

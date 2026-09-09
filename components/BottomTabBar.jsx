@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { MoreHorizontal, X } from "lucide-react";
-import { currentUser } from "../data/mockUser.js";
-import { MAIN_ITEMS, LEADERSHIP_ITEMS, LEADERSHIP_ROLES, BOTTOM_BAR_PRIMARY_KEYS } from "../data/navItems.js";
+import { MAIN_ITEMS, LEADERSHIP_ITEMS, BOTTOM_BAR_PRIMARY_KEYS } from "../data/navItems.js";
+import { useAppState } from "../data/store.jsx";
 
 // Phone-UX pass: below 640px (styles/shell.css's phone tier), this
 // replaces the persistent icon-only .rail entirely -- live-audited at
@@ -23,7 +23,9 @@ import { MAIN_ITEMS, LEADERSHIP_ITEMS, LEADERSHIP_ROLES, BOTTOM_BAR_PRIMARY_KEYS
 export default function BottomTabBar() {
   const [moreOpen, setMoreOpen] = useState(false);
   const location = useLocation();
-  const isLeadership = LEADERSHIP_ROLES.includes(currentUser.role);
+  // Real profiles.role, not the disconnected mock data/mockUser.js#
+  // currentUser.role -- same fix as NavRail.jsx's identical check.
+  const { isAdmin } = useAppState();
 
   const primaryItems = MAIN_ITEMS.filter((item) => BOTTOM_BAR_PRIMARY_KEYS.includes(item.to));
   const moreItems = MAIN_ITEMS.filter((item) => !BOTTOM_BAR_PRIMARY_KEYS.includes(item.to));
@@ -85,7 +87,7 @@ export default function BottomTabBar() {
               ))}
             </ul>
 
-            {isLeadership && (
+            {isAdmin && (
               <>
                 <div className="bottom-tab-bar__more-kicker">Leadership</div>
                 <ul className="bottom-tab-bar__more-list">
