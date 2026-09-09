@@ -23,6 +23,12 @@ export default function CareerResources() {
   const { trackedJobs, savedResourceIds, resourceProgress, trackProgress, preferences, profileOverrides } = useAppState();
   const [search, setSearch] = useState("");
   const [showContributeModal, setShowContributeModal] = useState(false);
+  // Same collapsible-nav pattern as Jobs.jsx/Companies.jsx's filter
+  // columns -- live-audited at 375px: the categories/skills nav rendered
+  // inline above the page's actual content, forcing a scroll past two
+  // full lists (13 category rows total) plus the progress card before
+  // reaching a single resource.
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Same real-first/mock-fallback lookup as Home/Applications/Jobs -- a
   // real tracked job's interview-stage retitle used to only ever check
@@ -54,6 +60,22 @@ export default function CareerResources() {
   return (
     <div className="resources-layout">
       <aside className="resources-nav">
+        <div className="resources-nav__header">
+          <span>Browse</span>
+          {/* Only rendered/visible via CSS at the tablet/phone tier where
+              this nav stacks above the main content (same 899px tier
+              styles/resources.css already stacks it at) -- see that
+              file's is-mobile-collapsed rule. */}
+          <button
+            type="button"
+            className="resources-nav__mobile-toggle"
+            onClick={() => setMobileNavOpen((v) => !v)}
+            aria-expanded={mobileNavOpen}
+          >
+            {mobileNavOpen ? "Hide" : "Show"}
+          </button>
+        </div>
+        <div className={mobileNavOpen ? "resources-nav__body" : "resources-nav__body is-mobile-collapsed"}>
         <div className="resources-nav__group">
           <div className="resources-nav__title">Categories</div>
           <div className="resources-nav__item">
@@ -93,6 +115,7 @@ export default function CareerResources() {
           <p className="meta" style={{ margin: 0 }}>
             {trackProgress["case-interview-track"] || 0} of {LEARNING_TRACKS[0].steps.length} · Case Interview Track
           </p>
+        </div>
         </div>
       </aside>
 

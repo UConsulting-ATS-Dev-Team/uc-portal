@@ -23,6 +23,16 @@
   overflow-y: auto;
 }
 
+/* Hidden above the tablet/phone tier where this nav stacks (899px, see
+   below) -- desktop's sticky sidebar was never collapsible and isn't
+   becoming so now. Declared before the media query that shows it (not
+   after): equal-specificity cascade order means a rule placed after a
+   media query wins at every width, the exact bug Jobs.jsx's own filter
+   toggle hit once already this pass. */
+.resources-nav__header {
+  display: none;
+}
+
 .resources-nav__group {
   margin-bottom: var(--space-6);
 }
@@ -283,6 +293,34 @@
     position: static;
     max-height: none;
     overflow-y: visible;
+  }
+
+  /* Live phone audit (375px, same session as Jobs.jsx/Companies.jsx's
+     identical collapsible-filters fix): this nav's 13 category rows plus
+     the progress card rendered inline above the page's actual content,
+     forcing a long scroll before reaching a single resource. */
+  .resources-nav__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-4);
+    font-weight: 700;
+  }
+
+  .resources-nav__mobile-toggle {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--color-accent);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .resources-nav__body.is-mobile-collapsed {
+    display: none;
   }
 
   .resource-tile-grid,
