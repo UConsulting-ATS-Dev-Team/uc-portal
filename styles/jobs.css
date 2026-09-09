@@ -372,6 +372,16 @@
     width: 100%;
   }
 
+  /* The actual root cause of the confirmed-live 19px overflow this fix
+     was tracking down -- .jobs-layout's align-items: flex-start means
+     .jobs-main was never stretched to the available width once stacked,
+     only sized to fit its own content (measured 379px live, vs the
+     ~347px actually available). Same root cause as resources.css's much
+     larger version of this bug -- see that file for the fuller writeup. */
+  .jobs-main {
+    width: 100%;
+  }
+
   .jobs-header {
     flex-wrap: wrap;
     gap: var(--space-4);

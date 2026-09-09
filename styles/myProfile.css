@@ -84,6 +84,15 @@
   .profile-layout {
     flex-direction: column;
   }
+
+  /* Same align-items: flex-start trap as resources.css/jobs.css/
+     jobDetail.css's identical fix -- .profile-main was never stretched
+     to the available width once stacked, only sized to fit its own
+     content. Applied preemptively even though this page's current
+     content hadn't visibly triggered it yet. */
+  .profile-main {
+    width: 100%;
+  }
 }
 
 @media (max-width: 639px) {

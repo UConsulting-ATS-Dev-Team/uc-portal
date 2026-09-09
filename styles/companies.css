@@ -196,6 +196,17 @@
 
 /* ---- Responsive ---- */
 @media (max-width: 899px) {
+  /* Companies.jsx uses .jobs-layout (shared with Jobs.jsx, which gets
+     .jobs-layout{flex-direction:column} from styles/jobs.css) but its
+     own distinct .companies-main content wrapper, which never got the
+     matching width fix -- same align-items: flex-start trap as every
+     other page this pass found it on (see resources.css for the fuller
+     writeup). Applied preemptively even though this page's current
+     content hadn't visibly triggered it yet. */
+  .companies-main {
+    width: 100%;
+  }
+
   .companies-grid {
     /* minmax(0, 1fr), not bare 1fr -- see resources.css's identical fix
        (caught live: a bare 1fr column can't shrink below its content's

@@ -208,6 +208,16 @@
     flex-direction: column;
   }
 
+  /* Same align-items: flex-start trap as resources.css/jobs.css/
+     jobDetail.css/myProfile.css/network.css's identical fix --
+     .home-main was never stretched to the available width once
+     stacked. Applied preemptively even though this page's current
+     content hadn't visibly triggered it yet (live-checked clean at
+     375px, but that only proves today's content doesn't hit it). */
+  .home-main {
+    width: 100%;
+  }
+
   .home-rail {
     width: 100%;
   }

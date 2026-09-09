@@ -381,6 +381,20 @@
     flex-direction: column;
   }
 
+  /* .detail-layout's align-items: flex-start (needed for the rail's own
+     desktop-width alignment) means a column-direction flex child isn't
+     stretched to the container's width by default -- without this,
+     .detail-main sizes to its own widest descendant's natural content
+     width instead of what's actually available. Same root cause as
+     resources.css's/jobs.css's identical fix (caught live there as a
+     real, if latent-until-now-uncaught-on-this-particular-page,
+     overflow bug) -- applied here preemptively since the pattern is
+     identical even though this page's current content hadn't
+     triggered it yet. */
+  .detail-main {
+    width: 100%;
+  }
+
   .detail-rail {
     width: 100%;
   }

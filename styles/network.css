@@ -193,6 +193,15 @@
     flex-direction: column;
   }
 
+  /* Same align-items: flex-start trap as resources.css/jobs.css/
+     jobDetail.css/myProfile.css's identical fix -- .network-main was
+     never stretched to the available width once stacked. Applied
+     preemptively even though this page's current content hadn't
+     visibly triggered it yet. */
+  .network-main {
+    width: 100%;
+  }
+
   .network-rail {
     width: 100%;
   }
