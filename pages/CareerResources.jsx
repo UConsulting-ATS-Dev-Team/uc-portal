@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { RESOURCES, CERTIFICATIONS, LEARNING_TRACKS } from "../data/mockResources.js";
-import { JOBS } from "../data/mockJobs.js";
+import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { useAppState } from "../data/store.jsx";
+import { useRealJobs } from "../data/useRealJobs.js";
+import { currentUser } from "../data/mockUser.js";
+import { resolvedClassYear } from "../data/profileUtils.js";
 import ContributeModal from "../components/modals/ContributeModal.jsx";
 import CasePartnerFinder from "../components/CasePartnerFinder.jsx";
 import "../styles/jobDetail.css";
@@ -17,12 +20,21 @@ function daysAgo(dateStr) {
 }
 
 export default function CareerResources() {
-  const { trackedJobs, savedResourceIds, resourceProgress, trackProgress } = useAppState();
+  const { trackedJobs, savedResourceIds, resourceProgress, trackProgress, preferences, profileOverrides } = useAppState();
   const [search, setSearch] = useState("");
   const [showContributeModal, setShowContributeModal] = useState(false);
 
+  // Same real-first/mock-fallback lookup as Home/Applications/Jobs -- a
+  // real tracked job's interview-stage retitle used to only ever check
+  // the 8 mock demo jobs, so it silently never fired for a real posting.
+  const classYear = resolvedClassYear(currentUser, profileOverrides);
+  const { realJobs } = useRealJobs(preferences, classYear);
+
   const interviewJob = Object.entries(trackedJobs)
-    .map(([jobId, info]) => ({ job: JOBS.find((j) => j.id === jobId), stage: info.stage }))
+    .map(([jobId, info]) => ({
+      job: realJobs.find((j) => j.id === jobId) || MOCK_JOBS.find((j) => j.id === jobId),
+      stage: info.stage,
+    }))
     .find((e) => e.job && ["First round", "Final round"].includes(e.stage));
 
   const recommended = useMemo(() => {

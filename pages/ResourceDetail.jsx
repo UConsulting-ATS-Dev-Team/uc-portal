@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { RESOURCES, findResource } from "../data/mockResources.js";
-import { JOBS } from "../data/mockJobs.js";
+import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { useAppState } from "../data/store.jsx";
+import { useRealJobs } from "../data/useRealJobs.js";
+import { currentUser } from "../data/mockUser.js";
+import { resolvedClassYear } from "../data/profileUtils.js";
 import Placeholder from "./Placeholder.jsx";
 import "../styles/jobDetail.css";
 import "../styles/resources.css";
@@ -10,8 +13,14 @@ import "../styles/resources.css";
 export default function ResourceDetail() {
   const { resourceId } = useParams();
   const resource = findResource(resourceId);
-  const { savedResourceIds, toggleSavedResource, resourceProgress, toggleResourceSection, trackedJobs } = useAppState();
+  const { savedResourceIds, toggleSavedResource, resourceProgress, toggleResourceSection, trackedJobs, preferences, profileOverrides } = useAppState();
   const [hoursLogged, setHoursLogged] = useState(0);
+
+  // Hook called unconditionally, before the "resource not found" early
+  // return, per Rules of Hooks -- same real-first/mock-fallback pattern
+  // as CareerResources.jsx so "Used for" can match a real tracked job too.
+  const classYear = resolvedClassYear(currentUser, profileOverrides);
+  const { realJobs } = useRealJobs(preferences, classYear);
 
   if (!resource) {
     return <Placeholder title="Resource not found" />;
@@ -24,7 +33,7 @@ export default function ResourceDetail() {
 
   const activeStages = ["Preparing", "Applied", "Assessment", "First round", "Final round"];
   const usedFor = Object.entries(trackedJobs)
-    .map(([jobId, info]) => ({ job: JOBS.find((j) => j.id === jobId), stage: info.stage }))
+    .map(([jobId, info]) => ({ job: realJobs.find((j) => j.id === jobId) || MOCK_JOBS.find((j) => j.id === jobId), stage: info.stage }))
     .filter(
       (e) =>
         e.job &&

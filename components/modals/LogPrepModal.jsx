@@ -1,8 +1,12 @@
 import { useMemo, useState } from "react";
 import Modal from "../Modal.jsx";
-import { JOBS } from "../../data/mockJobs.js";
+import { JOBS as MOCK_JOBS } from "../../data/mockJobs.js";
 import { computeOdds } from "../../data/oddsModel.js";
 import { useAppState } from "../../data/store.jsx";
+import { useRealJobs } from "../../data/useRealJobs.js";
+import { isRealJobId } from "../../data/realJobAdapter.js";
+import { currentUser } from "../../data/mockUser.js";
+import { resolvedClassYear } from "../../data/profileUtils.js";
 
 const ACTIVITIES = ["Case practice", "Behavioral prep", "Technical / skills drill", "Mock interview with a peer", "Resource reading"];
 
@@ -11,14 +15,33 @@ const ACTIVITIES = ["Case practice", "Behavioral prep", "Technical / skills dril
 // to the mock data/oddsModel.js's computeOdds -- pages/RealJobDetail.jsx
 // passes a real-odds-backed function instead (bound to that job's already-
 // fetched data/realOddsModel.js inputs) so this same modal/effect-preview
-// works for a real job without duplicating the before/after UI. Only
-// reachable when `job` is provided (the picker below is mock-only), so a
-// real-job caller never exercises the JOBS/trackedList picker path at all.
-export default function LogPrepModal({ job, onClose, computeOddsFn = computeOdds }) {
-  const { trackedJobs, prepLogged, logPrep } = useAppState();
+// works for a real job without duplicating the before/after UI.
+//
+// The generic picker below (no job prop -- opened from e.g. Career
+// Resources / a learning track's "Log prep time") used to only ever list
+// data/mockJobs.js's 8 demo jobs, so a real tracked job silently couldn't
+// be selected here at all -- same bug class as the Home/Applications/
+// Saved-tab fixes. It's fixed on the list side (real-first, mock-fallback,
+// via useRealJobs), but the *odds* side still can't be fixed the same way:
+// unlike RealJobDetail.jsx, this modal has no already-fetched
+// data/realOddsModel.js inputs for a job selected generically here, and
+// computing those needs an async fetch this synchronous effect-preview
+// isn't set up to await. Rather than run the real job through the mock
+// computeOdds (which would read its missing pastCycleApplicants/
+// ucConnections fields as falsy and produce a plausible-looking but
+// unearned number), a real job selected via this generic picker still logs
+// the hours for real, it just skips the effect-preview card with an honest
+// note instead of guessing.
+export default function LogPrepModal({ job, onClose, computeOddsFn }) {
+  const { trackedJobs, prepLogged, logPrep, preferences, profileOverrides } = useAppState();
+  const classYear = resolvedClassYear(currentUser, profileOverrides);
+  const { realJobs } = useRealJobs(preferences, classYear);
   const trackedList = useMemo(
-    () => Object.keys(trackedJobs).map((id) => JOBS.find((j) => j.id === id)).filter(Boolean),
-    [trackedJobs]
+    () =>
+      Object.keys(trackedJobs)
+        .map((id) => realJobs.find((j) => j.id === id) || MOCK_JOBS.find((j) => j.id === id))
+        .filter(Boolean),
+    [trackedJobs, realJobs]
   );
   const [selectedId, setSelectedId] = useState(job?.id || trackedList[0]?.id || null);
   const [activity, setActivity] = useState(ACTIVITIES[0]);
@@ -27,17 +50,22 @@ export default function LogPrepModal({ job, onClose, computeOddsFn = computeOdds
   const [logged, setLogged] = useState(false);
 
   const selectedJob = job || trackedList.find((j) => j.id === selectedId);
+  // Only ever compute a mock-model estimate for a mock job. A real job
+  // picked via the generic picker (no explicit computeOddsFn from a caller
+  // that already has real odds inputs, like RealJobDetail.jsx) has no odds
+  // function it's safe to use here -- see the class comment above.
+  const activeComputeOddsFn = computeOddsFn || (selectedJob && !isRealJobId(selectedJob.id) ? computeOdds : null);
 
   // before = odds at currently-logged hours; after = odds with this
   // session's hours added on top -- mirrors how JobDetail/OddsModel pass
   // prepLogged[job.id] in as extraPrepHours.
   const effect = useMemo(() => {
-    if (!selectedJob) return null;
+    if (!selectedJob || !activeComputeOddsFn) return null;
     const currentExtra = prepLogged[selectedJob.id] || 0;
-    const before = computeOddsFn(selectedJob, { extraPrepHours: currentExtra });
-    const after = computeOddsFn(selectedJob, { extraPrepHours: currentExtra + hours });
+    const before = activeComputeOddsFn(selectedJob, { extraPrepHours: currentExtra });
+    const after = activeComputeOddsFn(selectedJob, { extraPrepHours: currentExtra + hours });
     return { before, after };
-  }, [selectedJob, hours, prepLogged, computeOddsFn]);
+  }, [selectedJob, hours, prepLogged, activeComputeOddsFn]);
 
   function handleLog() {
     if (!selectedJob) return;
@@ -108,6 +136,12 @@ export default function LogPrepModal({ job, onClose, computeOddsFn = computeOdds
                 {effect.before.headline}% → {effect.after.headline}%
               </div>
             </div>
+          )}
+          {!effect && isRealJobId(selectedJob.id) && (
+            <p className="meta">
+              Odds estimate isn't available from here — open {selectedJob.role} at {selectedJob.company} to see
+              its full odds model. This will still log your hours.
+            </p>
           )}
         </>
       )}

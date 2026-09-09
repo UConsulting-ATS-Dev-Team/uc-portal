@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { LEARNING_TRACKS, findTrack } from "../data/mockResources.js";
-import { JOBS } from "../data/mockJobs.js";
+import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { useAppState } from "../data/store.jsx";
+import { useRealJobs } from "../data/useRealJobs.js";
+import { currentUser } from "../data/mockUser.js";
+import { resolvedClassYear } from "../data/profileUtils.js";
 import { hashString } from "../data/hash.js";
 import LogPrepModal from "../components/modals/LogPrepModal.jsx";
 import Placeholder from "./Placeholder.jsx";
@@ -12,10 +15,15 @@ import "../styles/resources.css";
 export default function LearningTrackDetail() {
   const { trackId } = useParams();
   const track = findTrack(trackId);
-  const { trackProgress, advanceTrackStep, trackedJobs } = useAppState();
+  const { trackProgress, advanceTrackStep, trackedJobs, preferences, profileOverrides } = useAppState();
   // Declared before the early return below (Rules of Hooks) even though
   // it's only meaningful when a track actually exists.
   const [showLogPrepModal, setShowLogPrepModal] = useState(false);
+  // Same real-first/mock-fallback lookup as CareerResources.jsx/
+  // ResourceDetail.jsx -- also called unconditionally, before the early
+  // return, per Rules of Hooks.
+  const classYear = resolvedClassYear(currentUser, profileOverrides);
+  const { realJobs } = useRealJobs(preferences, classYear);
 
   if (!track) {
     return <Placeholder title="Learning track not found" />;
@@ -28,7 +36,7 @@ export default function LearningTrackDetail() {
   const membersFinished = 3 + (hashString(track.id + "f") % 8);
 
   const tiedApplications = Object.entries(trackedJobs)
-    .map(([jobId, info]) => ({ job: JOBS.find((j) => j.id === jobId), stage: info.stage }))
+    .map(([jobId, info]) => ({ job: realJobs.find((j) => j.id === jobId) || MOCK_JOBS.find((j) => j.id === jobId), stage: info.stage }))
     .filter((e) => e.job && e.job.industry === "Management consulting")
     .slice(0, 3);
 

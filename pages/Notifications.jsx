@@ -2,7 +2,10 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAppState } from "../data/store.jsx";
 import { buildNotifications } from "../data/notificationUtils.js";
-import { JOBS } from "../data/mockJobs.js";
+import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
+import { useRealJobs } from "../data/useRealJobs.js";
+import { currentUser } from "../data/mockUser.js";
+import { resolvedClassYear } from "../data/profileUtils.js";
 import { deadlineLabel } from "../data/jobUtils.js";
 import "../styles/jobs.css";
 import "../styles/jobDetail.css";
@@ -36,12 +39,19 @@ const SETTINGS_COPY = [
 ];
 
 export default function Notifications() {
-  const { trackedJobs, prepLogged, coffeeChatStatus, notificationSettings, updateNotificationSetting } = useAppState();
+  const { trackedJobs, prepLogged, coffeeChatStatus, notificationSettings, updateNotificationSetting, preferences, profileOverrides } = useAppState();
   const [tab, setTab] = useState("Needs action");
 
+  // Same real-first/mock-fallback lookup as every other trackedJobs
+  // consumer -- a real tracked job's deadline/prep notifications used to
+  // silently never fire, since buildNotifications() only ever checked
+  // data/mockJobs.js internally.
+  const classYear = resolvedClassYear(currentUser, profileOverrides);
+  const { realJobs } = useRealJobs(preferences, classYear);
+
   const { needsAction, earlierThisWeek } = useMemo(
-    () => buildNotifications({ trackedJobs, prepLogged, coffeeChatStatus }),
-    [trackedJobs, prepLogged, coffeeChatStatus]
+    () => buildNotifications({ trackedJobs, prepLogged, coffeeChatStatus, realJobs }),
+    [trackedJobs, prepLogged, coffeeChatStatus, realJobs]
   );
 
   const category = TAB_TO_CATEGORY[tab] || tab;
@@ -50,7 +60,7 @@ export default function Notifications() {
   const visibleEarlier = tab === "Needs action" ? [] : tab === "All" ? earlierThisWeek : earlierThisWeek.filter((n) => n.category === category);
 
   const upcoming = Object.entries(trackedJobs)
-    .map(([jobId, info]) => ({ job: JOBS.find((j) => j.id === jobId), ...info }))
+    .map(([jobId, info]) => ({ job: realJobs.find((j) => j.id === jobId) || MOCK_JOBS.find((j) => j.id === jobId), ...info }))
     .filter((e) => e.job && e.stage !== "Closed" && !e.job.rolling)
     .sort((a, b) => new Date(a.job.deadlineDate) - new Date(b.job.deadlineDate))
     .slice(0, 4);

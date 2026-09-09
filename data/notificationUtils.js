@@ -1,4 +1,4 @@
-import { JOBS } from "./mockJobs.js";
+import { JOBS as MOCK_JOBS } from "./mockJobs.js";
 import { daysUntil, isUrgent } from "./jobUtils.js";
 import { findPerson } from "./mockPeople.js";
 
@@ -8,11 +8,18 @@ import { findPerson } from "./mockPeople.js";
 // model. "Earlier this week" is a smaller set of lower-stakes items
 // (feed/announcement flavor) that don't have an obvious live data source
 // yet, so those stay illustrative.
-export function buildNotifications({ trackedJobs, prepLogged, coffeeChatStatus }) {
+//
+// realJobs: optional, defaults to [] -- this is a plain function (not a
+// hook), so it can't fetch real jobs itself; pages/Notifications.jsx (the
+// only caller) fetches them via data/useRealJobs.js and passes them in.
+// Same real-first/mock-fallback lookup as every other trackedJobs consumer
+// -- without it, a real tracked job's deadline/prep notifications silently
+// never fired.
+export function buildNotifications({ trackedJobs, prepLogged, coffeeChatStatus, realJobs = [] }) {
   const needsAction = [];
 
   Object.entries(trackedJobs).forEach(([jobId, info]) => {
-    const job = JOBS.find((j) => j.id === jobId);
+    const job = realJobs.find((j) => j.id === jobId) || MOCK_JOBS.find((j) => j.id === jobId);
     if (!job || info.stage === "Closed") return;
 
     if (isUrgent(job)) {

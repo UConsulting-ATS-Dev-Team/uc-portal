@@ -15,6 +15,16 @@ import { supabase } from "./supabaseClient.js";
 // read as a real, checked fact instead of "we don't know." JobCard.jsx's
 // footer is guarded to skip rendering when these are undefined.
 
+// Real jobs (Stage 2) have a UUID id; mock jobs (data/mockJobs.js) use a
+// readable slug like "bain-consulting-intern". Same check pages/
+// JobDetail.jsx already inlines locally to route a shared /jobs/:jobId url;
+// exported here too so callers that only have an id (no job object handy)
+// can tell which kind they're dealing with without importing a whole page.
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function isRealJobId(id) {
+  return UUID_PATTERN.test(id);
+}
+
 const EMPLOYMENT_TYPE_LABEL = {
   internship: "Internship",
   full_time: "Full-time",
