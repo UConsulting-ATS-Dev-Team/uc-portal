@@ -23,6 +23,11 @@ export default function Companies() {
   const [locations, setLocations] = useState([]);
   const [connectionsMin, setConnectionsMin] = useState("Any");
   const [sortBy, setSortBy] = useState("alumni");
+  // Same collapsible-filters fix as Jobs.jsx (both share styles/jobs.css's
+  // .filters/.jobs-layout) -- caught live at 375px: this page's filter
+  // column inherited the CSS but not the toggle, so it still forced a
+  // long scroll past every filter group before reaching a single company.
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   function toggle(list, setList, value) {
     setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
@@ -94,21 +99,35 @@ export default function Companies() {
       <aside className="filters">
         <div className="filters__header">
           <span>Filters</span>
-          <button
-            className="btn-link"
-            onClick={() => {
-              setName("");
-              setIndustries([]);
-              setStatuses([]);
-              setSizes([]);
-              setLocations([]);
-              setConnectionsMin("Any");
-            }}
-          >
-            Clear all
-          </button>
+          <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "center" }}>
+            <button
+              className="btn-link"
+              onClick={() => {
+                setName("");
+                setIndustries([]);
+                setStatuses([]);
+                setSizes([]);
+                setLocations([]);
+                setConnectionsMin("Any");
+              }}
+            >
+              Clear all
+            </button>
+            {/* Only rendered/visible via CSS at the phone tier -- see
+                styles/jobs.css's is-mobile-collapsed rule (shared with
+                Jobs.jsx's identical toggle). */}
+            <button
+              type="button"
+              className="filters__mobile-toggle"
+              onClick={() => setMobileFiltersOpen((v) => !v)}
+              aria-expanded={mobileFiltersOpen}
+            >
+              {mobileFiltersOpen ? "Hide" : "Show"}
+            </button>
+          </div>
         </div>
 
+        <div className={mobileFiltersOpen ? "filters__body" : "filters__body is-mobile-collapsed"}>
         <div className="filters__group">
           <input type="text" placeholder="Company name" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
@@ -181,6 +200,7 @@ export default function Companies() {
               </button>
             ))}
           </div>
+        </div>
         </div>
       </aside>
 
