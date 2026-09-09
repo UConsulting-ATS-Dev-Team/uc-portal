@@ -110,8 +110,11 @@ export default function JobDetail() {
                 <span className="job-card__match">{job.matchScore}% match</span>
                 {job.ucPosted && <span className="chip chip-accent">UC-posted</span>}
               </div>
+              {/* .filter(Boolean), not a bare template join -- see
+                  components/JobCard.jsx's identical fix for why (an empty
+                  field renders as a double " ·  · " separator otherwise). */}
               <p className="detail-header__detail-line">
-                {job.company} · {job.location} · {job.workMode} · {job.compDisplay}
+                {[job.company, job.location, job.workMode, job.compDisplay].filter(Boolean).join(" · ")}
               </p>
               <div className="detail-header__actions">
                 <button className="btn btn-primary">Apply on {job.company} site</button>

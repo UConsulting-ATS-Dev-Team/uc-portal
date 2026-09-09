@@ -16,8 +16,13 @@ export default function JobCard({ job, saved, onToggleSave }) {
           {job.ucPosted && <span className="chip chip-accent">UC-posted</span>}
           {job.possiblyClosed && <span className="chip">Possibly no longer open</span>}
         </div>
+        {/* .filter(Boolean), not a bare template join -- a real job with
+            remote_type "in_person" but no city on file (data/realJobAdapter.js's
+            location: job.city ?? (remote ? "Remote" : "")) renders location as
+            "", which a plain join turned into a double " ·  · " separator.
+            Company is always present so this can't collapse to a leading dot. */}
         <p className="job-card__detail-line">
-          {job.company} · {job.location} · {job.workMode} · {job.compDisplay}
+          {[job.company, job.location, job.workMode, job.compDisplay].filter(Boolean).join(" · ")}
         </p>
 
         <div className="chip-row" style={{ marginBottom: "var(--space-4)" }}>

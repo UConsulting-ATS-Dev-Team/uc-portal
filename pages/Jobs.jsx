@@ -46,7 +46,12 @@ const TABS = [
   { key: "all", label: "All jobs" },
   { key: "saved", label: "Saved" },
 ];
-const PAGE_SIZE = 5;
+// Member-selectable, not fixed -- was a flat 5, meaning even a fairly
+// short filtered list needed several "next page" clicks. Default 25
+// (a member request: "give options for 10, 25, or 50 so that you don't
+// have to press 'load more' as often").
+const PAGE_SIZE_OPTIONS = [10, 25, 50];
+const DEFAULT_PAGE_SIZE = 25;
 
 // One company having a public ATS API shouldn't mean it fills the board:
 // Databricks alone has 800+ real postings, most other target companies have
@@ -193,10 +198,11 @@ function toggleInArray(array, value) {
   return array.includes(value) ? array.filter((v) => v !== value) : [...array, value];
 }
 
-// Windowed pagination -- totalPages can run into the hundreds against the
-// real jobs table (thousands of rows / PAGE_SIZE), so listing every page
-// number (the old behavior) meant hundreds of buttons spilling across the
-// whole screen. Always keeps the first and last page, the current page
+// Windowed pagination -- totalPages can run into the dozens or hundreds
+// against the real jobs table (thousands of rows / the member's chosen
+// page size), so listing every page number (the old behavior) meant
+// hundreds of buttons spilling across the whole screen. Always keeps
+// the first and last page, the current page
 // and its immediate neighbors, and collapses any gap into a single
 // non-interactive "…".
 function pageWindow(current, total) {
@@ -230,6 +236,7 @@ export default function Jobs() {
   const [tab, setTab] = useState("recommended");
   const [sortBy, setSortBy] = useState("bestMatch");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [showMoreIndustries, setShowMoreIndustries] = useState(false);
   const [showMoreLocations, setShowMoreLocations] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
@@ -257,7 +264,7 @@ export default function Jobs() {
 
   useEffect(() => {
     setPage(1);
-  }, [filters, tab]);
+  }, [filters, tab, pageSize]);
 
   function patchFilters(patch) {
     setFilters((prev) => ({ ...prev, ...patch }));
@@ -334,8 +341,8 @@ export default function Jobs() {
     [sorted, filters.keyword, tab]
   );
 
-  const totalPages = Math.max(1, Math.ceil(displayJobs.length / PAGE_SIZE));
-  const pageJobs = displayJobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(displayJobs.length / pageSize));
+  const pageJobs = displayJobs.slice((page - 1) * pageSize, page * pageSize);
 
   function viewMoreAtCompany(company) {
     setFilters((prev) => ({ ...prev, keyword: company }));
@@ -567,6 +574,17 @@ export default function Jobs() {
               <option value="bestMatch">Best match</option>
               <option value="deadline">Deadline</option>
               <option value="newest">Newest</option>
+            </select>
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              aria-label="Listings per page"
+            >
+              {PAGE_SIZE_OPTIONS.map((n) => (
+                <option key={n} value={n}>
+                  {n} per page
+                </option>
+              ))}
             </select>
             {/* A real button in the page's own header, not a small text
                 link buried in the filter sidebar -- member-reported as
