@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_ACTIVE_JOBS_PER_COMPANY,
+  DEFAULT_COMPANY_TIER,
+  TIER_CAPS,
   idsExceedingCompanyCap,
   rankForCompanyCap,
   tierForJobFunction,
+  capForCompanyTier,
   type CompanyCapCandidate,
 } from "../src/companyCap.js";
 
@@ -111,5 +114,30 @@ describe("idsExceedingCompanyCap", () => {
     const survivors = candidates.filter((c) => !excess.has(c.id));
     expect(survivors).toHaveLength(MAX_ACTIVE_JOBS_PER_COMPANY);
     expect(idsExceedingCompanyCap(survivors)).toEqual([]);
+  });
+});
+
+describe("capForCompanyTier", () => {
+  it("resolves each of the 4 tiers to its documented cap", () => {
+    expect(capForCompanyTier(0)).toBe(25);
+    expect(capForCompanyTier(1)).toBe(15);
+    expect(capForCompanyTier(2)).toBe(10);
+    expect(capForCompanyTier(3)).toBe(3);
+  });
+
+  it("defaults null/undefined (a company missing from company_tiers) to tier 3's cap", () => {
+    expect(capForCompanyTier(null)).toBe(TIER_CAPS[DEFAULT_COMPANY_TIER]);
+    expect(capForCompanyTier(undefined)).toBe(TIER_CAPS[DEFAULT_COMPANY_TIER]);
+    expect(DEFAULT_COMPANY_TIER).toBe(3);
+  });
+
+  it("defaults an unrecognized tier number to tier 3's cap rather than throwing", () => {
+    expect(capForCompanyTier(99)).toBe(TIER_CAPS[DEFAULT_COMPANY_TIER]);
+  });
+
+  it("ranks tier caps strictly descending 0 > 1 > 2 > 3, matching name-brand-relevance priority", () => {
+    expect(capForCompanyTier(0)).toBeGreaterThan(capForCompanyTier(1));
+    expect(capForCompanyTier(1)).toBeGreaterThan(capForCompanyTier(2));
+    expect(capForCompanyTier(2)).toBeGreaterThan(capForCompanyTier(3));
   });
 });

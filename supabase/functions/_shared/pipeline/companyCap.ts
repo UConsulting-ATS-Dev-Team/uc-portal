@@ -121,3 +121,40 @@ export function idsExceedingCompanyCap(
     .slice(cap)
     .map((c) => c.id);
 }
+
+// ---- Company-tier cap (2026-09-09 addition) ----
+// A second, independent axis on top of everything above. tierForJobFunction
+// ranks WHICH postings survive within one company; this decides HOW MANY a
+// company is even allowed before that ranking kicks in, based on how
+// relevant the company itself is to UC -- direct product direction: "only
+// the really relevant consulting/similar companies can get over 10 job
+// postings... definitely want to go off name brand relevance," with core
+// consulting broken out as its own top tier above other elite name-brand
+// companies (a real Bain-vs-Goldman priority order, not just "famous or
+// not"). The two axes compose: a tier-0 company's non-consulting postings
+// (e.g. a Big 4 firm's audit/tax reqs) still lose the tierForJobFunction
+// tiebreak to its own actually-consulting postings if it's ever over its
+// (generous) tier cap.
+//
+// The company -> tier mapping itself lives in the `company_tiers` table,
+// not a hardcoded map here, because it has to be read from two runtimes
+// with no shared import path -- this Edge Function (Deno) and the React
+// frontend's own display cap (data/jobUtils.js's capPerCompany). See
+// supabase/migrations/20260909070000_company_tiers.sql for the seeded list,
+// the full tiering rationale, and every individual judgment call.
+//
+//   Tier 0 -- core consulting (MBB, Big 4 advisory arms, boutique/economic
+//     consulting) -- cap 25
+//   Tier 1 -- other elite name-brand (bulge-bracket/elite-boutique IB,
+//     Citadel-tier quant, marquee big tech/AI, major VC) -- cap 15
+//   Tier 2 -- recognizable corporate/finance-adjacent -- cap 10
+//   Tier 3 -- everyone else -- cap 3. Also the DEFAULT for any company not
+//     present in company_tiers (most likely a newly-sourced one) --
+//     capForCompanyTier falls back here rather than erroring or leaving a
+//     new company uncapped.
+export const DEFAULT_COMPANY_TIER = 3;
+export const TIER_CAPS: Record<number, number> = { 0: 25, 1: 15, 2: 10, 3: 3 };
+
+export function capForCompanyTier(tier: number | null | undefined): number {
+  return TIER_CAPS[tier ?? DEFAULT_COMPANY_TIER] ?? TIER_CAPS[DEFAULT_COMPANY_TIER];
+}

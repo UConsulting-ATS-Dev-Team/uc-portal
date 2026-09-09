@@ -4,7 +4,8 @@ import JobCard from "../components/JobCard.jsx";
 import ErrorState from "../components/ErrorState.jsx";
 import PostOpportunityModal from "../components/modals/PostOpportunityModal.jsx";
 import { INDUSTRIES, LOCATIONS } from "../data/careerOptions.js";
-import { daysUntil, matchesDeadlineBucket, CAP_PER_COMPANY } from "../data/jobUtils.js";
+import { daysUntil, matchesDeadlineBucket } from "../data/jobUtils.js";
+import { fetchCompanyTiers, capForCompanyTier } from "../data/companyTiers.js";
 import { useAppState } from "../data/store.jsx";
 import { fetchAllRows } from "../data/fetchAllRows.js";
 import { matchJob, finalScore } from "../data/jobMatch.js";
@@ -59,22 +60,30 @@ const DEFAULT_PAGE_SIZE = 25;
 // entry). Capping how many of one company's cards can appear at once keeps
 // the board diverse across companies instead of exhaustive within one --
 // the rest are one click away via "View N more at Company", not hidden.
-// (CAP_PER_COMPANY itself lives in data/jobUtils.js -- also read by the
-// now-unused components/ContinuousJobFeed.jsx, so if that ever comes
-// back both still enforce the same number.)
+//
+// 2026-09-09: the cap itself is no longer one flat number for every
+// company -- "only the really relevant consulting/similar companies can
+// get over 10 job postings... go off name brand relevance" (direct product
+// direction). getCap(company) below resolves a per-company cap from the
+// real `company_tiers` table (data/companyTiers.js), the same table and
+// tier->cap numbers the ingestion-side ATS-fetch cap enforces
+// (supabase/functions/_shared/pipeline/companyCap.ts) -- so a member never
+// sees a display cap that disagrees with what's actually active in the
+// database. A company not yet in that table (freshly sourced) resolves to
+// tier 3's cap (3) via capForCompanyTier's own default, same as ingestion.
 
-// Applied to the already-sorted list, so which 3 "win" respects whatever
-// sort is active (bestMatch keeps each company's top 3 matches, etc.).
-// Global across the whole result set, not per-page -- otherwise a company
-// could still dominate by spilling its 4th+ card onto page 2 instead of
-// being deferred to the explicit "view more" link.
-function capPerCompany(jobs, cap) {
+// Applied to the already-sorted list, so which cards "win" respects
+// whatever sort is active (bestMatch keeps each company's top matches,
+// etc.). Global across the whole result set, not per-page -- otherwise a
+// company could still dominate by spilling its next card onto page 2
+// instead of being deferred to the explicit "view more" link.
+function capPerCompany(jobs, getCap) {
   const countByCompany = {};
   const kept = [];
   const overflowByCompany = {};
   for (const job of jobs) {
     countByCompany[job.company] = (countByCompany[job.company] || 0) + 1;
-    if (countByCompany[job.company] <= cap) kept.push(job);
+    if (countByCompany[job.company] <= getCap(job.company)) kept.push(job);
     else overflowByCompany[job.company] = (overflowByCompany[job.company] || 0) + 1;
   }
   const lastKeptIdByCompany = {};
@@ -254,6 +263,7 @@ export default function Jobs() {
   const [rawJobs, setRawJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(true);
   const [jobsError, setJobsError] = useState(null);
+  const [companyTierByName, setCompanyTierByName] = useState(new Map());
 
   useEffect(() => {
     // fetchAllRows(), not a bare .select() -- a plain select silently
@@ -263,6 +273,14 @@ export default function Jobs() {
       .then((data) => setRawJobs(data))
       .catch((err) => setJobsError(err.message))
       .finally(() => setJobsLoading(false));
+    // Failure here isn't fatal to the page -- capPerCompany below falls
+    // back to tier 3's cap (3) for every company via capForCompanyTier's
+    // own default when the map is empty, same as a company genuinely not
+    // yet in the table, so a fetch error just means "cap conservatively"
+    // rather than crashing the board.
+    fetchCompanyTiers()
+      .then(setCompanyTierByName)
+      .catch(() => {});
   }, []);
 
   const JOBS = useMemo(
@@ -355,8 +373,8 @@ export default function Jobs() {
     () =>
       filters.keyword || tab === "saved"
         ? { kept: sorted, overflowByCompany: {}, lastKeptIdByCompany: {} }
-        : capPerCompany(sorted, CAP_PER_COMPANY),
-    [sorted, filters.keyword, tab]
+        : capPerCompany(sorted, (company) => capForCompanyTier(companyTierByName.get(company))),
+    [sorted, filters.keyword, tab, companyTierByName]
   );
 
   const totalPages = Math.max(1, Math.ceil(displayJobs.length / pageSize));

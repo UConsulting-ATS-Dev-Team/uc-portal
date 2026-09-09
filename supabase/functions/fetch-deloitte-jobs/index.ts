@@ -51,6 +51,7 @@ import { scoreDuplicate, classifyDuplicateTier } from "../_shared/pipeline/dedup
 import { isLikelySeniorRole, isLikelyNonCorporateRole } from "../_shared/pipeline/relevance.ts";
 import type { RawJob } from "../_shared/pipeline/types.ts";
 import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows, enforceCompanyCap } from "../_shared/dedupeHelpers.ts";
+import { capForCompanyTier } from "../_shared/pipeline/companyCap.ts";
 
 const SOURCE_NAME = "Deloitte (Careers RSS Feed)";
 const KEYWORDS = ["consultant", "strategy", "analyst"];
@@ -170,12 +171,19 @@ async function runFetch(adminClient: SupabaseClient, source: any): Promise<Fetch
   let activeJobs: Array<Record<string, unknown>>;
   let existingSources: Array<Record<string, unknown>>;
   let jobFunctions: Array<Record<string, unknown>>;
+  let companyTierRow: { tier: number } | null = null;
   try {
-    [activeJobs, existingSources, jobFunctions] = await Promise.all([
+    let companyTierRows: Array<Record<string, unknown>>;
+    [activeJobs, existingSources, jobFunctions, companyTierRows] = await Promise.all([
       fetchAllRows(adminClient, "jobs", "id, company, title, application_url, remote_type, city, posted_date, salary_min", (q) => q.eq("active", true)),
       fetchAllRows(adminClient, "job_sources", "job_id, source_job_id", (q) => q.eq("source_id", source.id)),
       fetchAllRows(adminClient, "job_functions", "id, name"),
+      // Just this one company -- unlike the multi-company adapters, this
+      // source is always exactly "Deloitte", so there's no need to pull the
+      // whole company_tiers table.
+      fetchAllRows(adminClient, "company_tiers", "tier", (q) => q.eq("company_name", "Deloitte")),
     ]);
+    companyTierRow = (companyTierRows[0] as { tier: number } | undefined) ?? null;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return failed(`Loading lookups failed: ${message}`);
@@ -362,8 +370,13 @@ async function runFetch(adminClient: SupabaseClient, source: any): Promise<Fetch
   // Part 2 (2026-08-27) -- per-company cap, enforced last so it sees
   // Deloitte's true post-insert/refresh active set. Same call
   // fetch-greenhouse-companies makes per company; see enforceCompanyCap's
-  // own comment (dedupeHelpers.ts) and companyCap.ts for the rationale.
-  const { deactivatedCount: capDeactivated, error: capError } = await enforceCompanyCap(adminClient, "Deloitte", jobFunctionNameById);
+  // own comment (dedupeHelpers.ts) and companyCap.ts for the job-function
+  // tiering rationale. cap is resolved from company_tiers (2026-09-09
+  // addition; Deloitte is seeded as tier 0, cap 25) rather than the old flat
+  // number, same as every other adapter -- see companyCap.ts's
+  // "Company-tier cap" section.
+  const cap = capForCompanyTier(companyTierRow?.tier);
+  const { deactivatedCount: capDeactivated, error: capError } = await enforceCompanyCap(adminClient, "Deloitte", jobFunctionNameById, cap);
   if (capError) return failed(`Company cap enforcement failed: ${capError}`);
 
   const summary = {

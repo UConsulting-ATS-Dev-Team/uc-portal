@@ -37,6 +37,7 @@ import { scoreDuplicate, classifyDuplicateTier } from "../_shared/pipeline/dedup
 import { isLikelySeniorRole, isLikelyNonCorporateRole } from "../_shared/pipeline/relevance.ts";
 import type { RawJob } from "../_shared/pipeline/types.ts";
 import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows, updateInBatches, enforceCompanyCap } from "../_shared/dedupeHelpers.ts";
+import { capForCompanyTier } from "../_shared/pipeline/companyCap.ts";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -92,6 +93,7 @@ async function runFetchForCompany(
   existingJobIdBySourceJobId: Map<string, string>,
   jobFunctionIdByName: Map<string, string>,
   jobFunctionNameById: Map<string, string>,
+  companyTierByName: Map<string, number>,
 ): Promise<FetchOutcome> {
   const slug = source.config?.slug as string | undefined;
   const company = source.config?.company as string | undefined;
@@ -310,9 +312,14 @@ async function runFetchForCompany(
   // company's true post-insert/refresh/expire active set. See
   // enforceCompanyCap's own comment (dedupeHelpers.ts) for why it re-reads
   // from the database instead of trying to reuse the `activeJobs` local
-  // copy, and companyCap.ts for the tiering rationale.
+  // copy, and companyCap.ts for the job-function tiering rationale. cap is
+  // now resolved per-company from company_tiers (2026-09-09 addition,
+  // defaulting to tier 3's cap for anything not in that table) rather than
+  // one flat number for every company -- see companyCap.ts's "Company-tier
+  // cap" section.
   let capDeactivated = 0;
-  const { deactivatedCount, error: capError } = await enforceCompanyCap(adminClient, company, jobFunctionNameById);
+  const cap = capForCompanyTier(companyTierByName.get(company));
+  const { deactivatedCount, error: capError } = await enforceCompanyCap(adminClient, company, jobFunctionNameById, cap);
   if (capError) return failed(`Company cap enforcement failed: ${capError}`);
   capDeactivated = deactivatedCount;
 
@@ -379,12 +386,13 @@ Deno.serve(async (req) => {
   // run, and repeatedly created orphaned duplicate jobs rows (masked, not
   // fixed, by job_sources' upsert/ignoreDuplicates silently swallowing the
   // resulting conflict instead of erroring).
-  let rawActiveJobs: Record<string, unknown>[], jobFunctions: Record<string, unknown>[], allJobSourceRows: Record<string, unknown>[];
+  let rawActiveJobs: Record<string, unknown>[], jobFunctions: Record<string, unknown>[], allJobSourceRows: Record<string, unknown>[], companyTiers: Record<string, unknown>[];
   try {
-    [rawActiveJobs, jobFunctions, allJobSourceRows] = await Promise.all([
+    [rawActiveJobs, jobFunctions, allJobSourceRows, companyTiers] = await Promise.all([
       fetchAllRows(adminClient, "jobs", "id, company, title, application_url, remote_type, city, posted_date, salary_min", (q) => q.eq("active", true)),
       fetchAllRows(adminClient, "job_functions", "id, name"),
       fetchAllRows(adminClient, "job_sources", "source_id, job_id, source_job_id", (q) => q.in("source_id", sources.map((s) => s.id))),
+      fetchAllRows(adminClient, "company_tiers", "company_name, tier"),
     ]);
   } catch (err) {
     return jsonResponse({ error: err instanceof Error ? err.message : String(err) }, 500);
@@ -394,6 +402,7 @@ Deno.serve(async (req) => {
   // Reverse of the above, for enforceCompanyCap's tiering (job_function_id
   // on a row -> the taxonomy name companyCap.ts's tiers are keyed on).
   const jobFunctionNameById = new Map<string, string>((jobFunctions ?? []).map((f) => [f.id as string, f.name as string]));
+  const companyTierByName = new Map<string, number>((companyTiers ?? []).map((c) => [c.company_name as string, c.tier as number]));
 
   const activeJobsByCompany = new Map<string, Array<Record<string, unknown>>>();
   for (const job of rawActiveJobs ?? []) {
@@ -423,6 +432,7 @@ Deno.serve(async (req) => {
         existingJobIdBySourceJobId,
         jobFunctionIdByName,
         jobFunctionNameById,
+        companyTierByName,
       );
 
       await adminClient.from("source_fetch_log").insert({
