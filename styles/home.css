@@ -87,7 +87,7 @@
 
 .recommended-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-5);
   margin-bottom: var(--space-7);
 }
@@ -191,7 +191,7 @@
 
 .empty-state__tiles {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-5);
   margin-top: var(--space-7);
   text-align: left;
@@ -213,13 +213,17 @@
   }
 
   .empty-state__tiles {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 639px) {
+  /* minmax(0, 1fr), not bare 1fr, on both grids below -- see resources
+     .css's identical fix for why (a bare 1fr column can't shrink below
+     its content's own min-content width; caused a real 240px page-level
+     overflow at 375px there). Applied preemptively here. */
   .recommended-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .welcome-card {
@@ -227,7 +231,7 @@
   }
 
   .empty-state__tiles {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   /* Live phone audit (375px): "Recommended for you" and its "Based on

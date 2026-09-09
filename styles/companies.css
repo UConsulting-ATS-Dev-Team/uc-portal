@@ -39,7 +39,7 @@
 
 .companies-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-5);
 }
 
@@ -91,7 +91,7 @@
 
 .company-card__stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
   margin-bottom: var(--space-4);
 }
@@ -197,13 +197,17 @@
 /* ---- Responsive ---- */
 @media (max-width: 899px) {
   .companies-grid {
-    grid-template-columns: 1fr;
+    /* minmax(0, 1fr), not bare 1fr -- see resources.css's identical fix
+       (caught live: a bare 1fr column can't shrink below its content's
+       own min-content width, which caused a real 240px page-level
+       overflow at 375px there). Applied preemptively here. */
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 639px) {
   .company-card__stats {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .opportunity-row {

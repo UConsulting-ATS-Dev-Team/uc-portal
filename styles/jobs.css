@@ -379,6 +379,14 @@
 
   .jobs-tabs__list {
     overflow-x: auto;
+    /* Without this, .jobs-tabs__list (a flex item of .jobs-tabs) still
+       refuses to shrink below its own content's natural width -- the
+       flex default min-width:auto -- so overflow-x:auto never actually
+       engages; the overflow just propagates up to the page instead of
+       scrolling locally. Caught live: a real (if small, 19px at 375px)
+       page-level overflow from the Saved tab's longer label. Same root
+       cause as resources.css's much larger version of this bug. */
+    min-width: 0;
   }
 
   /* Live phone audit (375px): the full filter column used to render

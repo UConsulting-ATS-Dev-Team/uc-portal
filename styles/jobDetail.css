@@ -92,7 +92,7 @@
 
 .checklist-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-3) var(--space-6);
 }
 
@@ -238,7 +238,7 @@
 
 .stat-strip {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-4);
   margin-bottom: var(--space-6);
 }
@@ -397,11 +397,15 @@
 
 @media (max-width: 639px) {
   .checklist-grid {
-    grid-template-columns: 1fr;
+    /* minmax(0, 1fr), not bare 1fr -- see resources.css's identical fix
+       for why (a bare 1fr column can't shrink below its content's own
+       min-content width; caused a real 240px page-level overflow at
+       375px there). Applied preemptively here. */
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .stat-strip {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .detail-header {

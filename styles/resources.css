@@ -96,7 +96,14 @@
 
 .resource-tile-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* minmax(0, 1fr), not bare 1fr -- a grid track's automatic minimum
+     size is its content's min-content width unless told otherwise, same
+     trap as flexbox's default min-width:auto. Caught live at 375px: the
+     639px override below correctly computed to a single 1fr column, but
+     a tile with a long enough title still forced that "1 column" to
+     569px wide -- real, page-level horizontal overflow, not a within-
+     modal cosmetic issue. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
   margin-top: var(--space-4);
 }
@@ -114,7 +121,7 @@
 
 .track-card-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-5);
   margin-bottom: var(--space-7);
 }
@@ -173,7 +180,7 @@
 
 .resource-card-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-5);
   margin-bottom: var(--space-7);
 }
@@ -285,6 +292,21 @@
     flex-direction: column;
   }
 
+  /* The actual root cause of the 240px overflow this whole investigation
+     started from -- .resources-nav already gets width:100% below, but
+     .resources-main never did. .resources-layout's align-items:
+     flex-start (needed for the sticky nav's own vertical alignment at
+     desktop width) means a column-direction flex child isn't stretched
+     to the container's width by default -- .resources-main was sizing
+     to its own widest descendant's natural content width (600px)
+     instead of the 347px actually available, which is what made the
+     grid-track minmax(0, 1fr) fixes above look like they weren't taking
+     effect: the grid was correctly filling 1fr of its container, the
+     container itself just was never told what that available width was. */
+  .resources-main {
+    width: 100%;
+  }
+
   .resources-nav {
     width: 100%;
     /* Stacked above the main content at this width, same as every other
@@ -325,7 +347,7 @@
 
   .resource-tile-grid,
   .track-card-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -333,6 +355,6 @@
   .resource-tile-grid,
   .track-card-grid,
   .resource-card-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
