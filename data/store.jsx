@@ -4,6 +4,7 @@ import { fetchRemoteTrackedApplications, syncTrackedApplicationToRemote } from "
 import { fetchRemoteNetworkConnections, syncNetworkConnectionToRemote } from "./networkSync.js";
 import { fetchRemoteSavedJobs, syncSavedJobToRemote } from "./savedJobsSync.js";
 import { fetchRealRole } from "./profileRoleSync.js";
+import { fetchRemoteProfileOverrides, syncProfileOverridesToRemote } from "./profileOverridesSync.js";
 
 // Prototype-wide shared state (career preferences, onboarding progress,
 // and later: saved jobs, tracker stage, etc.) -- persisted to
@@ -233,6 +234,37 @@ export function AppStateProvider({ children }) {
     if (!hydratedFromRemote) return;
     syncPreferencesToRemote(state.preferences);
   }, [state.preferences, hydratedFromRemote]);
+
+  // My Profile's Personal tab + onboardingComplete -- same one-time-
+  // hydrate-then-background-sync shape as preferences above (remote wins
+  // on hydration, this is now genuinely durable identity, not just a
+  // local convenience). Was the one piece of real member state that
+  // never got this treatment: only ever lived in localStorage, so signing
+  // into a real account on a different browser/device meant starting
+  // onboarding over from scratch with no memory of anything entered
+  // before. Reuses hydratedFromRemote as its own sync gate too, same as
+  // preferences -- both hydration effects run independently on mount, so
+  // this can fire its own redundant write-back the moment its hydration
+  // resolves if preferences' already flipped the flag first; harmless
+  // (writing back the same data just read), same accepted characteristic
+  // preferences' own effect already has.
+  useEffect(() => {
+    fetchRemoteProfileOverrides().then((remote) => {
+      if (remote) {
+        setState((prev) => ({
+          ...prev,
+          profileOverrides: { ...prev.profileOverrides, ...remote.profileOverrides },
+          onboardingComplete: remote.onboardingComplete || prev.onboardingComplete,
+          profileLastUpdated: remote.profileLastUpdated ?? prev.profileLastUpdated,
+        }));
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!hydratedFromRemote) return;
+    syncProfileOverridesToRemote(state.profileOverrides, state.onboardingComplete, state.profileLastUpdated);
+  }, [state.profileOverrides, state.onboardingComplete, state.profileLastUpdated, hydratedFromRemote]);
 
   // Real applications tracker (Stage 5) -- same one-time-hydrate-on-mount
   // shape as preferences above, except merged into local state rather than
