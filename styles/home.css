@@ -229,4 +229,14 @@
   .empty-state__tiles {
     grid-template-columns: 1fr;
   }
+
+  /* Live phone audit (375px): "Recommended for you" and its "Based on
+     your interests · View all N" link were fighting for the same row
+     with no wrap and no gap, running together with almost no visual
+     separation. Stacked instead of squeezed side by side. */
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+  }
 }

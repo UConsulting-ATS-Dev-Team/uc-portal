@@ -350,6 +350,19 @@
 /* ---- Responsive ---- */
 /* Shared by Jobs.jsx and Companies.jsx (both use .jobs-layout/.filters).
    Breakpoints match styles/shell.css's documented scale. */
+
+/* Hidden above the phone/tablet tier -- desktop's filter column was never
+   collapsible and isn't becoming so now; this button only exists for the
+   899px-and-below toggle below. Declared before that media query (not
+   after) -- CSS cascade order matters here since both rules share the
+   same specificity: placed after, this unconditional rule would win at
+   every width, including inside the media query, permanently hiding the
+   button even at 375px (caught live: computed display was "none" at
+   375px until this was reordered). */
+.filters__mobile-toggle {
+  display: none;
+}
+
 @media (max-width: 899px) {
   .jobs-layout {
     flex-direction: column;
@@ -366,6 +379,30 @@
 
   .jobs-tabs__list {
     overflow-x: auto;
+  }
+
+  /* Live phone audit (375px): the full filter column used to render
+     inline above the job list at this width -- opportunity type, grad
+     year, industry (plus "24 more"), location, comp, deadline -- forcing
+     a long scroll past every filter section before reaching a single
+     result. Collapsed by default (Jobs.jsx's mobileFiltersOpen state);
+     this toggle button is the only way to reach it at this width, so it
+     has to actually show here even though .btn-link's own base styles
+     already cover its touch target/appearance. */
+  .filters__mobile-toggle {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--color-accent);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .filters__body.is-mobile-collapsed {
+    display: none;
   }
 }
 

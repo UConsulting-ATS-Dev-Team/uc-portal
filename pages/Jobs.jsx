@@ -233,6 +233,14 @@ export default function Jobs() {
   // reuses this same defaultFiltersFromPreferences() function on demand
   // instead of applying it automatically.
   const [filters, setFilters] = useState(NEUTRAL_FILTERS);
+  // Phone-UX pass: live-audited at 375px -- the full filter column (opportunity
+  // type, grad year, industry w/ show-more, location, comp, deadline, company
+  // size...) rendered inline above the job list, meaning a phone visitor had to
+  // scroll past the entire panel just to reach a single result. Collapsed by
+  // default there; the toggle button itself is only shown via CSS at that same
+  // width (styles/jobs.css), so this has zero effect above 899px -- the filters
+  // column stays exactly as it always was on desktop/tablet.
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [tab, setTab] = useState("recommended");
   const [sortBy, setSortBy] = useState("bestMatch");
   const [page, setPage] = useState(1);
@@ -398,11 +406,24 @@ export default function Jobs() {
       <aside className="filters">
         <div className="filters__header">
           <span>Filters</span>
-          <button className="btn-link" onClick={() => setFilters(NEUTRAL_FILTERS)}>
-            Clear all
-          </button>
+          <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "center" }}>
+            <button className="btn-link" onClick={() => setFilters(NEUTRAL_FILTERS)}>
+              Clear all
+            </button>
+            {/* Only rendered/visible via CSS at the phone tier -- see
+                styles/jobs.css's is-mobile-collapsed rule. */}
+            <button
+              type="button"
+              className="filters__mobile-toggle"
+              onClick={() => setMobileFiltersOpen((v) => !v)}
+              aria-expanded={mobileFiltersOpen}
+            >
+              {mobileFiltersOpen ? "Hide" : "Show"}
+            </button>
+          </div>
         </div>
 
+        <div className={mobileFiltersOpen ? "filters__body" : "filters__body is-mobile-collapsed"}>
         {savedSearches.length > 0 && (
           <div className="filters__group">
             <div className="filters__group-title">Saved searches</div>
@@ -568,6 +589,7 @@ export default function Jobs() {
               </button>
             ))}
           </div>
+        </div>
         </div>
       </aside>
 
