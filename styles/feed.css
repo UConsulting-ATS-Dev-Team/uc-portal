@@ -210,4 +210,13 @@
     flex-wrap: wrap;
     gap: var(--space-3);
   }
+
+  /* Live phone audit (375px): 6 tabs (All/Alumni/Opportunities/Advice/
+     Events/Saved) don't fit on one row and never wrapped or scrolled --
+     a real, if small (15px), page-level overflow. Same horizontal-scroll
+     treatment Jobs.jsx's and Notifications' own tab rows already use at
+     this tier. */
+  .feed-tabs {
+    overflow-x: auto;
+  }
 }
