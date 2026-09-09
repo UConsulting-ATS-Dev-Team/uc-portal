@@ -181,3 +181,45 @@ select {
   height: 76%;
   object-fit: contain;
 }
+
+/* ---- Responsive: touch targets ----
+   Start of the phone-UX pass (CLAUDE.md's own "Still open" note: the
+   1100/900/640px reflow done earlier made the app not break down at
+   narrow widths, but never addressed touch target size -- these are the
+   shared primitives every page's buttons/inputs/links are built from, so
+   fixing them here is one change instead of one per page. Measured live
+   against the 44px minimum (WCAG 2.5.5, and what iOS/Android's own
+   guidance target): .field input was 36px, the boxed .btn variants
+   ranged 40-43px depending on content, and .btn-link -- used everywhere
+   from table row actions to footer links -- was as low as 30px with no
+   padding at all. Scoped to max-width: 639px (this repo's existing
+   phone-width tier, see styles/shell.css's Responsive section) rather
+   than changed at every width, since desktop's tighter density (e.g. the
+   tracker table, dense filter chip rows) was a deliberate design choice,
+   not an oversight, and a mouse pointer doesn't need a 44px target the
+   way a finger does. */
+@media (max-width: 639px) {
+  .btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .field input,
+  input,
+  select {
+    min-height: 44px;
+  }
+
+  /* .btn-link keeps its existing text size/underline (it's often inline
+     with surrounding text, e.g. "Dropping X would show N roles") -- only
+     the tappable box grows, via min-height + centering, not the visible
+     padding, so it doesn't visually bloat next to un-boosted text or
+     blow out a tight table row's height unnecessarily. */
+  .btn-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}

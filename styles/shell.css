@@ -261,6 +261,12 @@
   .rail__link {
     justify-content: center;
     padding: var(--space-4) var(--space-2);
+    /* Phone-UX pass: an 18px icon + this padding alone lands at ~40px,
+       under the 44px touch-target minimum -- this is the only nav
+       control visible once the rail collapses to icon-only, so it's
+       worth the explicit floor rather than leaving it to whatever the
+       icon size happens to produce. */
+    min-height: 44px;
   }
 
   .rail__label,
