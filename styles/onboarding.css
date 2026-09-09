@@ -289,4 +289,15 @@
   .completion__stats {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  /* Live phone audit (375px, on My Profile's Career Preferences tab,
+     which reuses this same ranked-list markup): three 24px icon-only
+     buttons packed edge to edge is a real mis-tap risk, not just under
+     WCAG's 44px minimum. Scoped to this tier rather than changed
+     everywhere -- 24px reads fine both here and in Onboarding at desktop
+     width with a mouse pointer. */
+  .ranked-list__controls button {
+    width: 44px;
+    height: 44px;
+  }
 }
