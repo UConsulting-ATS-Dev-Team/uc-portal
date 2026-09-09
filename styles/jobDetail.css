@@ -431,7 +431,67 @@
     text-align: left;
   }
 
+  /* Live phone audit (375px): a 4-column table (Factor/Where you stand/
+     Weight/Contribution) squeezed into that width read as genuinely
+     cramped, not just dense -- flagged for a real fix rather than left as
+     "tight but functional". Converts to one bordered card per factor
+     instead, same "responsive table" technique used app-wide for nothing
+     else yet (this is the first table where a stacked-card read is
+     clearly better than a horizontal-scroll one, given each row's own
+     content -- a label, a sentence of context, a weight, a bar -- reads
+     naturally top-to-bottom already). thead is hidden since each cell
+     grows its own label back via data-label (set in OddsModel.jsx's own
+     markup) instead. */
+  .factor-table thead {
+    display: none;
+  }
+
+  .factor-table,
+  .factor-table tbody,
+  .factor-table tr {
+    display: block;
+    width: 100%;
+  }
+
+  .factor-table tr {
+    border: var(--border-hairline);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+    background: var(--color-surface);
+  }
+
+  .factor-table tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .factor-table td {
+    display: block;
+    border-bottom: none;
+    padding: var(--space-1) 0;
+  }
+
+  .factor-table td[data-label="Factor"] {
+    font-weight: 700;
+    color: var(--color-text);
+    padding-top: 0;
+  }
+
+  /* Only the 3 cells after the factor's own name/heading need a label
+     grown back -- that one already reads as the card's title on its own. */
+  .factor-table td:not([data-label="Factor"])::before {
+    content: attr(data-label) ": ";
+    font-size: var(--text-meta);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-kicker);
+    color: var(--color-text-muted);
+  }
+
   .factor-table__signal {
     display: block;
+  }
+
+  .factor-bar-track {
+    width: 100%;
+    margin-top: var(--space-1);
   }
 }

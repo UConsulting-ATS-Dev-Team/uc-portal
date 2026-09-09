@@ -71,14 +71,14 @@ export default function OddsModel({ odds, onLogPrep }) {
             <tbody>
               {odds.factors.map((f) => (
                 <tr key={f.key}>
-                  <td>{f.label}</td>
-                  <td className="factor-table__signal">
+                  <td data-label="Factor">{f.label}</td>
+                  <td className="factor-table__signal" data-label="Where you stand">
                     {f.signal}
                     {f.lowConfidence && <span className="factor-table__low-confidence">{f.lowConfidenceNote}</span>}
                     {f.industryBaseline && <span className="factor-table__industry-baseline">{f.industryBaselineNote}</span>}
                   </td>
-                  <td>{Math.round(f.weight * 100)}%</td>
-                  <td>
+                  <td data-label="Weight">{Math.round(f.weight * 100)}%</td>
+                  <td data-label="Contribution">
                     <div className="factor-bar-track">
                       <div
                         className={`factor-bar-fill ${f.score >= 0.6 ? "is-strength" : "is-weakness"}`}
