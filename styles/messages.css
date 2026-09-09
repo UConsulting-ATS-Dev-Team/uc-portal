@@ -112,6 +112,19 @@
   border-bottom: var(--border-hairline);
 }
 
+/* Hidden above the phone tier -- see the @media block below for where
+   this actually shows and why. */
+.thread-pane__back {
+  display: none;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-accent);
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 44px;
+}
+
 .thread-pane__context {
   color: var(--color-text-muted);
   font-size: var(--text-secondary);
@@ -197,32 +210,49 @@
 }
 
 /* ---- Responsive ---- */
-/* No "show list vs. thread" toggle state exists, so rather than invent one
-   for this pass, the two-pane layout narrows its fixed list column at
-   900px, then stacks list-above-thread at 640px with the list capped to a
-   scrollable height instead of an unbounded page. */
 @media (max-width: 899px) {
   .conversation-list {
     width: 220px;
   }
 }
 
+/* Phone-UX pass: a real show-list/show-thread toggle (Messages.jsx's
+   mobileView state), replacing the old compromise this section used to
+   describe -- both panes forced to stack with the list capped to a
+   scrollable 240px, since no toggle state existed yet to swap them
+   outright. Below this tier, exactly one pane is full-height at a time;
+   .is-list-view/.is-thread-view come from the container className
+   Messages.jsx sets, matching whichever pane is currently "shown". */
 @media (max-width: 639px) {
   .messages-layout {
     flex-direction: column;
-    height: auto;
-    min-height: 0;
+    height: calc(100vh - 180px);
+    min-height: 500px;
+  }
+
+  .messages-layout.is-list-view .thread-pane {
+    display: none;
+  }
+
+  .messages-layout.is-thread-view .conversation-list {
+    display: none;
   }
 
   .conversation-list {
     width: 100%;
-    height: 240px;
+    height: 100%;
     border-right: none;
-    border-bottom: var(--border-hairline);
   }
 
   .thread-pane {
-    min-height: 420px;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .thread-pane__back {
+    display: block;
+    width: 100%;
+    order: -1;
   }
 
   .thread-pane__header {

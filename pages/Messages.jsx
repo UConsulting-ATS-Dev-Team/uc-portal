@@ -18,6 +18,15 @@ export default function Messages() {
   const [tab, setTab] = useState("All");
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState("");
+  // Phone-UX pass: only meaningful below the 640px tier (styles/
+  // messages.css's is-list-view/is-thread-view rules are scoped to that
+  // media query -- at every wider width both panes show side by side
+  // regardless of this state, unaffected). Replaces the old "stack both
+  // panes, cap the list to a scrollable 240px" compromise CLAUDE.md
+  // called out as the one deliberate non-toggle exception to the
+  // responsive pass -- a real toggle was possible all along, there was
+  // just no state to swap on yet.
+  const [mobileView, setMobileView] = useState("list");
 
   const filtered = conversations.filter((c) => {
     if (tab === "Requests" && !c.isRequest) return false;
@@ -45,7 +54,7 @@ export default function Messages() {
   }
 
   return (
-    <div className="messages-layout">
+    <div className={`messages-layout${mobileView === "thread" ? " is-thread-view" : " is-list-view"}`}>
       <div className="conversation-list">
         <div className="conversation-list__header">
           <strong>Messages</strong>
@@ -82,7 +91,10 @@ export default function Messages() {
               <button
                 key={c.id}
                 className={`conversation-row${c.id === activeId ? " is-active" : ""}`}
-                onClick={() => setActiveId(c.id)}
+                onClick={() => {
+                  setActiveId(c.id);
+                  setMobileView("thread");
+                }}
               >
                 <div className="conversation-row__top">
                   <span>{person.name}</span>
@@ -98,6 +110,13 @@ export default function Messages() {
       {active && activePerson && (
         <div className="thread-pane">
           <div className="thread-pane__header">
+            {/* Only rendered/visible via CSS at the phone tier -- see
+                messages.css's is-thread-view rule. At every wider width
+                both panes already show side by side, so there's nothing
+                to "go back" to. */}
+            <button className="thread-pane__back" onClick={() => setMobileView("list")} aria-label="Back to conversations">
+              ← Back
+            </button>
             <div className="post-card__avatar">{initials(activePerson.name)}</div>
             <div>
               <div style={{ fontWeight: 700 }}>{activePerson.name}</div>
