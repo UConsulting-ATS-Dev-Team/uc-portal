@@ -75,3 +75,15 @@ export const CONVERSATIONS = [
     ],
   },
 ];
+
+// Every "Message" link (Network.jsx, MemberProfile.jsx) used to just go
+// to bare /messages with no indication of who you meant to message --
+// it landed on whatever conversation happened to be first, not theirs.
+// This is the single source of truth both those pages and Messages.jsx
+// itself use to find/jump to the right thread; a person with no seeded
+// conversation here correctly has no match, which those pages use to
+// show an honestly-disabled "Message" instead of a button that looks
+// live but goes nowhere useful.
+export function findConversationByPersonId(personId) {
+  return CONVERSATIONS.find((c) => c.personId === personId) ?? null;
+}

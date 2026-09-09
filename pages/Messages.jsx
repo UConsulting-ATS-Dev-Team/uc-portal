@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { CONVERSATIONS } from "../data/mockMessages.js";
+import { Link, useSearchParams } from "react-router-dom";
+import { CONVERSATIONS, findConversationByPersonId } from "../data/mockMessages.js";
 import { findPerson } from "../data/mockPeople.js";
 import "../styles/feed.css";
 import "../styles/notifications.css";
@@ -14,7 +14,15 @@ function initials(name) {
 
 export default function Messages() {
   const [conversations, setConversations] = useState(CONVERSATIONS);
-  const [activeId, setActiveId] = useState(CONVERSATIONS[0].id);
+  // A "Message" link elsewhere (Network.jsx, MemberProfile.jsx) passes
+  // ?personId=... for exactly this -- used to just land on whatever
+  // conversation happened to be first, not the person you actually
+  // meant to message. Falls back to the old default when there's no
+  // param (arriving from the nav rail/bottom bar, not a specific
+  // person) or the param doesn't match a real conversation.
+  const [searchParams] = useSearchParams();
+  const requestedConversation = findConversationByPersonId(searchParams.get("personId"));
+  const [activeId, setActiveId] = useState(requestedConversation?.id ?? CONVERSATIONS[0].id);
   const [tab, setTab] = useState("All");
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState("");
@@ -25,8 +33,12 @@ export default function Messages() {
   // panes, cap the list to a scrollable 240px" compromise CLAUDE.md
   // called out as the one deliberate non-toggle exception to the
   // responsive pass -- a real toggle was possible all along, there was
-  // just no state to swap on yet.
-  const [mobileView, setMobileView] = useState("list");
+  // just no state to swap on yet. Defaults straight to the thread view
+  // when arriving via a matched ?personId=, same reasoning as activeId
+  // above -- landing on the list first would still be the wrong
+  // "which conversation is this" experience the person-specific link
+  // was meant to fix.
+  const [mobileView, setMobileView] = useState(requestedConversation ? "thread" : "list");
 
   const filtered = conversations.filter((c) => {
     if (tab === "Requests" && !c.isRequest) return false;

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { findPerson as findMockPerson } from "../data/mockPeople.js";
 import { fetchRealPeople } from "../data/realPeople.js";
+import { findConversationByPersonId } from "../data/mockMessages.js";
 import { capabilitiesFor } from "../data/peopleUtils.js";
 import { useAppState } from "../data/store.jsx";
 import RequestCoffeeChatModal from "../components/modals/RequestCoffeeChatModal.jsx";
@@ -198,7 +199,19 @@ export default function Network() {
                   )}
                   <div className="person-card__actions">
                     {isMember ? (
-                      <Link to="/messages" className="btn btn-primary">Message</Link>
+                      findConversationByPersonId(p.id) ? (
+                        <Link to={`/messages?personId=${p.id}`} className="btn btn-primary">Message</Link>
+                      ) : (
+                        // No seeded conversation exists for this person yet
+                        // (real "Message" only ever reaches an existing
+                        // thread -- no compose-new-conversation flow exists,
+                        // same limitation Messages.jsx's own "New" button
+                        // documents). Honestly inert rather than a button
+                        // that looks live but lands on someone else's thread.
+                        <button className="btn btn-primary" disabled title="No conversation with this person yet -- messaging starts from a coffee chat">
+                          Message
+                        </button>
+                      )
                     ) : (
                       <button
                         className="btn btn-primary"
