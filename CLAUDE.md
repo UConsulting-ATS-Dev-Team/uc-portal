@@ -964,6 +964,39 @@ longer breaks down to phone width either.
   `fetch-deloitte-jobs` dropped Deloitte from the old flat 30 to exactly
   25. `npm run test:server`: 128/128 (4 new `capForCompanyTier` tests).
 
+- **Real-job list-fetch payload cut ~58%** — measured live: the Jobs
+  board's `select("*")` against all active jobs (5,862 at the time) was
+  shipping ~7.7MB of JSON on every visit, most of it in columns the list
+  view never reads. New `JOB_LIST_COLUMNS` (`data/realJobAdapter.js`)
+  scopes every board-wide job fetch (Jobs, Home, Applications, the
+  shared `useRealJobs.js` hook, `companyLiveJobs.js`) to exactly the
+  columns `realJobToCardShape()`/`matchJob()` read — safe because
+  `RealJobDetail.jsx` does its own full `select("*")` by id for the one
+  job a member actually opens. Verified live: 1324KB → 559KB on the same
+  1000-row batch, zero rendering change.
+
+- **Companies directory covers real companies, not just the 8 mock ones**
+  — `Companies.jsx`/`CompanyPage.jsx` were still scoped to
+  `data/mockCompanies.js`'s original 8 companies even after the real job
+  pipeline made real companies first-class; a member could find a
+  Palantir job in Global Search but never browse it as a company. New
+  `data/realCompanies.js` derives a company's profile (industry, offices,
+  open roles) entirely from its own real postings — never a hand-authored
+  characterization, matching the Opportunities tab's existing
+  "no invented specifics" rule. Also surfaced along the way: the existing
+  8 companies' stats/quotes/activity (`data/companyUtils.js`) are
+  entirely fabricated (mock numbers, quotes attributed to invented named
+  people) — pre-existing, not fixed here, but real companies deliberately
+  don't repeat that pattern: real applicant/interview/offer stats reuse
+  `job_track_record_report()` (the same real aggregate the odds model's
+  "UC track record" factor uses), real quotes come from genuine submitted
+  interview write-ups, and Activity shows an honest empty state rather
+  than invented posts. New `/companies/real/:companyName` route. Verified
+  live: Palantir's real page shows "See 15 open roles" (matching that
+  same day's company-tier cap exactly), real 0/0%/0 stats, an honest
+  "No interview write-ups shared yet" state, and real similar-companies;
+  Deloitte's existing mock page re-verified unchanged.
+
 Run locally:
 ```bash
 npm install
