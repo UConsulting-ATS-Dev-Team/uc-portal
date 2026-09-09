@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Modal from "../Modal.jsx";
-import { JOBS } from "../../data/mockJobs.js";
+import { JOBS as MOCK_JOBS } from "../../data/mockJobs.js";
+import { searchRealJobs } from "../../data/realJobAdapter.js";
 import { STAGES } from "../../data/trackerUtils.js";
 import { useAppState } from "../../data/store.jsx";
 
@@ -15,12 +16,48 @@ export default function AddApplicationModal({ onClose, onAdded }) {
   const [selectedJobId, setSelectedJobId] = useState(null);
   const [stage, setStage] = useState("Interested");
   const [externalNote, setExternalNote] = useState(false);
+  const [realMatches, setRealMatches] = useState([]);
+  const [realSearchLoading, setRealSearchLoading] = useState(false);
 
-  const matches = useMemo(() => {
+  const trackedJobIds = useMemo(() => Object.keys(trackedJobs), [trackedJobs]);
+
+  const mockMatches = useMemo(() => {
     if (!search.trim()) return [];
     const q = search.toLowerCase();
-    return JOBS.filter((j) => !trackedJobs[j.id] && (j.company.toLowerCase().includes(q) || j.role.toLowerCase().includes(q))).slice(0, 6);
+    return MOCK_JOBS.filter((j) => !trackedJobs[j.id] && (j.company.toLowerCase().includes(q) || j.role.toLowerCase().includes(q))).slice(0, 6);
   }, [search, trackedJobs]);
+
+  // Debounced (250ms) real-job search -- this fires a real Supabase query
+  // per distinct search term (searchRealJobs, a bounded .limit() query, not
+  // fetchAllRows), so it shouldn't fire on every keystroke. Real matches
+  // shown first below (mock jobs are legacy demo content at this point);
+  // the mock search above stays synchronous/instant, no debounce needed.
+  useEffect(() => {
+    if (!search.trim()) {
+      setRealMatches([]);
+      return;
+    }
+    let cancelled = false;
+    setRealSearchLoading(true);
+    const timer = setTimeout(() => {
+      searchRealJobs(search, trackedJobIds)
+        .then((results) => {
+          if (!cancelled) setRealMatches(results);
+        })
+        .catch(() => {
+          if (!cancelled) setRealMatches([]);
+        })
+        .finally(() => {
+          if (!cancelled) setRealSearchLoading(false);
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [search, trackedJobIds]);
+
+  const matches = [...realMatches, ...mockMatches];
 
   function handleAdd() {
     if (tab === TABS[0] && selectedJobId) {
@@ -64,7 +101,10 @@ export default function AddApplicationModal({ onClose, onAdded }) {
               setSelectedJobId(null);
             }}
           />
-          {search.trim() && matches.length === 0 && <p className="meta">No untracked roles match "{search}".</p>}
+          {search.trim() && realSearchLoading && matches.length === 0 && <p className="meta">Searching…</p>}
+          {search.trim() && !realSearchLoading && matches.length === 0 && (
+            <p className="meta">No untracked roles match "{search}".</p>
+          )}
           {matches.map((j) => (
             <div
               key={j.id}

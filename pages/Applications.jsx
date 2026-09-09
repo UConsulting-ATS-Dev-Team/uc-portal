@@ -1,9 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { JOBS } from "../data/mockJobs.js";
+import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { daysUntil } from "../data/jobUtils.js";
 import { STAGES, outcomeLabel, rejectionStageLabel } from "../data/trackerUtils.js";
 import { useAppState } from "../data/store.jsx";
+import { fetchAllRows } from "../data/fetchAllRows.js";
+import { matchJob } from "../data/jobMatch.js";
+import { realJobToCardShape } from "../data/realJobAdapter.js";
+import { currentUser } from "../data/mockUser.js";
+import { resolvedClassYear } from "../data/profileUtils.js";
 import TrackerBoard from "../components/TrackerBoard.jsx";
 import TrackerTable from "../components/TrackerTable.jsx";
 import TrackerTimeline from "../components/TrackerTimeline.jsx";
@@ -40,7 +45,7 @@ function downloadCsv(csv) {
 }
 
 export default function Applications() {
-  const { trackedJobs, updateApplicationStage, timelineShiftDays, shiftTimeline } = useAppState();
+  const { trackedJobs, updateApplicationStage, timelineShiftDays, shiftTimeline, preferences, profileOverrides } = useAppState();
   const [view, setView] = useState("Board");
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("All stages");
@@ -49,10 +54,28 @@ export default function Applications() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [outcomeModalJobId, setOutcomeModalJobId] = useState(null);
 
+  // Tracked jobs used to only ever resolve against data/mockJobs.js's 8
+  // demo jobs -- fine while the only way to track anything was that same
+  // mock-only list, but real jobs can now genuinely reach the tracker
+  // (RealJobDetail.jsx's new "Add to tracker" button, and this page's own
+  // "+ Add application" modal now searching real postings too). Same
+  // real-jobs fetch pages/Home.jsx and pages/Jobs.jsx already use.
+  const classYear = resolvedClassYear(currentUser, profileOverrides);
+  const [rawJobs, setRawJobs] = useState([]);
+  useEffect(() => {
+    fetchAllRows("jobs", "*", (q) => q.eq("active", true))
+      .then(setRawJobs)
+      .catch(() => {});
+  }, []);
+  const realJobs = useMemo(
+    () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear))),
+    [rawJobs, preferences, classYear]
+  );
+
   const applications = useMemo(() => {
     return Object.entries(trackedJobs)
       .map(([jobId, info]) => {
-        const job = JOBS.find((j) => j.id === jobId);
+        const job = realJobs.find((j) => j.id === jobId) || MOCK_JOBS.find((j) => j.id === jobId);
         if (!job) return null;
         return { jobId, job, ...info };
       })
@@ -63,7 +86,7 @@ export default function Applications() {
         const q = search.toLowerCase();
         return a.job.company.toLowerCase().includes(q) || a.job.role.toLowerCase().includes(q);
       });
-  }, [trackedJobs, search, stageFilter]);
+  }, [trackedJobs, realJobs, search, stageFilter]);
 
   const sortedForTable = useMemo(() => {
     const withKey = applications.map((a) => {
@@ -134,7 +157,7 @@ export default function Applications() {
           <div style={{ display: "flex", gap: "var(--space-3)", justifyContent: "center", marginTop: "var(--space-5)" }}>
             <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>+ Add your first application</button>
             <Link to="/jobs" className="btn btn-secondary">
-              Browse {JOBS.filter((j) => j.matchScore >= 70).length} matched roles
+              Browse {realJobs.filter((j) => j.matchScore >= 70).length} matched roles
             </Link>
           </div>
         </div>
@@ -174,7 +197,7 @@ export default function Applications() {
       {outcomeModalJobId && (
         <RecordOutcomeModal
           jobId={outcomeModalJobId}
-          job={JOBS.find((j) => j.id === outcomeModalJobId)}
+          job={realJobs.find((j) => j.id === outcomeModalJobId) || MOCK_JOBS.find((j) => j.id === outcomeModalJobId)}
           currentOutcome={trackedJobs[outcomeModalJobId]?.outcome}
           currentRejectionStage={trackedJobs[outcomeModalJobId]?.rejectionStage}
           stageHistory={trackedJobs[outcomeModalJobId]?.stageHistory}

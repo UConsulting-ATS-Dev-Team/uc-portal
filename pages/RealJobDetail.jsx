@@ -69,7 +69,8 @@ const CLASSIFICATION_METHOD_LABEL = {
 // (tracked_applications has no offer outcome to read).
 export default function RealJobDetail({ jobId }) {
   const [job, setJob] = useState(undefined); // undefined = loading, null = not found
-  const { preferences, savedConnections, coffeeChatStatus, prepLogged, profileOverrides, savedJobIds, toggleSavedJob } = useAppState();
+  const { preferences, savedConnections, coffeeChatStatus, prepLogged, profileOverrides, savedJobIds, toggleSavedJob, trackedJobs, addToTracker } =
+    useAppState();
   const classYear = resolvedClassYear(currentUser, profileOverrides);
   const [showLogPrepModal, setShowLogPrepModal] = useState(false);
 
@@ -206,6 +207,23 @@ export default function RealJobDetail({ jobId }) {
                 <a href={job.application_url} target="_blank" rel="noreferrer" className="btn btn-primary">
                   Apply on {job.company}'s site
                 </a>
+                {/* Was missing entirely -- the mock JobDetail.jsx had this
+                    (as two functionally-identical buttons, "Add to my
+                    tracker" and "Mark interested," both calling the exact
+                    same addToTracker(job.id, "Interested")); one real
+                    button here instead of copying that duplication.
+                    addToTracker itself needed no changes at all -- it
+                    only ever stores {stage, addedAt, stageHistory,
+                    outcome} keyed by jobId, with zero assumption about
+                    where that id came from. */}
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={!!trackedJobs[job.id]}
+                  onClick={() => addToTracker(job.id, "Interested")}
+                >
+                  {trackedJobs[job.id] ? "In tracker ✓" : "Add to my tracker"}
+                </button>
                 {/* Was missing entirely on this, the real page nearly
                     every job click actually lands on (JobDetail.jsx only
                     renders this for the 8 legacy mock jobs) -- only the

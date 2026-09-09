@@ -50,7 +50,14 @@ export default function TrackerTable({ applications, sortColumn, sortDirection, 
                 <td>{formatDate(addedAt)}</td>
                 <td>{job.rolling ? "Rolling" : deadlineLabel(job)}</td>
                 <td>{nextActionForStage(stage)}</td>
-                <td>{job.ucConnections}</td>
+                {/* Real jobs leave ucConnections undefined (data/
+                    realJobAdapter.js -- that CRM/tracker-boundary data
+                    doesn't exist yet), unlike mock jobs which always have
+                    a number. Now that a real job can genuinely reach this
+                    table (RealJobDetail.jsx's "Add to tracker"), this
+                    needed the same "unknown, not zero" fallback JobCard's
+                    own footer already uses elsewhere. */}
+                <td>{job.ucConnections ?? "—"}</td>
                 <td>
                   {stage !== "Closed" ? (
                     "—"

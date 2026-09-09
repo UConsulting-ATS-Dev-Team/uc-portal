@@ -1,3 +1,5 @@
+import { supabase } from "./supabaseClient.js";
+
 // Maps a real jobs-table row (+ an optional data/jobMatch.js match result)
 // into the exact shape components/JobCard.jsx and data/jobUtils.js already
 // expect from a mock job (data/mockJobs.js) -- role/location/workMode/
@@ -58,4 +60,29 @@ export function realJobToCardShape(job, matchResult) {
     postedDaysAgo,
     whyLowerMatch: null,
   };
+}
+
+// A bounded, on-demand search (top `limit` matches) for components/modals/
+// AddApplicationModal.jsx's "From a UC posting" search -- deliberately NOT
+// fetchAllRows() (that's for "get every row and page through it," the
+// right tool for pages/Jobs.jsx's board, but wildly wasteful for a search
+// box that only ever needs a handful of results). A plain .or(ilike) query
+// with its own .limit() instead. Skips already-tracked jobs the same way
+// the mock-job search below already did, so this can't offer to
+// re-add something already in the tracker.
+export async function searchRealJobs(query, trackedJobIds = [], limit = 6) {
+  const q = query.trim();
+  if (!q) return [];
+  let builder = supabase
+    .from("jobs")
+    .select("*")
+    .eq("active", true)
+    .or(`company.ilike.%${q}%,title.ilike.%${q}%`)
+    .limit(limit + trackedJobIds.length); // pad the query limit since already-tracked rows get filtered out below
+  const { data, error } = await builder;
+  if (error) throw new Error(`Searching jobs failed: ${error.message}`);
+  return (data ?? [])
+    .filter((job) => !trackedJobIds.includes(job.id))
+    .slice(0, limit)
+    .map((job) => realJobToCardShape(job));
 }
