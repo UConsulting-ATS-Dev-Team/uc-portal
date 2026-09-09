@@ -239,6 +239,24 @@
   font-size: var(--text-secondary);
 }
 
+/* Bottom tab bar (phone-UX pass) -- hidden by default. Declared here,
+   before the @media block below that shows it, not after: equal-
+   specificity cascade order means a rule placed after a media query
+   wins at every width including inside that query, which is exactly the
+   bug this pass already hit once with Jobs.jsx's filter toggle (a
+   .filters__mobile-toggle { display:none } placed after its own show-
+   at-640px rule made it invisible everywhere). Same fix, applied
+   preemptively here instead of caught live a second time. */
+.bottom-tab-bar {
+  display: none;
+}
+
+/* .bottom-tab-bar__backdrop and __more-panel need no hidden-by-default
+   rule the way .bottom-tab-bar itself does -- BottomTabBar.jsx only puts
+   them in the DOM at all while moreOpen is true, so their mere presence
+   is already the show/hide toggle; nothing here needs to fight cascade
+   order with a later media query the way the bar's own base state does. */
+
 /* ---- Responsive ---- */
 /* Breakpoints used consistently across every page's CSS in this pass:
    1280px+  desktop, the design's native width -- everything above is the
@@ -328,5 +346,116 @@
 
   .content {
     padding: var(--space-5);
+    /* Clears the fixed bottom-tab-bar below so it never covers the tail
+       end of a page's own content (e.g. a composer's Send button). */
+    padding-bottom: calc(var(--space-5) + var(--nav-bottom-bar-height));
+  }
+
+  /* The bottom tab bar takes over navigation entirely at this tier --
+     see components/BottomTabBar.jsx's header comment for the full
+     reasoning (the icon-only rail was permanently costing ~15% of a
+     375px screen for 8 unlabeled icons). */
+  .rail {
+    display: none;
+  }
+
+  .bottom-tab-bar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--nav-bottom-bar-height);
+    background: var(--color-surface);
+    border-top: var(--border-hairline);
+    z-index: 20;
+  }
+
+  .bottom-tab-bar__tab {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    background: none;
+    border: none;
+    padding: var(--space-2);
+    color: var(--color-text-muted);
+    font-size: 10px;
+    text-decoration: none;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .bottom-tab-bar__tab.is-active {
+    color: var(--color-accent-deep);
+  }
+
+  .bottom-tab-bar__badge {
+    position: absolute;
+    top: 2px;
+    right: calc(50% - 18px);
+    background: var(--color-accent);
+    color: var(--color-surface);
+    font-size: 9px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 50%;
+  }
+
+  .bottom-tab-bar__backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 39, 66, 0.3);
+    border: none;
+    padding: 0;
+    z-index: 20;
+  }
+
+  .bottom-tab-bar__more-panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--nav-bottom-bar-height);
+    background: var(--color-surface);
+    border-top: var(--border-hairline);
+    z-index: 21;
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: var(--space-4) 0;
+  }
+
+  .bottom-tab-bar__more-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .bottom-tab-bar__more-list a {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    min-height: 44px;
+    padding: var(--space-3) var(--space-6);
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .bottom-tab-bar__more-list a.is-active {
+    color: var(--color-accent-deep);
+    font-weight: 700;
+    background: var(--color-accent-tint);
+  }
+
+  .bottom-tab-bar__more-kicker {
+    margin-top: var(--space-4);
+    padding: var(--space-3) var(--space-6) var(--space-2);
+    font-size: var(--text-kicker);
+    letter-spacing: var(--tracking-kicker);
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    border-top: var(--border-hairline);
   }
 }
