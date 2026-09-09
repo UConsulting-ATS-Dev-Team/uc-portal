@@ -126,6 +126,16 @@ select {
   font-size: inherit;
 }
 
+/* .btn:disabled (above) only covers the boxed .btn/.btn-primary/
+   .btn-secondary variants -- a disabled .btn-link (this pass's honest-
+   inert pattern for "not built yet" actions, e.g. "Add to calendar")
+   kept its full accent-blue underline otherwise, reading as a live
+   clickable link even though clicks do nothing. */
+.btn-link:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .field {
   display: block;
   margin-bottom: var(--space-5);

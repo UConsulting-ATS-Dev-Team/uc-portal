@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAppState } from "../data/store.jsx";
 import { buildNotifications } from "../data/notificationUtils.js";
 import { JOBS } from "../data/mockJobs.js";
@@ -10,6 +11,21 @@ import "../styles/notifications.css";
 
 const TABS = ["Needs action", "Deadlines", "Network", "Jobs", "UC announcements", "All"];
 const TAB_TO_CATEGORY = { "UC announcements": "Announcements" };
+
+// data/notificationUtils.js's needsAction ids follow "deadline-<jobId>",
+// "prep-<jobId>", or "chat-<personId>" -- real ids, not decorative, so
+// the action buttons ("Apply", "Prep now", "Follow up", etc.) can route
+// somewhere real instead of being dead buttons with no onClick at all.
+// Every action on a given notification goes to the same relevant page
+// (the tracked job, or the contact) -- an honest "go handle this" link,
+// not a simulation of what each specific label (e.g. "Snooze") would do
+// on a real backend, which doesn't exist here.
+function actionHref(notificationId) {
+  if (notificationId.startsWith("deadline-")) return `/jobs/${notificationId.slice("deadline-".length)}`;
+  if (notificationId.startsWith("prep-")) return `/jobs/${notificationId.slice("prep-".length)}`;
+  if (notificationId.startsWith("chat-")) return `/network/${notificationId.slice("chat-".length)}`;
+  return null;
+}
 
 const SETTINGS_COPY = [
   { key: "deadlineReminders", label: "Deadline reminders 3 days out" },
@@ -66,11 +82,24 @@ export default function Notifications() {
                     <div className="notif-needs-action__headline">{n.headline}</div>
                     <div className="notif-needs-action__detail">{n.detail}</div>
                     <div className="notif-needs-action__actions">
-                      {n.actions.map((a) => (
-                        <button className="btn btn-secondary" key={a}>
-                          {a}
-                        </button>
-                      ))}
+                      {n.actions.map((a) => {
+                        const href = actionHref(n.id);
+                        return href ? (
+                          <Link to={href} className="btn btn-secondary" key={a}>
+                            {a}
+                          </Link>
+                        ) : (
+                          // Defensive fallback -- every real needsAction id
+                          // (data/notificationUtils.js) currently matches
+                          // one of actionHref's three prefixes, so this
+                          // shouldn't be reachable today, but stays honest
+                          // rather than a silent dead click if that ever
+                          // changes.
+                          <button className="btn btn-secondary" key={a} disabled title="Not wired up yet">
+                            {a}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

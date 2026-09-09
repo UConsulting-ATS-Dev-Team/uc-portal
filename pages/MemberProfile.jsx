@@ -83,7 +83,14 @@ export default function MemberProfile() {
             >
               {chatStatus ? chatStatus : "Request coffee chat"}
             </button>
-            <button className="btn btn-secondary">Ask for advice</button>
+            {/* No separate "advice request" flow/data type exists --
+                opens the same real coffee-chat modal, which already
+                defaults its topic to "Career advice" (the first of
+                RequestCoffeeChatModal's real TOPICS options), rather
+                than being a dead click next to a working one. */}
+            <button className="btn btn-secondary" disabled={!!chatStatus} onClick={() => setShowChatModal(true)}>
+              Ask for advice
+            </button>
             <Link to="/messages" className="btn btn-secondary">Message</Link>
             <button className="btn btn-secondary" onClick={() => toggleSavedConnection(person.id)}>
               {isSaved ? "Saved to network ✓" : "Save to my network"}

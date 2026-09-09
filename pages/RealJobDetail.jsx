@@ -345,9 +345,13 @@ export default function RealJobDetail({ jobId }) {
               </div>
             ))}
             {people?.length > 3 && (
-              <button className="btn-link" style={{ marginTop: "var(--space-3)" }}>
+              <Link
+                to={`/network?company=${encodeURIComponent(job.company)}`}
+                className="btn-link"
+                style={{ display: "inline-block", marginTop: "var(--space-3)" }}
+              >
                 See all {people.length} UC members
-              </button>
+              </Link>
             )}
             {companyPage && (
               <Link to={`/companies/${companyPage.id}`} className="btn-link" style={{ display: "block", marginTop: "var(--space-3)" }}>

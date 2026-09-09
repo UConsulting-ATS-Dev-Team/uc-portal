@@ -66,8 +66,18 @@ export default function ResourceDetail() {
               </span>
             </div>
             <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap" }}>
-              <button className="btn btn-primary">Open guide</button>
-              <button className="btn btn-secondary">Download PDF</button>
+              {/* No real document exists behind any resource in this
+                  prototype (same limitation as Career Resources'
+                  certification "Start" buttons) -- these sat right next
+                  to two real working buttons (Save/Mark completed) with
+                  no visual distinction, so clicking either looked
+                  broken rather than "not built yet." */}
+              <button className="btn btn-primary" disabled title="Not wired up yet -- no real guide content behind this in a prototype">
+                Open guide
+              </button>
+              <button className="btn btn-secondary" disabled title="Not wired up yet -- no real file behind this in a prototype">
+                Download PDF
+              </button>
               <button className="btn btn-secondary" onClick={() => toggleSavedResource(resource.id)}>
                 {isSaved ? "Saved ★" : "Save ★"}
               </button>

@@ -154,6 +154,11 @@
   font-weight: 700;
 }
 
+.post-card__engagement button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .post-card__proof {
   color: var(--color-text-muted);
   font-size: var(--text-meta);

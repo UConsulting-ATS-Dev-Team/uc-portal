@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { LEARNING_TRACKS, findTrack } from "../data/mockResources.js";
 import { JOBS } from "../data/mockJobs.js";
 import { useAppState } from "../data/store.jsx";
 import { hashString } from "../data/hash.js";
+import LogPrepModal from "../components/modals/LogPrepModal.jsx";
 import Placeholder from "./Placeholder.jsx";
 import "../styles/jobDetail.css";
 import "../styles/resources.css";
@@ -11,6 +13,9 @@ export default function LearningTrackDetail() {
   const { trackId } = useParams();
   const track = findTrack(trackId);
   const { trackProgress, advanceTrackStep, trackedJobs } = useAppState();
+  // Declared before the early return below (Rules of Hooks) even though
+  // it's only meaningful when a track actually exists.
+  const [showLogPrepModal, setShowLogPrepModal] = useState(false);
 
   if (!track) {
     return <Placeholder title="Learning track not found" />;
@@ -55,7 +60,12 @@ export default function LearningTrackDetail() {
               Continue — step {completed + 1}
             </button>
           )}
-          <button className="btn btn-secondary">Log prep time</button>
+          {/* Same real components/modals/LogPrepModal.jsx as Job detail --
+              no job prop, so it falls back to its own tracked-application
+              picker (that path already exists for exactly this case). */}
+          <button className="btn btn-secondary" onClick={() => setShowLogPrepModal(true)}>
+            Log prep time
+          </button>
         </div>
       </div>
 
@@ -116,9 +126,9 @@ export default function LearningTrackDetail() {
             <p style={{ margin: 0 }}>
               {membersActive} active · {membersFinished} finished
             </p>
-            <button className="btn-link" style={{ marginTop: "var(--space-3)" }}>
+            <Link to="/resources" className="btn-link" style={{ display: "inline-block", marginTop: "var(--space-3)" }}>
               Find a case partner
-            </button>
+            </Link>
           </div>
 
           <div className="rail-card">
@@ -131,6 +141,8 @@ export default function LearningTrackDetail() {
           </div>
         </div>
       </div>
+
+      {showLogPrepModal && <LogPrepModal onClose={() => setShowLogPrepModal(false)} />}
     </div>
   );
 }

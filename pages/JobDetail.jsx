@@ -117,7 +117,14 @@ export default function JobDetail() {
                 {[job.company, job.location, job.workMode, job.compDisplay].filter(Boolean).join(" · ")}
               </p>
               <div className="detail-header__actions">
-                <button className="btn btn-primary">Apply on {job.company} site</button>
+                {/* Documented limitation (CLAUDE.md): mock jobs have no
+                    real employer URL to send a member to. In practice a
+                    member browsing today's real Jobs board never lands
+                    here -- real jobs route to RealJobDetail.jsx, which
+                    has a genuinely working version of this same button. */}
+                <button className="btn btn-primary" disabled title="Not wired up -- this demo job has no real employer application page">
+                  Apply on {job.company} site
+                </button>
                 <button className="btn btn-secondary" onClick={() => addToTracker(job.id, "Interested")}>
                   {isTracked ? "In tracker ✓" : "Add to my tracker"}
                 </button>
@@ -205,7 +212,12 @@ export default function JobDetail() {
               </div>
             ))}
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: "var(--space-4)" }}>
-              <button className="btn btn-secondary">Add your experience</button>
+              {/* RealJobDetail.jsx has the genuine, working version of this
+                  (real interview_writeups table) -- this demo job has no
+                  real job_id to tie a write-up to. */}
+              <button className="btn btn-secondary" disabled title="Not wired up -- this demo job can't take a real write-up submission">
+                Add your experience
+              </button>
               <span className="meta">3 more write-ups</span>
             </div>
           </div>
@@ -227,9 +239,13 @@ export default function JobDetail() {
               </div>
             ))}
             {people.length > 3 && (
-              <button className="btn-link" style={{ marginTop: "var(--space-3)" }}>
+              <Link
+                to={`/network?company=${encodeURIComponent(job.company)}`}
+                className="btn-link"
+                style={{ display: "inline-block", marginTop: "var(--space-3)" }}
+              >
                 See all {people.length} UC members
-              </button>
+              </Link>
             )}
           </div>
 

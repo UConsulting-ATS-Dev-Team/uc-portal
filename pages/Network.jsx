@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { findPerson as findMockPerson } from "../data/mockPeople.js";
 import { fetchRealPeople } from "../data/realPeople.js";
 import { capabilitiesFor } from "../data/peopleUtils.js";
@@ -21,9 +21,16 @@ function uniqueValues(people, key) {
 
 export default function Network() {
   const { preferences, savedConnections, coffeeChatStatus, toggleSavedConnection } = useAppState();
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [industry, setIndustry] = useState("All");
-  const [company, setCompany] = useState("All");
+  // Reads a ?company= param so "See all N UC members" links (Job detail,
+  // Company page) land here pre-filtered instead of on a dead button --
+  // those had no onClick at all before this. Only seeded from the URL on
+  // mount, same as every other filter here (this page doesn't reflect
+  // filters back into the URL as they change, so this stays a one-way
+  // "arrived here about X" entry point, not full deep-linking).
+  const [company, setCompany] = useState(() => searchParams.get("company") || "All");
   const [location, setLocation] = useState("All");
   const [gradYear, setGradYear] = useState("All");
   const [audience, setAudience] = useState("All");

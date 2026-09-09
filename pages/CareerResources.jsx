@@ -169,7 +169,12 @@ export default function CareerResources() {
                       <td>{c.hours} hrs</td>
                       <td>{c.countsFor.join(", ")}</td>
                       <td>
-                        <button className="btn btn-secondary">Start</button>
+                        {/* Deliberately inert -- no real document/external
+                            content behind any certification in this
+                            prototype. title, not a silent dead click. */}
+                        <button className="btn btn-secondary" disabled title="Not wired up yet -- no real certification content behind this in a prototype">
+                          Start
+                        </button>
                       </td>
                     </tr>
                   ))}

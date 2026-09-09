@@ -77,8 +77,15 @@ export default function TrackerBoard({ applications, onMoveStage, onRequestOutco
                         ? "Rolling deadline"
                         : deadlineLabel(job)}
                     </div>
+                    {/* No real "log a follow-up" flow/data exists --
+                        routes to the listing itself (the real
+                        UC-connections/write-ups a member would actually
+                        use to follow up live there), rather than a dead
+                        click on every Applied-stage card. */}
                     {stage === "Applied" && (
-                      <button className="btn btn-secondary board-card__followup">Follow up</button>
+                      <Link to={`/jobs/${jobId}`} className="btn btn-secondary board-card__followup" onClick={(e) => e.stopPropagation()}>
+                        Follow up
+                      </Link>
                     )}
                     {stage === "Closed" && !outcome && (
                       <button

@@ -49,7 +49,13 @@ export default function Messages() {
       <div className="conversation-list">
         <div className="conversation-list__header">
           <strong>Messages</strong>
-          <button className="btn btn-secondary">New</button>
+          {/* No compose-new-conversation flow exists -- every real
+              conversation here originates from a coffee-chat request or
+              a "Message" button elsewhere (Network/Member profile),
+              never started fresh from this page. */}
+          <button className="btn btn-secondary" disabled title="Not built yet -- start a conversation from Network or a member's profile instead">
+            New
+          </button>
         </div>
         <div className="conversation-list__search">
           <input type="text" placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -103,7 +109,12 @@ export default function Messages() {
             </div>
             <div className="thread-pane__header-actions">
               <Link to={`/network/${activePerson.id}`} className="btn btn-secondary">View profile</Link>
-              <button className="btn btn-secondary">Add to tracker</button>
+              {/* No specific job is attached to a generic message thread
+                  to add -- real "Add to tracker" entry points (Job
+                  detail, the Applications modal) always have one. */}
+              <button className="btn btn-secondary" disabled title="Not wired up here -- add a job to your tracker from its own listing instead">
+                Add to tracker
+              </button>
             </div>
           </div>
 
@@ -117,7 +128,17 @@ export default function Messages() {
                     <div className="shared-resource-card">
                       <span className="notif-icon">{m.sharedResource.logo}</span>
                       <span>{m.sharedResource.title}</span>
-                      <button className="btn btn-secondary" style={{ marginLeft: "auto" }}>Open</button>
+                      {/* m.sharedResource (data/mockMessages.js) is a
+                          standalone illustrative title/logo, not tied to
+                          a real RESOURCES id -- nothing real to open. */}
+                      <button
+                        className="btn btn-secondary"
+                        style={{ marginLeft: "auto" }}
+                        disabled
+                        title="Not wired up -- this shared file isn't tied to a real resource in this prototype"
+                      >
+                        Open
+                      </button>
                     </div>
                   )}
                   <div className="message-bubble__meta">
@@ -129,10 +150,19 @@ export default function Messages() {
           </div>
 
           <div className="composer-row">
+            {/* No file attachment, real-resource-sharing, or scheduling
+                flow exists behind any of these three -- honestly inert
+                rather than dead clicks next to a working Send below. */}
             <div className="composer-row__tools">
-              <button className="btn btn-secondary">Attach</button>
-              <button className="btn btn-secondary">Share a resource</button>
-              <button className="btn btn-secondary">Propose a time</button>
+              <button className="btn btn-secondary" disabled title="Not built yet -- no file attachments in this prototype">
+                Attach
+              </button>
+              <button className="btn btn-secondary" disabled title="Not built yet -- no resource-sharing flow in this prototype">
+                Share a resource
+              </button>
+              <button className="btn btn-secondary" disabled title="Not built yet -- no scheduling flow in this prototype">
+                Propose a time
+              </button>
             </div>
             <textarea
               rows={1}

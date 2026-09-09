@@ -9,7 +9,12 @@ export default function ErrorState({ what = "jobs", onRetry }) {
       <p>Give it another try, or let Exec know if it keeps happening.</p>
       <div style={{ display: "flex", gap: "var(--space-3)", justifyContent: "center", marginTop: "var(--space-5)" }}>
         <button className="btn btn-primary" onClick={onRetry}>Try again</button>
-        <button className="btn btn-secondary">Report to Exec</button>
+        {/* "Exec" isn't a specific contactable person in the real people
+            data, and there's no generic report-an-issue flow -- honestly
+            inert rather than a dead click next to a working button. */}
+        <button className="btn btn-secondary" disabled title="Not wired up yet -- no report-an-issue flow exists in this prototype">
+          Report to Exec
+        </button>
       </div>
     </div>
   );

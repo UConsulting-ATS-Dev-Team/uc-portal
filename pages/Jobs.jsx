@@ -635,7 +635,10 @@ export default function Jobs() {
         <div className="jobs-banner">
           <strong>UC-POSTED OPPORTUNITY</strong>
           <span>— Alumni-referred roles are posted by UC members and never appear on Handshake.</span>
-          <button className="btn-link">Learn more</button>
+          {/* Had a "Learn more" button with nothing behind it -- no
+              explainer page/modal exists, so it was a dead click sitting
+              right next to real controls. Removed rather than faked;
+              the two lines of text already say what this means. */}
         </div>
 
         {jobsLoading && <p className="meta">Loading opportunities…</p>}
@@ -657,11 +660,13 @@ export default function Jobs() {
                   <button className="btn btn-secondary" onClick={() => setFilters(NEUTRAL_FILTERS)}>
                     Clear all filters
                   </button>
-                  <button className="btn btn-secondary">Save as an alert</button>
+                  {/* No email/alert infrastructure exists in this
+                      prototype -- the line below used to promise
+                      something clicking this button can't actually do. */}
+                  <button className="btn btn-secondary" disabled title="Not built yet -- no email alerts exist in this prototype">
+                    Save as an alert
+                  </button>
                 </div>
-                <p className="meta" style={{ marginTop: "var(--space-4)", marginBottom: 0 }}>
-                  We'll email you when a matching role is posted.
-                </p>
               </>
             ) : (
               <button className="btn btn-secondary" onClick={() => setFilters(NEUTRAL_FILTERS)}>

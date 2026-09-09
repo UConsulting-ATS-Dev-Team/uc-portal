@@ -143,7 +143,14 @@ export default function MyProfile() {
           </p>
         </div>
         <div className="profile-page-header__actions">
-          <button className="btn btn-secondary">View as others see it</button>
+          {/* No self-view preview mode exists -- pages/MemberProfile.jsx
+              only ever renders *other* members (route is /network/:id,
+              no route for viewing your own record through that lens).
+              Real feature work, not a quick wire-up, so honestly inert
+              for now rather than faked. */}
+          <button className="btn btn-secondary" disabled title="Not built yet -- there's no self-view preview mode in this prototype">
+            View as others see it
+          </button>
           <button className="btn btn-primary" onClick={handleSaveChanges}>
             {saved ? "Saved ✓" : "Save changes"}
           </button>

@@ -82,7 +82,12 @@ export default function TrackerTable({ applications, sortColumn, sortDirection, 
           <button className="btn-link" onClick={onExportCsv}>
             Export CSV
           </button>
-          <button className="btn-link">Sync deadlines to calendar</button>
+          {/* Documented limitation: no calendar integration planned for
+              this prototype. Sat next to a real working "Export CSV"
+              with no visual distinction before this. */}
+          <button className="btn-link" disabled title="Not built yet -- no calendar integration exists in this prototype">
+            Sync deadlines to calendar
+          </button>
         </div>
       </div>
     </div>

@@ -308,7 +308,14 @@ export default function AdminDashboard() {
             <option>Fall 2026</option>
             <option>Spring 2026</option>
           </select>
-          <button className="btn btn-secondary">Export report</button>
+          {/* No export exists -- and this page mixes real data (queue,
+              feature requests, engagement) with illustrative mock KPIs
+              (data/mockAdmin.js), so a real export would need to be
+              honest about which numbers are real vs illustrative, not
+              a quick CSV dump. Real feature work, left honestly inert. */}
+          <button className="btn btn-secondary" disabled title="Not built yet -- no export exists in this prototype">
+            Export report
+          </button>
           <button className="btn btn-primary" onClick={() => setShowPostModal(true)}>+ Post opportunity</button>
         </div>
       </div>
@@ -801,9 +808,21 @@ export default function AdminDashboard() {
               <span>Moderate feed</span>
               <span className="chip chip-accent">{FLAGGED_FEED_POSTS} flagged</span>
             </Link>
-            <a href="#" className="content-mgmt-link" onClick={(e) => e.preventDefault()}>
+            {/* No announcement-posting flow exists anywhere in the app --
+                was an href="#" link indistinguishable from its working
+                siblings above/below, so clicking it looked broken rather
+                than "not built yet." A real button, disabled, with a
+                title explaining why -- same "visually present, honestly
+                inert" pattern SignIn.jsx's Google sign-in button uses. */}
+            <button
+              type="button"
+              className="content-mgmt-link"
+              disabled
+              title="Not built yet -- no announcement flow exists in this prototype"
+              style={{ opacity: 0.5, background: "none", border: "none", borderBottom: "var(--border-hairline)", width: "100%", textAlign: "left", cursor: "default" }}
+            >
               <span>Post announcement</span>
-            </a>
+            </button>
             <Link to="/admin/members" className="content-mgmt-link">
               <span>Manage member access</span>
             </Link>

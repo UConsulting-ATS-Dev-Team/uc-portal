@@ -34,6 +34,7 @@ export default function Feed() {
   const [posts, setPosts] = useState(FEED_POSTS);
   const [helpfulPosts, setHelpfulPosts] = useState([]);
   const [savedPosts, setSavedPosts] = useState([]);
+  const [rsvpedPosts, setRsvpedPosts] = useState([]);
 
   function handlePost() {
     if (!composerText.trim()) return;
@@ -56,6 +57,15 @@ export default function Feed() {
 
   function toggleHelpful(postId) {
     setHelpfulPosts((prev) => (prev.includes(postId) ? prev.filter((id) => id !== postId) : [...prev, postId]));
+  }
+
+  // Was a dead click ("RSVP" had no onClick at all) -- same base-count +
+  // local-toggle pattern as toggleHelpful/helpfulCount above, not new
+  // machinery. "Add to calendar" stays inert (no calendar integration
+  // anywhere in this prototype -- same reasoning as Applications
+  // tracker's "Sync deadlines to calendar").
+  function toggleRsvp(postId) {
+    setRsvpedPosts((prev) => (prev.includes(postId) ? prev.filter((id) => id !== postId) : [...prev, postId]));
   }
 
   function toggleSavedPost(postId) {
@@ -130,6 +140,8 @@ export default function Feed() {
           const isHelpful = helpfulPosts.includes(post.id);
           const helpfulCount = post.helpfulCount + (isHelpful ? 1 : 0);
           const isSaved = savedPosts.includes(post.id);
+          const isRsvped = rsvpedPosts.includes(post.id);
+          const rsvpCount = (post.rsvpCount || 0) + (isRsvped ? 1 : 0);
 
           return (
             <div className="post-card" key={post.id}>
@@ -153,9 +165,17 @@ export default function Feed() {
               {post.isEvent ? (
                 <div className="post-card__engagement">
                   <span>{post.eventLabel}</span>
-                  <button className="btn btn-secondary">RSVP</button>
-                  <button className="btn-link">Add to calendar</button>
-                  <span className="post-card__proof">{post.rsvpCount || 0} attending</span>
+                  <button className={`btn btn-secondary${isRsvped ? " is-saved" : ""}`} onClick={() => toggleRsvp(post.id)}>
+                    {isRsvped ? "✓ Going" : "RSVP"}
+                  </button>
+                  <button
+                    className="btn-link"
+                    disabled
+                    title="Not built yet -- no calendar integration exists in this prototype"
+                  >
+                    Add to calendar
+                  </button>
+                  <span className="post-card__proof">{rsvpCount} attending</span>
                 </div>
               ) : (
                 <div className="post-card__engagement">
@@ -166,7 +186,9 @@ export default function Feed() {
                   <button className={isSaved ? "is-active" : ""} onClick={() => toggleSavedPost(post.id)}>
                     {isSaved ? "Saved" : "Save"}
                   </button>
-                  <button>Share</button>
+                  <button disabled title="Not built yet -- no share/copy-link flow exists in this prototype">
+                    Share
+                  </button>
                   {post.socialProof && <span className="post-card__proof">{post.socialProof}</span>}
                 </div>
               )}

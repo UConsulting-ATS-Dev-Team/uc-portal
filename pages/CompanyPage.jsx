@@ -117,7 +117,13 @@ export default function CompanyPage() {
             <button className="btn btn-secondary" onClick={() => setTab("Opportunities")}>
               {liveJobs === undefined ? "See open roles" : hasLiveFeed ? `See ${liveJobs.length} open roles` : "See careers page"}
             </button>
-            <button className="btn btn-secondary">Request an intro</button>
+            {/* No standalone "intro request" flow exists -- reuses the
+                same real ?company= filter "See all N UC members" links
+                to below, landing on the people who can actually field a
+                coffee-chat request, rather than a dead click. */}
+            <button className="btn btn-secondary" onClick={() => navigate(`/network?company=${encodeURIComponent(company.name)}`)}>
+              Request an intro
+            </button>
           </div>
         </div>
       </div>
@@ -333,9 +339,13 @@ export default function CompanyPage() {
               </div>
             ))}
             {people.length > 3 && (
-              <button className="btn-link" style={{ marginTop: "var(--space-3)" }}>
+              <Link
+                to={`/network?company=${encodeURIComponent(company.name)}`}
+                className="btn-link"
+                style={{ display: "inline-block", marginTop: "var(--space-3)" }}
+              >
                 See all {people.length} UC members
-              </button>
+              </Link>
             )}
           </div>
 
