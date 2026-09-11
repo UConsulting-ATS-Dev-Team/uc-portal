@@ -1018,6 +1018,27 @@ longer breaks down to phone width either.
   any firm on the tracker") now reads as directly contradicting the real
   0% shown beside it, worth a follow-up content decision.
 
+- **Fixed stale company copy contradicting real data; "no data" instead of
+  a bare 0** — direct follow-up to the fabrication fix above: several
+  companies' hand-authored `characterization` (Deloitte's "Highest UC
+  offer rate of any firm on the tracker," Bain's "Broadest UC alumni
+  presence of any firm") now directly contradicted the real 0%/0 sitting
+  next to it. Removed `characterization` from `data/mockCompanies.js`
+  entirely rather than patch it — new `liveCharacterization()`
+  (`data/realCompanies.js`) generates that sentence from the same real
+  numbers the stat strip shows, for every company, so it can't drift out
+  of sync again. `description` rewritten to keep only real, publicly-
+  verifiable facts about each company (Deloitte's Human Capital practice,
+  Goldman's IBD, etc. are real named programs), stripped of language
+  implying a specific tracked UC history this app has no data for.
+  Separately: a bare "0" read as a confident negative fact rather than
+  "nothing tracked yet" — every real stat on `CompanyPage.jsx` (and the
+  Companies grid) now shows an explicit "No applicants tracked yet"/"No
+  UC alumni yet"/etc. instead, same convention the "No live feed" cell
+  already used. Offer rate and reached-interview-stage are gated on
+  applicants > 0, not their own value, so a real "0%" out of a real
+  nonzero pool still shows plainly.
+
 Run locally:
 ```bash
 npm install
