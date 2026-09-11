@@ -1072,6 +1072,17 @@ longer breaks down to phone width either.
   `indexCompanyTiers()`, mirrored a third time across the Deno/Node/
   browser split every other shared pipeline function here already has.
 
+- **Tier-3 cap raised 3 → 10; every remaining company classified** —
+  once the admin tier view existed, Third Bridge (214 active postings)
+  turned up unclassified too, on top of SpaceX/HelloFresh. Direct
+  instruction: raise the tier-3/unclassified-default cap from 3 to 10
+  (updated across all three `TIER_CAPS` mirrors) so a legitimate company
+  isn't squeezed to 3 while waiting to be reviewed, then classify
+  everything still on that default. New migration classified all 75
+  remaining companies (1 tier-0, 13 tier-1, 41 tier-2, 20 tier-3, each
+  judgment call documented) — all 163 real companies with active
+  postings are now classified, none left on the default.
+
 Run locally:
 ```bash
 npm install
