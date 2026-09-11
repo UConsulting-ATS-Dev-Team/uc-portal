@@ -1083,6 +1083,29 @@ longer breaks down to phone width either.
   judgment call documented) — all 163 real companies with active
   postings are now classified, none left on the default.
 
+- **Tier-3 cap reverted back to 3** — the raise to 10 above was a
+  misread; corrected the same day back to the original value across all
+  three `TIER_CAPS` mirrors. The same-day classification of all 163 real
+  companies is unaffected (tier assignments are independent of what a
+  tier's cap number happens to be).
+
+- **Real job descriptions: researched storage, added a clear link-out,
+  surfaced already-computed skills** — confirmed 0 of 6,058 active real
+  jobs have any description text, and confirmed this is deliberate, not
+  a bug (documented since the first adapter: API access doesn't carry a
+  copyright license over what the employer wrote). Researched whether
+  Greenhouse's/Lever's public API terms grant that license anyway —
+  neither does; Lever's docs only acknowledge postings "may be scraped,"
+  not a reuse grant. Checked the structured-facts alternative: both
+  APIs are binary (full content or nothing), but `required_skills`/
+  `preferred_skills` — an O*NET-derived generic skill list per
+  occupation, never touching the employer's own text, populated for
+  1,943 of 6,058 real jobs — were computed at ingestion and never shown.
+  Now rendered on `RealJobDetail.jsx` as honestly-labeled chips. Also
+  added a clear "Read the full description on {company}'s site ↗" link
+  (the job's real `application_url`), replacing the old bare "No further
+  description was provided."
+
 Run locally:
 ```bash
 npm install
