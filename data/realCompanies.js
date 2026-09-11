@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient.js";
+import { fetchAllRows } from "./fetchAllRows.js";
 
 // Real-company directory support -- closes the gap flagged 2026-09-09:
 // pages/Companies.jsx and pages/CompanyPage.jsx only ever covered
@@ -58,8 +59,17 @@ export function deriveCompanyProfile(name, jobs) {
 // stays its own narrower select rather than over-fetching for a summary.
 export async function fetchRealCompanySummaries(excludeNames = []) {
   const exclude = new Set(excludeNames);
-  const { data, error } = await supabase.from("jobs").select("company, city, relevant_industries").eq("active", true);
-  if (error) throw new Error(`Fetching real company summaries failed: ${error.message}`);
+  // fetchAllRows(), not a bare .select() -- this was a real bug (caught
+  // 2026-09-11 live, while verifying Global Search's new company results):
+  // a plain select silently truncates at PostgREST's default 1000-row
+  // page, the exact landmine data/fetchAllRows.js's own header comment
+  // documents and this app has hit before. With 5,862+ active jobs today,
+  // this was returning an arbitrary ~1000-row slice and silently dropping
+  // real companies from the grid, the "Similar companies" rail, and (once
+  // it existed) Global Search's Companies tab -- Palantir specifically
+  // confirmed missing live before this fix, despite having real active
+  // postings.
+  const data = await fetchAllRows("jobs", "company, city, relevant_industries", (q) => q.eq("active", true));
   const byCompany = new Map();
   for (const row of data ?? []) {
     if (exclude.has(row.company)) continue;
@@ -67,6 +77,25 @@ export async function fetchRealCompanySummaries(excludeNames = []) {
     byCompany.get(row.company).push(row);
   }
   return [...byCompany.entries()].map(([name, jobs]) => deriveCompanyProfile(name, jobs));
+}
+
+// pages/GlobalSearch.jsx's Companies tab -- closes the gap flagged
+// 2026-09-11: real companies got a full, honest Company Page
+// (/companies/real/:companyName) but were never wired into search, so a
+// member could find a real Palantir job in Global Search yet get
+// "Companies (0)" for the same query. Reuses fetchRealCompanySummaries
+// rather than a second query -- the company roster is small enough
+// (~90 rows) that fetching it once per submitted search and filtering
+// client-side is the same cost tier data/searchUtils.js's mock company
+// search already accepts, and GlobalSearch only re-runs this on an
+// actual search submission (the `q` route param), not per keystroke.
+export async function searchRealCompanies(query, excludeNames = []) {
+  const q = query?.trim().toLowerCase();
+  if (!q) return [];
+  const summaries = await fetchRealCompanySummaries(excludeNames);
+  return summaries
+    .filter((c) => c.name.toLowerCase().includes(q) || c.industry.toLowerCase().includes(q))
+    .map((c) => ({ id: `real/${encodeURIComponent(c.name)}`, name: c.name, industry: c.industry }));
 }
 
 // Real company-wide recruiting stats -- the honest replacement for

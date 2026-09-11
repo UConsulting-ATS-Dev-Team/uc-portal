@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { searchAll } from "../data/searchUtils.js";
 import { searchJobs } from "../data/jobSearch.js";
 import { searchRealPeople } from "../data/realPeople.js";
+import { searchRealCompanies } from "../data/realCompanies.js";
 import { COMPANIES } from "../data/mockCompanies.js";
 import { useAppState } from "../data/store.jsx";
 import "../styles/jobs.css";
@@ -25,8 +26,8 @@ export default function GlobalSearch() {
 
   // Jobs come from the real jobs table (Stage 2, data/jobSearch.js) and
   // people from the real UConsulting Directory import (Stage 5, data/
-  // realPeople.js) -- companies/resources/feed still read the mock-data
-  // layer via searchAll(). Real jobs link to /jobs/:id same as mock jobs --
+  // realPeople.js) -- resources/feed still read the mock-data layer via
+  // searchAll(). Real jobs link to /jobs/:id same as mock jobs --
   // JobDetail.jsx dispatches to pages/RealJobDetail.jsx for a UUID id vs.
   // the existing mock-job render for a slug id (see that file's header
   // comment); MemberProfile.jsx does the same UUID-vs-slug dispatch for
@@ -36,6 +37,14 @@ export default function GlobalSearch() {
   const [jobsLoading, setJobsLoading] = useState(false);
   const [realPeople, setRealPeople] = useState([]);
   const [peopleLoading, setPeopleLoading] = useState(false);
+  // Companies (2026-09-11): searchAll() below still only covers the 8 mock
+  // companies -- real companies (data/realCompanies.js) got a full,
+  // honest Company Page the same day but were never wired into search, so
+  // a member could find a real job at a company yet get zero company
+  // results for the exact same query. Same merge pattern as
+  // realJobs/realPeople above.
+  const [realCompanies, setRealCompanies] = useState([]);
+  const [companiesLoading, setCompaniesLoading] = useState(false);
 
   useEffect(() => {
     if (query) addRecentSearch(query);
@@ -48,6 +57,7 @@ export default function GlobalSearch() {
       // than surprising a blank search with every active job/person.
       setRealJobs([]);
       setRealPeople([]);
+      setRealCompanies([]);
       return;
     }
     let cancelled = false;
@@ -65,6 +75,17 @@ export default function GlobalSearch() {
         setPeopleLoading(false);
       }
     });
+    setCompaniesLoading(true);
+    searchRealCompanies(query, COMPANIES.map((c) => c.name))
+      .then((data) => {
+        if (!cancelled) setRealCompanies(data);
+      })
+      .catch(() => {
+        if (!cancelled) setRealCompanies([]);
+      })
+      .finally(() => {
+        if (!cancelled) setCompaniesLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -73,7 +94,8 @@ export default function GlobalSearch() {
   const raw = useMemo(() => searchAll(query), [query]);
 
   const results = useMemo(() => {
-    let { companies, resources, posts } = raw;
+    let { resources, posts } = raw;
+    let companies = [...raw.companies, ...realCompanies];
     let jobs = realJobs;
     let people = realPeople;
     if (onlyActionable) {
@@ -92,7 +114,7 @@ export default function GlobalSearch() {
       resources = resources.filter((r) => (new Date() - new Date(r.updated)) / 86400000 <= 30);
     }
     return { jobs, people, companies, resources, posts };
-  }, [raw, realJobs, realPeople, onlyActionable, onlySaved, onlyRecent, savedConnections, savedResourceIds, preferences]);
+  }, [raw, realJobs, realPeople, realCompanies, onlyActionable, onlySaved, onlyRecent, savedConnections, savedResourceIds, preferences]);
 
   const total = results.jobs.length + results.people.length + results.companies.length + results.resources.length + results.posts.length;
 
@@ -150,7 +172,7 @@ export default function GlobalSearch() {
             </div>
           ) : (
             <>
-              {shown.companies?.length > 0 && (
+              {(shown.companies?.length > 0 || (tab !== "All" && companiesLoading)) && (
                 <div className="search-group">
                   <div className="search-group__header">
                     <h2 style={{ margin: 0 }}>Companies</h2>
@@ -160,6 +182,7 @@ export default function GlobalSearch() {
                       </button>
                     )}
                   </div>
+                  {companiesLoading && shown.companies?.length === 0 && <p className="meta">Searching…</p>}
                   {(tab === "All" ? shown.companies.slice(0, 3) : shown.companies).map((c) => (
                     <div className="search-result-row" key={c.id}>
                       <div>

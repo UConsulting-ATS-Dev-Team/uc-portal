@@ -206,12 +206,16 @@ export default function CompanyPage() {
   // about invented people.
   const activity = [];
   const officeCounts = company.offices.map((o) => ({ office: o, count: people.filter((p) => p.office === o).length }));
+  // Capped at 2 back when this only ever had 7 other mock companies to
+  // draw from; now that the real roster (data/realCompanies.js) has ~90
+  // industry-classified companies to match against, 2 left real matches
+  // on the table for no reason -- widened to 4.
   const similar = isRealRoute
     ? similarRealCompanies
         .filter((c) => c.industry === company.industry)
-        .slice(0, 2)
+        .slice(0, 4)
         .map((c) => ({ id: `real/${encodeURIComponent(c.name)}`, name: c.name, logoInitials: c.logoInitials }))
-    : COMPANIES.filter((c) => c.industry === company.industry && c.id !== company.id).slice(0, 2);
+    : COMPANIES.filter((c) => c.industry === company.industry && c.id !== company.id).slice(0, 4);
 
   function toggleWatch() {
     updatePreferences({
