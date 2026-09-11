@@ -5,7 +5,7 @@ import { deadlineLabel } from "../data/jobUtils.js";
 import { fetchLiveJobsByCompany } from "../data/companyLiveJobs.js";
 import { realJobToCardShape } from "../data/realJobAdapter.js";
 import { fetchRealPeopleAtCompany } from "../data/realPeople.js";
-import { deriveCompanyProfile, fetchRealCompanySummaries, fetchRealCompanyStats } from "../data/realCompanies.js";
+import { deriveCompanyProfile, fetchRealCompanySummaries, fetchRealCompanyStats, liveCharacterization } from "../data/realCompanies.js";
 import { fetchRealWriteupsForCompany } from "../data/realWriteups.js";
 import { COMPANIES } from "../data/mockCompanies.js";
 import { currentUser } from "../data/mockUser.js";
@@ -142,7 +142,6 @@ export default function CompanyPage() {
         ...(liveJobs ? deriveCompanyProfile(realCompanyName, liveJobs) : { logoInitials: realCompanyName.slice(0, 3).toUpperCase(), industry: "…", offices: [] }),
         size: undefined,
         recruitingStatus: hasLiveFeed ? "Actively hiring" : liveJobs === undefined ? "…" : "No live feed",
-        characterization: null,
         description: null,
         careersUrl: liveJobs?.[0]?.application_url ?? null,
       }
@@ -169,6 +168,28 @@ export default function CompanyPage() {
   };
   const openRolesDisplay = liveJobs === undefined ? "…" : hasLiveFeed ? String(liveJobs.length) : "—";
   const openRolesLabel = liveJobs !== undefined && !hasLiveFeed ? "No live feed" : "Open roles";
+
+  // "No data yet" vs. a genuine "0" -- direct follow-up ask alongside the
+  // fabrication fix: a bare "0" (or "0%") reads as a confident negative
+  // fact ("no one has ever gotten an offer here"), when what's actually
+  // true is "nothing has been tracked here yet." Every real figure on
+  // this page is a cumulative count since launch, so 0 always means "no
+  // data," never "verified zero" -- same em-dash + relabel convention
+  // already used for openRolesDisplay/openRolesLabel above. offerRate and
+  // finalRounds/interviewCount are both gated on ucApplicants > 0 (not on
+  // their own value) since a real "0%"/"0 reached interview" out of a
+  // real nonzero applicant pool IS a genuine, meaningful fact worth
+  // showing plainly -- only the "we have literally nothing tracked" case
+  // gets the no-data treatment.
+  const hasAlumniData = stats.ucAlumni !== "…" && stats.ucAlumni > 0;
+  const alumniChipText = stats.ucAlumni === "…" ? "…" : hasAlumniData ? `${stats.ucAlumni} UC alumni` : "No UC alumni yet";
+  const ucApplicantsDisplay = stats.ucApplicants > 0 ? { number: stats.ucApplicants, label: "UC applicants" } : { number: "—", label: "No applicants tracked yet" };
+  const offerRateDisplay = stats.ucApplicants > 0 ? { number: `${stats.offerRate}%`, label: "UC offer rate" } : { number: "—", label: "No offer data yet" };
+  const interviewDisplay =
+    stats.ucApplicants > 0 ? { number: stats.finalRounds, label: "Reached interview stage" } : { number: "—", label: "No interview data yet" };
+  const ucAlumniDisplay =
+    stats.ucAlumni === "…" ? { number: "…", label: "UC alumni here" } : hasAlumniData ? { number: stats.ucAlumni, label: "UC alumni here" } : { number: "—", label: "No UC alumni yet" };
+
   const isWatched = preferences.followedCompanies.includes(company.name);
   const stageCount = stats.offers > 0 ? 5 : stats.ucApplicants >= 5 ? 3 : stats.ucApplicants > 0 ? 2 : 1;
   // Genuine submitted interview write-ups for every company now, in place
@@ -208,7 +229,7 @@ export default function CompanyPage() {
           <div className="company-header__title-row">
             <h1>{company.name}</h1>
             <span className="chip chip-accent">{company.recruitingStatus}</span>
-            <span className="chip">{stats.ucAlumni} UC alumni</span>
+            <span className="chip">{alumniChipText}</span>
           </div>
           <p className="company-header__meta">
             {[company.industry, company.size, company.offices.join(", ")].filter(Boolean).join(" · ")}
@@ -252,23 +273,29 @@ export default function CompanyPage() {
               <h2 className="detail-section__title">Overview</h2>
               <div className="stat-strip">
                 <div className="stat-strip__cell">
-                  <div className="stat-strip__number">{stats.ucApplicants}</div>
-                  <div className="stat-strip__label">UC applicants</div>
+                  <div className="stat-strip__number">{ucApplicantsDisplay.number}</div>
+                  <div className="stat-strip__label">{ucApplicantsDisplay.label}</div>
                 </div>
                 <div className="stat-strip__cell">
-                  <div className="stat-strip__number">{stats.offerRate}%</div>
-                  <div className="stat-strip__label">UC offer rate</div>
+                  <div className="stat-strip__number">{offerRateDisplay.number}</div>
+                  <div className="stat-strip__label">{offerRateDisplay.label}</div>
                 </div>
                 <div className="stat-strip__cell">
                   <div className="stat-strip__number">{openRolesDisplay}</div>
                   <div className="stat-strip__label">{openRolesLabel}</div>
                 </div>
                 <div className="stat-strip__cell">
-                  <div className="stat-strip__number">{stats.ucAlumni}</div>
-                  <div className="stat-strip__label">UC alumni here</div>
+                  <div className="stat-strip__number">{ucAlumniDisplay.number}</div>
+                  <div className="stat-strip__label">{ucAlumniDisplay.label}</div>
                 </div>
               </div>
-              {company.characterization && <p>{company.characterization}</p>}
+              {/* Generated from the same real numbers above, not a static
+                  hand-authored claim -- see liveCharacterization's own
+                  comment for why (a fixed sentence could drift out of sync
+                  with real data; this can't). Held back while ucAlumni is
+                  still "…" so it can't briefly claim "no data yet" a beat
+                  before the real fetch resolves. */}
+              {stats.ucAlumni !== "…" && <p>{liveCharacterization(stats)}</p>}
             </div>
           )}
 
@@ -388,22 +415,22 @@ export default function CompanyPage() {
               <h2 className="detail-section__title">Recruiting intelligence</h2>
               <div className="stat-strip">
                 <div className="stat-strip__cell">
-                  <div className="stat-strip__number">{stats.ucApplicants}</div>
-                  <div className="stat-strip__label">UC applicants</div>
+                  <div className="stat-strip__number">{ucApplicantsDisplay.number}</div>
+                  <div className="stat-strip__label">{ucApplicantsDisplay.label}</div>
                 </div>
                 <div className="stat-strip__cell">
-                  <div className="stat-strip__number">{stats.finalRounds}</div>
                   {/* job_track_record_report()'s real interview_count
                       measures reaching First/Final round combined (see
                       data/realOddsModel.js's identical "reached an
                       interview" label) -- the label says what the real
                       number actually is, not the finer-grained "final
                       round" breakdown the old fabricated stat implied. */}
-                  <div className="stat-strip__label">Reached interview stage</div>
+                  <div className="stat-strip__number">{interviewDisplay.number}</div>
+                  <div className="stat-strip__label">{interviewDisplay.label}</div>
                 </div>
                 <div className="stat-strip__cell">
-                  <div className="stat-strip__number">{stats.offerRate}%</div>
-                  <div className="stat-strip__label">UC offer rate</div>
+                  <div className="stat-strip__number">{offerRateDisplay.number}</div>
+                  <div className="stat-strip__label">{offerRateDisplay.label}</div>
                 </div>
                 {/* No real equivalent exists for "median prep hours" (the
                     tracker records no such field) -- omitted for every
@@ -454,6 +481,7 @@ export default function CompanyPage() {
         <div className="detail-rail">
           <div className="rail-card is-accent">
             <div className="rail-card__title">UC members here</div>
+            {realPeople !== undefined && people.length === 0 && <p className="meta">No UC members on record here yet.</p>}
             {people.slice(0, 3).map((p) => (
               <div className="person-row" key={p.id}>
                 <div>
@@ -480,12 +508,20 @@ export default function CompanyPage() {
 
           <div className="rail-card">
             <div className="rail-card__title">Offices UC members work in</div>
-            {officeCounts.map((o) => (
-              <div className="company-count-row" key={o.office}>
-                <span>{o.office}</span>
-                <span>{o.count}</span>
-              </div>
-            ))}
+            {/* A per-office 0 next to every real listed office read as a
+                confident negative fact ("we know nobody's there") rather
+                than "nobody's told us yet" -- one honest line instead, same
+                fix as the stat-strip cells above. */}
+            {people.length === 0 ? (
+              <p className="meta">No UC members on record here yet.</p>
+            ) : (
+              officeCounts.map((o) => (
+                <div className="company-count-row" key={o.office}>
+                  <span>{o.office}</span>
+                  <span>{o.count}</span>
+                </div>
+              ))
+            )}
           </div>
 
           <div className="rail-card">

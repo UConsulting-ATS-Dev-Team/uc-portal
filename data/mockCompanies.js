@@ -1,13 +1,31 @@
 // Company directory (wireframe 2b/2c). Open-role counts, UC alumni, and
-// past-cycle applicant/offer numbers are computed from data/mockJobs.js
-// and data/mockPeople.js rather than hardcoded here, so they can't drift
-// out of sync with what's shown on Jobs/Job detail/Network.
+// applicant/offer numbers are all real now (2026-09-11's fabrication fix --
+// see pages/CompanyPage.jsx and data/realCompanies.js's fetchRealCompanyStats/
+// liveCharacterization), never computed from this file.
 //
-// careersUrl is each company's own real public careers page -- added for
-// pages/CompanyPage.jsx's "no live feed" panel (see its header comment).
-// It's the one field on this object that's always real regardless of
-// whether the company has automated sourcing: even the mock-only entries
-// below get a genuine link-out, never an invented one.
+// `characterization` used to live here as a static hand-authored sentence
+// ("Broadest UC alumni presence of any firm," "Highest UC offer rate of any
+// firm on the tracker") -- removed entirely, not just fixed, because a
+// static claim about UC's own tracked history can always go stale the
+// moment real data changes under it (several already read as directly
+// contradicting the real 0s that landed once statsFor() was replaced with
+// real stats). data/realCompanies.js's liveCharacterization() generates
+// that sentence FROM the same real numbers the stat strip shows instead, so
+// it can't drift out of sync again -- same fix, same reasoning, just
+// applied to a sentence instead of a number.
+//
+// `description` stays here as authored context, but rewritten to keep only
+// real, publicly-verifiable facts about each company's own org/program
+// structure (Human Capital is a real Deloitte practice, IBD is a real
+// Goldman division, etc.) -- the parts implying a specific tracked UC
+// history ("UC members most often enter...", "alumni there actively
+// refer...") are gone, since this app has no real data backing a claim
+// like that yet, and now that it shows real data, a paragraph implying
+// otherwise would read as false rather than merely thin.
+//
+// careersUrl is each company's own real public careers page -- the one
+// field here that was always real regardless of automated sourcing, even
+// before this fix, and unchanged by it.
 export const COMPANIES = [
   {
     id: "bain",
@@ -17,8 +35,7 @@ export const COMPANIES = [
     size: "5k+",
     offices: ["Chicago", "New York", "Los Angeles"],
     recruitingStatus: "Currently hiring",
-    characterization: "Broadest UC alumni presence of any firm — the default landing spot for UC's consulting track.",
-    description: "UC members most often enter Bain through the Chicago office's summer intern class, usually after at least one prior case-prep cycle with an alumnus coach.",
+    description: "Bain's undergraduate hiring in the US centers on its office-based summer internship program; like other MBB firms, its case-interview process rewards structured, well-rehearsed problem-solving.",
     careersUrl: "https://www.bain.com/careers/",
   },
   {
@@ -29,8 +46,7 @@ export const COMPANIES = [
     size: "5k+",
     offices: ["New York", "Chicago"],
     recruitingStatus: "Currently hiring",
-    characterization: "Deep alumni bench in New York — strongest referral network of the MBB firms for UC.",
-    description: "McKinsey's UC pipeline runs almost entirely through New York; alumni there actively refer and coach current members through first rounds.",
+    description: "McKinsey recruits through its individual U.S. offices rather than one central pipeline, with New York among its largest; its case-interview process is well-documented across public prep resources.",
     careersUrl: "https://www.mckinsey.com/careers",
   },
   {
@@ -41,8 +57,7 @@ export const COMPANIES = [
     size: "5k+",
     offices: ["Chicago"],
     recruitingStatus: "Currently hiring",
-    characterization: "Highest UC offer rate of any firm on the tracker — Human Capital is the most common entry track.",
-    description: "UC members typically enter Deloitte through the Human Capital consulting track in Chicago, which recruits earlier in the cycle than most other practices.",
+    description: "Deloitte's Human Capital practice is its people/organizational-strategy consulting track, distinct from its larger audit and tax lines -- often the entry point into consulting-style work there.",
     careersUrl: "https://apply.deloitte.com/en_US/careers/SearchJobs",
   },
   {
@@ -53,8 +68,7 @@ export const COMPANIES = [
     size: "501-5k",
     offices: ["San Francisco", "Remote"],
     recruitingStatus: "Opens soon",
-    characterization: "Thin UC presence but the strategy & ops track hires from consulting-style backgrounds.",
-    description: "Stripe isn't a traditional UC target, but its Strategy & Ops org has taken UC members in past cycles who framed their case-prep skills as structured problem-solving.",
+    description: "Stripe isn't a traditional consulting/IB employer, but its Strategy & Operations org is the closest analog -- a fit for candidates who can frame case-prep-style structured problem-solving as directly relevant.",
     careersUrl: "https://stripe.com/jobs/search",
   },
   {
@@ -65,8 +79,7 @@ export const COMPANIES = [
     size: "5k+",
     offices: ["New York"],
     recruitingStatus: "Currently hiring",
-    characterization: "UC's primary investment banking pipeline — competitive, but alumni actively refer.",
-    description: "UC members entering Goldman almost always go through IBD in New York; alumni there run informal mock-interview sessions ahead of first rounds each fall.",
+    description: "Goldman's Investment Banking Division (IBD), based primarily in New York, is its most heavily recruited entry-level track for undergraduates targeting IB.",
     careersUrl: "https://www.goldmansachs.com/careers/",
   },
   {
@@ -77,8 +90,7 @@ export const COMPANIES = [
     size: "5k+",
     offices: ["Los Angeles", "Chicago"],
     recruitingStatus: "Currently hiring",
-    characterization: "Newer UC pipeline than Bain/McKinsey, but growing fast out of the Los Angeles office.",
-    description: "BCG's UC presence is newest of the MBB firms but growing quickly, concentrated in the Los Angeles office where several recent grads now sit.",
+    description: "BCG is one of the MBB firms, with a Los Angeles office alongside its larger New York and Chicago presence.",
     careersUrl: "https://careers.bcg.com/",
   },
   {
@@ -89,8 +101,7 @@ export const COMPANIES = [
     size: "501-5k",
     offices: ["Chicago"],
     recruitingStatus: "Closed for cycle",
-    characterization: "Limited UC track record so far — worth watching if you want to help build the pipeline.",
-    description: "EY-Parthenon has taken very few UC members historically, mostly through the Strategy Spring Week externship rather than direct full-time hiring.",
+    description: "EY-Parthenon is EY's dedicated strategy-consulting arm; its Strategy Spring Week is a well-known early-exposure externship many students use to explore the practice ahead of a full-time process.",
     careersUrl: "https://www.ey.com/en_us/careers",
   },
   {
@@ -101,8 +112,7 @@ export const COMPANIES = [
     size: "5k+",
     offices: ["Remote"],
     recruitingStatus: "Currently hiring",
-    characterization: "High-volume hirer with a fully remote track — easiest access point, lowest UC differentiation.",
-    description: "Accenture hires at much higher volume than the MBB firms, mostly remote; UC members here tend to use it as a fallback rather than a first choice.",
+    description: "Accenture is one of the largest consulting employers by headcount, with hiring volume far exceeding the MBB firms and a substantial share of roles offered remote.",
     careersUrl: "https://www.accenture.com/us-en/careers",
   },
 ];

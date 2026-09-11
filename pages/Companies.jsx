@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { COMPANIES } from "../data/mockCompanies.js";
 import { fetchLiveJobsByCompany } from "../data/companyLiveJobs.js";
-import { fetchRealCompanySummaries } from "../data/realCompanies.js";
+import { fetchRealCompanySummaries, liveCharacterization } from "../data/realCompanies.js";
 import { fetchRealPeople, alumniCountsByCompany } from "../data/realPeople.js";
 import { useAppState } from "../data/store.jsx";
 import CompanyLogo from "../components/CompanyLogo.jsx";
@@ -306,14 +306,19 @@ export default function Companies() {
                 <p className="company-card__meta">
                   {[c.industry, c.size, c.offices.join(", ")].filter(Boolean).join(" · ")}
                 </p>
-                {/* Real companies (isReal) have no hand-authored
-                    characterization -- never invented, see this page's own
-                    header comment above. */}
-                {c.characterization && <p className="company-card__characterization">{c.characterization}</p>}
+                {/* Generated from the same real ucAlumni count the stat
+                    cell below shows, not a static hand-authored claim --
+                    see liveCharacterization's own comment (data/realCompanies.js)
+                    for why a fixed sentence isn't used here any more, mock
+                    or real card alike. ucApplicants is omitted at grid
+                    scale (see this page's own comment above), so only the
+                    ucAlumni-driven branches of that function ever fire
+                    here. */}
+                <p className="company-card__characterization">{liveCharacterization({ ucAlumni: c.stats.ucAlumni })}</p>
                 <div className="company-card__stats">
                   <div className="company-card__stat">
-                    <div className="company-card__stat-number">{c.stats.ucAlumni}</div>
-                    <div className="company-card__stat-label">UC alumni</div>
+                    <div className="company-card__stat-number">{c.stats.ucAlumni > 0 ? c.stats.ucAlumni : "—"}</div>
+                    <div className="company-card__stat-label">{c.stats.ucAlumni > 0 ? "UC alumni" : "No alumni yet"}</div>
                   </div>
                   <div className="company-card__stat">
                     <div className="company-card__stat-number">

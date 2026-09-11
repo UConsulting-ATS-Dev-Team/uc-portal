@@ -94,3 +94,27 @@ export async function fetchRealCompanyStats(companyName) {
     offerRate: applicants > 0 ? Math.round((offers / applicants) * 100) : 0,
   };
 }
+
+// Replaces the 8 mock companies' old hand-authored `characterization`
+// field (data/mockCompanies.js) -- direct follow-up once real stats
+// replaced statsFor() (2026-09-11): several of those static strings made
+// comparative claims ("Highest UC offer rate of any firm on the tracker,"
+// "Broadest UC alumni presence of any firm") that read as directly
+// contradicting the real 0s now sitting right next to them, since UC has
+// almost no tracked data yet for most of these companies. A hand-authored
+// sentence can always go stale the moment real data changes under it; a
+// sentence generated FROM the same real numbers the stat strip shows
+// cannot -- same "every number traceable" principle as everything else on
+// this page, just applied to a sentence instead of a stat cell. Used for
+// every company now, mock or real alike (pages/Companies.jsx's grid calls
+// this with ucApplicants omitted -- see that file's own comment on why a
+// real per-card applicant count isn't fetched at grid scale -- so only the
+// ucAlumni-driven branches ever fire there).
+export function liveCharacterization({ ucAlumni, ucApplicants }) {
+  const alumniPhrase = ucAlumni === 1 ? "1 UC alumnus/alumna is" : `${ucAlumni} UC alumni are`;
+  const applicantPhrase = ucApplicants === 1 ? "1 UC member has tracked an application" : `${ucApplicants} UC members have tracked an application`;
+  if (ucAlumni > 0 && ucApplicants > 0) return `${alumniPhrase} on record here, and ${applicantPhrase}.`;
+  if (ucAlumni > 0) return `${alumniPhrase} on record here.`;
+  if (ucApplicants > 0) return `No UC alumni on record here yet, but ${applicantPhrase}.`;
+  return "No UC alumni or tracked applications on record here yet — you'd be one of the first.";
+}
