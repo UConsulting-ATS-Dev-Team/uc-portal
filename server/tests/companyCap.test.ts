@@ -123,11 +123,7 @@ describe("capForCompanyTier", () => {
     expect(capForCompanyTier(0)).toBe(25);
     expect(capForCompanyTier(1)).toBe(15);
     expect(capForCompanyTier(2)).toBe(10);
-    // Tier 3's cap was raised from 3 to 10 (2026-09-11 direct instruction)
-    // once the admin "Company tiers" view surfaced real, legitimate
-    // companies sitting on this default with 200+ real active postings
-    // each -- see TIER_CAPS's own comment.
-    expect(capForCompanyTier(3)).toBe(10);
+    expect(capForCompanyTier(3)).toBe(3);
   });
 
   it("defaults null/undefined (a company missing from company_tiers) to tier 3's cap", () => {
@@ -140,10 +136,10 @@ describe("capForCompanyTier", () => {
     expect(capForCompanyTier(99)).toBe(TIER_CAPS[DEFAULT_COMPANY_TIER]);
   });
 
-  it("ranks tier caps descending 0 > 1 > 2, with tier 3 now tied with tier 2 (both 10) rather than the strictly-lower cap it used to be", () => {
+  it("ranks tier caps strictly descending 0 > 1 > 2 > 3, matching name-brand-relevance priority", () => {
     expect(capForCompanyTier(0)).toBeGreaterThan(capForCompanyTier(1));
     expect(capForCompanyTier(1)).toBeGreaterThan(capForCompanyTier(2));
-    expect(capForCompanyTier(2)).toBe(capForCompanyTier(3));
+    expect(capForCompanyTier(2)).toBeGreaterThan(capForCompanyTier(3));
   });
 });
 

@@ -742,7 +742,7 @@ export default function AdminDashboard() {
             <p className="meta" style={{ marginTop: 0 }}>
               Every real company's active-job cap (data/companyTiers.js's TIER_CAPS: tier 0 "core consulting" 25,
               tier 1 "other elite name-brand" 15, tier 2 "recognizable corporate/finance-adjacent" 10, tier 3
-              "everyone else" 10) -- enforced on ingestion by every fetch-* source and reflected on the Jobs
+              "everyone else" 3) -- enforced on ingestion by every fetch-* source and reflected on the Jobs
               board's own per-company display cap. Reclassifying a company here takes effect on its next
               scheduled fetch, not immediately -- this only changes company_tiers, not any job row directly.
               Companies with real active postings but no row here yet (defaulted to tier 3, flagged "Not yet

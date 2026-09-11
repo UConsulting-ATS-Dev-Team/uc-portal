@@ -148,18 +148,16 @@ export function idsExceedingCompanyCap(
 //   Tier 1 -- other elite name-brand (bulge-bracket/elite-boutique IB,
 //     Citadel-tier quant, marquee big tech/AI, major VC) -- cap 15
 //   Tier 2 -- recognizable corporate/finance-adjacent -- cap 10
-//   Tier 3 -- everyone else -- cap 10 (raised from 3, 2026-09-11 direct
-//     instruction, after the new admin "Company tiers" view surfaced real,
-//     legitimate companies -- SpaceX, HelloFresh, Third Bridge among them
-//     -- sitting on this default with 200+ real active postings each,
-//     genuinely deserving far more room than 3 while waiting to be
-//     individually classified). Also the DEFAULT for any company not
+//   Tier 3 -- everyone else -- cap 3. Also the DEFAULT for any company not
 //     present in company_tiers (most likely a newly-sourced one) --
 //     capForCompanyTier falls back here rather than erroring or leaving a
-//     new company uncapped, so this is also the safety-net cap for
-//     anything not yet reviewed by an admin.
+//     new company uncapped. (Briefly raised to 10 on 2026-09-11, then
+//     reverted the same day per direct correction -- 3 was the intended
+//     value all along. All 163 real companies with active postings are
+//     independently classified as of the same day regardless, so this
+//     default rarely fires in practice now.)
 export const DEFAULT_COMPANY_TIER = 3;
-export const TIER_CAPS: Record<number, number> = { 0: 25, 1: 15, 2: 10, 3: 10 };
+export const TIER_CAPS: Record<number, number> = { 0: 25, 1: 15, 2: 10, 3: 3 };
 
 export function capForCompanyTier(tier: number | null | undefined): number {
   return TIER_CAPS[tier ?? DEFAULT_COMPANY_TIER] ?? TIER_CAPS[DEFAULT_COMPANY_TIER];
