@@ -1039,6 +1039,39 @@ longer breaks down to phone width either.
   applicants > 0, not their own value, so a real "0%" out of a real
   nonzero pool still shows plainly.
 
+- **Real companies wired into Global Search; a real truncation bug fixed
+  along the way** — Global Search's Companies tab still only searched
+  the 8 mock companies after real companies got their own pages; new
+  `searchRealCompanies()` closes that. Verifying it live surfaced a
+  separate real bug: `fetchRealCompanySummaries()` used a bare
+  `.select()` with no pagination, silently truncating at PostgREST's
+  1000-row default (the exact landmine `fetchAllRows.js` exists for,
+  hit again) — with 5,862+ active jobs, this had been undercounting real
+  companies by roughly half (82 → 161 once fixed) since the feature was
+  built, affecting the Companies grid, the "Similar companies" rail, and
+  now search. Also widened "Similar companies" from 2 to 4 given the
+  much larger real roster.
+
+- **Admin visibility into the company-tier system** — the tier/cap
+  system driving each company's active-posting limit was admin-invisible
+  (raw SQL only). New "Company tiers" section on Admin Dashboard: every
+  company, real active-job count, current tier, computed cap, and a
+  dropdown to reclassify (real upsert into `company_tiers`, new admin
+  insert+update RLS policies). Sorted by active count so the biggest
+  companies surface first — immediately caught SpaceX and HelloFresh
+  (200+ active postings each) sitting unclassified at the tier-3 default,
+  and Toast running 290 active against a tier-2 cap of 10 (no fetch run
+  since being tiered). Reclassified SpaceX live as a real test.
+
+- **Alias support for company_tiers** — matched by exact company name
+  only until now, unlike `industryBaseRates.js`'s alias handling for the
+  identical problem (real source data spells company names
+  inconsistently). New `aliases text[]` column (exact-match only,
+  deliberately not substring/regex — this table enforces a real cap, so
+  a false match is higher-stakes than a lenient baseline guess) and
+  `indexCompanyTiers()`, mirrored a third time across the Deno/Node/
+  browser split every other shared pipeline function here already has.
+
 Run locally:
 ```bash
 npm install
