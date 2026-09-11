@@ -295,8 +295,52 @@ export default function RealJobDetail({ jobId }) {
                 <p>{job.qualifications_text}</p>
               </>
             )}
+            {/* Real postings never carry the employer's own description text
+                (deliberate, not a gap -- see supabase/functions/fetch-*'s own
+                header comments: API access to Greenhouse/Lever doesn't carry
+                a copyright license over what the employer wrote, so this app
+                never stores or reproduces it). Rather than leave that as a
+                bare "no description" dead end, this always points straight
+                at the real posting -- the one place to actually read it. */}
             {!job.description && !job.qualifications_text && (
-              <p className="meta">No further description was provided with this posting.</p>
+              <p className="meta" style={{ marginBottom: "var(--space-4)" }}>
+                UC Portal links out rather than reproducing an employer's own posting text. Read the real
+                description on {job.company}'s site below.
+              </p>
+            )}
+            <a href={job.application_url} target="_blank" rel="noreferrer" className="btn btn-secondary">
+              Read the full description on {job.company}'s site ↗
+            </a>
+            {/* Genuinely safe to show: an O*NET-derived generic skill list
+                for this role's occupation category (data/taxonomy/
+                occupationTaxonomy.ts), never extracted from the employer's
+                own text -- honestly labeled as inferred, not a verbatim
+                requirements list from the posting itself. */}
+            {(job.required_skills?.length > 0 || job.preferred_skills?.length > 0) && (
+              <>
+                <p style={{ fontWeight: 700, marginTop: "var(--space-5)" }}>Skills roles like this typically value</p>
+                <p className="meta" style={{ marginTop: 0 }}>
+                  Inferred from this role's category, not copied from the posting itself.
+                </p>
+                {job.required_skills?.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
+                    {job.required_skills.map((s) => (
+                      <span className="chip" key={s}>
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {job.preferred_skills?.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
+                    {job.preferred_skills.map((s) => (
+                      <span className="chip" key={s}>
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
             <p style={{ fontWeight: 700, marginTop: "var(--space-5)" }}>Type</p>
             <p>{EMPLOYMENT_TYPE_LABEL[job.employment_type] ?? "Not classified"}</p>
