@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { findCompany } from "../data/mockCompanies.js";
-import { statsFor, quotesFor, activityFor } from "../data/companyUtils.js";
 import { deadlineLabel } from "../data/jobUtils.js";
 import { fetchLiveJobsByCompany } from "../data/companyLiveJobs.js";
 import { realJobToCardShape } from "../data/realJobAdapter.js";
@@ -56,11 +55,15 @@ export default function CompanyPage() {
   // flash "0" before the real fetch resolves).
   const [realPeople, setRealPeople] = useState(undefined);
 
-  // Real-company-only state (2026-09-09) -- see this file's header comment
-  // above findCompany's old sole use. Never populated on the mock route,
-  // since mock companies keep statsFor()/quotesFor()/activityFor() exactly
-  // as before (a pre-existing, separately-flagged fabrication issue, not
-  // something this change fixes or makes worse).
+  // Real recruiting-intelligence state (2026-09-09, extended 2026-09-11 to
+  // cover the mock route too) -- see this file's header comment above
+  // findCompany's old sole use. Originally real-route-only, with mock
+  // companies kept on data/companyUtils.js's statsFor()/quotesFor()/
+  // activityFor() -- entirely fabricated numbers and quotes attributed to
+  // invented people, shown as fact on Deloitte's/Stripe's own real pages.
+  // Direct follow-up ask ("go fix the mock companies too") extended this
+  // real fetch to every company, mock or real -- see the stats/quotes/
+  // activity consts below, no longer isRealRoute-gated.
   const [realStats, setRealStats] = useState(undefined);
   const [realWriteups, setRealWriteups] = useState(undefined);
   const [similarRealCompanies, setSimilarRealCompanies] = useState([]);
@@ -86,23 +89,25 @@ export default function CompanyPage() {
       .catch(() => {
         if (!cancelled) setRealPeople([]);
       });
+    // Real recruiting-intelligence stats and write-ups -- fetched for
+    // every company now, mock or real (see the state comment above).
+    setRealStats(undefined);
+    fetchRealCompanyStats(companyNameToFetch)
+      .then((s) => {
+        if (!cancelled) setRealStats(s);
+      })
+      .catch(() => {
+        if (!cancelled) setRealStats({ ucApplicants: 0, interviewCount: 0, offerCount: 0, offerRate: 0 });
+      });
+    setRealWriteups(undefined);
+    fetchRealWriteupsForCompany(companyNameToFetch)
+      .then((rows) => {
+        if (!cancelled) setRealWriteups(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setRealWriteups([]);
+      });
     if (isRealRoute) {
-      setRealStats(undefined);
-      fetchRealCompanyStats(companyNameToFetch)
-        .then((s) => {
-          if (!cancelled) setRealStats(s);
-        })
-        .catch(() => {
-          if (!cancelled) setRealStats({ ucApplicants: 0, interviewCount: 0, offerCount: 0, offerRate: 0 });
-        });
-      setRealWriteups(undefined);
-      fetchRealWriteupsForCompany(companyNameToFetch)
-        .then((rows) => {
-          if (!cancelled) setRealWriteups(rows);
-        })
-        .catch(() => {
-          if (!cancelled) setRealWriteups([]);
-        });
       fetchRealCompanySummaries(COMPANIES.map((c) => c.name))
         .then((summaries) => {
           if (cancelled) return;
@@ -143,41 +148,42 @@ export default function CompanyPage() {
       }
     : { ...mockCompany, isReal: false };
 
-  // Real stats replace statsFor()'s mock-derived numbers on the real route
-  // -- see fetchRealCompanyStats's own comment for why (job_track_record_report(),
-  // the same real security-definer aggregate the real odds model uses, not
-  // a second fabricated figure). "finalRounds"/"offers" have no real
-  // equivalent from that RPC (it reports interview-stage progress and a
-  // genuine offer count, not a rounds breakdown) -- interviewCount fills
-  // the analogous "how far did people get" role in the JSX below instead.
-  const stats = isRealRoute
-    ? {
-        ucApplicants: realStats?.ucApplicants ?? 0,
-        offerRate: realStats?.offerRate ?? 0,
-        offers: realStats?.offerCount ?? 0,
-        finalRounds: realStats?.interviewCount ?? 0,
-        medianPrepHours: null,
-        ucAlumni: realPeople === undefined ? "…" : people.length,
-      }
-    : { ...statsFor(mockCompany), ucAlumni: realPeople === undefined ? "…" : people.length };
+  // Real stats for every company now (2026-09-11) -- see
+  // fetchRealCompanyStats's own comment for why (job_track_record_report(),
+  // the same real security-definer aggregate the real odds model uses).
+  // Used to be statsFor()'s mock-derived numbers for the 8 mock companies
+  // (peopleAt()/jobsAt() against fictional data/mockPeople.js/mockJobs.js
+  // rosters) -- direct follow-up ask ("go fix the mock companies too")
+  // after the same fabrication was deliberately avoided when real
+  // companies were added. "finalRounds"/"offers" have no real equivalent
+  // from that RPC (it reports interview-stage progress and a genuine
+  // offer count, not a rounds breakdown) -- interviewCount fills the
+  // analogous "how far did people get" role in the JSX below instead.
+  const stats = {
+    ucApplicants: realStats?.ucApplicants ?? 0,
+    offerRate: realStats?.offerRate ?? 0,
+    offers: realStats?.offerCount ?? 0,
+    finalRounds: realStats?.interviewCount ?? 0,
+    medianPrepHours: null,
+    ucAlumni: realPeople === undefined ? "…" : people.length,
+  };
   const openRolesDisplay = liveJobs === undefined ? "…" : hasLiveFeed ? String(liveJobs.length) : "—";
   const openRolesLabel = liveJobs !== undefined && !hasLiveFeed ? "No live feed" : "Open roles";
   const isWatched = preferences.followedCompanies.includes(company.name);
   const stageCount = stats.offers > 0 ? 5 : stats.ucApplicants >= 5 ? 3 : stats.ucApplicants > 0 ? 2 : 1;
-  // Real companies show genuine submitted interview write-ups in place of
-  // quotesFor()'s fabricated ones (attributed to invented people) --
-  // reshaped to the {author, classYear, body} shape the JSX below already
-  // renders, honoring is_anonymous the same way RealJobDetail.jsx's own
-  // write-up section does.
-  const quotes = isRealRoute
-    ? (realWriteups ?? [])
-        .slice(0, 3)
-        .map((w) => ({ id: w.id, author: w.is_anonymous ? "Anonymous UC member" : w.submitted_by_name || "A UC member", classYear: null, body: w.body }))
-    : quotesFor(mockCompany).map((q) => ({ ...q, id: q.author }));
-  // No real "community activity feed" data source exists yet -- real
-  // companies get the honest empty state below (activity.length === 0),
-  // never activityFor()'s fabricated posts about invented people.
-  const activity = isRealRoute ? [] : activityFor(mockCompany);
+  // Genuine submitted interview write-ups for every company now, in place
+  // of quotesFor()'s fabricated ones (attributed to invented named
+  // people) -- reshaped to the {author, classYear, body} shape the JSX
+  // below already renders, honoring is_anonymous the same way
+  // RealJobDetail.jsx's own write-up section does.
+  const quotes = (realWriteups ?? [])
+    .slice(0, 3)
+    .map((w) => ({ id: w.id, author: w.is_anonymous ? "Anonymous UC member" : w.submitted_by_name || "A UC member", classYear: null, body: w.body }));
+  // No real "community activity feed" data source exists yet for any
+  // company -- every company gets the honest empty state below
+  // (activity.length === 0), never activityFor()'s fabricated posts
+  // about invented people.
+  const activity = [];
   const officeCounts = company.offices.map((o) => ({ office: o, count: people.filter((p) => p.office === o).length }));
   const similar = isRealRoute
     ? similarRealCompanies
@@ -387,29 +393,22 @@ export default function CompanyPage() {
                 </div>
                 <div className="stat-strip__cell">
                   <div className="stat-strip__number">{stats.finalRounds}</div>
-                  {/* Real companies: job_track_record_report()'s real
-                      interview_count measures reaching First/Final round
-                      combined (see data/realOddsModel.js's identical
-                      "reached an interview" label) -- distinct from the
-                      mock stat strip's finer-grained (but fabricated)
-                      "final round" figure, so the label says what the real
-                      number actually is. */}
-                  <div className="stat-strip__label">{company.isReal ? "Reached interview stage" : "Reached final round"}</div>
+                  {/* job_track_record_report()'s real interview_count
+                      measures reaching First/Final round combined (see
+                      data/realOddsModel.js's identical "reached an
+                      interview" label) -- the label says what the real
+                      number actually is, not the finer-grained "final
+                      round" breakdown the old fabricated stat implied. */}
+                  <div className="stat-strip__label">Reached interview stage</div>
                 </div>
                 <div className="stat-strip__cell">
                   <div className="stat-strip__number">{stats.offerRate}%</div>
                   <div className="stat-strip__label">UC offer rate</div>
                 </div>
                 {/* No real equivalent exists for "median prep hours" (the
-                    tracker records no such field) -- omitted for real
-                    companies rather than shown as "null hrs" or a
+                    tracker records no such field) -- omitted for every
+                    company rather than shown as "null hrs" or a
                     fabricated number. */}
-                {!company.isReal && (
-                  <div className="stat-strip__cell">
-                    <div className="stat-strip__number">{stats.medianPrepHours} hrs</div>
-                    <div className="stat-strip__label">Median prep, offer-holders</div>
-                  </div>
-                )}
               </div>
               <div className="recruiting-timeline">
                 {TIMELINE_STAGES.map((stage, i) => (
@@ -419,7 +418,7 @@ export default function CompanyPage() {
                   </div>
                 ))}
               </div>
-              {quotes.length === 0 && company.isReal ? (
+              {quotes.length === 0 ? (
                 <p className="meta">No interview write-ups shared for {company.name} yet.</p>
               ) : (
                 <>

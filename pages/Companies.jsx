@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { COMPANIES } from "../data/mockCompanies.js";
-import { statsFor } from "../data/companyUtils.js";
 import { fetchLiveJobsByCompany } from "../data/companyLiveJobs.js";
 import { fetchRealCompanySummaries } from "../data/realCompanies.js";
 import { fetchRealPeople, alumniCountsByCompany } from "../data/realPeople.js";
@@ -42,15 +41,15 @@ export default function Companies() {
     });
   }
 
-  // Real per-company job counts, not statsFor()'s mock-derived openRoles --
-  // several companies here (Bain, McKinsey, Goldman Sachs, BCG, EY-Parthenon,
-  // Accenture) have never had a real automated source, so that mock number
-  // was a fabricated count of fabricated postings rendered as if it were a
-  // real fact on every card in this grid. undefined = still loading (cards
-  // show "…" rather than flash a fake number first); a company absent from
-  // the map, or present with an empty array, means no live feed -- see
-  // data/companyLiveJobs.js's header comment for why those two cases are
-  // deliberately treated the same.
+  // Real per-company job counts, not a mock-derived openRoles -- several
+  // companies here (Bain, McKinsey, Goldman Sachs, BCG, EY-Parthenon,
+  // Accenture) have never had a real automated source, so a mock number
+  // would be a fabricated count of fabricated postings rendered as if it
+  // were a real fact on every card in this grid. undefined = still loading
+  // (cards show "…" rather than flash a fake number first); a company
+  // absent from the map, or present with an empty array, means no live
+  // feed -- see data/companyLiveJobs.js's header comment for why those two
+  // cases are deliberately treated the same.
   const [liveJobsByCompany, setLiveJobsByCompany] = useState(undefined);
 
   // 2026-09-09: the directory used to stop at these 8 mock companies even
@@ -63,6 +62,13 @@ export default function Companies() {
   // undefined = still loading; excludes every mock company name so Deloitte/
   // Stripe (both mock-authored AND really sourced) don't get a duplicate card.
   const [realCompanies, setRealCompanies] = useState(undefined);
+  // 2026-09-11: extended to cover the 8 mock companies too -- this used to
+  // read data/companyUtils.js's statsFor() for them (peopleAt() against
+  // data/mockPeople.js's fictional roster), a fabricated "UC alumni" count
+  // shown as fact on every mock card even though CompanyPage.jsx's own
+  // single-company detail view had already been corrected to the real
+  // count. One bulk fetch covers every company on this page now, mock and
+  // real alike, so the two can't disagree again.
   const [realAlumniCounts, setRealAlumniCounts] = useState(new Map());
 
   useEffect(() => {
@@ -75,9 +81,12 @@ export default function Companies() {
         if (cancelled) return;
         setRealCompanies(summaries);
         // One bulk real-people fetch (150 rows total), not one per company
-        // -- see alumniCountsByCompany's own comment for why.
+        // -- see alumniCountsByCompany's own comment for why. Covers both
+        // the mock roster and every derived real company in one pass.
         fetchRealPeople().then((people) => {
-          if (!cancelled) setRealAlumniCounts(alumniCountsByCompany(people, summaries.map((c) => c.name)));
+          if (!cancelled) {
+            setRealAlumniCounts(alumniCountsByCompany(people, [...COMPANIES.map((c) => c.name), ...summaries.map((c) => c.name)]));
+          }
         });
       })
       .catch(() => {
@@ -89,20 +98,29 @@ export default function Companies() {
   }, []);
 
   const withStats = useMemo(() => {
+    // ucApplicants is deliberately omitted (undefined, not 0) for every
+    // card here, mock and real alike -- a real, traceable applicant count
+    // exists (job_track_record_report(), data/realCompanies.js's
+    // fetchRealCompanyStats), but firing one RPC call per card to populate
+    // it across ~90 companies isn't worth it at grid scale; that figure
+    // lives on the single-company CompanyPage instead, one cheap call.
     const mock = COMPANIES.map((c) => {
-      const stats = statsFor(c);
       const liveCount = liveJobsByCompany?.get(c.name)?.length;
-      return { ...c, isReal: false, stats: { ...stats, openRoles: liveJobsByCompany === undefined ? undefined : liveCount ?? 0 } };
+      return {
+        ...c,
+        isReal: false,
+        stats: {
+          ucAlumni: realAlumniCounts.get(c.name) ?? 0,
+          openRoles: liveJobsByCompany === undefined ? undefined : liveCount ?? 0,
+          ucApplicants: undefined,
+        },
+      };
     });
     // Real companies only ever appear here because they have active
     // postings (fetchRealCompanySummaries only groups active jobs), so
     // "Currently hiring" is always an honest label for them -- unlike the
     // mock roster, there's no real signal here for "Opens soon"/"Closed for
-    // cycle" to distinguish. ucApplicants is deliberately omitted (undefined,
-    // not 0) rather than firing one job_track_record_report() RPC call per
-    // card to populate a real number across dozens of companies -- that
-    // real, traceable figure is one cheap call on the single-company
-    // CompanyPage instead (data/realCompanies.js's fetchRealCompanyStats).
+    // cycle" to distinguish.
     const real = (realCompanies ?? []).map((c) => ({
       id: `real/${encodeURIComponent(c.name)}`,
       name: c.name,
@@ -305,15 +323,6 @@ export default function Companies() {
                       {c.stats.openRoles === undefined || c.stats.openRoles > 0 ? "Open roles" : "No live feed"}
                     </div>
                   </div>
-                  {/* Real companies omit this cell entirely rather than show
-                      undefined/0 -- see withStats' own comment on why a real
-                      per-card applicant count isn't fetched at grid scale. */}
-                  {c.stats.ucApplicants !== undefined && (
-                    <div className="company-card__stat">
-                      <div className="company-card__stat-number">{c.stats.ucApplicants}</div>
-                      <div className="company-card__stat-label">UC applicants</div>
-                    </div>
-                  )}
                 </div>
                 <div style={{ display: "flex", gap: "var(--space-3)" }}>
                   <Link to={`/companies/${c.id}`} className="btn btn-primary">
