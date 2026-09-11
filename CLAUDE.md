@@ -997,6 +997,27 @@ longer breaks down to phone width either.
   "No interview write-ups shared yet" state, and real similar-companies;
   Deloitte's existing mock page re-verified unchanged.
 
+- **Fixed the pre-existing fabrication on the 8 mock companies too** —
+  direct follow-up once the real-companies work above deliberately
+  avoided extending it: `data/companyUtils.js`'s `statsFor()`/
+  `quotesFor()`/`activityFor()` were entirely fabricated (mock applicant/
+  offer numbers, quotes attributed to invented named people) and were
+  still shown as fact on Bain/McKinsey/Deloitte/Stripe/Goldman Sachs/BCG/
+  EY-Parthenon/Accenture's real pages. `CompanyPage.jsx` no longer
+  branches stats/quotes/activity on mock-vs-real — every company now gets
+  real `job_track_record_report()` stats, genuine submitted write-ups,
+  and an honest empty activity state. Also caught one level up:
+  `Companies.jsx`'s grid was still computing mock companies' "UC alumni"
+  from the fabricated roster even though `CompanyPage.jsx`'s own detail
+  view had already been corrected — the two disagreed; now one bulk
+  `fetchRealPeople()` pass covers every card, mock and real.
+  `data/companyUtils.js` had no remaining callers and was removed.
+  Deliberately left the 8 companies' hand-authored characterization/
+  description copy untouched (out of the approved scope) — flagged
+  separately that some of it (e.g. Deloitte's "Highest UC offer rate of
+  any firm on the tracker") now reads as directly contradicting the real
+  0% shown beside it, worth a follow-up content decision.
+
 Run locally:
 ```bash
 npm install
