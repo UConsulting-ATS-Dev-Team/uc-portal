@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import PostOpportunityModal from "../components/modals/PostOpportunityModal.jsx";
 import { supabase } from "../data/supabaseClient.js";
+import { fetchAllRows } from "../data/fetchAllRows.js";
+import { capForCompanyTier } from "../data/companyTiers.js";
 import {
   KPIS,
   INDUSTRY_INTEREST,
@@ -48,6 +50,10 @@ export default function AdminDashboard() {
   const [brokenLinkJobs, setBrokenLinkJobs] = useState([]);
   const [brokenLinkLoading, setBrokenLinkLoading] = useState(true);
   const [brokenLinkError, setBrokenLinkError] = useState(null);
+  const [companyTiers, setCompanyTiers] = useState([]);
+  const [companyTiersLoading, setCompanyTiersLoading] = useState(true);
+  const [companyTiersError, setCompanyTiersError] = useState(null);
+  const [updatingCompanyName, setUpdatingCompanyName] = useState(null);
   const [featureRequests, setFeatureRequests] = useState([]);
   const [featureRequestsLoading, setFeatureRequestsLoading] = useState(true);
   const [featureRequestsError, setFeatureRequestsError] = useState(null);
@@ -189,6 +195,70 @@ export default function AdminDashboard() {
     setActioningId(null);
   }
 
+  // 2026-09-11: the whole company-tier system (data/companyTiers.js's
+  // capForCompanyTier, enforced ingestion-side by every fetch-* Edge
+  // Function's enforceCompanyCap call, and display-side by pages/Jobs.jsx's
+  // capPerCompany) was admin-invisible until now -- the only way to see or
+  // change a company's tier was raw SQL. Real active-job counts, not a
+  // mock number: fetchAllRows over "company" alone (not JOB_LIST_COLUMNS --
+  // this only ever needs one column to count postings per company) so this
+  // doesn't silently truncate at PostgREST's 1000-row default once real
+  // active-job volume passed that mark, same reasoning as every other
+  // fetchAllRows call in this app. company_tiers rows without any active
+  // jobs right now still show (a company can be legitimately quiet for a
+  // while without needing its tier reset), and companies with active jobs
+  // but no company_tiers row yet show with tier defaulted to 3 (matching
+  // capForCompanyTier's own default) and a visible "not yet classified"
+  // flag rather than silently omitting them.
+  async function loadCompanyTiers() {
+    setCompanyTiersLoading(true);
+    const [{ data: tierRows, error: tierError }, activeJobs] = await Promise.all([
+      supabase.from("company_tiers").select("company_name, tier, aliases").order("tier", { ascending: true }),
+      fetchAllRows("jobs", "company", (q) => q.eq("active", true)),
+    ]);
+    if (tierError) {
+      setCompanyTiersError(tierError.message);
+      setCompanyTiersLoading(false);
+      return;
+    }
+    const activeCountByCompany = new Map();
+    for (const row of activeJobs) {
+      activeCountByCompany.set(row.company, (activeCountByCompany.get(row.company) ?? 0) + 1);
+    }
+    const knownNames = new Set((tierRows ?? []).map((r) => r.company_name));
+    const merged = [
+      ...(tierRows ?? []).map((r) => ({ ...r, activeCount: activeCountByCompany.get(r.company_name) ?? 0, isClassified: true })),
+      ...[...activeCountByCompany.keys()]
+        .filter((name) => !knownNames.has(name))
+        .map((name) => ({ company_name: name, tier: null, aliases: [], activeCount: activeCountByCompany.get(name), isClassified: false })),
+    ];
+    merged.sort((a, b) => b.activeCount - a.activeCount);
+    setCompanyTiers(merged);
+    setCompanyTiersLoading(false);
+  }
+
+  // company_tiers grants admins direct insert+update via RLS (this table's
+  // own migration, 20260911010000) -- same reasoning as feature_requests:
+  // no equivalent trust boundary to jobs/job_sources here, so a plain
+  // client upsert is enough, no Edge Function needed. Upsert (not a plain
+  // update) specifically because a company here might not have a row yet
+  // (isClassified: false, defaulted to tier 3 for display) -- reclassifying
+  // one of those needs to INSERT its first real row, not update a
+  // nonexistent one. Only company_name/tier are in the payload, so an
+  // existing row's aliases are left untouched by Postgrest's upsert
+  // (only the columns provided get updated on conflict).
+  async function handleTierChange(companyName, newTier) {
+    setUpdatingCompanyName(companyName);
+    const { error } = await supabase.from("company_tiers").upsert({ company_name: companyName, tier: newTier }, { onConflict: "company_name" });
+    if (error) {
+      setCompanyTiersError(error.message);
+    } else {
+      setCompanyTiersError(null);
+      setCompanyTiers((prev) => prev.map((r) => (r.company_name === companyName ? { ...r, tier: newTier, isClassified: true } : r)));
+    }
+    setUpdatingCompanyName(null);
+  }
+
   // Real member-engagement visibility (member_engagement_report(), a
   // security definer function -- see its own migration comment for the
   // full privacy reasoning). This is a deliberately narrower carve-out
@@ -212,6 +282,7 @@ export default function AdminDashboard() {
     loadLowQualityJobs();
     loadBrokenLinkJobs();
     loadEngagement();
+    loadCompanyTiers();
   }, []);
 
   const disengagedCount = engagement.filter((m) => m.is_disengaged).length;
@@ -657,6 +728,74 @@ export default function AdminDashboard() {
                 {brokenLinkLoading && (
                   <tr>
                     <td colSpan={5} className="meta">
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            </div>
+          </div>
+
+          <div className="detail-section">
+            <h2 className="detail-section__title">Company tiers</h2>
+            <p className="meta" style={{ marginTop: 0 }}>
+              Every real company's active-job cap (data/companyTiers.js's TIER_CAPS: tier 0 "core consulting" 25,
+              tier 1 "other elite name-brand" 15, tier 2 "recognizable corporate/finance-adjacent" 10, tier 3
+              "everyone else" 3) -- enforced on ingestion by every fetch-* source and reflected on the Jobs
+              board's own per-company display cap. Reclassifying a company here takes effect on its next
+              scheduled fetch, not immediately -- this only changes company_tiers, not any job row directly.
+              Companies with real active postings but no row here yet (defaulted to tier 3, flagged "Not yet
+              classified") are the ones most worth reviewing first.
+            </p>
+            {companyTiersError && <p className="meta" style={{ color: "#B3261E" }}>{companyTiersError}</p>}
+            <div className="queue-table__scroll">
+            <table className="queue-table">
+              <thead>
+                <tr>
+                  <th>Company</th>
+                  <th>Active postings</th>
+                  <th>Tier</th>
+                  <th>Cap</th>
+                </tr>
+              </thead>
+              <tbody>
+                {companyTiers.map((c) => (
+                  <tr key={c.company_name}>
+                    <td>
+                      {c.company_name}
+                      {!c.isClassified && (
+                        <span className="chip" style={{ marginLeft: "var(--space-2)" }}>
+                          Not yet classified
+                        </span>
+                      )}
+                    </td>
+                    <td>{c.activeCount}</td>
+                    <td>
+                      <select
+                        value={c.tier ?? 3}
+                        disabled={updatingCompanyName === c.company_name}
+                        onChange={(e) => handleTierChange(c.company_name, Number(e.target.value))}
+                      >
+                        <option value={0}>0 -- core consulting</option>
+                        <option value={1}>1 -- other elite name-brand</option>
+                        <option value={2}>2 -- recognizable corporate</option>
+                        <option value={3}>3 -- everyone else</option>
+                      </select>
+                    </td>
+                    <td>{capForCompanyTier(c.tier)}</td>
+                  </tr>
+                ))}
+                {!companyTiersLoading && companyTiers.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="meta">
+                      No companies found.
+                    </td>
+                  </tr>
+                )}
+                {companyTiersLoading && (
+                  <tr>
+                    <td colSpan={4} className="meta">
                       Loading…
                     </td>
                   </tr>
