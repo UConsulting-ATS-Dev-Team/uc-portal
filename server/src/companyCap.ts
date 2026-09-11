@@ -166,3 +166,35 @@ export const TIER_CAPS: Record<number, number> = { 0: 25, 1: 15, 2: 10, 3: 3 };
 export function capForCompanyTier(tier: number | null | undefined): number {
   return TIER_CAPS[tier ?? DEFAULT_COMPANY_TIER] ?? TIER_CAPS[DEFAULT_COMPANY_TIER];
 }
+
+// ---- Alias support (2026-09-11 addition) ----
+// company_tiers matched by exact company_name only (it's the primary key)
+// until now -- a real fragility for the same reason data/industryBaseRates.js's
+// own header comment already documents: real source data spells company
+// names inconsistently. A source re-onboarded under a slightly different
+// name string would silently fall to the tier-3 default cap instead of its
+// real seeded tier. See supabase/migrations/20260911020000_company_tiers_aliases.sql
+// for the new `aliases` column and why this is exact-match only (never a
+// substring/regex the way industryBaseRates.js's is) -- this table enforces
+// a real cap, so a false-positive alias match is a higher-stakes mistake
+// than a slightly-too-generous industry-baseline guess.
+export interface CompanyTierRow {
+  companyName: string;
+  tier: number;
+  aliases?: string[] | null;
+}
+
+// Builds the company -> tier lookup every caller uses (was a plain
+// `new Map(rows.map(r => [r.company_name, r.tier]))` inline at each call
+// site) -- indexes each row under its own canonical name AND every alias,
+// so a lookup by either resolves to the same tier.
+export function indexCompanyTiers(rows: CompanyTierRow[]): Map<string, number> {
+  const index = new Map<string, number>();
+  for (const row of rows) {
+    index.set(row.companyName, row.tier);
+    for (const alias of row.aliases ?? []) {
+      index.set(alias, row.tier);
+    }
+  }
+  return index;
+}

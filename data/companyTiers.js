@@ -21,12 +21,27 @@ export function capForCompanyTier(tier) {
   return TIER_CAPS[tier ?? DEFAULT_COMPANY_TIER] ?? TIER_CAPS[DEFAULT_COMPANY_TIER];
 }
 
-// company_tiers is a small reference table (86 rows as of this writing, one
-// row per real company ever sourced) -- a plain select is fine here, unlike
-// the real `jobs` table fetchAllRows.js exists to page around; same
+// Alias support (2026-09-11 addition), third mirror of the same indexing
+// logic as supabase/functions/_shared/pipeline/companyCap.ts's
+// indexCompanyTiers (also mirrored in server/src/companyCap.ts) -- see
+// that file's own comment for why aliases exist and why this is
+// exact-match only. Indexes each row under its own canonical name AND
+// every alias, so a lookup by either resolves to the same tier.
+export function indexCompanyTiers(rows) {
+  const index = new Map();
+  for (const row of rows) {
+    index.set(row.companyName, row.tier);
+    for (const alias of row.aliases ?? []) index.set(alias, row.tier);
+  }
+  return index;
+}
+
+// company_tiers is a small reference table (86+ rows as of this writing,
+// one row per real company ever sourced) -- a plain select is fine here,
+// unlike the real `jobs` table fetchAllRows.js exists to page around; same
 // category as job_functions, not the same category as jobs.
 export async function fetchCompanyTiers() {
-  const { data, error } = await supabase.from("company_tiers").select("company_name, tier");
+  const { data, error } = await supabase.from("company_tiers").select("company_name, tier, aliases");
   if (error) throw new Error(`Fetching company_tiers failed: ${error.message}`);
-  return new Map((data ?? []).map((row) => [row.company_name, row.tier]));
+  return indexCompanyTiers((data ?? []).map((row) => ({ companyName: row.company_name, tier: row.tier, aliases: row.aliases })));
 }

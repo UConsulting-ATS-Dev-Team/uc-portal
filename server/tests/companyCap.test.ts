@@ -7,6 +7,7 @@ import {
   rankForCompanyCap,
   tierForJobFunction,
   capForCompanyTier,
+  indexCompanyTiers,
   type CompanyCapCandidate,
 } from "../src/companyCap.js";
 
@@ -139,5 +140,41 @@ describe("capForCompanyTier", () => {
     expect(capForCompanyTier(0)).toBeGreaterThan(capForCompanyTier(1));
     expect(capForCompanyTier(1)).toBeGreaterThan(capForCompanyTier(2));
     expect(capForCompanyTier(2)).toBeGreaterThan(capForCompanyTier(3));
+  });
+});
+
+describe("indexCompanyTiers", () => {
+  it("indexes each row under its own canonical company name", () => {
+    const index = indexCompanyTiers([{ companyName: "Deloitte", tier: 0, aliases: [] }]);
+    expect(index.get("Deloitte")).toBe(0);
+  });
+
+  it("also indexes each row under every alias, resolving to the same tier", () => {
+    const index = indexCompanyTiers([{ companyName: "IMC Trading", tier: 1, aliases: ["IMC", "IMC Financial"] }]);
+    expect(index.get("IMC Trading")).toBe(1);
+    expect(index.get("IMC")).toBe(1);
+    expect(index.get("IMC Financial")).toBe(1);
+  });
+
+  it("treats a missing/null aliases array as no aliases, not a crash", () => {
+    const index = indexCompanyTiers([{ companyName: "Solo Co", tier: 2, aliases: null }]);
+    expect(index.get("Solo Co")).toBe(2);
+    expect(index.size).toBe(1);
+  });
+
+  it("does not partial-match an alias -- only an exact string resolves", () => {
+    const index = indexCompanyTiers([{ companyName: "IMC Trading", tier: 1, aliases: ["IMC"] }]);
+    expect(index.get("IMC Trading LLC")).toBeUndefined();
+    expect(index.get("imc")).toBeUndefined(); // case-sensitive, deliberately -- see this table's own migration comment
+  });
+
+  it("keeps every row's own entries independent across multiple companies", () => {
+    const index = indexCompanyTiers([
+      { companyName: "Deloitte", tier: 0, aliases: [] },
+      { companyName: "IMC Trading", tier: 1, aliases: ["IMC"] },
+    ]);
+    expect(index.get("Deloitte")).toBe(0);
+    expect(index.get("IMC")).toBe(1);
+    expect(index.get("Deloitte", )).not.toBe(index.get("IMC"));
   });
 });

@@ -45,7 +45,7 @@ import { scoreDuplicate, classifyDuplicateTier } from "../_shared/pipeline/dedup
 import { isLikelySeniorRole, isLikelyNonCorporateRole } from "../_shared/pipeline/relevance.ts";
 import type { RawJob } from "../_shared/pipeline/types.ts";
 import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows, updateInBatches, enforceCompanyCap } from "../_shared/dedupeHelpers.ts";
-import { capForCompanyTier } from "../_shared/pipeline/companyCap.ts";
+import { capForCompanyTier, indexCompanyTiers } from "../_shared/pipeline/companyCap.ts";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -400,7 +400,7 @@ Deno.serve(async (req) => {
       fetchAllRows(adminClient, "jobs", "id, company, title, application_url, remote_type, city, posted_date, salary_min", (q) => q.eq("active", true)),
       fetchAllRows(adminClient, "job_functions", "id, name"),
       fetchAllRows(adminClient, "job_sources", "source_id, job_id, source_job_id", (q) => q.in("source_id", sources.map((s) => s.id))),
-      fetchAllRows(adminClient, "company_tiers", "company_name, tier"),
+      fetchAllRows(adminClient, "company_tiers", "company_name, tier, aliases"),
     ]);
   } catch (err) {
     return jsonResponse({ error: err instanceof Error ? err.message : String(err) }, 500);
@@ -408,7 +408,9 @@ Deno.serve(async (req) => {
 
   const jobFunctionIdByName = new Map<string, string>((jobFunctions ?? []).map((f) => [f.name as string, f.id as string]));
   const jobFunctionNameById = new Map<string, string>((jobFunctions ?? []).map((f) => [f.id as string, f.name as string]));
-  const companyTierByName = new Map<string, number>((companyTiers ?? []).map((c) => [c.company_name as string, c.tier as number]));
+  const companyTierByName = indexCompanyTiers(
+    (companyTiers ?? []).map((c) => ({ companyName: c.company_name as string, tier: c.tier as number, aliases: c.aliases as string[] | null })),
+  );
 
   const activeJobsByCompany = new Map<string, Array<Record<string, unknown>>>();
   for (const job of rawActiveJobs ?? []) {
