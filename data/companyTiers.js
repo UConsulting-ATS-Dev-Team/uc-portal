@@ -14,8 +14,15 @@ import { supabase } from "./supabaseClient.js";
 // ingestion-side cap enforces. See
 // supabase/migrations/20260909070000_company_tiers.sql for the seeded list
 // and the full tiering rationale.
+// Tier 3's cap was raised from 3 to 10 on 2026-09-11 (direct instruction)
+// once the admin "Company tiers" view (pages/AdminDashboard.jsx) surfaced
+// real, legitimate companies sitting on this default -- SpaceX, HelloFresh,
+// Third Bridge among them -- with 200+ real active postings each,
+// genuinely deserving more room than 3 while waiting to be individually
+// classified. This is also the safety-net cap for any company not yet
+// reviewed by an admin at all.
 export const DEFAULT_COMPANY_TIER = 3;
-export const TIER_CAPS = { 0: 25, 1: 15, 2: 10, 3: 3 };
+export const TIER_CAPS = { 0: 25, 1: 15, 2: 10, 3: 10 };
 
 export function capForCompanyTier(tier) {
   return TIER_CAPS[tier ?? DEFAULT_COMPANY_TIER] ?? TIER_CAPS[DEFAULT_COMPANY_TIER];
