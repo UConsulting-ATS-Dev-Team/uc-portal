@@ -83,6 +83,18 @@ export default function RealMemberProfile({ personId }) {
             <button className="btn btn-primary" disabled={!!chatStatus} onClick={() => setShowChatModal(true)}>
               {chatStatus ? chatStatus : "Request coffee chat"}
             </button>
+            {/* Was missing entirely -- caught by an actual live
+                click-through, not a code read. pages/Network.jsx's card
+                grid already linked here correctly (fixed earlier the same
+                day), but this page, the one a Network card's own name
+                link lands on, never had a Message action at all. Same
+                real-account resolution as everywhere else this button
+                appears -- pages/Messages.jsx's own ?personId= handling
+                opens a real thread if this person has signed up, or says
+                so honestly if they haven't. */}
+            <Link to={`/messages?personId=${person.id}`} className="btn btn-secondary">
+              Message
+            </Link>
             {person.email && (
               <a className="btn btn-secondary" href={`mailto:${person.email}`}>
                 Email

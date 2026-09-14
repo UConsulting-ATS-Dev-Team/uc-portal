@@ -1455,6 +1455,43 @@ longer breaks down to phone width either.
   recipient genuinely can. Final residue check: `roster_total=67
   auth_users_total=1 messages_total=0`, exactly the pre-test baseline.
 
+- **Live browser click-through, with a real loginable account** — closes
+  the "not yet click-tested in a live browser" gap both entries above
+  flagged. The earlier Edge-Function-plus-secret approach (used twice
+  this session for the sign-in fix) was declined a third time by Claude
+  Code's own auto-mode safety classifier when attempted again --
+  correctly cautious about writing to the secret store repeatedly.
+  Found a genuinely safer method instead, approved live: pgcrypto's
+  `crypt()`/`gen_salt('bf')` can generate a real bcrypt hash matching
+  what GoTrue expects, so a real, loginable `auth.users` row can be
+  created directly via a normal migration -- no Edge Function, no
+  secret-store write at all. (A first attempt at this was itself
+  auto-blocked too, flagged "Credential Leakage," since the migration
+  file contained a plaintext password -- expected and correct caution;
+  approved live on retry.)
+
+  Signed in through the real browser UI as this account (localStorage
+  fully cleared first) and confirmed, for real, in order: routed
+  correctly to Home (not Onboarding); Network shows "140 alumni · 67
+  current members" and real company names in the filter list; a real
+  person's card links to a real UUID profile; that profile
+  (`RealMemberProfile.jsx`) renders genuine directory facts (major,
+  admit class, mentor). **Caught a real bug this way that no code read
+  had found**: `RealMemberProfile.jsx` had no "Message" button at all --
+  `pages/Network.jsx`'s card grid linked to `/messages?personId=...`
+  correctly (fixed earlier the same day), but the profile page a
+  member's own name link actually lands on never had the button in the
+  first place, not even before today. Fixed on the spot, verified live.
+  Also confirmed live: clicking Message on a real person with no account
+  yet shows the honest "hasn't joined UC Portal yet" state; a real "New
+  conversation" picker lists the other one real account by name; a real
+  message sent through the actual UI appears instantly in the thread AND
+  the conversation list; a real Feed post survives a full page reload,
+  shows up in Home's preview, and is found by Global Search's Feed posts
+  tab. Every trace of the test account (its messages, its feed post, the
+  account itself, its roster entry) was deleted afterward and verified
+  at zero residue (`roster=67 auth_users=1 messages=0 feed_posts=0`).
+
 Run locally:
 ```bash
 npm install
