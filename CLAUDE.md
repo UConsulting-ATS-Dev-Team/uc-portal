@@ -1835,6 +1835,51 @@ longer breaks down to phone width either.
   — low risk, standard patterns, no new throwaway account created this
   pass).
 
+- **Color-contrast re-verification against the real WCAG formula** —
+  continued the idle-time audit by re-checking whether the Sept 2026
+  contrast fix (CLAUDE.md's own palette note) still actually holds,
+  rather than assuming a fix made months ago is still correct, using the
+  same real relative-luminance contrast-ratio formula that fix was
+  originally verified against (not eyeballed). Computed every text/
+  background token pair:
+  - `--color-text`/`--color-text-secondary`/`--color-text-muted`/
+    `--color-neutral`/`--color-accent-deep` all genuinely pass WCAG AA
+    (>=4.5:1) against every real background (surface/ground/table-header)
+    — the Sept 2026 fix holds.
+  - **Found, not fixed — flagged for a real design call**: `--color-accent`
+    (`#0c74c1`, the plain "link blue," used by the global `a` selector and
+    every `.btn-link`) measures 4.38:1 against `--color-ground`
+    (`#f2f2f3`, the page's own body background per `styles/global.css`'s
+    `body { background: var(--color-ground) }`) — just under the 4.5:1
+    text minimum (still fine at 4.90:1 against white `surface`, and fine
+    for large/UI-only use at the 3:1 threshold either background). Real
+    impact depends on how often a plain link or `.btn-link` actually
+    renders directly against bare ground rather than inside a white card
+    — not fully characterized without a live visual pass. Not changed
+    unilaterally: swapping to the darker `--color-accent-deep` (6.26:1,
+    passes cleanly) for text specifically would be a real, visible brand-
+    color decision, not a narrow bug fix like the original text-muted
+    darkening was.
+  - **Found, not fixed — flagged for a real design call, and larger**:
+    `--color-border`/`--color-border-inner` (the hairline dividers that
+    are this app's whole "flat surfaces, 1px hairline borders" visual
+    signature per CLAUDE.md's own Shape section) measure only 1.3-2.0:1
+    against every real background — well under the 3:1 WCAG 1.4.11
+    non-text-contrast minimum that applies to any border used to convey a
+    UI component's boundary (e.g., a real form input's edge, not just a
+    decorative list divider). Fixing this for real would mean visibly
+    darkening hairlines app-wide — a real, deliberate design-language
+    trade-off (legibility vs. the established minimalist aesthetic), not
+    something to default into without the actual design conversation.
+  - **Found and noted, no action needed**: `--color-placeholder`
+    (`#7d7d80`) fails AA outright (4.10:1) but is genuinely dead CSS —
+    defined in `tokens.css` but never referenced by any stylesheet (no
+    `::placeholder` rule exists anywhere), so every real `<input
+    placeholder="...">` in the app renders with the browser's own default
+    placeholder styling instead, outside this app's control. Zero live
+    user impact today; worth remembering if this token is ever actually
+    wired up later.
+
 Run locally:
 ```bash
 npm install
