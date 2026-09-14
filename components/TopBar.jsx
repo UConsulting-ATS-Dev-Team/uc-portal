@@ -1,19 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { currentUser } from "../data/mockUser.js";
-import { CONVERSATIONS } from "../data/mockMessages.js";
 import { useAppState } from "../data/store.jsx";
 import { supabase } from "../data/supabaseClient.js";
+import { fetchUnreadCount } from "../data/messagesSync.js";
 import { displayName, initialsFromName } from "../data/profileUtils.js";
 import RequestFeatureModal from "./modals/RequestFeatureModal.jsx";
 import bearMark from "../assets/uc-bear-mark-navy.png";
-
-const unreadMessageCount = CONVERSATIONS.filter((c) => c.unread).length;
 
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showRequestFeature, setShowRequestFeature] = useState(false);
   const { profileOverrides, needsActionCount } = useAppState();
+  // Was CONVERSATIONS.filter(c => c.unread).length -- a fixed mock count
+  // shown to every signed-in user regardless of their real inbox, same
+  // bug class as the notification bell's old navCounts.notificationsUnread.
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  useEffect(() => {
+    fetchUnreadCount().then(setUnreadMessageCount).catch(() => {});
+  }, []);
   const initials = initialsFromName(displayName(currentUser, profileOverrides));
   const navigate = useNavigate();
   const location = useLocation();

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { findPerson as findMockPerson } from "../data/mockPeople.js";
 import { fetchRealPeople } from "../data/realPeople.js";
-import { findConversationByPersonId } from "../data/mockMessages.js";
 import { capabilitiesFor } from "../data/peopleUtils.js";
 import { useAppState } from "../data/store.jsx";
 import RequestCoffeeChatModal from "../components/modals/RequestCoffeeChatModal.jsx";
@@ -199,19 +198,12 @@ export default function Network() {
                   )}
                   <div className="person-card__actions">
                     {isMember ? (
-                      findConversationByPersonId(p.id) ? (
-                        <Link to={`/messages?personId=${p.id}`} className="btn btn-primary">Message</Link>
-                      ) : (
-                        // No seeded conversation exists for this person yet
-                        // (real "Message" only ever reaches an existing
-                        // thread -- no compose-new-conversation flow exists,
-                        // same limitation Messages.jsx's own "New" button
-                        // documents). Honestly inert rather than a button
-                        // that looks live but lands on someone else's thread.
-                        <button className="btn btn-primary" disabled title="No conversation with this person yet -- messaging starts from a coffee chat">
-                          Message
-                        </button>
-                      )
+                      // Messages.jsx's own ?personId= handling now resolves
+                      // this for real (a real account -> opens a real
+                      // thread; no account yet -> an honest "hasn't joined
+                      // UC Portal yet" state) -- no need to pre-check for an
+                      // existing conversation here anymore.
+                      <Link to={`/messages?personId=${p.id}`} className="btn btn-primary">Message</Link>
                     ) : (
                       <button
                         className="btn btn-primary"

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { findPerson } from "../data/mockPeople.js";
-import { findConversationByPersonId } from "../data/mockMessages.js";
 import {
   capabilitiesFor,
   happyToHelpFor,
@@ -94,17 +93,11 @@ export default function MemberProfile() {
             </button>
             {/* Was a bare /messages link regardless of who this profile
                 belongs to -- landed on whatever conversation happened to
-                be first, not this person's. Now jumps straight to their
-                real thread when one exists; honestly inert (no compose-
-                new-conversation flow exists, same limitation Messages.jsx's
-                own "New" button documents) when it doesn't. */}
-            {findConversationByPersonId(person.id) ? (
-              <Link to={`/messages?personId=${person.id}`} className="btn btn-secondary">Message</Link>
-            ) : (
-              <button className="btn btn-secondary" disabled title="No conversation with this person yet -- messaging starts from a coffee chat">
-                Message
-              </button>
-            )}
+                be first, not this person's. Messages.jsx's own ?personId=
+                handling now resolves this for real (a real account ->
+                opens a real thread; no account yet -> an honest "hasn't
+                joined UC Portal yet" state). */}
+            <Link to={`/messages?personId=${person.id}`} className="btn btn-secondary">Message</Link>
             <button className="btn btn-secondary" onClick={() => toggleSavedConnection(person.id)}>
               {isSaved ? "Saved to network ✓" : "Save to my network"}
             </button>

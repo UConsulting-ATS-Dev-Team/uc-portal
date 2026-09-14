@@ -1,80 +1,158 @@
-import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { CONVERSATIONS, findConversationByPersonId } from "../data/mockMessages.js";
-import { findPerson } from "../data/mockPeople.js";
-import "../styles/feed.css";
-import "../styles/notifications.css";
-import "../styles/messages.css";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { fetchRealPersonById } from "../data/realPeople.js";
+import {
+  listMessageableMembers,
+  findMemberByEmail,
+  fetchConversations,
+  fetchThread,
+  sendMessage,
+  markThreadRead,
+} from "../data/messagesSync.js";
+import Modal from "../components/Modal.jsx";
 
-const TABS = ["All", "Requests", "Unread"];
+const TABS = ["All", "Unread"];
 
 function initials(name) {
-  return name.split(" ").map((p) => p[0]).join("");
+  return name.split(" ").map((p) => p[0]).join("").slice(0, 2);
 }
 
+function relativeTime(iso) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+// Real 1:1 messaging (see the real_messages migration for the full
+// rationale). Every conversation here is a real, delivered message
+// between two real signed-in accounts -- unlike the old mock version,
+// there's no concept of a "request" (that was tied to coffee-chat mock
+// data), no scheduled-chat origin banner, and no shared-resource
+// attachments, since none of those have a real backing yet; dropped
+// rather than faked. A real account also has no reliable role/company to
+// show in the thread header (that lives on the still-unlinked `people`
+// directory, not on a real account) -- just its real display name.
 export default function Messages() {
-  const [conversations, setConversations] = useState(CONVERSATIONS);
-  // A "Message" link elsewhere (Network.jsx, MemberProfile.jsx) passes
-  // ?personId=... for exactly this -- used to just land on whatever
-  // conversation happened to be first, not the person you actually
-  // meant to message. Falls back to the old default when there's no
-  // param (arriving from the nav rail/bottom bar, not a specific
-  // person) or the param doesn't match a real conversation.
   const [searchParams] = useSearchParams();
-  const requestedConversation = findConversationByPersonId(searchParams.get("personId"));
-  const [activeId, setActiveId] = useState(requestedConversation?.id ?? CONVERSATIONS[0].id);
+  const requestedPersonId = searchParams.get("personId");
+
+  const [conversations, setConversations] = useState([]);
+  const [conversationsLoading, setConversationsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeId, setActiveId] = useState(null);
+  const [activeName, setActiveName] = useState(null);
+  const [notOnPortalName, setNotOnPortalName] = useState(null);
+  const [thread, setThread] = useState([]);
+  const [threadLoading, setThreadLoading] = useState(false);
   const [tab, setTab] = useState("All");
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState("");
-  // Phone-UX pass: only meaningful below the 640px tier (styles/
-  // messages.css's is-list-view/is-thread-view rules are scoped to that
-  // media query -- at every wider width both panes show side by side
-  // regardless of this state, unaffected). Replaces the old "stack both
-  // panes, cap the list to a scrollable 240px" compromise CLAUDE.md
-  // called out as the one deliberate non-toggle exception to the
-  // responsive pass -- a real toggle was possible all along, there was
-  // just no state to swap on yet. Defaults straight to the thread view
-  // when arriving via a matched ?personId=, same reasoning as activeId
-  // above -- landing on the list first would still be the wrong
-  // "which conversation is this" experience the person-specific link
-  // was meant to fix.
-  const [mobileView, setMobileView] = useState(requestedConversation ? "thread" : "list");
+  const [sending, setSending] = useState(false);
+  const [showNewPicker, setShowNewPicker] = useState(false);
+  const [messageable, setMessageable] = useState([]);
+  const [mobileView, setMobileView] = useState("list");
+
+  function loadConversations() {
+    setConversationsLoading(true);
+    fetchConversations()
+      .then(setConversations)
+      .catch((err) => setError(err.message))
+      .finally(() => setConversationsLoading(false));
+  }
+
+  useEffect(() => {
+    loadConversations();
+  }, []);
+
+  // A "Message" link elsewhere (Network.jsx, MemberProfile.jsx) still
+  // passes ?personId=<people.id> -- a real directory record, not
+  // necessarily a real account. Resolves that person's real email, then
+  // checks whether it matches a real signed-in account -- opens a real
+  // thread if so, otherwise shows an honest "hasn't joined yet" state
+  // instead of a broken/blank thread.
+  useEffect(() => {
+    if (!requestedPersonId) return;
+    fetchRealPersonById(requestedPersonId).then((person) => {
+      if (!person?.email) return;
+      findMemberByEmail(person.email).then((memberId) => {
+        if (memberId) {
+          setActiveId(memberId);
+          setActiveName(person.name);
+          setMobileView("thread");
+        } else {
+          setNotOnPortalName(person.name);
+          setMobileView("thread");
+        }
+      });
+    });
+  }, [requestedPersonId]);
+
+  useEffect(() => {
+    if (!activeId) return;
+    setThreadLoading(true);
+    fetchThread(activeId)
+      .then(setThread)
+      .then(() => markThreadRead(activeId))
+      .then(loadConversations)
+      .catch((err) => setError(err.message))
+      .finally(() => setThreadLoading(false));
+  }, [activeId]);
+
+  function openConversation(c) {
+    setActiveId(c.counterpartId);
+    setActiveName(c.counterpartName);
+    setNotOnPortalName(null);
+    setMobileView("thread");
+  }
+
+  function openNewPicker() {
+    setError(null);
+    listMessageableMembers().then(setMessageable).catch((err) => setError(err.message));
+    setShowNewPicker(true);
+  }
+
+  function startConversation(member) {
+    setShowNewPicker(false);
+    setActiveId(member.member_id);
+    setActiveName(member.display_name);
+    setNotOnPortalName(null);
+    setMobileView("thread");
+  }
+
+  async function handleSend() {
+    if (!draft.trim() || sending || !activeId) return;
+    setSending(true);
+    setError(null);
+    try {
+      await sendMessage(activeId, draft.trim());
+      setDraft("");
+      const rows = await fetchThread(activeId);
+      setThread(rows);
+      loadConversations();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSending(false);
+    }
+  }
 
   const filtered = conversations.filter((c) => {
-    if (tab === "Requests" && !c.isRequest) return false;
-    if (tab === "Unread" && !c.unread) return false;
-    if (search) {
-      const person = findPerson(c.personId);
-      if (!person?.name.toLowerCase().includes(search.toLowerCase())) return false;
-    }
+    if (tab === "Unread" && c.unreadCount === 0) return false;
+    if (search && !c.counterpartName.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
-
-  const active = conversations.find((c) => c.id === activeId);
-  const activePerson = active ? findPerson(active.personId) : null;
-
-  function handleSend() {
-    if (!draft.trim()) return;
-    setConversations((prev) =>
-      prev.map((c) =>
-        c.id === activeId
-          ? { ...c, messages: [...c.messages, { id: `local-${Date.now()}`, author: "me", body: draft.trim(), timestamp: "Just now" }] }
-          : c
-      )
-    );
-    setDraft("");
-  }
 
   return (
     <div className={`messages-layout${mobileView === "thread" ? " is-thread-view" : " is-list-view"}`}>
       <div className="conversation-list">
         <div className="conversation-list__header">
           <strong>Messages</strong>
-          {/* No compose-new-conversation flow exists -- every real
-              conversation here originates from a coffee-chat request or
-              a "Message" button elsewhere (Network/Member profile),
-              never started fresh from this page. */}
-          <button className="btn btn-secondary" disabled title="Not built yet -- start a conversation from Network or a member's profile instead">
+          <button className="btn btn-secondary" onClick={openNewPicker}>
             New
           </button>
         </div>
@@ -83,8 +161,7 @@ export default function Messages() {
         </div>
         <div className="conversation-list__tabs">
           {TABS.map((t) => {
-            const count =
-              t === "All" ? conversations.length : t === "Requests" ? conversations.filter((c) => c.isRequest).length : conversations.filter((c) => c.unread).length;
+            const count = t === "All" ? conversations.length : conversations.filter((c) => c.unreadCount > 0).length;
             return (
               <button key={t} className={tab === t ? "is-active" : ""} onClick={() => setTab(t)}>
                 {t} ({count})
@@ -93,108 +170,78 @@ export default function Messages() {
           })}
         </div>
         <div className="conversation-list__rows">
-          {filtered.map((c) => {
-            const person = findPerson(c.personId);
-            const lastMessage = c.messages[c.messages.length - 1];
-            const preview = c.isRequest && c.messages.length === 1
-              ? "Coffee chat request · pending"
-              : `${lastMessage.author === "me" ? "You: " : ""}${lastMessage.body}`;
-            return (
-              <button
-                key={c.id}
-                className={`conversation-row${c.id === activeId ? " is-active" : ""}`}
-                onClick={() => {
-                  setActiveId(c.id);
-                  setMobileView("thread");
-                }}
-              >
-                <div className="conversation-row__top">
-                  <span>{person.name}</span>
-                  <span className="conversation-row__time">{lastMessage.timestamp}</span>
-                </div>
-                <div className="conversation-row__preview">{preview}</div>
-              </button>
-            );
-          })}
+          {conversationsLoading && <p className="meta" style={{ padding: "var(--space-4)" }}>Loading…</p>}
+          {!conversationsLoading && filtered.length === 0 && (
+            <p className="meta" style={{ padding: "var(--space-4)" }}>
+              {conversations.length === 0 ? "No conversations yet — start one with \"New.\"" : "Nothing here."}
+            </p>
+          )}
+          {filtered.map((c) => (
+            <button
+              key={c.counterpartId}
+              className={`conversation-row${c.counterpartId === activeId ? " is-active" : ""}`}
+              onClick={() => openConversation(c)}
+            >
+              <div className="conversation-row__top">
+                <span>{c.counterpartName}</span>
+                <span className="conversation-row__time">{relativeTime(c.lastMessage.created_at)}</span>
+              </div>
+              <div className="conversation-row__preview">
+                {c.lastMessage.sender_id === activeId ? "" : "You: "}
+                {c.lastMessage.body}
+              </div>
+            </button>
+          ))}
         </div>
       </div>
 
-      {active && activePerson && (
+      {notOnPortalName && !activeId && (
         <div className="thread-pane">
           <div className="thread-pane__header">
-            {/* Only rendered/visible via CSS at the phone tier -- see
-                messages.css's is-thread-view rule. At every wider width
-                both panes already show side by side, so there's nothing
-                to "go back" to. */}
             <button className="thread-pane__back" onClick={() => setMobileView("list")} aria-label="Back to conversations">
               ← Back
             </button>
-            <div className="post-card__avatar">{initials(activePerson.name)}</div>
-            <div>
-              <div style={{ fontWeight: 700 }}>{activePerson.name}</div>
-              <div className="thread-pane__context">
-                {activePerson.role}{activePerson.company ? `, ${activePerson.company}` : ""}
-                {activePerson.office ? ` — ${activePerson.office}` : ""}
-                {active.scheduledChat ? ` · ${active.scheduledChat}` : ""}
-              </div>
-            </div>
-            <div className="thread-pane__header-actions">
-              <Link to={`/network/${activePerson.id}`} className="btn btn-secondary">View profile</Link>
-              {/* No specific job is attached to a generic message thread
-                  to add -- real "Add to tracker" entry points (Job
-                  detail, the Applications modal) always have one. */}
-              <button className="btn btn-secondary" disabled title="Not wired up here -- add a job to your tracker from its own listing instead">
-                Add to tracker
-              </button>
-            </div>
+            <div style={{ fontWeight: 700 }}>{notOnPortalName}</div>
+          </div>
+          <p className="meta" style={{ padding: "var(--space-6)" }}>
+            {notOnPortalName} hasn't joined UC Portal yet, so there's no real account to message. You'll be able to
+            message them here once they sign up.
+          </p>
+        </div>
+      )}
+
+      {activeId && (
+        <div className="thread-pane">
+          <div className="thread-pane__header">
+            <button className="thread-pane__back" onClick={() => setMobileView("list")} aria-label="Back to conversations">
+              ← Back
+            </button>
+            <div className="post-card__avatar">{initials(activeName || "?")}</div>
+            <div style={{ fontWeight: 700 }}>{activeName}</div>
           </div>
 
           <div className="thread-pane__messages">
-            <div className="thread-origin">{active.originLabel}</div>
-            {active.messages.map((m) => (
-              <div className={`message-bubble-row${m.author === "me" ? " is-outgoing" : ""}`} key={m.id}>
+            {threadLoading && <p className="meta">Loading…</p>}
+            {!threadLoading && thread.length === 0 && <p className="meta">No messages yet — say hello.</p>}
+            {thread.map((m) => (
+              <div className={`message-bubble-row${m.sender_id !== activeId ? " is-outgoing" : ""}`} key={m.id}>
                 <div className="message-bubble">
                   <p style={{ margin: 0 }}>{m.body}</p>
-                  {m.sharedResource && (
-                    <div className="shared-resource-card">
-                      <span className="notif-icon">{m.sharedResource.logo}</span>
-                      <span>{m.sharedResource.title}</span>
-                      {/* m.sharedResource (data/mockMessages.js) is a
-                          standalone illustrative title/logo, not tied to
-                          a real RESOURCES id -- nothing real to open. */}
-                      <button
-                        className="btn btn-secondary"
-                        style={{ marginLeft: "auto" }}
-                        disabled
-                        title="Not wired up -- this shared file isn't tied to a real resource in this prototype"
-                      >
-                        Open
-                      </button>
-                    </div>
-                  )}
                   <div className="message-bubble__meta">
-                    {m.author === "me" ? "You" : activePerson.name} · {m.timestamp}
+                    {m.sender_id !== activeId ? "You" : activeName} · {relativeTime(m.created_at)}
                   </div>
                 </div>
               </div>
             ))}
           </div>
 
+          {error && (
+            <p className="meta" style={{ color: "#B3261E", padding: "0 var(--space-4)" }}>
+              {error}
+            </p>
+          )}
+
           <div className="composer-row">
-            {/* No file attachment, real-resource-sharing, or scheduling
-                flow exists behind any of these three -- honestly inert
-                rather than dead clicks next to a working Send below. */}
-            <div className="composer-row__tools">
-              <button className="btn btn-secondary" disabled title="Not built yet -- no file attachments in this prototype">
-                Attach
-              </button>
-              <button className="btn btn-secondary" disabled title="Not built yet -- no resource-sharing flow in this prototype">
-                Share a resource
-              </button>
-              <button className="btn btn-secondary" disabled title="Not built yet -- no scheduling flow in this prototype">
-                Propose a time
-              </button>
-            </div>
             <textarea
               rows={1}
               placeholder="Write a message…"
@@ -207,9 +254,27 @@ export default function Messages() {
                 }
               }}
             />
-            <button className="btn btn-primary" onClick={handleSend}>Send</button>
+            <button className="btn btn-primary" onClick={handleSend} disabled={sending || !draft.trim()}>
+              {sending ? "Sending…" : "Send"}
+            </button>
           </div>
         </div>
+      )}
+
+      {showNewPicker && (
+        <Modal title="New conversation" onClose={() => setShowNewPicker(false)} width={420}>
+          {messageable.length === 0 && <p className="meta">No other real UC Portal accounts exist yet to message.</p>}
+          {messageable.map((m) => (
+            <button
+              key={m.member_id}
+              className="conversation-row"
+              onClick={() => startConversation(m)}
+              style={{ width: "100%", textAlign: "left" }}
+            >
+              {m.display_name}
+            </button>
+          ))}
+        </Modal>
       )}
     </div>
   );

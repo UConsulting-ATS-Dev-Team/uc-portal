@@ -1401,6 +1401,60 @@ longer breaks down to phone width either.
   Zero residue confirmed after cleanup. Not yet click-tested in a live
   browser (same constraint as the real-people import above).
 
+- **Real Messages** — closes the last major "still mock" gap, same
+  instruction as Feed above. Direct product decision, made explicitly
+  given today's real state: real messaging can only ever deliver between
+  two real signed-in accounts (`auth.users`), and the 207-row `people`
+  directory imported earlier today has no link to real accounts at all
+  (almost none of those real people have signed up yet) -- so this scopes
+  to real accounts only, rather than a bigger "message any real directory
+  person, delivered on signup" design that was also considered and
+  explicitly deferred. Functionally that means very few real
+  conversations are possible until more members actually sign up --
+  correct and honest given today's real data, not a shortcut.
+
+  New `messages` table (`20260914110000_real_messages.sql`, own-side
+  select/insert, recipient-only update for marking read) plus two new
+  RPCs: `list_messageable_members()` (every other real account, for
+  starting a new conversation -- deliberately *not* admin-gated like its
+  closest precedent `list_members()`, since this has to work for any real
+  member; withholds email, showing only a display name or the email's
+  local part as a fallback) and `find_member_by_email()` (resolves a real
+  `people` row to a real account, if that specific person has signed up).
+  That second function is what lets Network.jsx's/MemberProfile.jsx's
+  existing "Message" button (still linking by `people.id`, a directory
+  record) work honestly now -- opens a real thread when the person has an
+  account, otherwise shows "X hasn't joined UC Portal yet" instead of a
+  broken or silently-inert button (both pages' old pre-check against
+  seeded mock conversations was removed as unnecessary once Messages.jsx
+  itself handles this correctly). `data/messagesSync.js` derives
+  conversations client-side by grouping the flat `messages` table by
+  counterpart (same "derive it, don't duplicate-store it" approach
+  `notificationUtils.js`/`timelineUtils.js` already use) rather than a
+  separate conversations table. Dropped concepts with no real backing
+  rather than faking them: "Requests" tab (was tied to mock coffee-chat
+  state), the scheduled-chat origin banner, and shared-resource
+  attachments. The top bar's message-envelope badge (`unreadMessageCount`)
+  was also still a hardcoded mock count (`mockMessages.js`'s seeded
+  `unread` flags) -- now a real `fetchUnreadCount()` query, same fix
+  already applied to the notification bell. `data/mockMessages.js` had no
+  remaining callers and was deleted.
+
+  Verified live via role-impersonation, this time genuinely two-party
+  (a throwaway second `auth.users` row, inserted directly and deleted at
+  the end -- not the Edge-Function-plus-secret pattern used earlier
+  today, which wasn't reused a third time this session): a real send is
+  visible to both the sender and the real recipient, spoofing another
+  account's `sender_id` is blocked, `list_messageable_members()`/
+  `find_member_by_email()` both resolve correctly, and -- caught and
+  fixed mid-verification -- an update-RLS test's first pass used the
+  wrong failure signal (UPDATE policy violations under `USING` silently
+  affect zero rows rather than raising an exception, unlike INSERT's
+  `WITH CHECK`); corrected to check `read_at` directly, which confirmed
+  the sender genuinely cannot mark their own message read and the real
+  recipient genuinely can. Final residue check: `roster_total=67
+  auth_users_total=1 messages_total=0`, exactly the pre-test baseline.
+
 Run locally:
 ```bash
 npm install
