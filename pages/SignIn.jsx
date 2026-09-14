@@ -103,7 +103,29 @@ export default function SignIn() {
       return;
     }
 
-    navigate(onboardingComplete ? redirectTo || "/" : "/onboarding");
+    // Route by the real onboarding_complete value, not useAppState()'s
+    // onboardingComplete -- that comes from data/store.jsx's mount-time
+    // hydration effect, which fires once when AppStateProvider first
+    // mounts (before this sign-in happens) and never re-runs when a
+    // session newly appears -- confirmed live, no onAuthStateChange
+    // listener exists in store.jsx (only RequireAuth.jsx has one, and it
+    // doesn't touch the store). For a returning member on a fresh
+    // browser/device with no persisted session, that mount-time hydrate
+    // found no session yet (fetchRemoteProfileOverrides bails out early
+    // when getSession() returns null) and never fetched anything --
+    // useAppState()'s value here would still be the local default
+    // (false), incorrectly sending a fully onboarded real member back
+    // through onboarding. Querying profiles directly with the session we
+    // just created sidesteps the race entirely; falls back to the
+    // context value only if this query itself fails.
+    const { data: profileRow } = await supabase
+      .from("profiles")
+      .select("onboarding_complete")
+      .eq("id", data.user.id)
+      .maybeSingle();
+    const isOnboarded = profileRow?.onboarding_complete ?? onboardingComplete;
+
+    navigate(isOnboarded ? redirectTo || "/" : "/onboarding");
   }
 
   function requestAccess() {

@@ -1149,6 +1149,33 @@ longer breaks down to phone width either.
   up as synthetic test data, and the RPC was tested as fully
   unauthenticated `anon` (the real pre-signup condition).
 
+- **Fixed a stale-hydration race on sign-in routing** — a pre-production
+  audit follow-up: `pages/SignIn.jsx`'s post-sign-in `navigate()` read
+  `onboardingComplete` from `useAppState()`, but every hydration effect
+  in `data/store.jsx` (preferences, profile overrides, tracked jobs,
+  saved jobs, network connections) fires exactly once, on
+  `AppStateProvider`'s own mount, with no `onAuthStateChange` listener to
+  re-run it when a session newly appears (confirmed live — the only
+  `onAuthStateChange` subscription anywhere in the app is
+  `components/RequireAuth.jsx`'s own, and it only gates route rendering,
+  it never touches the store). For a returning member on a fresh browser/
+  device (no persisted session at the moment `AppStateProvider` mounts),
+  `fetchRemoteProfileOverrides()` bails out immediately
+  (`getSession()` returns null) and `hydratedFromRemote` still flips to
+  `true` with nothing applied — so reading `onboardingComplete` right
+  after `signInWithPassword()` resolves returns the stale local default
+  (`false`), incorrectly routing a fully onboarded real member back into
+  `/onboarding`. Fixed by having `handleSubmit` query
+  `profiles.onboarding_complete` directly with the session it just
+  created, instead of trusting the context value, falling back to the
+  context value only if that query itself errors. **Not verified in a
+  live authenticated browser** — no second real test account with known
+  credentials exists yet (same constraint noted on several other
+  real-data features above); verified via a full production build
+  (`vite build`, clean) and direct code trace instead. Worth a real
+  browser pass once a second real member account is available to sign in
+  as.
+
 Run locally:
 ```bash
 npm install
