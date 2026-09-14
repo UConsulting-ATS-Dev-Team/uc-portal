@@ -4,14 +4,17 @@ import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
 import { supabase } from "../data/supabaseClient.js";
 import { fetchUnreadCount } from "../data/messagesSync.js";
+import { countNewSignupsSince } from "../data/adminNotificationsSync.js";
 import { displayName, initialsFromName } from "../data/profileUtils.js";
 import RequestFeatureModal from "./modals/RequestFeatureModal.jsx";
 import bearMark from "../assets/uc-bear-mark-navy.png";
 
+const SIGNUPS_LAST_SEEN_KEY = "uc-portal-admin-signups-last-seen";
+
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showRequestFeature, setShowRequestFeature] = useState(false);
-  const { profileOverrides, needsActionCount } = useAppState();
+  const { profileOverrides, needsActionCount, isAdmin } = useAppState();
   // Was CONVERSATIONS.filter(c => c.unread).length -- a fixed mock count
   // shown to every signed-in user regardless of their real inbox, same
   // bug class as the notification bell's old navCounts.notificationsUnread.
@@ -19,6 +22,27 @@ export default function TopBar() {
   useEffect(() => {
     fetchUnreadCount().then(setUnreadMessageCount).catch(() => {});
   }, []);
+
+  // Real admin-only "new signups" badge -- closes the "Notify admin on new
+  // signups" quick win (in-app only; email waits on SES). "Last seen" is a
+  // per-browser localStorage convenience (like recentSearches), not synced
+  // state -- there's nothing to mark read server-side, this just avoids
+  // re-showing the same count every page load once an admin has clicked
+  // through. Defaults to 14 days back the first time an admin ever sees
+  // this (same window list_recent_signups()'s own default uses), not "all
+  // time," so a long-tenured admin's badge doesn't open at some enormous
+  // historical count.
+  const [newSignupsCount, setNewSignupsCount] = useState(0);
+  useEffect(() => {
+    if (!isAdmin) return;
+    const lastSeen = localStorage.getItem(SIGNUPS_LAST_SEEN_KEY) || new Date(Date.now() - 14 * 86400000).toISOString();
+    countNewSignupsSince(lastSeen).then(setNewSignupsCount).catch(() => {});
+  }, [isAdmin]);
+
+  function handleSignupsBadgeClick() {
+    localStorage.setItem(SIGNUPS_LAST_SEEN_KEY, new Date().toISOString());
+    setNewSignupsCount(0);
+  }
   const initials = initialsFromName(displayName(currentUser, profileOverrides));
   const navigate = useNavigate();
   const location = useLocation();
@@ -65,6 +89,13 @@ export default function TopBar() {
       <div className="topbar__spacer" />
 
       <div className="topbar__actions">
+        {isAdmin && (
+          <Link className="topbar__notifications" to="/admin" aria-label="New signups" onClick={handleSignupsBadgeClick}>
+            👥
+            {newSignupsCount > 0 && <span className="topbar__notifications-count">{newSignupsCount}</span>}
+          </Link>
+        )}
+
         <Link className="topbar__notifications" to="/messages" aria-label="Messages">
           ✉️
           {unreadMessageCount > 0 && <span className="topbar__notifications-count">{unreadMessageCount}</span>}

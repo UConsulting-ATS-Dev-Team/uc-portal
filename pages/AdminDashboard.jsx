@@ -4,6 +4,7 @@ import PostOpportunityModal from "../components/modals/PostOpportunityModal.jsx"
 import { supabase } from "../data/supabaseClient.js";
 import { fetchAllRows } from "../data/fetchAllRows.js";
 import { capForCompanyTier } from "../data/companyTiers.js";
+import { fetchRecentSignups } from "../data/adminNotificationsSync.js";
 import {
   KPIS,
   INDUSTRY_INTEREST,
@@ -66,6 +67,9 @@ export default function AdminDashboard() {
   const [accessRequestsLoading, setAccessRequestsLoading] = useState(true);
   const [accessRequestsError, setAccessRequestsError] = useState(null);
   const [updatingAccessRequestId, setUpdatingAccessRequestId] = useState(null);
+  const [recentSignups, setRecentSignups] = useState([]);
+  const [recentSignupsLoading, setRecentSignupsLoading] = useState(true);
+  const [recentSignupsError, setRecentSignupsError] = useState(null);
   const gap = biggestGap();
   const maxMembers = Math.max(...INDUSTRY_INTEREST.map((i) => i.members));
 
@@ -280,6 +284,21 @@ export default function AdminDashboard() {
     setEngagementLoading(false);
   }
 
+  // Real "new signups" visibility -- see list_recent_signups()
+  // (20260914190000) for the full rationale. TopBar.jsx's badge is just a
+  // count (a plain profiles query); this is the actual list with real
+  // display names, for admins to see who joined without writing SQL.
+  async function loadRecentSignups() {
+    setRecentSignupsLoading(true);
+    try {
+      setRecentSignups(await fetchRecentSignups(14, 10));
+      setRecentSignupsError(null);
+    } catch (err) {
+      setRecentSignupsError(err.message);
+    }
+    setRecentSignupsLoading(false);
+  }
+
   useEffect(() => {
     loadQueue();
     loadDuplicates();
@@ -289,6 +308,7 @@ export default function AdminDashboard() {
     loadEngagement();
     loadCompanyTiers();
     loadAccessRequests();
+    loadRecentSignups();
   }, []);
 
   const disengagedCount = engagement.filter((m) => m.is_disengaged).length;
@@ -1072,6 +1092,21 @@ export default function AdminDashboard() {
         </div>
 
         <div className="detail-rail">
+          <div className="rail-card">
+            <div className="rail-card__title">Recent signups</div>
+            {recentSignupsError && <p className="meta" style={{ color: "#B3261E" }}>{recentSignupsError}</p>}
+            {!recentSignupsLoading && recentSignups.length === 0 && !recentSignupsError && (
+              <p className="meta" style={{ margin: 0 }}>No new accounts in the last 14 days.</p>
+            )}
+            {recentSignups.map((s) => (
+              <div className="company-count-row" key={s.member_id}>
+                <span>{s.display_name}</span>
+                <span className="meta">{new Date(s.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+              </div>
+            ))}
+            {recentSignupsLoading && <p className="meta" style={{ margin: 0 }}>Loading…</p>}
+          </div>
+
           <div className="rail-card">
             <div className="rail-card__title">
               Most targeted companies <DemoDataBadge label="Illustrative" />
