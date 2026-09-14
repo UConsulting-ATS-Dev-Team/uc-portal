@@ -20,6 +20,17 @@ export async function findMemberByEmail(email) {
   return data ?? null;
 }
 
+// Real members who've turned on "Open to coffee chat requests from
+// members" (MyProfile.jsx's Recruiting Settings tab -- already a real,
+// synced setting; this is just the first cross-member read of it). Used
+// by Home.jsx's "Meet X" nudge and Feed.jsx's "Alumni active this week"
+// rail in place of the old mock PEOPLE fallback.
+export async function listOpenToCoffeeChatMembers() {
+  const { data, error } = await supabase.rpc("list_open_to_coffee_chat_members");
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
 // One row per conversation: the other participant's id, their real
 // display name (from members, the same list_messageable_members() result
 // the "New" picker uses -- so a name is available even for a counterpart

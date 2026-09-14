@@ -1492,6 +1492,75 @@ longer breaks down to phone width either.
   account itself, its roster entry) was deleted afterward and verified
   at zero residue (`roster=67 auth_users=1 messages=0 feed_posts=0`).
 
+- **Real "open to coffee chats" signal; mock-data labeling everywhere it
+  remains** — two direct asks. First: `pages/Home.jsx`'s "Meet X" nudge
+  and `pages/Feed.jsx`'s "Alumni active this week" rail were the last
+  real "still mock" pocket -- both still read `mockPeople.js`'s 13
+  fictional people, filtered by an `openToCoffeeChats` flag real people
+  always default `false` for (no real consent signal existed). The real
+  signal already existed and was already synced, just never surfaced
+  cross-member: `MyProfile.jsx`'s Recruiting Settings tab has had a real
+  "Open to coffee chat requests from members" toggle since early in the
+  project, writing to `member_preferences.recruiting_settings` -- that
+  table's RLS is deliberately own-row-only (personal preferences), so
+  nothing could ever read who else had it on. New security-definer
+  `list_open_to_coffee_chat_members()` (`20260914170000_...sql`, same
+  pattern as `list_messageable_members()`) exposes just id + display name
+  for accounts with the flag on. Both rails now use it, both dropped the
+  no-longer-real "Meet X at [followed company]" company-matching (real
+  accounts carry no company field) and "Follow" (tied to the unlinked
+  `people` directory) rather than faking a substitute; both link to a
+  real thread via a new direct `?accountId=` deep link on
+  `pages/Messages.jsx` (simpler than `?personId=`'s people-directory/
+  email resolution, since these are already real account ids). Verified
+  live end-to-end with a real throwaway account (see below): the rail
+  correctly showed nothing until a second real account's flag was
+  flipped on, then showed it by real name with a working "Chat" link
+  that opened a real thread -- and correctly went back to empty once
+  reverted.
+
+  Second ask: with this closed, essentially everything member-facing is
+  now real -- but what mock content remains (7 seeded Applications
+  tracker cards, 2 seeded Network coffee chats, the 8 hand-authored mock
+  companies, the 8 mock demo jobs, Admin Dashboard's illustrative KPI/
+  breakdown/targeted-companies figures) had no visual distinction from
+  real content at all. New `components/DemoDataBadge.jsx` (a small amber
+  `.chip-demo` — deliberately not `.chip-accent`'s blue, which already
+  means "featured/real," or error red) applied consistently everywhere:
+  each of the 7 seeded tracker cards (Board/Table/Timeline all -- a new
+  `SEED_TRACKED_JOB_IDS` export off `data/store.jsx` so every view checks
+  the same list), the 2 seeded Network coffee chats
+  (`SEED_COFFEE_CHAT_IDS`, same pattern), all 8 mock company cards (both
+  the Companies grid and each one's own detail page -- both already had
+  an `isReal`/mock-vs-real flag to key off), the mock demo-job detail
+  page's header, and five distinct spots on Admin Dashboard (the KPI
+  strip, "Where members want to work," "Class-year breakdown," "Most
+  targeted companies," the feed-moderation flagged-count chip, and
+  "Access control" — the last one's "Roster-provisioned" line is actually
+  real now, but "pending removals" is still a placeholder number, so the
+  whole card stays labeled rather than splitting hairs). Deliberately
+  *not* labeled: `mockResources.js`'s Career Resources library (static
+  content, not fabricated activity -- a different category) and
+  `mockUser.js`'s `currentUser` fallback (a real profile override already
+  layers on top of it everywhere it's used).
+
+  Verified live, twice, with two more real throwaway accounts (same
+  pgcrypto-bcrypt technique as the earlier click-through, approved live
+  again after a fresh classifier prompt): confirmed the real coffee-chat
+  rail (empty, then populated, then empty again after reverting), the
+  real `?accountId=` message deep link, and every badge rendering
+  correctly in its real context (screenshotted: Applications Board's 7
+  amber "Seeded demo" tags, the Companies grid's "Demo company" tags on
+  all 8 mock cards, Admin Dashboard's five "Illustrative" tags) --
+  including confirming the one thing that must *not* be labeled, "Member
+  engagement," correctly shows a real, unlabeled, live count (2 real
+  accounts) since that section is genuinely real. Both throwaway
+  accounts, their messages, and every temporarily-flipped real setting
+  (the admin's own coffee-chat flag, briefly set true to populate the
+  rail for the screenshot) were deleted/reverted afterward, verified at
+  zero residue (`roster=67 auth_users=1 messages=0 feed_posts=0
+  admin_coffee_chat_flag=f`).
+
 Run locally:
 ```bash
 npm install

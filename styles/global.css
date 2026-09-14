@@ -173,6 +173,20 @@ select {
   color: var(--color-accent-deep);
 }
 
+/* Marks illustrative/seed content that isn't real club data -- direct
+   ask so a reviewer can tell real from placeholder at a glance (the
+   demo Applications tracker cards, the 8 hand-authored companies, Admin
+   Dashboard's KPI figures, etc. -- see components/DemoDataBadge.jsx).
+   Deliberately a distinct amber, not .chip-accent's navy/blue (which
+   already means something else -- "featured"/real-and-notable) and not
+   error red (this isn't a problem, just a label). */
+.chip-demo {
+  border-color: #e0b64a;
+  background: #fdf3d9;
+  color: #7a5b06;
+  font-weight: 700;
+}
+
 /* Real company logos inside any of the __logo badge boxes (job cards,
    company cards, tracker rows, etc.) -- sized to fit within the box's
    existing padding rather than filling it edge-to-edge. */

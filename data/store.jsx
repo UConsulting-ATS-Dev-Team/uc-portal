@@ -91,12 +91,20 @@ const SEED_TRACKED_JOBS = {
   },
 };
 
+// Exported so Applications tracker views can flag these specific 7 cards
+// as demo data (components/DemoDataBadge.jsx) -- a real member's own
+// tracked applications sit in the exact same list with no visual
+// distinction otherwise, which a supervisor reviewing the app could
+// easily mistake for real activity.
+export const SEED_TRACKED_JOB_IDS = Object.keys(SEED_TRACKED_JOBS);
+
 // Seeded so Network's "Your coffee chats" isn't empty on first load --
 // real requests (via "Request coffee chat") add "Request sent" entries.
 const SEED_COFFEE_CHATS = {
   "marcus-webb": "Confirmed · Wed 4:00pm",
   "priya-nair": "Follow-up due",
 };
+export const SEED_COFFEE_CHAT_IDS = Object.keys(SEED_COFFEE_CHATS);
 
 const DEFAULT_STATE = {
   onboardingComplete: false,

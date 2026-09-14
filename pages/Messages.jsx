@@ -40,6 +40,12 @@ function relativeTime(iso) {
 export default function Messages() {
   const [searchParams] = useSearchParams();
   const requestedPersonId = searchParams.get("personId");
+  // A real-account deep link (Home.jsx's "Meet X" nudge, Feed.jsx's
+  // "Alumni active this week" rail) -- these already resolved to a real
+  // auth.users id via list_open_to_coffee_chat_members(), so there's no
+  // people.id/email resolution needed the way ?personId= requires.
+  const requestedAccountId = searchParams.get("accountId");
+  const requestedAccountName = searchParams.get("accountName");
 
   const [conversations, setConversations] = useState([]);
   const [conversationsLoading, setConversationsLoading] = useState(true);
@@ -68,6 +74,13 @@ export default function Messages() {
   useEffect(() => {
     loadConversations();
   }, []);
+
+  useEffect(() => {
+    if (!requestedAccountId) return;
+    setActiveId(requestedAccountId);
+    setActiveName(requestedAccountName ? decodeURIComponent(requestedAccountName) : "Member");
+    setMobileView("thread");
+  }, [requestedAccountId, requestedAccountName]);
 
   // A "Message" link elsewhere (Network.jsx, MemberProfile.jsx) still
   // passes ?personId=<people.id> -- a real directory record, not

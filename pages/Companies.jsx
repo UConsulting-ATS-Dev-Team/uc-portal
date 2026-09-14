@@ -6,6 +6,7 @@ import { fetchRealCompanySummaries, liveCharacterization } from "../data/realCom
 import { fetchRealPeople, alumniCountsByCompany } from "../data/realPeople.js";
 import { useAppState } from "../data/store.jsx";
 import CompanyLogo from "../components/CompanyLogo.jsx";
+import DemoDataBadge from "../components/DemoDataBadge.jsx";
 import "../styles/jobs.css";
 import "../styles/companies.css";
 
@@ -301,6 +302,14 @@ export default function Companies() {
                       {c.name}
                     </Link>
                     {isWatched && <span className="chip chip-accent" style={{ marginLeft: "var(--space-3)" }}>Watching</span>}
+                    {!c.isReal && (
+                      <span style={{ marginLeft: "var(--space-3)" }}>
+                        <DemoDataBadge
+                          label="Demo company"
+                          title="One of 8 hand-authored companies from before the real pipeline existed -- a real company, but this page isn't auto-sourced from live postings the way the rest of the directory is"
+                        />
+                      </span>
+                    )}
                   </div>
                 </div>
                 <p className="company-card__meta">

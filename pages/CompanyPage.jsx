@@ -13,6 +13,7 @@ import { useAppState } from "../data/store.jsx";
 import { resolvedClassYear } from "../data/profileUtils.js";
 import Placeholder from "./Placeholder.jsx";
 import CompanyLogo from "../components/CompanyLogo.jsx";
+import DemoDataBadge from "../components/DemoDataBadge.jsx";
 import "../styles/jobs.css";
 import "../styles/jobDetail.css";
 import "../styles/network.css";
@@ -234,6 +235,12 @@ export default function CompanyPage() {
             <h1>{company.name}</h1>
             <span className="chip chip-accent">{company.recruitingStatus}</span>
             <span className="chip">{alumniChipText}</span>
+            {!company.isReal && (
+              <DemoDataBadge
+                label="Demo company"
+                title="One of 8 hand-authored companies from before the real pipeline existed -- a real company, but this page isn't auto-sourced from live postings the way the rest of the directory is"
+              />
+            )}
           </div>
           <p className="company-header__meta">
             {[company.industry, company.size, company.offices.join(", ")].filter(Boolean).join(" · ")}

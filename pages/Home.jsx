@@ -5,7 +5,7 @@ import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
 import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { fetchFeedPosts, feedRowToPost } from "../data/feedSync.js";
-import { PEOPLE } from "../data/mockPeople.js";
+import { listOpenToCoffeeChatMembers } from "../data/messagesSync.js";
 import { computeProfileStrength, displayName, initialsFromName, resolvedClassYear, resolvedMajors } from "../data/profileUtils.js";
 import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
 import { nextActionForStage } from "../data/trackerUtils.js";
@@ -31,7 +31,6 @@ export default function Home() {
     savedJobIds,
     toggleSavedJob,
     trackedJobs,
-    savedConnections,
     prepLogged,
   } = useAppState();
 
@@ -71,6 +70,18 @@ export default function Home() {
     fetchFeedPosts()
       .then((rows) => setRecentPosts(rows.slice(0, 2).map(feedRowToPost)))
       .catch(() => {}); // Preview degrades to "nothing recent" rather than crashing Home
+  }, []);
+
+  // Real members who've opted in via MyProfile.jsx's "Open to coffee chat
+  // requests from members" setting -- was mockPeople.js's 13 fictional
+  // people, filtered by an openToCoffeeChats flag real people always
+  // default false for (no real consent signal existed for the real 207-
+  // person directory import). This is that real signal, finally surfaced.
+  const [openToCoffeeChat, setOpenToCoffeeChat] = useState([]);
+  useEffect(() => {
+    listOpenToCoffeeChatMembers()
+      .then(setOpenToCoffeeChat)
+      .catch(() => {});
   }, []);
 
   // Tracked jobs can be either a real one (a real UUID, once a real
@@ -138,18 +149,15 @@ export default function Home() {
   if (strengthPct < 100) {
     actions.push({ title: "Finish your profile", detail: `${strengthPct}% complete`, to: "/profile" });
   }
-  const followedWithPeople = preferences.followedCompanies
-    .map((c) => ({ company: c, people: PEOPLE.filter((p) => p.company === c) }))
-    .find((c) => c.people.length > 0);
-  if (followedWithPeople) {
-    const person = followedWithPeople.people[0];
-    actions.push({ title: `Meet ${person.name} at ${followedWithPeople.company}`, detail: person.role, to: `/network/${person.id}` });
-  }
+  // Was a "Meet X at [followed company]" nudge matched against
+  // mockPeople.js -- real accounts (member_preferences/profiles) carry no
+  // company field at all (that lives on the separate, unlinked `people`
+  // directory), so there's no real equivalent to match on; dropped rather
+  // than faked. The rail below covers the real "who's open to meet"
+  // signal instead, just without a company tie-in.
   actions.push({ title: "Update your interests", detail: "Last confirmed this spring — takes 90 seconds", to: "/onboarding" });
 
-  const suggestedPeople = PEOPLE.filter(
-    (p) => !savedConnections.includes(p.id) && p.openToCoffeeChats && (p.status === "Alumna" || p.status === "Alumnus")
-  ).slice(0, 3);
+  const suggestedPeople = openToCoffeeChat.slice(0, 3);
 
   const upcomingDeadlines = [...trackedEntries]
     .filter((e) => e.stage !== "Closed" && !e.job.rolling)
@@ -295,14 +303,22 @@ export default function Home() {
           </div>
 
           <div className="rail-card">
-            <div className="rail-card__title">UC alumni you should meet</div>
+            <div className="rail-card__title">Open to a coffee chat</div>
+            {suggestedPeople.length === 0 && (
+              <p className="meta" style={{ margin: 0 }}>
+                No one's turned this on yet — it's a real setting (My Profile → Recruiting Settings) once someone
+                does.
+              </p>
+            )}
             {suggestedPeople.map((p) => (
-              <div className="meet-person-row" key={p.id}>
-                <div>
-                  <div style={{ fontWeight: 700 }}>{p.name}</div>
-                  <div className="meta">{p.role}</div>
-                </div>
-                <Link to={`/network/${p.id}`} className="btn btn-secondary">Chat</Link>
+              <div className="meet-person-row" key={p.member_id}>
+                <div style={{ fontWeight: 700 }}>{p.display_name}</div>
+                <Link
+                  to={`/messages?accountId=${p.member_id}&accountName=${encodeURIComponent(p.display_name)}`}
+                  className="btn btn-secondary"
+                >
+                  Chat
+                </Link>
               </div>
             ))}
           </div>

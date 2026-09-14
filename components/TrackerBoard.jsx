@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { STAGES, INTERVIEW_STAGES, outcomeLabel, rejectionStageLabel } from "../data/trackerUtils.js";
 import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
+import { SEED_TRACKED_JOB_IDS } from "../data/store.jsx";
 import CompanyLogo from "./CompanyLogo.jsx";
+import DemoDataBadge from "./DemoDataBadge.jsx";
 
 // onRequestOutcome: (jobId) => void, optional -- when provided, dropping a
 // card into Closed opens the outcome-capture modal right away (Applications.jsx
@@ -59,6 +61,9 @@ export default function TrackerBoard({ applications, onMoveStage, onRequestOutco
                     draggable
                     onDragStart={(e) => e.dataTransfer.setData("text/plain", jobId)}
                   >
+                    {SEED_TRACKED_JOB_IDS.includes(jobId) && (
+                      <DemoDataBadge label="Seeded demo" title="One of the 7 illustrative applications seeded so the tracker isn't empty on first load -- not a real application" />
+                    )}
                     <Link to={`/jobs/${jobId}`} style={{ color: "inherit", textDecoration: "none" }}>
                       <div className="board-card__company">
                         <CompanyLogo name={job.company} initials={job.logoInitials} className="board-card__logo" />

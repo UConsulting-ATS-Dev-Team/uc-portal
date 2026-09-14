@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
 import { nextActionForStage, formatDate, outcomeLabel, rejectionStageLabel } from "../data/trackerUtils.js";
 import { deadlineLabel } from "../data/jobUtils.js";
+import { SEED_TRACKED_JOB_IDS } from "../data/store.jsx";
 import CompanyLogo from "./CompanyLogo.jsx";
+import DemoDataBadge from "./DemoDataBadge.jsx";
 
 const COLUMNS = [
   { key: "company", label: "Company" },
@@ -42,6 +44,11 @@ export default function TrackerTable({ applications, sortColumn, sortDirection, 
                     <CompanyLogo name={job.company} initials={job.logoInitials} className="board-card__logo" />
                     {job.company}
                   </Link>
+                  {SEED_TRACKED_JOB_IDS.includes(jobId) && (
+                    <div style={{ marginTop: "var(--space-1)" }}>
+                      <DemoDataBadge label="Seeded demo" title="One of the 7 illustrative applications seeded so the tracker isn't empty on first load -- not a real application" />
+                    </div>
+                  )}
                 </td>
                 <td>{job.role}</td>
                 <td>

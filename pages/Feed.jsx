@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { JOBS } from "../data/mockJobs.js";
-import { PEOPLE } from "../data/mockPeople.js";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
 import { displayName, initialsFromName, resolvedClassYear } from "../data/profileUtils.js";
 import { fetchFeedPosts, submitFeedPost, feedRowToPost } from "../data/feedSync.js";
+import { listOpenToCoffeeChatMembers } from "../data/messagesSync.js";
 import JobCard from "../components/JobCard.jsx";
 import "../styles/jobDetail.css";
 import "../styles/feed.css";
@@ -23,7 +24,7 @@ function initials(name) {
 }
 
 export default function Feed() {
-  const { savedJobIds, toggleSavedJob, savedConnections, toggleSavedConnection, profileOverrides } = useAppState();
+  const { savedJobIds, toggleSavedJob, profileOverrides } = useAppState();
   const location = useLocation();
   const [tab, setTab] = useState("All");
   // "Ask the network" from Global search's no-results state hands off a
@@ -99,7 +100,16 @@ export default function Feed() {
     });
   }, [posts, tab, savedPosts]);
 
-  const activeAlumni = PEOPLE.filter((p) => p.status !== "Current member" && p.openToCoffeeChats).slice(0, 3);
+  // Real members who've opted in via MyProfile.jsx's "Open to coffee
+  // chat requests from members" setting -- was mockPeople.js's 13
+  // fictional people, filtered by a flag real people always default
+  // false for (no real consent signal existed for the real directory).
+  const [openToCoffeeChat, setOpenToCoffeeChat] = useState([]);
+  useEffect(() => {
+    listOpenToCoffeeChatMembers()
+      .then(setOpenToCoffeeChat)
+      .catch(() => {});
+  }, []);
   const upcoming = posts.filter((p) => p.isEvent);
   // Real counts now that posts are real -- used to add a flat "+6/+4/+8"
   // baseline to make an 8-post mock feed look busier than it was; a real,
@@ -249,13 +259,21 @@ export default function Feed() {
         </div>
 
         <div className="rail-card">
-          <div className="rail-card__title">Alumni active this week</div>
-          {activeAlumni.map((p) => (
-            <div className="active-alumni-row" key={p.id}>
-              <span>{p.name}</span>
-              <button className="btn btn-secondary" onClick={() => toggleSavedConnection(p.id)}>
-                {savedConnections.includes(p.id) ? "Following" : "Follow"}
-              </button>
+          <div className="rail-card__title">Open to a coffee chat</div>
+          {openToCoffeeChat.length === 0 && (
+            <p className="meta" style={{ margin: 0 }}>
+              No one's turned this on yet — a real setting (My Profile → Recruiting Settings).
+            </p>
+          )}
+          {openToCoffeeChat.slice(0, 3).map((p) => (
+            <div className="active-alumni-row" key={p.member_id}>
+              <span>{p.display_name}</span>
+              <Link
+                to={`/messages?accountId=${p.member_id}&accountName=${encodeURIComponent(p.display_name)}`}
+                className="btn btn-secondary"
+              >
+                Chat
+              </Link>
             </div>
           ))}
         </div>

@@ -8,6 +8,7 @@ import { useAppState } from "../data/store.jsx";
 import OddsModel from "../components/OddsModel.jsx";
 import LogPrepModal from "../components/modals/LogPrepModal.jsx";
 import CompanyLogo from "../components/CompanyLogo.jsx";
+import DemoDataBadge from "../components/DemoDataBadge.jsx";
 import Placeholder from "./Placeholder.jsx";
 import RealJobDetail from "./RealJobDetail.jsx";
 import "../styles/jobDetail.css";
@@ -107,6 +108,10 @@ export default function JobDetail() {
             <div className="detail-header__body">
               <div className="detail-header__title-row">
                 <h1 className="detail-header__role">{job.role}</h1>
+                <DemoDataBadge
+                  label="Demo job"
+                  title="One of 8 hand-authored demo jobs from before the real job board existed -- not a real posting. The real board is at /jobs."
+                />
                 <span className="job-card__match">{job.matchScore}% match</span>
                 {/* "UC alumni here", not "UC-posted" -- see components/
                     JobCard.jsx's identical chip for why. */}

@@ -3,8 +3,9 @@ import { Link, useSearchParams } from "react-router-dom";
 import { findPerson as findMockPerson } from "../data/mockPeople.js";
 import { fetchRealPeople } from "../data/realPeople.js";
 import { capabilitiesFor } from "../data/peopleUtils.js";
-import { useAppState } from "../data/store.jsx";
+import { useAppState, SEED_COFFEE_CHAT_IDS } from "../data/store.jsx";
 import RequestCoffeeChatModal from "../components/modals/RequestCoffeeChatModal.jsx";
+import DemoDataBadge from "../components/DemoDataBadge.jsx";
 import "../styles/jobDetail.css";
 import "../styles/network.css";
 import "../styles/home.css";
@@ -250,7 +251,14 @@ export default function Network() {
               if (!person) return null;
               return (
                 <div className="chat-status-row" key={personId}>
-                  <span>{person.name}</span>
+                  <span>
+                    {person.name}
+                    {SEED_COFFEE_CHAT_IDS.includes(personId) && (
+                      <span style={{ marginLeft: "var(--space-2)" }}>
+                        <DemoDataBadge label="Seeded demo" title="Seeded so this panel isn't empty on first load -- not a real coffee chat" />
+                      </span>
+                    )}
+                  </span>
                   <span className="chat-status-row__status">{status}</span>
                 </div>
               );

@@ -13,6 +13,7 @@ import {
   ACCESS_CONTROL,
   FLAGGED_FEED_POSTS,
 } from "../data/mockAdmin.js";
+import DemoDataBadge from "../components/DemoDataBadge.jsx";
 import "../styles/jobs.css";
 import "../styles/jobDetail.css";
 import "../styles/network.css";
@@ -463,6 +464,12 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      <div style={{ marginBottom: "var(--space-3)" }}>
+        <DemoDataBadge
+          label="Illustrative"
+          title="Club-wide survey/analytics figures no single browser session can really compute yet (no real survey data exists) -- estimated, not live-computed from real signups"
+        />
+      </div>
       <div className="admin-kpi-strip">
         <div className="admin-kpi-cell">
           <div className="admin-kpi-cell__number">{KPIS.activeMembers}</div>
@@ -496,7 +503,9 @@ export default function AdminDashboard() {
       <div className="detail-layout">
         <div className="detail-main">
           <div className="detail-section">
-            <h2 className="detail-section__title">Where members want to work</h2>
+            <h2 className="detail-section__title">
+              Where members want to work <DemoDataBadge label="Illustrative" />
+            </h2>
             {INDUSTRY_INTEREST.map((i) => (
               <div className="industry-bar-row" key={i.industry}>
                 <span>{i.industry}</span>
@@ -513,7 +522,9 @@ export default function AdminDashboard() {
           </div>
 
           <div className="detail-section">
-            <h2 className="detail-section__title">Class-year breakdown</h2>
+            <h2 className="detail-section__title">
+              Class-year breakdown <DemoDataBadge label="Illustrative" />
+            </h2>
             <div className="class-year-grid">
               {CLASS_YEAR_BREAKDOWN.map((c) => (
                 <div className="class-year-cell" key={c.year}>
@@ -1062,7 +1073,9 @@ export default function AdminDashboard() {
 
         <div className="detail-rail">
           <div className="rail-card">
-            <div className="rail-card__title">Most targeted companies</div>
+            <div className="rail-card__title">
+              Most targeted companies <DemoDataBadge label="Illustrative" />
+            </div>
             {MOST_TARGETED_COMPANIES.map((c) => (
               <div className="company-count-row" key={c.company}>
                 <span>{c.company}</span>
@@ -1098,6 +1111,7 @@ export default function AdminDashboard() {
             <Link to="/feed" className="content-mgmt-link">
               <span>Moderate feed</span>
               <span className="chip chip-accent">{FLAGGED_FEED_POSTS} flagged</span>
+              <DemoDataBadge label="Illustrative" />
             </Link>
             {/* No announcement-posting flow exists anywhere in the app --
                 was an href="#" link indistinguishable from its working
@@ -1120,7 +1134,9 @@ export default function AdminDashboard() {
           </div>
 
           <div className="rail-card">
-            <div className="rail-card__title">Access control</div>
+            <div className="rail-card__title">
+              Access control <DemoDataBadge label="Illustrative" title="'Roster-provisioned' is real (see the Access requests queue above); 'pending removals' is a placeholder figure, not a real tracked count" />
+            </div>
             <p className="meta" style={{ marginBottom: "var(--space-2)" }}>{ACCESS_CONTROL.provisioned}</p>
             <p className="meta" style={{ marginBottom: "var(--space-2)" }}>{ACCESS_CONTROL.autoConversion}</p>
             <p className="meta" style={{ marginBottom: 0 }}>{ACCESS_CONTROL.pendingRemovals} pending removals</p>
