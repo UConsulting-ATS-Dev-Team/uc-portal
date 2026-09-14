@@ -1688,6 +1688,29 @@ longer breaks down to phone width either.
   narrow (self-row-only, empty-fields-only); flagged rather than spinning
   up another throwaway test account without asking first.
 
+- **Directory auto-fill: verified live, end-to-end** — closes the "not
+  click-tested live" gap the feature's own entry above flagged. Used the
+  same pgcrypto-bcrypt throwaway-account technique proven earlier this
+  session, plus a synthetic `people` row (name "QA Directory Test," major
+  "Testing & Quality Assurance," a real-shaped LinkedIn URL, on a
+  `.invalid` domain — RFC 2606, guaranteed never a real address) so the
+  match would actually have real data to pull. Signed in through the
+  actual browser UI and confirmed, in order: Onboarding's "Confirm your
+  info" showed the real Directory-matched name and major (not the old
+  fake "Test Account"/"Business Economics, Data Science" defaults), and
+  an honest "Class year not on file — add it on My Profile" /
+  "Committee not on file..." for the two fields with no real source;
+  My Profile's Personal tab showed the same real major/LinkedIn; editing
+  Major to "Member-Edited Major," saving, and then forcing a full fresh
+  page load (full `AppStateProvider` remount, full re-hydration) proved
+  the "only fill if still empty" guard — the edit survived, the Directory
+  value did **not** silently reappear. Cleaned up completely afterward
+  (test auth.users row, profiles row via cascade, roster entry, and
+  synthetic people row all deleted); verified zero residue via a
+  diagnostic: `residue_people=0 residue_roster=0 residue_auth_users=0
+  orphaned_profiles=0 roster_total=67` — back to the exact pre-test
+  baseline.
+
 Run locally:
 ```bash
 npm install
