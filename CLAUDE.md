@@ -1634,6 +1634,60 @@ longer breaks down to phone width either.
   above (no second real account to sign in as with real saved/tracked/
   feed/message data behind it).
 
+- **"Pre-provisioned logins from existing roster info" — design discussion,
+  then a narrower real feature** — this triage item bundled two different
+  asks: (1) less signup friction via auto-filled profile data, vs. (2)
+  actually pre-creating accounts before a member ever visits the app. Also
+  corrected a real misconception in the original notes: Supabase Auth's
+  own invite/magic-link emails go through Supabase's own built-in mailer,
+  separate from the app's transactional email system that genuinely does
+  wait on SES/Gavin — so account pre-creation isn't actually blocked on
+  that the way it first looked, just throttled by Supabase's default
+  mailer until real SMTP exists. Decision: build (1) now (cheap, no
+  blockers); leave (2) undecided for later, since it needs its own real
+  design call (real invite-email vs. admin-generated links shared
+  manually vs. real SMTP first) rather than defaulting into one.
+
+  Before building, ran a live diagnostic against the real `people` table
+  (207 rows) to ground the design in actual fill-rates rather than
+  guessing: `name=207 class_year=0 admit_class=207 graduating_class=0
+  major=92 linkedin=194`. `class_year`/`graduating_class` have **no real
+  source at all** in the Directory sheet (confirms the same finding the
+  original people-import entry already noted) — only `name`/`major`/
+  `linkedin` are actually fillable. Scoped the feature to exactly those
+  three, rather than building something that silently can't deliver on
+  "class year."
+
+  New `data/directoryPrefillSync.js#fetchDirectoryPrefill()` (matches the
+  signed-in account's own email against `people` via the existing
+  `people_select_authenticated` RLS, no new policy needed) + a new
+  `data/store.jsx` hydration effect, gated on `hydratedFromRemote` so it
+  can never race a real saved `profileOverrides` value, and guarded to
+  only ever fill a field that's currently empty — a member's own edit
+  (past or future) always wins and stays won. Runs once per session on
+  every mount rather than needing a separate "have I done this before"
+  flag, since the empty-field guard makes it self-limiting.
+
+  Also fixed a real, live bug found while touching this exact code path:
+  Onboarding's "Confirm your info" step (`pages/Onboarding.jsx`'s
+  `StepYou`) was reading through `resolvedClassYear`/`resolvedMajors`/
+  `resolvedUcCommittee`, which fall back to `mockUser.js`'s fake "Test
+  Account" defaults (Class of 2027, "Business Economics, Data Science",
+  "Recruitment Committee") — meaning every real member who hadn't set an
+  override yet was shown fabricated info presented as their own
+  confirmed roster fact, the same bug class as the nav-count/club-stat
+  fixes earlier this session. Now reads `profileOverrides` directly and
+  shows an honest "not on file — add it on My Profile" instead of
+  someone else's fake data when a field is genuinely unset.
+
+  Verified with a clean `vite build` and the live diagnostic query above
+  (real fill-rate numbers, not guessed). Not click-tested in a live
+  authenticated browser as a full end-to-end pass — this does write to a
+  real member's own `profiles` row (via the existing, already-proven
+  `syncProfileOverridesToRemote` path), so the blast radius is real but
+  narrow (self-row-only, empty-fields-only); flagged rather than spinning
+  up another throwaway test account without asking first.
+
 Run locally:
 ```bash
 npm install
