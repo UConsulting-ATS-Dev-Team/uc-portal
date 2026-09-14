@@ -1219,6 +1219,28 @@ longer breaks down to phone width either.
   confirmed the duplicate-pending guard actually rejected a second insert
   for the same email in a different case/with whitespace.
 
+- **Sign-in stale-hydration fix: verified live, with a real account** —
+  closes the one open item the fix's own entry above flagged ("not
+  verified in a live authenticated browser -- no second real test account
+  exists"). This agent has no real member's password, so a genuine
+  throwaway account was the only way to actually test it: a temporary,
+  secret-guarded Edge Function (`diag-signin-test`, deployed, invoked
+  twice, then deleted -- never committed) used the service-role admin API
+  to create a real `auth.users` row with a known password, added it to
+  `roster` first (same `before_auth_user_created` trigger a real signup
+  goes through), and set its `profiles.onboarding_complete = true` --
+  simulating exactly the bug's real scenario: an already-onboarded
+  returning member, not a first-timer. Signed in through the actual
+  browser UI with `localStorage` fully cleared first (a genuinely fresh
+  browser, no persisted session). Result: landed on Home (`/`), not
+  `/onboarding` -- and confirmed the local store's own `onboardingComplete`
+  was still `false` at that moment (the underlying mount-time hydration
+  race is real and still unfixed at the root, exactly as diagnosed), which
+  is what proves the fix is actually doing the work, not coincidence.
+  Cleaned up completely afterward: test user deleted, roster entry
+  deleted, Edge Function deleted, its secret unset -- verified via a
+  self-cleaning migration (`roster_total=67, leftover_test_email=none`).
+
 Run locally:
 ```bash
 npm install
