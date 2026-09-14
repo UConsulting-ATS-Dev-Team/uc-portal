@@ -25,7 +25,7 @@ export default function BottomTabBar() {
   const location = useLocation();
   // Real profiles.role, not the disconnected mock data/mockUser.js#
   // currentUser.role -- same fix as NavRail.jsx's identical check.
-  const { isAdmin } = useAppState();
+  const { isAdmin, trackedJobs } = useAppState();
 
   const primaryItems = MAIN_ITEMS.filter((item) => BOTTOM_BAR_PRIMARY_KEYS.includes(item.to));
   const moreItems = MAIN_ITEMS.filter((item) => !BOTTOM_BAR_PRIMARY_KEYS.includes(item.to));
@@ -47,7 +47,7 @@ export default function BottomTabBar() {
           >
             <Icon size={20} strokeWidth={1.5} aria-hidden="true" />
             <span>{label}</span>
-            {badge && badge() > 0 && <span className="bottom-tab-bar__badge">{badge()}</span>}
+            {badge && badge(trackedJobs) > 0 && <span className="bottom-tab-bar__badge">{badge(trackedJobs)}</span>}
           </NavLink>
         ))}
         <button
@@ -81,7 +81,7 @@ export default function BottomTabBar() {
                   <NavLink to={to} role="menuitem" onClick={() => setMoreOpen(false)} className={({ isActive }) => (isActive ? "is-active" : "")}>
                     <Icon size={18} strokeWidth={1.5} aria-hidden="true" />
                     <span>{label}</span>
-                    {badge && badge() > 0 && <span className="bottom-tab-bar__badge">{badge()}</span>}
+                    {badge && badge(trackedJobs) > 0 && <span className="bottom-tab-bar__badge">{badge(trackedJobs)}</span>}
                   </NavLink>
                 </li>
               ))}

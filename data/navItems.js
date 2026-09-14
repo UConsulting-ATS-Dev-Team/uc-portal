@@ -12,15 +12,25 @@ import {
   UserCog,
   FileText,
 } from "lucide-react";
-import { navCounts } from "./mockUser.js";
 
 // Extracted out of components/NavRail.jsx so components/BottomTabBar.jsx
 // (the phone-width nav pattern) can reuse the exact same destinations/
 // icons/badges rather than a second hand-maintained copy that could drift.
+//
+// Applications' badge used to be the hardcoded mock data/mockUser.js
+// navCounts.applications (always "5", regardless of who was actually
+// signed in or how many applications they'd really tracked) -- takes the
+// real trackedJobs object now instead, same "active, not Closed" count
+// Home.jsx's own stat strip already uses.
 export const MAIN_ITEMS = [
   { label: "Home", to: "/", icon: Home },
   { label: "Jobs", to: "/jobs", icon: Briefcase },
-  { label: "Applications", to: "/applications", icon: ClipboardList, badge: () => navCounts.applications },
+  {
+    label: "Applications",
+    to: "/applications",
+    icon: ClipboardList,
+    badge: (trackedJobs) => Object.values(trackedJobs ?? {}).filter((info) => info.stage !== "Closed").length,
+  },
   { label: "Network", to: "/network", icon: Users },
   { label: "Feed", to: "/feed", icon: Rss },
   { label: "Companies", to: "/companies", icon: Building2 },
@@ -34,8 +44,6 @@ export const LEADERSHIP_ITEMS = [
   { label: "Members", to: "/admin/members", icon: UserCog },
   { label: "Content", to: "/admin/content", icon: FileText },
 ];
-
-export const LEADERSHIP_ROLES = ["exec", "careers-committee"];
 
 // The 4 highest-priority destinations for the phone-width bottom tab bar
 // (native mobile convention: ~4 primary slots + one "More"), rather than

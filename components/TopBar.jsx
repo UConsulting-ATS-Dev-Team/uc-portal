@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { currentUser, navCounts } from "../data/mockUser.js";
+import { currentUser } from "../data/mockUser.js";
 import { CONVERSATIONS } from "../data/mockMessages.js";
 import { useAppState } from "../data/store.jsx";
+import { supabase } from "../data/supabaseClient.js";
 import { displayName, initialsFromName } from "../data/profileUtils.js";
 import RequestFeatureModal from "./modals/RequestFeatureModal.jsx";
 import bearMark from "../assets/uc-bear-mark-navy.png";
@@ -12,7 +13,7 @@ const unreadMessageCount = CONVERSATIONS.filter((c) => c.unread).length;
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showRequestFeature, setShowRequestFeature] = useState(false);
-  const { profileOverrides } = useAppState();
+  const { profileOverrides, needsActionCount } = useAppState();
   const initials = initialsFromName(displayName(currentUser, profileOverrides));
   const navigate = useNavigate();
   const location = useLocation();
@@ -22,6 +23,23 @@ export default function TopBar() {
     event.preventDefault();
     const query = new FormData(event.target).get("q");
     navigate(`/search?q=${encodeURIComponent(query || "")}`);
+  }
+
+  // Was a plain <Link to="/sign-in"> -- looked like it worked (it does
+  // land back on the sign-in screen) but never actually called
+  // supabase.auth.signOut() anywhere, so the real session stayed valid.
+  // On a shared/public computer, anyone hitting "back" (or just / again)
+  // would land right back in signed in as the previous person -- "Sign
+  // out" doing nothing real is worse than no button at all. Also clears
+  // this browser's own uc-portal-state cache, same privacy reasoning --
+  // leaving a signed-out session's preferences/tracked applications
+  // sitting in localStorage for the next person on that device isn't
+  // "signed out" either.
+  async function handleSignOut() {
+    setMenuOpen(false);
+    await supabase.auth.signOut();
+    localStorage.removeItem("uc-portal-state");
+    navigate("/sign-in");
   }
 
   return (
@@ -49,9 +67,7 @@ export default function TopBar() {
 
         <Link className="topbar__notifications" to="/notifications" aria-label="Notifications">
           🔔
-          {navCounts.notificationsUnread > 0 && (
-            <span className="topbar__notifications-count">{navCounts.notificationsUnread}</span>
-          )}
+          {needsActionCount > 0 && <span className="topbar__notifications-count">{needsActionCount}</span>}
         </Link>
 
         <div>
@@ -82,9 +98,9 @@ export default function TopBar() {
               >
                 Request a feature
               </button>
-              <Link to="/sign-in" role="menuitem" onClick={() => setMenuOpen(false)}>
+              <button type="button" role="menuitem" onClick={handleSignOut}>
                 Sign out
-              </Link>
+              </button>
             </div>
           )}
         </div>

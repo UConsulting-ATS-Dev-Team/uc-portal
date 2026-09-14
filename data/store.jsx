@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { fetchRemotePreferences, syncPreferencesToRemote } from "./memberPreferencesSync.js";
 import { fetchRemoteTrackedApplications, syncTrackedApplicationToRemote } from "./trackerSync.js";
 import { fetchRemoteNetworkConnections, syncNetworkConnectionToRemote } from "./networkSync.js";
@@ -519,10 +519,31 @@ export function AppStateProvider({ children }) {
     });
   }
 
+  // A real (not fake) partial "needs action" count for TopBar.jsx's
+  // notification bell -- the bell used to always show the hardcoded mock
+  // navCounts.notificationsUnread (4) regardless of who was actually
+  // signed in. The full computation (data/notificationUtils.js's
+  // buildNotifications) also needs real job deadline dates, which would
+  // mean an extra jobs fetch in the global nav chrome on every page --
+  // not worth it just for a badge count. This covers what's cheaply
+  // computable from state already held here: prep-hours reminders (same
+  // "First round"/"Final round" + <26 hours rule buildNotifications
+  // uses, which doesn't need a job's deadline) and pending coffee chats.
+  // Real but a subset -- the Notifications page itself is still the
+  // complete, authoritative picture (it also includes urgent deadlines).
+  const needsActionCount = useMemo(() => {
+    const prepCount = Object.entries(state.trackedJobs).filter(
+      ([jobId, info]) => ["First round", "Final round"].includes(info.stage) && (state.prepLogged[jobId] || 0) < 26,
+    ).length;
+    const chatCount = Object.values(state.coffeeChatStatus).filter((status) => status && !status.startsWith("Confirmed")).length;
+    return prepCount + chatCount;
+  }, [state.trackedJobs, state.prepLogged, state.coffeeChatStatus]);
+
   return (
     <AppStateContext.Provider
       value={{
         ...state,
+        needsActionCount,
         realRole,
         isAdmin: realRole === "admin",
         updatePreferences,

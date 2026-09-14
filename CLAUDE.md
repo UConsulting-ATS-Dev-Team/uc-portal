@@ -1241,6 +1241,77 @@ longer breaks down to phone width either.
   deleted, Edge Function deleted, its secret unset -- verified via a
   self-cleaning migration (`roster_total=67, leftover_test_email=none`).
 
+- **Follow-up bug pass ("what else is broken")** — a direct code-level
+  audit (not speculation) after the sign-in verification, looking for
+  what else a supervisor review might hit. Found and fixed four real
+  ones, largest first:
+  - **"Sign out" didn't actually sign out.** `components/TopBar.jsx`'s
+    menu item was a plain `<Link to="/sign-in">` -- it navigated
+    correctly but never called `supabase.auth.signOut()` anywhere in the
+    codebase (grepped to confirm: zero matches). The real session stayed
+    valid, so on a shared/public computer, hitting back or revisiting `/`
+    would land right back in signed in as the previous person. Now calls
+    `supabase.auth.signOut()` and clears this browser's own
+    `uc-portal-state` cache (a second real privacy gap -- a prior
+    member's preferences/tracked applications otherwise stayed in
+    localStorage for the next person on that device) before navigating.
+    Verified live: after clicking it, the auth token and app-state keys
+    are both gone from `localStorage`, and reloading `/` correctly
+    bounces to `/sign-in` instead of staying signed in.
+  - **The nav chrome's badge counts were hardcoded mock numbers,
+    completely disconnected from the real signed-in member.** The
+    sidebar's Applications count and the top bar's notification bell
+    both always showed `data/mockUser.js`'s static `navCounts` (5 and 4)
+    regardless of who was actually signed in or what their real data
+    said -- a fresh real member with zero tracked applications would
+    still see "5". Applications now counts real non-Closed
+    `trackedJobs` (same definition Home.jsx's own stat strip already
+    uses). The notification bell now uses a new `needsActionCount`
+    (`data/store.jsx`) -- real, but intentionally a subset of the full
+    picture: it covers prep-hours and coffee-chat reminders (computable
+    from state already held globally) but not urgent-deadline reminders
+    (those need each job's real deadline date, which would mean an extra
+    jobs fetch in the global nav chrome on every page just for a badge --
+    not worth it; the Notifications page itself is still the complete,
+    authoritative view). `navCounts` itself had no remaining callers and
+    was removed. Verified live: both badges now show real,
+    session-varying numbers instead of the fixed 5/4.
+  - **The "52 members" club stat was stale.** Directly re-read the real
+    Directory sheet the same way the roster was seeded and got 67 unique
+    current Active members today -- a new admitted class joined since the
+    52-count was last hand-counted in Sept 2026. `clubStats.members`
+    (shown in the nav rail's "N members · 150+ alumni" footer on every
+    page) corrected to 67; `data/mockAdmin.js`'s Admin Dashboard KPI/
+    class-year figures deliberately left anchored to the old 52 baseline
+    since CLAUDE.md already labels those as acknowledged illustrative
+    mock data (not something a browser session can really compute) --
+    rescaling those wasn't done unilaterally.
+  - **Dead code / a stale comment**, cleaned up while touching these
+    files: `data/navItems.js`'s unused `LEADERSHIP_ROLES = ["exec",
+    "careers-committee"]` (the real role model is binary
+    `member`/`admin` only -- see the `member_role` Postgres enum --
+    nothing in the app has ever read this constant) removed;
+    `data/mockUser.js`'s comment claiming you could "flip `role` to
+    'exec' or 'careers-committee' to see the Leadership nav section" was
+    wrong (that gate is the real `profiles.role`, not this mock field)
+    and rewritten to say so.
+
+  Also surfaced, not fixed (flagged for a scope decision, not something
+  to improvise into a demo-week change): `/admin/opportunities` (Job
+  sources, `pages/SourceManagement.jsx`) and `/admin/members` (real
+  member promote/demote, `pages/AdminMembers.jsx`) are both fully real,
+  working, RLS-protected features -- but neither one has a Progress-log
+  entry above; this file's own account of `/admin/*` was out of date.
+  And two bigger, pre-existing gaps worth knowing about before a review:
+  **Feed posts aren't real** -- `pages/Feed.jsx`'s composer prepends to
+  plain `useState`, not even this browser's own `uc-portal-state`, so a
+  posted update is invisible to every other real member and gone on
+  reload -- and **Messages is still 100% mock** (`data/mockMessages.js`,
+  fictional people, no Supabase table at all) -- neither is a small fix,
+  and both are more likely to be *believed* to work in a live demo than
+  something already known to be a placeholder, which is why they're
+  flagged prominently here rather than silently left as-is.
+
 Run locally:
 ```bash
 npm install
