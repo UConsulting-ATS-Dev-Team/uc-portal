@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { JOBS } from "../data/mockJobs.js";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
-import { displayName, initialsFromName, resolvedClassYear } from "../data/profileUtils.js";
+import { displayName, initialsFromName } from "../data/profileUtils.js";
 import { fetchFeedPosts, submitFeedPost, feedRowToPost } from "../data/feedSync.js";
 import { listOpenToCoffeeChatMembers } from "../data/messagesSync.js";
 import JobCard from "../components/JobCard.jsx";
@@ -56,7 +56,14 @@ export default function Feed() {
         body: composerText.trim(),
         postType: selectedType,
         authorName: displayName(currentUser, profileOverrides),
-        authorRoleLine: `Class of ${resolvedClassYear(currentUser, profileOverrides)}`,
+        // Not resolvedClassYear() -- that falls back to mockUser.js's fake
+        // "2027" the moment a real member has no class year set, which
+        // would have permanently written a fabricated fact into the real,
+        // shared feed_posts table (unlike a display-only fallback, this
+        // one can't self-correct once posted). null when genuinely unset
+        // -- Feed.jsx/Home.jsx's post rendering already handles a missing
+        // roleLine.
+        authorRoleLine: profileOverrides?.classYear ? `Class of ${profileOverrides.classYear}` : null,
         isEvent: selectedType === "Event",
         // No real event-date/RSVP picker in the composer yet -- same
         // scope line the feed_posts migration draws (posts themselves
@@ -194,7 +201,8 @@ export default function Feed() {
                 <span className="chip chip-accent">{post.postType}</span>
               </div>
               <p className="post-card__role-line">
-                {post.roleLine} · {post.timestamp}
+                {post.roleLine ? `${post.roleLine} · ` : ""}
+                {post.timestamp}
               </p>
               <p className="post-card__body">{post.body}</p>
 

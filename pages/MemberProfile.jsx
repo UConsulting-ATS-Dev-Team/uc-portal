@@ -13,7 +13,6 @@ import {
 } from "../data/peopleUtils.js";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
-import { resolvedUcCommittee } from "../data/profileUtils.js";
 import Placeholder from "./Placeholder.jsx";
 import RealMemberProfile from "./RealMemberProfile.jsx";
 import RequestCoffeeChatModal from "../components/modals/RequestCoffeeChatModal.jsx";
@@ -33,7 +32,14 @@ export default function MemberProfile() {
   const { personId } = useParams();
   const person = findPerson(personId);
   const { preferences, savedConnections, coffeeChatStatus, toggleSavedConnection, profileOverrides } = useAppState();
-  const ucCommittee = resolvedUcCommittee(currentUser, profileOverrides);
+  // profileOverrides directly, not resolvedUcCommittee() -- that falls
+  // back to mockUser.js's fake "Recruitment Committee," which could make
+  // a "Both on Recruitment Committee" shared-context claim below true by
+  // sheer coincidence for a real viewer who never actually set a real
+  // committee, contradicting this section's own "every number traceable"
+  // principle. undefined here (rather than the fake string) means the
+  // equality check below can only ever pass on a real, member-set value.
+  const ucCommittee = profileOverrides?.ucCommittee;
   const [showChatModal, setShowChatModal] = useState(false);
 
   if (!person) {

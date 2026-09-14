@@ -6,7 +6,7 @@ import { useAppState } from "../data/store.jsx";
 import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { fetchFeedPosts, feedRowToPost } from "../data/feedSync.js";
 import { listOpenToCoffeeChatMembers } from "../data/messagesSync.js";
-import { computeProfileStrength, displayName, initialsFromName, resolvedClassYear, resolvedMajors } from "../data/profileUtils.js";
+import { computeProfileStrength, displayName, initialsFromName, resolvedClassYear } from "../data/profileUtils.js";
 import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
 import { nextActionForStage } from "../data/trackerUtils.js";
 import { fetchAllRows } from "../data/fetchAllRows.js";
@@ -99,7 +99,15 @@ export default function Home() {
     return (
       <div className="empty-state">
         <h1>Welcome to UC Portal, {displayName(currentUser, profileOverrides).split(" ")[0]}</h1>
-        <p className="meta">Class of {resolvedClassYear(currentUser, profileOverrides)} · new member · nothing tracked yet</p>
+        {/* profileOverrides?.classYear directly, not resolvedClassYear() --
+            that falls back to mockUser.js's fake "2027," which used to
+            show on every real member's own welcome message as if it were
+            their own confirmed class year the moment they had no override
+            set yet. */}
+        <p className="meta">
+          {profileOverrides?.classYear ? `Class of ${profileOverrides.classYear} · ` : ""}
+          new member · nothing tracked yet
+        </p>
         <p>You don't need to be recruiting yet to use this — browse jobs, meet alumni, or start a learning track whenever you're ready.</p>
         <p className="meta">Profile strength: {pct}%</p>
         <div className="empty-state__tiles">
@@ -172,9 +180,19 @@ export default function Home() {
             <div className="avatar-card__avatar" style={{ margin: 0 }}>{initialsFromName(displayName(currentUser, profileOverrides))}</div>
             <div>
               <h1>Welcome back, {displayName(currentUser, profileOverrides).split(" ")[0]}</h1>
+              {/* Built from profileOverrides directly (not resolvedClassYear/
+                  resolvedMajors) and only the facts actually on file --
+                  those two fall back to mockUser.js's fake "Class of 2027" /
+                  "Business Economics, Data Science," which used to show on
+                  every real member's own welcome card as if confirmed. */}
               <p className="welcome-card__subtitle">
-                Class of {resolvedClassYear(currentUser, profileOverrides)} · {resolvedMajors(currentUser, profileOverrides)} · Recruiting focus:{" "}
-                {preferences.recruitingCycle || "Not set"}
+                {[
+                  profileOverrides?.classYear ? `Class of ${profileOverrides.classYear}` : null,
+                  profileOverrides?.majors || null,
+                  `Recruiting focus: ${preferences.recruitingCycle || "Not set"}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
             </div>
           </div>
@@ -284,7 +302,8 @@ export default function Home() {
                 <span className="chip">{post.roleChip}</span>
               </div>
               <p className="post-card__role-line">
-                {post.roleLine} · {post.timestamp}
+                {post.roleLine ? `${post.roleLine} · ` : ""}
+                {post.timestamp}
               </p>
               <p style={{ margin: 0 }}>{post.body}</p>
             </div>
