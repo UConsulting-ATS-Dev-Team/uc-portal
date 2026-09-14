@@ -1106,6 +1106,26 @@ longer breaks down to phone width either.
   (the job's real `application_url`), replacing the old bare "No further
   description was provided."
 
+- **Fixed the duplicate-detection algorithm's false-positive weakness;
+  cleared the 380-item backlog** — a live audit of the admin review
+  queue found 380 pending candidates, all from one bulk scoring event,
+  all scoring exactly 75, and 0 of the 380 had matching titles — every
+  one was two genuinely different real postings, not an actual
+  duplicate. Root cause: `scoreDuplicate()`'s title-similarity signal
+  (plain Jaccard word-overlap) is fooled when two different postings
+  share a lot of template scaffolding — "Lead Analytics Engineer –
+  Enterprise Data & AI" vs "Lead AI Engineer – Enterprise Data & AI"
+  (real Zoox pair) scores 0.83 even though "Analytics" vs "AI" is the
+  entire distinction. `REVIEW_TITLE_SIMILARITY` raised 0.6 → 0.8
+  (data-driven: clears the observed cluster, median 0.60/0.67);
+  `AUTO_MERGE_TITLE_SIMILARITY` raised 0.85 → 0.92, a real margin above
+  the highest false positive observed (0.83) — that gate is worse to
+  get wrong since it silently discards data with zero human review.
+  Cleared the backlog via migration: 354 below the new floor dismissed
+  as `not_duplicate`, 26 at 0.80–0.83 (genuinely mixed on manual review)
+  left pending for real review — verified directly against the database
+  (pending=26, dismissed=354, still-pending-below-0.8=0).
+
 Run locally:
 ```bash
 npm install
