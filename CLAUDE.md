@@ -1176,6 +1176,26 @@ longer breaks down to phone width either.
   browser pass once a second real member account is available to sign in
   as.
 
+- **Roster seeded from the real UConsulting Directory** — closes the
+  "only one email on the roster" gap: direct instruction was to use the
+  club's actual "UConsulting Directory" Google Sheet (Drive), treating
+  everyone the sheet itself hasn't already marked Alumni as a real
+  approval-list candidate. Read the sheet directly (not guessed/typed by
+  hand): its "Active"-status rows, deduplicated by email and cross-checked
+  against zero overlap with its own Alumni-status rows, gave 67 real
+  current members. Two other tabs in the same workbook were deliberately
+  skipped — a "[OLD] Active" tab (its own title says deprecated) and an
+  older contacts tab with no Status column — after confirming via a
+  throwaway diagnostic that every real person in them is already covered
+  by the current Active/Alumni tabs (so including them would only have
+  risked re-adding already-graduated people). Seeded via
+  `20260914010000_seed_roster_from_directory.sql`, `on conflict (email)
+  do nothing` so the pre-existing admin seed row isn't touched. Verified
+  live: `roster_count=67` after push, matching the sheet's own unique
+  Active-row count exactly. This is still just the sign-up allowlist, not
+  the browsable member directory (`people`, separately empty and pending
+  its own import).
+
 Run locally:
 ```bash
 npm install
