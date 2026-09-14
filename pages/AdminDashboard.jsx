@@ -61,6 +61,10 @@ export default function AdminDashboard() {
   const [engagement, setEngagement] = useState([]);
   const [engagementLoading, setEngagementLoading] = useState(true);
   const [engagementError, setEngagementError] = useState(null);
+  const [accessRequests, setAccessRequests] = useState([]);
+  const [accessRequestsLoading, setAccessRequestsLoading] = useState(true);
+  const [accessRequestsError, setAccessRequestsError] = useState(null);
+  const [updatingAccessRequestId, setUpdatingAccessRequestId] = useState(null);
   const gap = biggestGap();
   const maxMembers = Math.max(...INDUSTRY_INTEREST.map((i) => i.members));
 
@@ -283,6 +287,7 @@ export default function AdminDashboard() {
     loadBrokenLinkJobs();
     loadEngagement();
     loadCompanyTiers();
+    loadAccessRequests();
   }, []);
 
   const disengagedCount = engagement.filter((m) => m.is_disengaged).length;
@@ -308,6 +313,54 @@ export default function AdminDashboard() {
     if (error) setFeatureRequestsError(error.message);
     await loadFeatureRequests();
     setUpdatingRequestId(null);
+  }
+
+  // Real roster-gating (2026-09-13, pre-production audit follow-up) --
+  // see supabase/migrations/20260913010000_roster_gating.sql's own header
+  // comment for the full design writeup. This is the admin-facing half of
+  // that closed loop: pending access_requests only ever reach a real
+  // decision here, never automatically.
+  async function loadAccessRequests() {
+    setAccessRequestsLoading(true);
+    const { data, error } = await supabase.from("access_requests").select("*").order("requested_at", { ascending: false });
+    if (error) setAccessRequestsError(error.message);
+    else setAccessRequests(data ?? []);
+    setAccessRequestsLoading(false);
+  }
+
+  // Approve does two real writes, not one: adds the email to `roster`
+  // (the actual gate a future signUp() attempt checks via is_on_roster())
+  // *and* marks the request approved -- either alone would leave the loop
+  // half-closed (approved-but-still-can't-sign-up, or able to sign up with
+  // no record of why). Decline only updates status -- no roster write, so
+  // that email stays gated exactly as before.
+  async function handleAccessRequestDecision(request, decision) {
+    setUpdatingAccessRequestId(request.id);
+    setAccessRequestsError(null);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (decision === "approved") {
+      const { error: rosterError } = await supabase
+        .from("roster")
+        .upsert({ email: request.email.trim().toLowerCase(), name: request.name, added_by: user.id }, { onConflict: "email" });
+      if (rosterError) {
+        setAccessRequestsError(rosterError.message);
+        setUpdatingAccessRequestId(null);
+        return;
+      }
+    }
+
+    const { error } = await supabase
+      .from("access_requests")
+      .update({ status: decision, reviewed_by: user.id, reviewed_at: new Date().toISOString() })
+      .eq("id", request.id);
+
+    if (error) setAccessRequestsError(error.message);
+    await loadAccessRequests();
+    setUpdatingAccessRequestId(null);
   }
 
   // Runs the real reassign-sources-and-deactivate flow server-side
@@ -796,6 +849,78 @@ export default function AdminDashboard() {
                 {companyTiersLoading && (
                   <tr>
                     <td colSpan={4} className="meta">
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            </div>
+          </div>
+
+          <div className="detail-section">
+            <h2 className="detail-section__title">Access requests</h2>
+            <p className="meta" style={{ marginTop: 0 }}>
+              Real submissions from Sign-in's "Alumni — request access" flow, or anyone whose sign-up
+              was rejected by the real roster check. Approve adds the email to the roster (the same
+              real gate a future sign-up attempt checks) and lets them sign up immediately; Decline
+              just records the review -- their email stays gated exactly as before.
+            </p>
+            {accessRequestsError && <p className="meta" style={{ color: "#B3261E" }}>{accessRequestsError}</p>}
+            <div className="queue-table__scroll">
+            <table className="queue-table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Name</th>
+                  <th>Requested</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {accessRequests.map((r) => (
+                  <tr key={r.id}>
+                    <td>{r.email}</td>
+                    <td>{r.name || "—"}</td>
+                    <td className="meta">
+                      {new Date(r.requested_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                    </td>
+                    <td>{r.status[0].toUpperCase() + r.status.slice(1)}</td>
+                    <td>
+                      {r.status === "pending" ? (
+                        <div className="queue-table__actions">
+                          <button
+                            className="btn btn-secondary"
+                            disabled={updatingAccessRequestId === r.id}
+                            onClick={() => handleAccessRequestDecision(r, "approved")}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            className="btn btn-secondary"
+                            disabled={updatingAccessRequestId === r.id}
+                            onClick={() => handleAccessRequestDecision(r, "declined")}
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="meta">Reviewed</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {!accessRequestsLoading && accessRequests.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="meta">
+                      No access requests yet.
+                    </td>
+                  </tr>
+                )}
+                {accessRequestsLoading && (
+                  <tr>
+                    <td colSpan={5} className="meta">
                       Loading…
                     </td>
                   </tr>

@@ -1,0 +1,23 @@
+-- Real finding, live-tested (2026-09-13): a rejected signUp() surfaces to
+-- supabase-js as a generic "Database error saving new user" (500,
+-- AuthRetryableFetchError) -- GoTrue does not pass the trigger's own
+-- exception message through to the client at all, confirmed by comparing
+-- the raw curl response (which does show the real message) against what
+-- supabase-js's auth client actually returns. Message-matching a rejected
+-- signup was never going to be reliable.
+--
+-- Redesigned: the frontend now calls is_on_roster() directly as a real
+-- pre-check before ever attempting signUp() (see pages/SignIn.jsx), so
+-- the "not on the roster" UI state is driven by an explicit, reliable
+-- answer, not by parsing an opaque auth error. The BEFORE INSERT trigger
+-- from the prior migration stays in place as a defense-in-depth backstop
+-- (a direct API call that skips the pre-check still gets rejected at the
+-- database, just with a worse-looking generic error the client can't
+-- currently label nicely -- acceptable, since that path requires
+-- deliberately bypassing the real UI).
+--
+-- is_on_roster() is security definer, so it can read the admin-only
+-- roster table internally -- but Postgres functions are only actually
+-- callable by roles with EXECUTE granted, and this needs to work for
+-- `anon` specifically (the pre-check happens before any session exists).
+grant execute on function is_on_roster(text) to anon, authenticated;

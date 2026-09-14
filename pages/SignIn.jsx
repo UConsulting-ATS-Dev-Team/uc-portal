@@ -7,11 +7,20 @@ import bearMark from "../assets/uc-bear-mark-navy.png";
 import "../styles/auth.css";
 
 // Wireframe 3a — four states: sign-in, not-on-roster, access-pending,
-// loading. Sign-in/sign-up now hit real Supabase Auth (Stage 2) instead of
-// simulating success. Google sign-in and the roster-verification check
-// (there's no real roster data source yet -- see CLAUDE.md's open action
-// item to pull one from Alumni Relations) are still out of scope; "Alumni —
-// request access" stays a UI-only walkthrough of that state for now.
+// loading. Sign-in/sign-up hit real Supabase Auth (Stage 2). Roster-gating
+// is real now too (2026-09-13, pre-production audit follow-up): a sign-up
+// attempt calls is_on_roster() via RPC *before* ever calling signUp() --
+// checking first rather than parsing signUp()'s own error is deliberate;
+// a live test found a rejected signup surfaces to supabase-js as a generic
+// "Database error saving new user" (GoTrue doesn't pass the database
+// trigger's real message through), so message-matching would never have
+// been reliable. A BEFORE INSERT trigger on auth.users
+// (supabase/migrations/20260913010000_roster_gating.sql) still backstops
+// this at the database layer for any direct API call that skips the
+// pre-check. "Alumni — request access" now writes a real row to
+// access_requests (admin-reviewable on Admin Dashboard) instead of just
+// a local state transition. Google sign-in is still genuinely out of
+// scope (button stays honestly disabled below).
 const STATE = {
   SIGN_IN: "sign-in",
   LOADING: "loading",
@@ -39,6 +48,9 @@ export default function SignIn() {
   const [confirmNotice, setConfirmNotice] = useState(false);
   const [submittedAt, setSubmittedAt] = useState(null);
   const [resent, setResent] = useState(false);
+  const [requestName, setRequestName] = useState("");
+  const [requestError, setRequestError] = useState(null);
+  const [requestSubmitting, setRequestSubmitting] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { onboardingComplete } = useAppState();
@@ -54,6 +66,22 @@ export default function SignIn() {
     event.preventDefault();
     setAuthError(null);
     setState(STATE.LOADING);
+
+    if (mode === "sign-up") {
+      // Real roster check, before ever attempting signUp() -- see this
+      // file's own header comment for why checking first (not parsing
+      // signUp()'s own error) is the reliable path.
+      const { data: onRoster, error: rosterCheckError } = await supabase.rpc("is_on_roster", { check_email: email });
+      if (rosterCheckError) {
+        setAuthError(rosterCheckError.message);
+        setState(STATE.SIGN_IN);
+        return;
+      }
+      if (!onRoster) {
+        setState(STATE.NOT_ON_ROSTER);
+        return;
+      }
+    }
 
     const { data, error } =
       mode === "sign-in"
@@ -82,7 +110,23 @@ export default function SignIn() {
     setState(STATE.NOT_ON_ROSTER);
   }
 
-  function submitAccessRequest() {
+  // Real insert into access_requests now (2026-09-13) -- admin-reviewable
+  // on Admin Dashboard, same pending -> approved/declined shape as
+  // feature_requests. Reachable with no session at all (anon insert, see
+  // that table's own RLS policy) since this runs before any account
+  // exists for a genuinely new person.
+  async function submitAccessRequest() {
+    setRequestSubmitting(true);
+    setRequestError(null);
+    const { error } = await supabase.from("access_requests").insert({
+      email: email.trim(),
+      name: requestName.trim() || null,
+    });
+    setRequestSubmitting(false);
+    if (error) {
+      setRequestError(error.message);
+      return;
+    }
     setSubmittedAt(new Date());
     setState(STATE.PENDING);
   }
@@ -110,9 +154,36 @@ export default function SignIn() {
               roster. If you've recently joined UC or just graduated, request access below and
               Exec will confirm.
             </p>
+            {!email && (
+              <div className="field">
+                <label htmlFor="request-email">Email</label>
+                <input
+                  id="request-email"
+                  type="email"
+                  placeholder="you@university.edu"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+            )}
+            <div className="field">
+              <label htmlFor="request-name">Name (optional)</label>
+              <input
+                id="request-name"
+                type="text"
+                placeholder="Your full name"
+                value={requestName}
+                onChange={(e) => setRequestName(e.target.value)}
+              />
+            </div>
+            {requestError && (
+              <p className="auth__note" style={{ color: "#B3261E" }}>
+                {requestError}
+              </p>
+            )}
             <div className="auth__actions">
-              <button className="btn btn-primary" onClick={submitAccessRequest}>
-                Request access
+              <button className="btn btn-primary" onClick={submitAccessRequest} disabled={requestSubmitting || !email}>
+                {requestSubmitting ? "Submitting…" : "Request access"}
               </button>
               <button className="btn btn-secondary" onClick={() => setState(STATE.SIGN_IN)}>
                 Try another account
