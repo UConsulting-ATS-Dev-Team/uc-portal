@@ -91,6 +91,36 @@ function salaryMatches(a: NormalizedJob, b: NormalizedJob): boolean {
   return a.salaryMin === b.salaryMin;
 }
 
+// Title-similarity thresholds for the two fuzzy (non-URL/ID) tiers below.
+// Raised 2026-09-12 from 0.6/0.85 after a live audit of the real review
+// queue: 380 pending candidates had accumulated, ALL from one bulk
+// scoring event, ALL scoring exactly 75 (the review band), and 0 of the
+// 380 had matching titles -- every single one was two genuinely different
+// real postings at the same company/location. Plain Jaccard word-overlap
+// on short titles is fooled by shared template scaffolding: "Lead
+// Analytics Engineer – Enterprise Data & AI" vs "Lead AI Engineer –
+// Enterprise Data & AI" scores 0.83 (Zoox, real pair from that queue)
+// even though "Analytics" vs "AI" is the entire distinction between two
+// different open reqs -- the shared "Lead ___ Engineer – Enterprise Data
+// & AI" scaffolding dominates the ratio. Distribution of the real 380:
+// 354 scored below 0.80 (median cluster at 0.60/0.67, all sampled were
+// false positives), only 26 reached 0.80-0.83 (a genuinely mixed band --
+// some still-distinct roles, a few plausible near-duplicates), and NONE
+// reached the old 0.85 auto-merge gate. REVIEW_TITLE_SIMILARITY raised to
+// 0.8 (data-driven: clears the observed false-positive cluster, keeps the
+// genuinely-uncertain band in front of a human, same review-queue purpose
+// as before). AUTO_MERGE_TITLE_SIMILARITY raised to 0.92, a real safety
+// margin above the highest false-positive score actually observed (0.83)
+// -- auto-merge silently discards the losing candidate's own data with no
+// human review at all and no way to audit it after the fact (confirmed:
+// a merged job's job_sources rows get reassigned, but the discarded
+// candidate's own fields are never preserved anywhere), so this tier
+// specifically should err toward "send to review" over "silently merge"
+// when the same word-overlap weakness could just as easily produce a
+// false positive here too.
+const REVIEW_TITLE_SIMILARITY = 0.8;
+const AUTO_MERGE_TITLE_SIMILARITY = 0.92;
+
 export function scoreDuplicate(a: NormalizedJob, b: NormalizedJob): DuplicateCandidate {
   const signals: DuplicateSignal[] = [];
 
@@ -109,7 +139,7 @@ export function scoreDuplicate(a: NormalizedJob, b: NormalizedJob): DuplicateCan
   const locationMatch = locationsMatch(a, b);
   signals.push({
     name: "company_title_location",
-    matched: companyMatch && titleSimilarity >= 0.6 && locationMatch,
+    matched: companyMatch && titleSimilarity >= REVIEW_TITLE_SIMILARITY && locationMatch,
     detail: `company=${companyMatch}, titleSimilarity=${titleSimilarity.toFixed(2)}, location=${locationMatch}`,
   });
 
@@ -120,11 +150,11 @@ export function scoreDuplicate(a: NormalizedJob, b: NormalizedJob): DuplicateCan
   if (canonicalUrlMatch || sourceJobIdMatch) {
     // Near-certain on its own -- §3.3 signal #1/#2.
     score = 100;
-  } else if (companyMatch && titleSimilarity >= 0.85 && locationMatch) {
+  } else if (companyMatch && titleSimilarity >= AUTO_MERGE_TITLE_SIMILARITY && locationMatch) {
     // The only path into the auto-merge tier that isn't a URL/ID match --
     // always three signals combined, never title similarity in isolation.
     score = 92;
-  } else if (companyMatch && titleSimilarity >= 0.6 && locationMatch) {
+  } else if (companyMatch && titleSimilarity >= REVIEW_TITLE_SIMILARITY && locationMatch) {
     score = 75; // review band
   } else if (companyMatch && titleSimilarity >= 0.5) {
     score = 65; // below review threshold -- treated as distinct

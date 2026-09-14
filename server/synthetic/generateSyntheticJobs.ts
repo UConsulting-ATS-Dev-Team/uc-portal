@@ -47,7 +47,16 @@ const TEMPLATES: Template[] = [
   },
   {
     company: "Deloitte",
-    titleVariants: ["Human Capital Consulting Intern", "HC Summer Intern"],
+    // Third variant deliberately a 1-word extension of the first (adds
+    // "Program"): jaccard("human capital consulting intern", "human
+    // capital consulting intern program") = 4/5 = 0.8, landing in the
+    // review band raised 2026-09-12 (server/src/dedupe.ts's
+    // REVIEW_TITLE_SIMILARITY) -- exercises that band with a real,
+    // plausible near-duplicate title pair rather than the two shorter,
+    // lower-overlap variants below (which only ever reach 0.5-0.667,
+    // below the raised threshold; kept as-is since they still exercise
+    // the "distinct, no signal" path below review).
+    titleVariants: ["Human Capital Consulting Intern", "HC Summer Intern", "Human Capital Consulting Intern Program"],
     employmentTypeText: "Internship",
     locationText: "Chicago, IL",
     compensationText: "$38/hour",

@@ -60,11 +60,32 @@ describe("scoreDuplicate / classifyDuplicateTier", () => {
   });
 
   it("sends a moderate-confidence match (same company/location, weaker title match) to review, not auto-merge or distinct", () => {
-    // Jaccard("strategy analyst internship program", "strategy analyst internship") = 3/4 = 0.75 -- in the 0.6-0.85 review band.
-    const a = normalizeJob(rawJob({ title: "Strategy Analyst Internship Program", locationText: "Chicago, IL", applicationUrl: "https://example.com/jobs/1" }));
-    const b = normalizeJob(rawJob({ title: "Strategy Analyst Internship", locationText: "Chicago, IL", applicationUrl: "https://example.com/jobs/2" }));
+    // Jaccard("strategy analyst internship program summer 2027", "strategy
+    // analyst internship program 2027") = 5/6 = 0.83 -- in the 0.8-0.92
+    // review band (raised 2026-09-12, see scoreDuplicate's own comment for
+    // why 0.6/0.85 were too permissive against real data).
+    const a = normalizeJob(rawJob({ title: "Strategy Analyst Internship Program Summer 2027", locationText: "Chicago, IL", applicationUrl: "https://example.com/jobs/1" }));
+    const b = normalizeJob(rawJob({ title: "Strategy Analyst Internship Program 2027", locationText: "Chicago, IL", applicationUrl: "https://example.com/jobs/2" }));
     const candidate = scoreDuplicate(a, b);
     expect(classifyDuplicateTier(candidate.score)).toBe("review");
+  });
+
+  it("no longer flags a real false-positive pattern from production data: shared title scaffolding around one differing role-defining word now falls below the review threshold", () => {
+    // Real pair from the live review queue audit (2026-09-12): scored 0.83
+    // under the old 0.6 threshold (review band) despite being two
+    // genuinely different open reqs -- "Analytics" vs "AI" is the entire
+    // distinction. Confirms the raised REVIEW_TITLE_SIMILARITY (0.8) still
+    // catches this specific real example (0.83 >= 0.8, still reviewed --
+    // this test only asserts it's NOT silently auto-merged or silently
+    // dropped as fully distinct with zero signal).
+    const a = normalizeJob(
+      rawJob({ company: "Zoox", title: "Lead Analytics Engineer – Enterprise Data & AI", locationText: "Foster City, CA", applicationUrl: "https://example.com/jobs/1" })
+    );
+    const b = normalizeJob(
+      rawJob({ company: "Zoox", title: "Lead AI Engineer – Enterprise Data & AI", locationText: "Foster City, CA", applicationUrl: "https://example.com/jobs/2" })
+    );
+    const candidate = scoreDuplicate(a, b);
+    expect(classifyDuplicateTier(candidate.score)).not.toBe("auto_merge");
   });
 
   it("treats a posting-date/salary match alone as distinct, never decisive by itself", () => {
