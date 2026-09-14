@@ -1561,6 +1561,34 @@ longer breaks down to phone width either.
   zero residue (`roster=67 auth_users=1 messages=0 feed_posts=0
   admin_coffee_chat_flag=f`).
 
+- **Fixed silently-halved link-health re-check cadence** — a member
+  reported a Deloitte posting's apply link not working while Greenhouse
+  ones worked fine. `curl` against the real `application_url` values
+  confirmed genuine link rot on Deloitte's own career site (multiple
+  postings 404ing directly on `apply.deloitte.com`), not a bug in this
+  app — but two of the dead postings were still showing
+  `link_health='ok'`, both last checked 5 days earlier. Root cause:
+  `check-job-links`'s `MAX_LINKS_PER_RUN`/`CONCURRENCY` (300/20) were
+  tuned when there were ~3,300 active jobs; by 2026-09-14 there were
+  ~6,800, so each job's real re-check cadence had silently halved,
+  letting newly-broken links sit undetected for weeks between rotations.
+  Doubled both constants (300→600, 20→40) in
+  [supabase/functions/check-job-links/index.ts](supabase/functions/check-job-links/index.ts)
+  to restore the original cadence, doubling `CONCURRENCY` alongside the
+  cap specifically to hold worst-case wall-clock time at the same ~120s
+  already verified safe rather than letting run time double too.
+  Deployed via `npx supabase functions deploy check-job-links`; verified
+  via `npx supabase functions list` showing the function's version
+  incremented (4→5) and a fresh `updated_at`/source hash matching the
+  deploy time (2026-09-14 21:11 UTC). Deliberately not invoked manually
+  to trigger a live run beyond that — `20260825180000_reset_link_health
+  _after_false_positive_burst.sql` documents a real false-positive burst
+  from repeated manual invocations during that feature's original build,
+  so this relies on the existing daily 15:17 `check-job-links-daily`
+  pg_cron schedule (`20260909030000_fix_cron_schedules_wrong_project.sql`)
+  for its first live run under the new constants rather than forcing an
+  extra one.
+
 Run locally:
 ```bash
 npm install
