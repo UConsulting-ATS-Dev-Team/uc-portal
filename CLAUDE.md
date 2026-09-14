@@ -1808,6 +1808,33 @@ longer breaks down to phone width either.
   `npm run test:server`: 134/134 green (unchanged — this pass touched no
   server-mirrored logic). `vite build`: clean throughout.
 
+- **Static accessibility audit: 4 real keyboard-operability gaps found and
+  fixed** — continued the idle-time audit into accessibility, since a live
+  authenticated pass wasn't practical without another throwaway account.
+  Searched every `onClick` in the codebase for a non-interactive element
+  (`div`/`span`/`th`) standing in for a real control. The app turned out
+  to be overwhelmingly clean already — virtually every action anywhere is
+  already a real `<button>`/`<Link>` — and two things that looked like
+  matches on a truncated grep (`Messages.jsx`'s two conversation rows)
+  turned out to already be real `<button>` elements once read with full
+  context, not actual gaps. Fixed the 4 genuine ones: Onboarding's resume
+  drop-zone (a div+ref+onClick, unreachable by keyboard at all — now a
+  real `<label>` wrapping the file input), ResourceDetail's checklist-item
+  toggle (now a real `<button aria-pressed>`), TrackerTable's sortable
+  column headers (onClick lived on the `<th>` itself — now a real
+  `<button>` inside the cell plus `aria-sort` on the `<th>`), and
+  AddApplicationModal's job-selection cards (a div+onClick wrapping an
+  already-native `<input type="radio">` that had no `name` — not a real
+  mutually-exclusive group for arrow-key nav — and no accessible label at
+  all since adjacent text divs don't label an input on their own; now a
+  real `<label>` with a shared `name`). Every CSS class touched was
+  individually checked for `display` already being explicit (not
+  tag-dependent) before swapping the underlying element, so none of these
+  should be a visual change. Verified with a clean `vite build`; not
+  live-browser-tested (same reasoning as the other idle-time fixes above
+  — low risk, standard patterns, no new throwaway account created this
+  pass).
+
 Run locally:
 ```bash
 npm install
