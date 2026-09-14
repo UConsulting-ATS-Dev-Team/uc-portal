@@ -1126,6 +1126,29 @@ longer breaks down to phone width either.
   left pending for real review — verified directly against the database
   (pending=26, dismissed=354, still-pending-below-0.8=0).
 
+- **Real roster-gating** — closes the top finding from a pre-production
+  audit: `SignIn.jsx`'s "not on the roster"/"access pending" states were
+  pure UI simulation, and `supabase.auth.signUp()` had zero real
+  restriction — anyone who could complete email confirmation got full
+  member access to private club data. New `roster` table (a dedicated
+  email allowlist, deliberately not the still-empty `people` directory
+  table) is checked via `is_on_roster()` RPC *before* the client ever
+  calls `signUp()` — not by parsing `signUp()`'s own error, which a live
+  test proved unreliable (GoTrue doesn't pass a rejected-signup trigger's
+  real message through to `supabase-js`, confirmed by comparing raw curl
+  output against the parsed client error). A `BEFORE INSERT` trigger on
+  `auth.users` backstops this at the database layer regardless. "Alumni —
+  request access" now writes a real row to a new `access_requests` table,
+  with a matching "Access requests" admin queue (Approve writes to
+  `roster` and marks the request approved; Decline just records the
+  review). Seeded with the one real admin email already verified this
+  session; every other real member's email needs to be added via the new
+  admin queue or directly, never invented. Verified live against the real
+  database: a genuine non-roster signup correctly routes to "We couldn't
+  find you on the roster," a real access request landed and was cleaned
+  up as synthetic test data, and the RPC was tested as fully
+  unauthenticated `anon` (the real pre-signup condition).
+
 Run locally:
 ```bash
 npm install
