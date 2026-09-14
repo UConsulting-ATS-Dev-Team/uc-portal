@@ -173,14 +173,29 @@
 
 .tracker-table th {
   text-align: left;
-  padding: var(--space-4);
+  padding: 0;
   background: var(--color-table-header);
   font-size: var(--text-meta);
   text-transform: uppercase;
   letter-spacing: var(--tracking-kicker);
   color: var(--color-text-muted);
-  cursor: pointer;
   border-bottom: var(--border-hairline);
+}
+
+/* The sort trigger is a real <button> now (was onClick on the <th> itself,
+   not keyboard-operable) -- reset to fill the cell and look identical to
+   the old plain header text. */
+.tracker-table th button {
+  width: 100%;
+  padding: var(--space-4);
+  background: none;
+  border: none;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .tracker-table td {

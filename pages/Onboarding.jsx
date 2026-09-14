@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppState } from "../data/store.jsx";
 import { currentUser } from "../data/mockUser.js";
@@ -43,7 +43,6 @@ function Brand() {
 }
 
 function StepYou({ resumeName, onAttach }) {
-  const fileInput = useRef(null);
   const { profileOverrides } = useAppState();
   // Reads profileOverrides directly here, NOT through resolvedClassYear/
   // resolvedMajors/resolvedUcCommittee -- those fall back to mockUser.js's
@@ -73,9 +72,14 @@ function StepYou({ resumeName, onAttach }) {
         <li>{majors || "Major not on file — add it on My Profile"}</li>
         <li>{ucCommittee || "Committee not on file — add it on My Profile"}</li>
       </ul>
-      <div
-        onClick={() => fileInput.current?.click()}
+      {/* A real <label> wrapping the file input, not a div+ref+onClick --
+          the standard accessible pattern for a custom-styled file picker:
+          native click-to-open AND keyboard (Tab to the input, Enter/Space)
+          both work with no extra JS, unlike a plain div which was neither
+          focusable nor operable by keyboard at all. */}
+      <label
         style={{
+          display: "block",
           border: "1px dashed var(--color-border)",
           padding: "var(--space-7)",
           textAlign: "center",
@@ -85,12 +89,11 @@ function StepYou({ resumeName, onAttach }) {
       >
         {resumeName ? `Attached: ${resumeName}` : "Drop your resume here (optional) — it pre-fills later steps"}
         <input
-          ref={fileInput}
           type="file"
           style={{ display: "none" }}
           onChange={(e) => onAttach(e.target.files?.[0]?.name)}
         />
-      </div>
+      </label>
     </>
   );
 }

@@ -99,11 +99,17 @@ export default function ResourceDetail() {
           <div className="detail-section">
             <h2 className="detail-section__title">Contents</h2>
             {resource.sections.map((s, i) => (
-              <div className="checklist-section-row" key={s} onClick={() => toggleResourceSection(resource.id, i)}>
+              <button
+                type="button"
+                className="checklist-section-row"
+                key={s}
+                aria-pressed={done.includes(i)}
+                onClick={() => toggleResourceSection(resource.id, i)}
+              >
                 <span>{done.includes(i) ? "✓" : "○"}</span>
                 <span style={{ flex: 1 }}>{s}</span>
                 <span className="meta">{pagesPerSection} pages</span>
-              </div>
+              </button>
             ))}
           </div>
 

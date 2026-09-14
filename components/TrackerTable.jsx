@@ -29,9 +29,11 @@ export default function TrackerTable({ applications, sortColumn, sortDirection, 
           <thead>
             <tr>
               {COLUMNS.map((col) => (
-                <th key={col.key} onClick={() => onSort(col.key)}>
-                  {col.label}
-                  {sortColumn === col.key && (sortDirection === "asc" ? " ↑" : " ↓")}
+                <th key={col.key} aria-sort={sortColumn === col.key ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}>
+                  <button type="button" onClick={() => onSort(col.key)}>
+                    {col.label}
+                    {sortColumn === col.key && (sortDirection === "asc" ? " ↑" : " ↓")}
+                  </button>
                 </th>
               ))}
             </tr>

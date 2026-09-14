@@ -271,6 +271,17 @@
   padding: var(--space-3) 0;
   border-bottom: var(--border-hairline);
   cursor: pointer;
+  /* Real <button> now (was a div+onClick, not keyboard-operable) --
+     resets default button chrome so it still reads as the same plain
+     flex row, not a styled button. */
+  width: 100%;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  font: inherit;
+  text-align: left;
+  color: inherit;
 }
 
 .checklist-section-row:last-child {

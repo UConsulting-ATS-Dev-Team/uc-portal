@@ -106,18 +106,24 @@ export default function AddApplicationModal({ onClose, onAdded }) {
             <p className="meta">No untracked roles match "{search}".</p>
           )}
           {matches.map((j) => (
-            <div
+            // A real <label> wrapping the radio, not a div+onClick -- the
+            // radio previously had no `name` (so it wasn't a real
+            // mutually-exclusive group for arrow-key nav) and no
+            // accessible name at all (adjacent text divs don't label an
+            // input on their own). The label now provides both: a proper
+            // accessible name, and native click/keyboard activation with
+            // no extra JS.
+            <label
               key={j.id}
               className="modal-context-card"
               style={{ cursor: "pointer", borderColor: selectedJobId === j.id ? "var(--color-accent)" : undefined }}
-              onClick={() => setSelectedJobId(j.id)}
             >
-              <input type="radio" checked={selectedJobId === j.id} onChange={() => setSelectedJobId(j.id)} />
+              <input type="radio" name="add-application-job" checked={selectedJobId === j.id} onChange={() => setSelectedJobId(j.id)} />
               <div>
                 <div style={{ fontWeight: 700 }}>{j.role}</div>
                 <div className="meta">{j.company} · {j.location}</div>
               </div>
-            </div>
+            </label>
           ))}
         </>
       )}
