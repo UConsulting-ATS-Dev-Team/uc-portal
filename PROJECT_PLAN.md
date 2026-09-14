@@ -61,46 +61,40 @@ goals for next week. Two hard deadlines:
 |---|---|
 | 2026-08-18 (Tue) | Onboarding & brainstorm — idea scoped, wireframes designed |
 | 2026-08-18 → 09-08 | Weekly office-hours check-ins (Aug 25, Sep 1, Sep 8) |
-| **2026-09-08 (Tue)** | **MVP due** — proof of concept to Ryan, Gavin, Harshil (mockups/visual design/task tracker acceptable, not a final product) |
-| 2026-09-08 → 09-25 | Iterate on feedback (Sep 15, Sep 22 check-ins) |
+| **2026-09-08 (Tue)** | **MVP due** — delivered on schedule, presented to Ryan, Gavin, Harshil; went well |
+| 2026-09-08 → 09-25 | Iterate on feedback (Sep 15, Sep 22 check-ins) — in progress as of 2026-09-14 |
 | **2026-09-25 (Fri)** | **Production-ready** — final demo/presentation to UC Executive Committee for club distribution |
 
-**Where we are (as of 2026-08-18):** stack + scaffold set up, real UC
-brand applied, navigation shell built and clickable across all 24
-screens' routes (most still placeholders), sign-in/access-gate flow
-built (`3a`, all four states), onboarding built (`2i`/`2j`, all 5 steps +
-completion, preferences persist via a shared store so later pages can
-read them), Jobs board built (`1d`, filters/tabs/sort/save all working
-against mock data), Job detail built (`1e`, incl. the full odds model
-with live recompute and sparse-data handling — pulled forward from P2),
-Applications tracker built (`1f`/`1g`, Board with real drag-and-drop +
-Table with sorting/CSV export; Timeline `1j` still pending — most
-complex of the three), Network + member/alumni profile built (`1h`/`1i`,
-filters, coffee-chat requests, and shared-context all working against
-mock data), Feed built (`2a`, composer/tabs/helpful reactions/embedded
-job cards/events all working), Companies + company page built (`2b`/`2c`,
-filters/watchlist/5 tabs all working, every stat computed from real
-job/people data), Career Resources built (`2d`/`2e`/`3d` — library,
-resource detail, learning track detail; sequential step-unlock,
-section-completion tracking, and tracker-driven recommendations all
-verified working), My Profile built (`2g`, all 4 tabs: Personal,
-Career preferences, Recruiting settings, Privacy — Career preferences
-edits the same `preferences` object onboarding writes to, so nothing's
-duplicated), Admin Dashboard built (`2h`, KPI strip, gap analysis
-computed from real industry-interest data, class-year breakdown, and a
-working opportunity review queue with Approve/Remove), and the
-Timeline tracker view built (`1j`, Gantt-style — grouped rows, real
-per-stage bars, projected/dashed segments, event diamonds, and a
-working mouse-drag reschedule interaction). Home/Dashboard (`1a`),
-Notifications (`2f`), Global search (`3b`), Messages (`3f`), all five
-empty/first-run states (`3e`), and all 5 action modals (`3c`) are also
-now built. **All P1 and P2 scope from the Feature priorities list below
-is complete** — every wireframe screen is built and clickable against
-mock data. All P3/stretch items are now done too (Messages, the bear-icon
-logo, real company logos, and a real responsive pass down to 640px
-replacing the earlier zoom stopgap) — see the P3 checklist below.
-Nothing here was required for the Sept 8 MVP or Sept 25 production-ready
-bar, but there was time to finish it anyway.
+**Where we are (as of 2026-09-14, supersedes the paragraph this replaced,
+which was frozen at 2026-08-18 — pre-MVP and mock-data-only):** MVP
+delivered on schedule (2026-09-08), presented to the club's Tech & AI
+supervisors, and it went well. All 24 wireframe screens have been built
+since the original 2026-08-18 status (every P1/P2/P3 item below is now
+checked) — but far more significantly, this has since gone well past
+"clickable prototype against mock data," which is what this doc's P1-P3
+split and its old "real backend is next-phase, out of scope" framing
+(see the P3 checklist below) both still assumed at the time they were
+written. Nearly everything member-facing now runs on a real backend
+(Supabase Postgres + Auth + Edge Functions), not mock data: real
+roster-gated sign-up, a real ~200-person member/alumni directory (the
+club's own Directory sheet, imported), real job postings ingested daily
+from Greenhouse/Lever/Deloitte plus member/admin submissions through a
+real review queue, a real Feed, real 1:1 Messages, the full real odds
+model, and a real admin toolkit (opportunity queue, company-tier
+management, access requests, feature requests, member engagement,
+broken-link detection). Remaining demo/seed content that hasn't been
+replaced with something real yet (a handful of seeded tracker cards, a
+few hand-authored mock company pages, Admin Dashboard's illustrative
+club-wide KPIs no single browser session could actually compute) is
+now visibly labeled ("Demo data"/"Illustrative"), not presented as fact.
+This doc no longer tries to re-narrate that build history play-by-play —
+see [CLAUDE.md](CLAUDE.md)'s Progress log for the full, evidence-based,
+dated entry-by-entry account. Genuinely still open toward the
+2026-09-25 production-ready bar: real transactional email (blocked on
+AWS SES access — see Risks & blockers), and the mobile/phone-first UX
+pass (explicitly deprioritized, not unscoped — real breakpoint reflow
+down to 640px exists, but touch targets/gesture nav/a true mobile
+Messages layout don't yet).
 
 ## MVP plan
 
@@ -184,10 +178,17 @@ stretch / beyond this initiative's timeline.
       every logo-badge spot across Jobs/Companies/Applications/Job
       detail. People avatars stay text-initials on purpose (fictional
       people, no real photo to use).
-- [ ] Anything requiring a real backend: persistence, real auth, job
-      scraping, email integration, Slack "Opportunities" channel sync —
-      out of scope for a clickable prototype; would be the next phase
-      after production-ready if the club adopts this
+- [x] Persistence — real Supabase Postgres backend for nearly every
+      feature, not mock/localStorage-only (see CLAUDE.md's Progress log
+      for the feature-by-feature build history)
+- [x] Real auth — real Supabase Auth, roster-gated against the club's
+      real Directory, with a database-level backstop trigger
+- [x] Job scraping — real daily ingestion from Greenhouse, Lever, and a
+      Deloitte RSS feed, plus member/admin submissions through a real
+      review queue
+- [ ] Email integration — blocked on AWS SES access (see Risks &
+      blockers); in-app notifications exist as a partial substitute
+- [ ] Slack "Opportunities" channel sync — not started
 
 ## User stories
 
@@ -263,12 +264,19 @@ From the initiative plan, plus what's come up building this so far:
   keeping the MVP narrow are both hedges against over-building before
   validating that.
 - **Upkeep** — job postings need to stay current; stale listings erode
-  trust fast. Out of scope for the prototype itself, but worth deciding
-  moderation ownership before production-ready.
-- **Access control** — needs a real mechanism to keep this UC-only
-  (roster-provisioned per the wireframes) before any real member data
-  goes anywhere near it. The prototype uses no real data, so this is a
-  pre-launch requirement, not a prototype requirement.
+  trust fast. Largely addressed by real infrastructure now (daily
+  ingestion, a daily link-health checker with an admin broken-link
+  queue, a quality-score flag, and an expiration state machine for
+  postings a source stops reporting) — what's still a genuinely open
+  question is moderation *ownership* (whose job it is to actually work
+  the admin queues day to day), a people/process decision, not a code one.
+- **Access control** — resolved: real roster-gating is live (a real
+  `roster` email allowlist checked before signup, backstopped by a
+  database-level trigger so the check can't be bypassed by calling
+  Supabase Auth directly — see CLAUDE.md's "Real roster-gating" entry).
+  Real member data (the ~200-person directory, real accounts, real
+  applications/messages/feed posts) already sits behind this, not still
+  waiting on it.
 - **Odds model credibility** — a confident-looking percentage built on
   n=1 would undermine trust in the whole feature. Already decided (see
   CLAUDE.md): low-confidence labeling below ~5 applications.
@@ -288,9 +296,25 @@ maintenance after Josh graduates.
 
 ## Open action items (not code)
 
-- Reach out to Alumni Relations for updated alumni database info,
-  interview testimonials, and alumni advice content (per initiative plan
-  — this is a Josh/club task, not something this repo can do).
+All Josh/club tasks, not something this repo can do — current as of
+2026-09-14, gathered from the supervisor's post-MVP feedback:
+
+- **Gavin** — AWS SES access (10k emails/day). Blocks every real-email
+  item above and below (feature-request notification emails, admin
+  new-signup emails, general email notifications).
+- **Nikki** (Alumni Relations) — insight, likely the real source for
+  updated alumni database info/interview testimonials/advice content
+  (supersedes this section's older single-line version of the same ask).
+- **Emma** (Corporate Relations).
+- **Logan** (Education Committee) — onboarding/IT training content.
+- Buy a domain for the real Vercel deploy.
+- A GM walkthrough, eventually — no rush.
+
+Two infrastructure decisions also need Josh's own explicit call before
+any code work starts on them (not just outreach): moving to a new repo
+under the UC GitHub account (status tangled up with the still-pending
+GitHub ownership transfer to Josh's advisor), and what AWS SES unlocks
+once Gavin's involved.
 
 ## References
 
