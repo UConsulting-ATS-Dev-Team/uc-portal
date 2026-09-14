@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient.js";
+import { fetchAllRows } from "./fetchAllRows.js";
 
 // Maps a feed_posts row into the same flat shape the old mock FEED_POSTS
 // objects had, so pages/Feed.jsx and pages/Home.jsx's feed preview can
@@ -36,11 +37,16 @@ export function relativeTime(iso) {
 
 // Real feed posts (see the feed_posts migration for the full rationale).
 // Newest first -- same convention as every other real-content list in
-// this app (interview write-ups, feature requests).
+// this app (interview write-ups, feature requests). fetchAllRows(), not a
+// bare .select() -- feed_posts has no natural cap (every post, for the
+// life of the club) and every caller (Feed.jsx, Home.jsx's preview,
+// Notifications, Global Search) reads the whole table, the exact same
+// unbounded-board-wide-read shape that silently truncated the Jobs board
+// and the Companies grid at PostgREST's 1000-row default before each was
+// caught and fixed -- fixed here proactively, before real post volume
+// ever reaches that mark, rather than after.
 export async function fetchFeedPosts() {
-  const { data, error } = await supabase.from("feed_posts").select("*").order("created_at", { ascending: false });
-  if (error) throw new Error(`Fetching feed_posts failed: ${error.message}`);
-  return data ?? [];
+  return fetchAllRows("feed_posts", "*", (q) => q.order("created_at", { ascending: false }));
 }
 
 // Same client-side filter pattern as data/realPeople.js's searchRealPeople/
