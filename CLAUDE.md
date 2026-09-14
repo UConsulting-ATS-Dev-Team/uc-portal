@@ -1589,6 +1589,51 @@ longer breaks down to phone width either.
   for its first live run under the new constants rather than forcing an
   extra one.
 
+- **Two of the supervisor's "quick, buildable wins" built** — closes two
+  items from the 2026-09-14 MVP-feedback triage: "Notify admin on new
+  signups" and "Expand general notifications (job postings, deadlines)."
+
+  **Admin signup visibility** — in-app only, as scoped (the triage's own
+  note: the email arm waits on SES/Gavin, same blocker as "Request a
+  feature"'s email item). New `list_recent_signups()` RPC
+  (`20260914190000_recent_signups.sql`), same security-definer +
+  identity-resolution shape as `member_engagement_report()` (people-email
+  match, then `profiles.full_name`, then the account's own email) since
+  `profiles` has no email column and `auth.users` isn't reachable via
+  PostgREST directly. Admin Dashboard gets a real "Recent signups" rail
+  card (last 14 days, real names/dates); `TopBar.jsx` gets a real
+  admin-only badge (👥, alongside Messages/Notifications) showing a live
+  count of signups since the admin last clicked it — a plain `profiles`
+  count query (`profiles_select_admin`'s RLS already grants direct
+  select, no RPC needed just for a number), "last seen" tracked in
+  localStorage per-browser (a convenience, not synced state — there's
+  nothing to mark read server-side). Verified the RPC's underlying join
+  logic via a self-cleaning diagnostic migration against real data:
+  `recent_signups_14d_count=1 sample=[Joshua Lowenberg (2026-09-09)]
+  fn_exists=t` — correctly resolves the one real account that exists
+  today. Not verified in a live authenticated browser (no second real
+  test account was spun up for this one, given it's read-only and gated
+  by the same `is_admin()` check already proven live on
+  `member_engagement_report()`/`company_tiers`/etc.).
+
+  **Real Notifications content** — the "Earlier this week" section
+  (`data/notificationUtils.js`) had been a hardcoded illustrative array
+  (`e1`-`e4`) since the feature was first built, before Feed/Messages/
+  real jobs existed. Now real: an "N new roles matched your profile this
+  week" row (reuses `data/useRealJobs.js`'s existing matchScore/
+  matchEligible/postedDaysAgo, filtered to real postings from the last 7
+  days — no second matching pass), up to 3 real recent feed posts
+  excluding the member's own (`data/feedSync.js#fetchFeedPosts`), and up
+  to 3 real unread conversations (`data/messagesSync.js#fetchConversations`),
+  each now linking somewhere real (`/jobs`, `/feed`,
+  `/messages?accountId=...`) instead of being a dead row. Also expanded
+  "Deadlines" needs-action coverage to saved-but-not-yet-tracked jobs
+  with an imminent deadline — a member who saved a job but never hit
+  "Add to tracker" got no heads-up at all before this. Verified with a
+  clean `vite build`; not click-tested live for the same reason as
+  above (no second real account to sign in as with real saved/tracked/
+  feed/message data behind it).
+
 Run locally:
 ```bash
 npm install
