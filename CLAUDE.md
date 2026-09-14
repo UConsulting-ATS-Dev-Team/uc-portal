@@ -1748,6 +1748,66 @@ longer breaks down to phone width either.
   and this change reuses the exact same `profileOverrides?.field`
   direct-access pattern already proven live in that session).
 
+- **Self-directed audit pass while idle (pagination, RLS, dead code, data
+  drift)** — with no specific task queued, spent the time on the kind of
+  systematic checks that are cheap to do broadly but expensive to do
+  reactively (i.e., after something's already silently broken in
+  production, which is how the last two pagination bugs here were
+  actually found). All read-only investigation except where noted.
+
+  - **Pagination**: audited every `.select(` call in `data/` and
+    `supabase/functions/` for the exact silent-1000-row-truncation shape
+    that already broke the Jobs board and the Companies grid once each.
+    Found and fixed one real instance: `feedSync.js#fetchFeedPosts()`
+    (read board-wide by Feed/Home/Notifications/Global Search) was a bare
+    `.select()` with no natural cap — `feed_posts` will grow for the life
+    of the club and was never going to stay under 1000 rows forever, so
+    this was a real bug waiting to happen rather than an active one yet
+    (real row count today: near zero, the table is brand new). Fixed
+    proactively via `fetchAllRows()`, same as the two prior fixes.
+    Checked `company_tiers` for the same shape too, but its own comment
+    already documents a correct, deliberate decision to skip pagination
+    there — left alone. The Edge Functions layer (Deno side) was already
+    fully clean on re-check — every board-wide read there already goes
+    through `_shared/dedupeHelpers.ts`'s `fetchAllRows`, and every
+    remaining bare `.select()` is genuinely bounded (a single row by id,
+    or an explicit `.limit()`).
+  - **RLS coverage**: cross-referenced every real `.update()`/`.delete()`
+    call in `data/`/`pages/` against its table's actual policies (not
+    just against what a progress-log entry claimed) across all 23
+    tables. Found zero live-reachable gaps — every client write path has
+    a correctly-scoped matching policy. Specifically re-verified by
+    reading the actual SQL (not just trusting the log) the two
+    highest-stakes surfaces: the admin role-toggle path is protected by
+    a `before update` trigger (`prevent_role_self_escalation()`, already
+    fixed once for a dashboard-SQL-Editor false-positive) that silently
+    clamps any non-admin's attempt to change their own `role`, and
+    `case_partner_requests`' mutual-consent design is airtight — a table
+    level `check (requester_id <> recipient_id)` constraint rules out
+    self-requests entirely, on top of the RLS policies' own
+    requester/recipient split (confirmed no insert path exists that
+    could let someone construct a self-targeted, self-acceptable row).
+  - **Dead code**: checked every `data/*.js` file for zero real
+    importers. Found none — the one apparent candidate,
+    `data/jobSearch.js` (a working full-text-search function), turned
+    out to already have an honest comment explaining it's deliberately
+    built-but-not-yet-wired-in scaffolding for future work, not an
+    oversight — left untouched rather than wiring it in unprompted
+    (that's a real UX decision: whether Jobs.jsx's search should switch
+    to server-side full-text search, not something to default into) or
+    deleting genuinely-intended future infrastructure.
+  - **Data drift**: directly diffed the 3 hand-maintained
+    Deno/Node/browser mirrors of `TIER_CAPS`/`DEFAULT_COMPANY_TIER`
+    (`data/companyTiers.js`, `server/src/companyCap.ts`,
+    `supabase/functions/_shared/pipeline/companyCap.ts`) rather than
+    assuming the "keep in sync by hand" convention held — all three
+    match exactly (`{0:25, 1:15, 2:10, 3:3}`), confirming the tier-3
+    raise-then-revert episode earlier this project correctly touched
+    all three copies.
+
+  `npm run test:server`: 134/134 green (unchanged — this pass touched no
+  server-mirrored logic). `vite build`: clean throughout.
+
 Run locally:
 ```bash
 npm install
