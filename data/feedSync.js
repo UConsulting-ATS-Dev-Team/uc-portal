@@ -23,7 +23,7 @@ export function feedRowToPost(row) {
   };
 }
 
-function relativeTime(iso) {
+export function relativeTime(iso) {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diffMs / 60000);
   if (minutes < 1) return "Just now";

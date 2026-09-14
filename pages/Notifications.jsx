@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAppState } from "../data/store.jsx";
 import { buildNotifications } from "../data/notificationUtils.js";
@@ -7,6 +7,9 @@ import { useRealJobs } from "../data/useRealJobs.js";
 import { currentUser } from "../data/mockUser.js";
 import { resolvedClassYear } from "../data/profileUtils.js";
 import { deadlineLabel } from "../data/jobUtils.js";
+import { supabase } from "../data/supabaseClient.js";
+import { fetchFeedPosts } from "../data/feedSync.js";
+import { fetchConversations } from "../data/messagesSync.js";
 import "../styles/jobs.css";
 import "../styles/jobDetail.css";
 import "../styles/onboarding.css";
@@ -39,7 +42,7 @@ const SETTINGS_COPY = [
 ];
 
 export default function Notifications() {
-  const { trackedJobs, prepLogged, coffeeChatStatus, notificationSettings, updateNotificationSetting, preferences, profileOverrides } = useAppState();
+  const { trackedJobs, prepLogged, coffeeChatStatus, savedJobIds, notificationSettings, updateNotificationSetting, preferences, profileOverrides } = useAppState();
   const [tab, setTab] = useState("Needs action");
 
   // Same real-first/mock-fallback lookup as every other trackedJobs
@@ -49,9 +52,24 @@ export default function Notifications() {
   const classYear = resolvedClassYear(currentUser, profileOverrides);
   const { realJobs } = useRealJobs(preferences, classYear);
 
+  // Real feed posts + real conversations, fetched once on mount -- closes
+  // the "Expand general notifications" quick win by replacing the old
+  // hardcoded "Earlier this week" array (see data/notificationUtils.js's
+  // own comment). Degrades to "nothing new to show" rather than crashing
+  // if either fetch fails, same pattern realJobs' own .catch(() => {})
+  // already uses.
+  const [feedPosts, setFeedPosts] = useState([]);
+  const [conversations, setConversations] = useState([]);
+  const [currentAccountId, setCurrentAccountId] = useState(null);
+  useEffect(() => {
+    fetchFeedPosts().then(setFeedPosts).catch(() => {});
+    fetchConversations().then(setConversations).catch(() => {});
+    supabase.auth.getUser().then(({ data }) => setCurrentAccountId(data?.user?.id ?? null));
+  }, []);
+
   const { needsAction, earlierThisWeek } = useMemo(
-    () => buildNotifications({ trackedJobs, prepLogged, coffeeChatStatus, realJobs }),
-    [trackedJobs, prepLogged, coffeeChatStatus, realJobs]
+    () => buildNotifications({ trackedJobs, prepLogged, coffeeChatStatus, realJobs, savedJobIds, feedPosts, conversations, currentAccountId }),
+    [trackedJobs, prepLogged, coffeeChatStatus, realJobs, savedJobIds, feedPosts, conversations, currentAccountId]
   );
 
   const category = TAB_TO_CATEGORY[tab] || tab;
@@ -123,7 +141,7 @@ export default function Notifications() {
               {visibleEarlier.map((n) => (
                 <div className="notif-earlier-row" key={n.id}>
                   <span className="notif-icon">{n.source[0]}</span>
-                  <span>{n.headline}</span>
+                  {n.href ? <Link to={n.href}>{n.headline}</Link> : <span>{n.headline}</span>}
                   <span className="notif-earlier-row__source">
                     {n.source} · {n.age}
                   </span>
