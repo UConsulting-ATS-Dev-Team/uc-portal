@@ -59,19 +59,32 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const SOURCE_NAME = "Link Health Checker";
 
-// Active jobs (~3,300 as of this function's first deploy) is already too
-// many to check exhaustively in one Edge Function invocation without
-// risking the same compute/time limit this codebase has hit before at
-// scale (see fetch-greenhouse-companies' MAX_NEW_JOBS_PER_RUN history).
-// Each run instead checks the MAX_LINKS_PER_RUN jobs least recently
-// checked (oldest last_link_checked_at first, nulls -- never checked --
-// first), so the whole active set rotates through over several days
+// Active jobs is already too many to check exhaustively in one Edge
+// Function invocation without risking the same compute/time limit this
+// codebase has hit before at scale (see fetch-greenhouse-companies'
+// MAX_NEW_JOBS_PER_RUN history). Each run instead checks the
+// MAX_LINKS_PER_RUN jobs least recently checked (oldest
+// last_link_checked_at first, nulls -- never checked -- first, then
+// currently-failing jobs prioritized within that -- see the query below's
+// own comment), so the whole active set rotates through over several days
 // rather than one run trying to do everything. Worst case (every single
 // checked URL times out, which real data never came close to) is
 // MAX_LINKS_PER_RUN / CONCURRENCY * TIMEOUT_MS =~ 120s, comfortably under
 // Supabase's Edge Function limit.
-const MAX_LINKS_PER_RUN = 300;
-const CONCURRENCY = 20;
+//
+// Both constants doubled 2026-09-14: active jobs had grown from ~3,300 (at
+// first deploy, and what these were originally tuned against) to ~6,800 --
+// with the cap never revisited, each job's real re-check cadence had
+// silently halved from the original design, and a live user report (two
+// Deloitte postings whose apply link 404s on Deloitte's own site, both
+// last checked 5 days earlier and still showing link_health='ok') traced
+// straight back to this: the rotation hadn't reached them again since
+// before they went dead. CONCURRENCY doubled alongside MAX_LINKS_PER_RUN
+// (not just the cap alone) specifically to hold the worst-case wall-clock
+// time at the same ~120s this was already verified safe at, rather than
+// doubling run time along with throughput.
+const MAX_LINKS_PER_RUN = 600;
+const CONCURRENCY = 40;
 const TIMEOUT_MS = 8000;
 
 // Must match mark_link_check_results' own threshold (20260825110000) --
