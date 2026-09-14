@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppState } from "../data/store.jsx";
 import { currentUser } from "../data/mockUser.js";
-import { displayName, resolvedClassYear, resolvedMajors, resolvedUcCommittee } from "../data/profileUtils.js";
+import { displayName } from "../data/profileUtils.js";
 import {
   INDUSTRIES,
   ROLES,
@@ -45,6 +45,21 @@ function Brand() {
 function StepYou({ resumeName, onAttach }) {
   const fileInput = useRef(null);
   const { profileOverrides } = useAppState();
+  // Reads profileOverrides directly here, NOT through resolvedClassYear/
+  // resolvedMajors/resolvedUcCommittee -- those fall back to mockUser.js's
+  // fake "Test Account" defaults (Class of 2027, "Business Economics,
+  // Data Science", "Recruitment Committee"), which used to render on this
+  // screen as if they were a real member's own confirmed roster info the
+  // moment they'd never set an override -- exactly the class of bug this
+  // session fixed elsewhere (stale nav counts, fabricated club stats).
+  // data/store.jsx's real Directory auto-fill now populates fullName/
+  // majors (not classYear/ucCommittee -- no real source exists for those
+  // yet, confirmed via a live query) for anyone matched by email, so most
+  // real members will see real data here; anyone genuinely unmatched sees
+  // an honest "not on file" instead of someone else's fake info.
+  const classYear = profileOverrides?.classYear;
+  const majors = profileOverrides?.majors;
+  const ucCommittee = profileOverrides?.ucCommittee;
   return (
     <>
       <div className="onboarding__kicker">Step 1 of 5</div>
@@ -54,9 +69,9 @@ function StepYou({ resumeName, onAttach }) {
       </p>
       <ul className="auth__meta-list">
         <li>{displayName(currentUser, profileOverrides)}</li>
-        <li>Class of {resolvedClassYear(currentUser, profileOverrides)}</li>
-        <li>{resolvedMajors(currentUser, profileOverrides) || "Business Economics, Data Science"}</li>
-        <li>{resolvedUcCommittee(currentUser, profileOverrides) || "Recruitment Committee"}</li>
+        <li>{classYear ? `Class of ${classYear}` : "Class year not on file — add it on My Profile"}</li>
+        <li>{majors || "Major not on file — add it on My Profile"}</li>
+        <li>{ucCommittee || "Committee not on file — add it on My Profile"}</li>
       </ul>
       <div
         onClick={() => fileInput.current?.click()}

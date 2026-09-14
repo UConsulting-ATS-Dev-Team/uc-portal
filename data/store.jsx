@@ -5,6 +5,7 @@ import { fetchRemoteNetworkConnections, syncNetworkConnectionToRemote } from "./
 import { fetchRemoteSavedJobs, syncSavedJobToRemote } from "./savedJobsSync.js";
 import { fetchRealRole } from "./profileRoleSync.js";
 import { fetchRemoteProfileOverrides, syncProfileOverridesToRemote } from "./profileOverridesSync.js";
+import { fetchDirectoryPrefill } from "./directoryPrefillSync.js";
 
 // Prototype-wide shared state (career preferences, onboarding progress,
 // and later: saved jobs, tracker stage, etc.) -- persisted to
@@ -273,6 +274,31 @@ export function AppStateProvider({ children }) {
     if (!hydratedFromRemote) return;
     syncProfileOverridesToRemote(state.profileOverrides, state.onboardingComplete, state.profileLastUpdated);
   }, [state.profileOverrides, state.onboardingComplete, state.profileLastUpdated, hydratedFromRemote]);
+
+  // Real Directory auto-fill (see data/directoryPrefillSync.js for the
+  // full rationale). Gated on hydratedFromRemote so this can never race
+  // ahead of a real saved profileOverrides value fetched above -- only
+  // runs once that's resolved, and even then only ever fills a field
+  // that's still empty, so a member's own edit (past or future) always
+  // wins. Silently does nothing on no match (not everyone in the club is
+  // in the Directory sheet yet) or a fetch failure -- this is a nice-to-
+  // have prefill, never something a member should be blocked on.
+  useEffect(() => {
+    if (!hydratedFromRemote) return;
+    fetchDirectoryPrefill()
+      .then((match) => {
+        if (!match) return;
+        setState((prev) => {
+          const patch = {};
+          if (!prev.profileOverrides.fullName && match.name) patch.fullName = match.name;
+          if (!prev.profileOverrides.majors && match.major) patch.majors = match.major;
+          if (!prev.profileOverrides.linkedIn && match.linkedin) patch.linkedIn = match.linkedin;
+          if (Object.keys(patch).length === 0) return prev;
+          return { ...prev, profileOverrides: { ...prev.profileOverrides, ...patch } };
+        });
+      })
+      .catch(() => {});
+  }, [hydratedFromRemote]);
 
   // Real applications tracker (Stage 5) -- same one-time-hydrate-on-mount
   // shape as preferences above, except merged into local state rather than

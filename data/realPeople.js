@@ -55,6 +55,16 @@ export async function fetchRealPersonById(id) {
   return rows.length > 0 ? realPersonToCardShape(rows[0]) : null;
 }
 
+// Matches the signed-in account's own email against the Directory --
+// data/directoryPrefillSync.js's fetchDirectoryPrefill() is the only
+// caller, for the "auto-fill profile from roster" quick win. ilike (not
+// eq) since the Directory import and a real auth email could differ in
+// case even when they're the same address.
+export async function fetchRealPersonByEmail(email) {
+  const rows = await fetchAllRows("people", "*", (q) => q.ilike("email", email.trim()));
+  return rows.length > 0 ? realPersonToCardShape(rows[0]) : null;
+}
+
 // Global Search's own substring matching (data/searchUtils.js), just
 // against real people instead of the mock roster -- at 150 rows, a proper
 // indexed search (like jobs' search_vector column, data/jobSearch.js)
