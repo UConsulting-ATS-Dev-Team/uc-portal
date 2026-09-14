@@ -146,7 +146,14 @@ export default function SignIn() {
     });
     setRequestSubmitting(false);
     if (error) {
-      setRequestError(error.message);
+      // 23505 here means access_requests_one_pending_per_email fired
+      // (see 20260914030000_rls_gap_fixes.sql) -- a real, friendlier
+      // message instead of surfacing the raw constraint-violation text.
+      setRequestError(
+        error.code === "23505"
+          ? "You already have a pending request in with Exec -- no need to submit another."
+          : error.message,
+      );
       return;
     }
     setSubmittedAt(new Date());

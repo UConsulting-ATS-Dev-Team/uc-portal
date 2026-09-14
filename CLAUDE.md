@@ -1196,6 +1196,29 @@ longer breaks down to phone width either.
   the browsable member directory (`people`, separately empty and pending
   its own import).
 
+- **Fixed the three known minor RLS/anti-abuse gaps** — closes the
+  remaining items from the pre-production audit's punch list.
+  `interview_writeups` and `network_connections` had select/insert(/update)
+  but no way for a member to delete their own row (confirmed neither gap
+  blocked any shipped feature — the frontend only ever inserts/upserts on
+  these tables today, grepped to be sure); added own-row delete policies
+  (`interview_writeups` also gained update, matching the pattern every
+  other member-owned table already has). `access_requests`' anonymous
+  insert had no anti-abuse protection at all — true IP/burst rate limiting
+  isn't something plain RLS can do without extra infrastructure (a
+  fronting Edge Function), more than this small club tool's real risk
+  profile justifies, but a real, cheap fix was available: a partial
+  unique index blocking the same email from having more than one
+  *pending* request at once (case/whitespace-insensitive), closing the
+  actual observed risk (duplicate-submit spam) without blocking a
+  legitimately reconsidered request once the first one's resolved.
+  `SignIn.jsx`'s request-access error handling now shows a friendly
+  message on that specific constraint (Postgres code `23505`) instead of
+  the raw violation text. Verified live via a self-cleaning diagnostic
+  migration: confirmed all three new policies exist in `pg_policies`, and
+  confirmed the duplicate-pending guard actually rejected a second insert
+  for the same email in a different case/with whitespace.
+
 Run locally:
 ```bash
 npm install
