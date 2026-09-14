@@ -315,8 +315,8 @@ function Completion({ preferences, profileOverrides, onFinish }) {
   const featuredHelp = preferences.helpNeeded[0] || "Case Interview Track";
   // First name only, for a greeting -- displayName() gives the full name
   // (real override or the mock currentUser fallback), same as every other
-  // avatar in the app reads through, but "You're set up, Jordan Ellis"
-  // reads stiffer than "You're set up, Jordan" for this one greeting.
+  // avatar in the app reads through, but "You're set up, Test Account"
+  // reads stiffer than "You're set up, Test" for this one greeting.
   const firstName = displayName(currentUser, profileOverrides).split(" ")[0];
 
   return (

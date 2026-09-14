@@ -1,9 +1,9 @@
 // Prototype-only mock state — no backend, no real auth.
 // Flip `role` to "exec" or "careers-committee" to see the Leadership nav section.
 export const currentUser = {
-  firstName: "Jordan",
-  lastName: "Ellis",
-  initials: "JE",
+  firstName: "Test",
+  lastName: "Account",
+  initials: "TA",
   classYear: 2027,
   majors: "Business Economics, Data Science",
   ucCommittee: "Recruitment Committee",
