@@ -1711,6 +1711,43 @@ longer breaks down to phone width either.
   orphaned_profiles=0 roster_total=67` — back to the exact pre-test
   baseline.
 
+- **Fixed 3 more spots showing mockUser's fake defaults as real member
+  facts** — a self-directed follow-up audit after the Onboarding fix
+  above, since that fix was clearly one instance of a repeatable bug
+  class, not a one-off. Grepped every remaining `resolvedClassYear`/
+  `resolvedMajors`/`resolvedUcCommittee` call site (15 files) and
+  categorized each as functional (feeds a real job-matching call,
+  genuinely needs *some* usable value — left untouched, changing that
+  fallback is a separate, higher-risk decision about job eligibility)
+  vs. display-only (presents a specific fact to a real member with no
+  real backing). Fixed the three display-only ones:
+  - `Feed.jsx` — a member's post `author_role_line` was writing "Class
+    of 2027" into the real, permanent `feed_posts` table for anyone
+    without a real class year set. Unlike a display bug, this one
+    couldn't self-correct on its own once posted — every future viewer
+    of that post would see the fabricated year forever. Now `null`
+    (omitted from the post) when genuinely unknown.
+  - `Home.jsx` — both the welcome-back card and the first-login empty
+    state built their subtitle from the fake fallback. Now built from
+    only the facts actually on `profileOverrides`, joined together and
+    omitting whatever isn't set, rather than a fixed template with a
+    fake value slotted in.
+  - `MemberProfile.jsx` — the "Shared UC context" section could claim
+    "Both on Recruitment Committee" for a real viewer who'd never
+    actually set a committee, purely by coincidentally matching the
+    mock profile's own committee — a false claim contradicting this
+    exact section's own "every number traceable" principle.
+
+  Confirmed via a full-file grep for the same `Class of {...}` pattern
+  that no other display site was missed (the two remaining matches —
+  a job's own eligible grad years on `JobCard.jsx`, and Admin
+  Dashboard's already-`DemoDataBadge`-labeled illustrative class-year
+  breakdown — are unrelated). Verified with a clean `vite build`; not
+  re-verified in a fresh live browser session (the throwaway account
+  used for the Directory auto-fill test above was already cleaned up,
+  and this change reuses the exact same `profileOverrides?.field`
+  direct-access pattern already proven live in that session).
+
 Run locally:
 ```bash
 npm install
