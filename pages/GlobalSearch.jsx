@@ -4,6 +4,7 @@ import { searchAll } from "../data/searchUtils.js";
 import { searchJobs } from "../data/jobSearch.js";
 import { searchRealPeople } from "../data/realPeople.js";
 import { searchRealCompanies } from "../data/realCompanies.js";
+import { searchFeedPosts } from "../data/feedSync.js";
 import { COMPANIES } from "../data/mockCompanies.js";
 import { useAppState } from "../data/store.jsx";
 import "../styles/jobs.css";
@@ -26,8 +27,11 @@ export default function GlobalSearch() {
 
   // Jobs come from the real jobs table (Stage 2, data/jobSearch.js) and
   // people from the real UConsulting Directory import (Stage 5, data/
-  // realPeople.js) -- resources/feed still read the mock-data layer via
-  // searchAll(). Real jobs link to /jobs/:id same as mock jobs --
+  // realPeople.js), feed posts from the real feed_posts table (data/
+  // feedSync.js) -- resources still reads the mock-data layer via
+  // searchAll() (a static content library, not fabricated activity, same
+  // reasoning CLAUDE.md gives for leaving it as-is). Real jobs link to
+  // /jobs/:id same as mock jobs --
   // JobDetail.jsx dispatches to pages/RealJobDetail.jsx for a UUID id vs.
   // the existing mock-job render for a slug id (see that file's header
   // comment); MemberProfile.jsx does the same UUID-vs-slug dispatch for
@@ -45,6 +49,8 @@ export default function GlobalSearch() {
   // realJobs/realPeople above.
   const [realCompanies, setRealCompanies] = useState([]);
   const [companiesLoading, setCompaniesLoading] = useState(false);
+  const [realPosts, setRealPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(false);
 
   useEffect(() => {
     if (query) addRecentSearch(query);
@@ -58,6 +64,7 @@ export default function GlobalSearch() {
       setRealJobs([]);
       setRealPeople([]);
       setRealCompanies([]);
+      setRealPosts([]);
       return;
     }
     let cancelled = false;
@@ -86,6 +93,17 @@ export default function GlobalSearch() {
       .finally(() => {
         if (!cancelled) setCompaniesLoading(false);
       });
+    setPostsLoading(true);
+    searchFeedPosts(query)
+      .then((data) => {
+        if (!cancelled) setRealPosts(data);
+      })
+      .catch(() => {
+        if (!cancelled) setRealPosts([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPostsLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -94,10 +112,11 @@ export default function GlobalSearch() {
   const raw = useMemo(() => searchAll(query), [query]);
 
   const results = useMemo(() => {
-    let { resources, posts } = raw;
+    let { resources } = raw;
     let companies = [...raw.companies, ...realCompanies];
     let jobs = realJobs;
     let people = realPeople;
+    let posts = realPosts;
     if (onlyActionable) {
       resources = [];
       posts = [];
@@ -114,7 +133,7 @@ export default function GlobalSearch() {
       resources = resources.filter((r) => (new Date() - new Date(r.updated)) / 86400000 <= 30);
     }
     return { jobs, people, companies, resources, posts };
-  }, [raw, realJobs, realPeople, realCompanies, onlyActionable, onlySaved, onlyRecent, savedConnections, savedResourceIds, preferences]);
+  }, [raw, realJobs, realPeople, realCompanies, realPosts, onlyActionable, onlySaved, onlyRecent, savedConnections, savedResourceIds, preferences]);
 
   const total = results.jobs.length + results.people.length + results.companies.length + results.resources.length + results.posts.length;
 

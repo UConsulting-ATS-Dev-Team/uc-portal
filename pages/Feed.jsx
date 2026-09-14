@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { FEED_POSTS } from "../data/mockFeed.js";
 import { JOBS } from "../data/mockJobs.js";
 import { PEOPLE } from "../data/mockPeople.js";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
 import { displayName, initialsFromName, resolvedClassYear } from "../data/profileUtils.js";
+import { fetchFeedPosts, submitFeedPost, feedRowToPost } from "../data/feedSync.js";
 import JobCard from "../components/JobCard.jsx";
 import "../styles/jobDetail.css";
 import "../styles/feed.css";
@@ -31,28 +31,44 @@ export default function Feed() {
   // one-time composer seeding, not a shareable/bookmarkable URL.
   const [composerText, setComposerText] = useState(location.state?.prefill || "");
   const [selectedType, setSelectedType] = useState("Advice");
-  const [posts, setPosts] = useState(FEED_POSTS);
+  const [posts, setPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(true);
+  const [postsError, setPostsError] = useState(null);
+  const [posting, setPosting] = useState(false);
   const [helpfulPosts, setHelpfulPosts] = useState([]);
   const [savedPosts, setSavedPosts] = useState([]);
   const [rsvpedPosts, setRsvpedPosts] = useState([]);
 
-  function handlePost() {
-    if (!composerText.trim()) return;
-    const newPost = {
-      id: `post-${Date.now()}`,
-      author: displayName(currentUser, profileOverrides),
-      roleChip: "Member",
-      postType: selectedType,
-      roleLine: `Class of ${resolvedClassYear(currentUser, profileOverrides)}`,
-      timestamp: "Just now",
-      body: composerText.trim(),
-      isEvent: selectedType === "Event",
-      helpfulCount: 0,
-      commentCount: 0,
-      socialProof: null,
-    };
-    setPosts((prev) => [newPost, ...prev]);
-    setComposerText("");
+  useEffect(() => {
+    fetchFeedPosts()
+      .then((rows) => setPosts(rows.map(feedRowToPost)))
+      .catch((err) => setPostsError(err.message))
+      .finally(() => setPostsLoading(false));
+  }, []);
+
+  async function handlePost() {
+    if (!composerText.trim() || posting) return;
+    setPosting(true);
+    setPostsError(null);
+    try {
+      const row = await submitFeedPost({
+        body: composerText.trim(),
+        postType: selectedType,
+        authorName: displayName(currentUser, profileOverrides),
+        authorRoleLine: `Class of ${resolvedClassYear(currentUser, profileOverrides)}`,
+        isEvent: selectedType === "Event",
+        // No real event-date/RSVP picker in the composer yet -- same
+        // scope line the feed_posts migration draws (posts themselves
+        // were the complaint, not a new event-scheduling UI).
+        eventLabel: null,
+      });
+      setPosts((prev) => [feedRowToPost(row), ...prev]);
+      setComposerText("");
+    } catch (err) {
+      setPostsError(err.message);
+    } finally {
+      setPosting(false);
+    }
   }
 
   function toggleHelpful(postId) {
@@ -85,10 +101,13 @@ export default function Feed() {
 
   const activeAlumni = PEOPLE.filter((p) => p.status !== "Current member" && p.openToCoffeeChats).slice(0, 3);
   const upcoming = posts.filter((p) => p.isEvent);
+  // Real counts now that posts are real -- used to add a flat "+6/+4/+8"
+  // baseline to make an 8-post mock feed look busier than it was; a real,
+  // possibly-zero count is the honest number now.
   const trending = [
-    { topic: "Case interviews", count: posts.filter((p) => p.postType === "Interview write-up").length + 6 },
-    { topic: "Offers & outcomes", count: posts.filter((p) => p.postType === "UC-posted job").length + 4 },
-    { topic: "Recruiting advice", count: posts.filter((p) => p.postType === "Advice").length + 8 },
+    { topic: "Case interviews", count: posts.filter((p) => p.postType === "Interview write-up").length },
+    { topic: "Offers & outcomes", count: posts.filter((p) => p.postType === "UC-posted job").length },
+    { topic: "Recruiting advice", count: posts.filter((p) => p.postType === "Advice").length },
   ];
 
   return (
@@ -115,10 +134,15 @@ export default function Feed() {
                 </button>
               ))}
             </div>
-            <button className="btn btn-primary" onClick={handlePost}>
-              Post
+            <button className="btn btn-primary" onClick={handlePost} disabled={posting || !composerText.trim()}>
+              {posting ? "Posting…" : "Post"}
             </button>
           </div>
+          {postsError && (
+            <p className="meta" style={{ color: "#B3261E", marginTop: "var(--space-4)" }}>
+              {postsError}
+            </p>
+          )}
         </div>
 
         <div className="feed-tabs">
@@ -129,9 +153,17 @@ export default function Feed() {
           ))}
         </div>
 
-        {filtered.length === 0 && (
+        {postsLoading && (
           <div className="skeleton-card" style={{ textAlign: "center", color: "var(--color-text-muted)" }}>
-            Nothing here yet.
+            Loading the feed…
+          </div>
+        )}
+
+        {!postsLoading && filtered.length === 0 && (
+          <div className="skeleton-card" style={{ textAlign: "center", color: "var(--color-text-muted)" }}>
+            {posts.length === 0
+              ? "Nothing posted yet — be the first to share something with UC."
+              : "Nothing here yet."}
           </div>
         )}
 

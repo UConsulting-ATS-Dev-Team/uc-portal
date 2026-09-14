@@ -1369,6 +1369,38 @@ longer breaks down to phone width either.
   user activity -- a different category from the others, arguably not
   "mock" in the same sense at all.
 
+- **Real Feed** — closes the other headline "still mock" gap, by direct
+  instruction ("replace all the mock stuff with the real versions").
+  New `feed_posts` table (`20260914090000_feed_posts.sql`), same
+  "member-submitted, readable by all, no admin gate" shape as
+  `interview_writeups` -- own-row insert/update/delete, select for any
+  authenticated member. `data/feedSync.js` holds the fetch/submit/search
+  functions and `feedRowToPost()`, the one shared mapper from a real row
+  into the exact flat shape the old mock `FEED_POSTS` objects had, so
+  `pages/Feed.jsx`'s render code needed no changes below the fetch/submit
+  wiring itself. Composer is now a real async insert (loading/error
+  states, disabled while posting); the post list is a real fetch on
+  mount with an honest "be the first to post" empty state instead of a
+  seeded illustrative feed. Two other real places read
+  `data/mockFeed.js`'s `FEED_POSTS` and would have kept showing fake
+  posts even after Feed.jsx itself went real -- both fixed the same way:
+  `pages/Home.jsx`'s "From the UC feed" preview, and
+  `pages/GlobalSearch.jsx`'s "Feed posts" tab (`searchFeedPosts()`, same
+  fetch-then-client-filter pattern `searchRealPeople`/`searchRealCompanies`
+  already established there). `data/mockFeed.js` had no remaining
+  callers and was deleted. Also dropped the "Trending in UC" rail's
+  fabricated `+6`/`+4`/`+8` baseline added to each real count -- a real,
+  possibly-zero number is the honest one now.
+
+  Verified live via role-impersonation (same pattern
+  `20260902150400_verify_case_partner_requests.sql` established): a real
+  insert as an authenticated user succeeds and is immediately visible
+  under that same authenticated read path, and inserting a post under a
+  *different* author_id than the caller's own is correctly blocked by
+  RLS -- the exact two paths `submitFeedPost()`/`fetchFeedPosts()` use.
+  Zero residue confirmed after cleanup. Not yet click-tested in a live
+  browser (same constraint as the real-people import above).
+
 Run locally:
 ```bash
 npm install

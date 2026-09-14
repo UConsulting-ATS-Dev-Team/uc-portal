@@ -4,7 +4,7 @@ import { MapPin } from "lucide-react";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
 import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
-import { FEED_POSTS } from "../data/mockFeed.js";
+import { fetchFeedPosts, feedRowToPost } from "../data/feedSync.js";
 import { PEOPLE } from "../data/mockPeople.js";
 import { computeProfileStrength, displayName, initialsFromName, resolvedClassYear, resolvedMajors } from "../data/profileUtils.js";
 import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
@@ -63,6 +63,16 @@ export default function Home() {
     [rawJobs, preferences, classYear]
   );
 
+  // Real feed posts (same pipeline pages/Feed.jsx itself uses) -- this
+  // preview used to always show the same 2 mock FEED_POSTS regardless of
+  // what anyone had actually posted, even after Feed.jsx itself went real.
+  const [recentPosts, setRecentPosts] = useState([]);
+  useEffect(() => {
+    fetchFeedPosts()
+      .then((rows) => setRecentPosts(rows.slice(0, 2).map(feedRowToPost)))
+      .catch(() => {}); // Preview degrades to "nothing recent" rather than crashing Home
+  }, []);
+
   // Tracked jobs can be either a real one (a real UUID, once a real
   // "add to tracker" entry point exists) or one of the seeded demo
   // entries in data/store.jsx's SEED_TRACKED_JOBS (legitimately mock
@@ -113,8 +123,6 @@ export default function Home() {
     .filter((e) => e.stage !== "Closed")
     .sort((a, b) => (isUrgent(b.job) ? 1 : 0) - (isUrgent(a.job) ? 1 : 0))
     .slice(0, 3);
-
-  const recentPosts = FEED_POSTS.slice(0, 2);
 
   // Recommended actions: computed nudges, not static copy.
   const actions = [];
@@ -255,6 +263,11 @@ export default function Home() {
             <h2>From the UC feed</h2>
             <Link to="/feed">View feed</Link>
           </div>
+          {recentPosts.length === 0 && (
+            <p className="meta" style={{ margin: 0 }}>
+              Nothing posted yet — be the first to share something with UC.
+            </p>
+          )}
           {recentPosts.map((post) => (
             <div className="feed-preview-card" key={post.id}>
               <div className="post-card__header">
