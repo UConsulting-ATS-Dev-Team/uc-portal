@@ -2133,18 +2133,27 @@ longer breaks down to phone width either.
   real counts, confirming the rewrite only ever touched git history, not
   the live app or its data.
 
-  **One real gap still open, found during verification, not yet
-  closed**: force-pushing rewrites what's *browsable* (any fresh clone,
-  the normal GitHub UI) but doesn't guarantee GitHub purges the old
-  objects server-side — confirmed live: the old pre-rewrite commit
-  (`37a7897`) and the specific real-data-import commit (`d6a5fd0`) are
-  both still directly fetchable by their exact SHA via the GitHub API,
-  despite being on no branch. Real risk today is low (repo is private;
-  the only other two people with access already have the underlying
-  real data through their normal club roles, per direct confirmation) —
-  but this needs an actual GitHub Support request to purge the cached
-  objects before this repo can honestly be considered public-ready, not
-  something to skip. Not yet filed.
+  **One real gap, found during verification — GitHub Support ticket
+  filed 2026-09-15, not yet confirmed resolved**: force-pushing rewrites
+  what's *browsable* (any fresh clone, the normal GitHub UI) but doesn't
+  guarantee GitHub purges the old objects server-side — confirmed live:
+  the old pre-rewrite commit (`37a7897`) and the specific real-data-
+  import commit (`d6a5fd0`) were both still directly fetchable by their
+  exact SHA via the GitHub API, despite being on no branch. Real risk in
+  the meantime was low (repo is private; the only other two people with
+  access already have the underlying real data through their normal
+  club roles, per direct confirmation). Filed via support.github.com's
+  virtual assistant flow the next day: confirmed no forks/PRs exist on
+  the repo (true — checked directly, zero of either ever existed), gave
+  the dangling commit SHA, and explained why this doesn't fit GitHub's
+  default "just rotate the credential" triage path — it's real people's
+  names/emails/LinkedIn, not a secret anyone here controls or can
+  rotate. A ticket was created ("we'll update you once we've clear the
+  cached views"), but the chat widget's character limit cut off part of
+  that explanation before submission. **Ticket filed is not the same as
+  purged** — needs GitHub's actual confirmation (check for a reply,
+  likely by email) before this repo is genuinely public-ready. If asked
+  for more detail, the cut-off reasoning is worth resending in full.
 
 Run locally:
 ```bash
