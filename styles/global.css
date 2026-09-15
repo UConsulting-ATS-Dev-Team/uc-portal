@@ -35,8 +35,16 @@ h4 {
   margin: 0;
 }
 
+/* --color-accent-deep, not --color-accent -- a real link's own text needs
+   the 4.5:1 text-contrast minimum, and plain accent only clears that
+   against white (4.90:1), not the page's own ground background
+   (4.38:1, just under). accent-deep clears 6.26:1+ everywhere, verified
+   2026-09-14. --color-accent itself is untouched -- every border/chip/
+   background use of it only needs the lower 3:1 UI bar, which it already
+   clears, so changing it there too would be a bigger, unneeded visual
+   shift. */
 a {
-  color: var(--color-accent);
+  color: var(--color-accent-deep);
 }
 
 button,
@@ -120,7 +128,7 @@ select {
   background: none;
   border: none;
   padding: 0;
-  color: var(--color-accent);
+  color: var(--color-accent-deep); /* text contrast, not UI accent -- see the `a` rule above */
   text-decoration: underline;
   cursor: pointer;
   font-size: inherit;

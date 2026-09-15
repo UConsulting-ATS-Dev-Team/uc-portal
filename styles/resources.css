@@ -347,7 +347,7 @@
     background: none;
     border: none;
     padding: 0;
-    color: var(--color-accent);
+    color: var(--color-accent-deep); /* text contrast, not UI accent -- see global.css's `a` rule */
     font-weight: 700;
     cursor: pointer;
   }

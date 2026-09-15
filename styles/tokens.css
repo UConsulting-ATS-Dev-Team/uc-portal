@@ -19,11 +19,19 @@
      white, up from 2.0-4.3:1 -- text-muted alone was used at 11-12px
      (--text-meta/--text-secondary) across nearly every "meta" label in the
      app and was failing WCAG AA's 4.5:1 normal-text minimum outright.
-     border/border-inner are non-text UI dividers (WCAG's lower 3:1
-     component-boundary bar applies, not the text ratio), darkened by the
-     same proportion so hairlines read as intentional lines again instead
-     of nearly vanishing against white surfaces -- not pushed further than
-     that; these are meant to stay subtle, not become bold rules.
+     border/border-inner were meant to clear WCAG's lower 3:1 component-
+     boundary bar here too, but a 2026-09-14 re-verification against the
+     real formula found they never actually had: #b8b8bc/#d3d3d7 measured
+     only 1.98:1/1.49:1 against white (worse against ground) -- the "same
+     proportion" darkening this comment used to describe wasn't enough.
+     Corrected the same day to values solved directly against the formula
+     (darkest real background, ground, as the binding constraint): border
+     now clears >=3.34:1 everywhere, border-inner >=3.01:1, preserving the
+     original hierarchy (border darker/more emphasized than border-inner)
+     while both genuinely clear the bar instead of one of them silently
+     missing it. Still meant to read as hairlines, not bold rules -- this
+     is the minimum darkening that actually clears 3:1, not an aesthetic
+     maximum.
      --color-ground/--color-surface (the actual page/card backgrounds, not
      text) are untouched -- the reported problem was text and lines being
      too faint to read, not the base page wash. */
@@ -31,8 +39,8 @@
   --color-placeholder: #7d7d80;
   --color-neutral: #6e6e72;
 
-  --color-border: #b8b8bc;
-  --color-border-inner: #d3d3d7;
+  --color-border: #848484;
+  --color-border-inner: #8c8c8c;
   --color-table-header: #f5f5f8;
 
   --color-primary: #042742; /* UC navy */
