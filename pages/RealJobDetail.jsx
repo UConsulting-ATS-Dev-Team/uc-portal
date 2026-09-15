@@ -7,6 +7,7 @@ import { useAppState } from "../data/store.jsx";
 import { currentUser } from "../data/mockUser.js";
 import { resolvedClassYear } from "../data/profileUtils.js";
 import { fetchRealPeopleAtCompany } from "../data/realPeople.js";
+import { fetchWorkHistoryAtCompany } from "../data/workHistorySync.js";
 import { fetchRealWriteupsForJob } from "../data/realWriteups.js";
 import { COMPANIES } from "../data/mockCompanies.js";
 import CompanyLogo from "../components/CompanyLogo.jsx";
@@ -80,6 +81,13 @@ export default function RealJobDetail({ jobId }) {
   // fetch resolves.
   const [people, setPeople] = useState(undefined);
 
+  // Real self-reported work history at this company (see the work_history
+  // migration's own header comment) -- a genuinely different signal from
+  // `people` above: `people` is current-company Directory data (mostly
+  // present-tense), this is "has ever worked here," voluntarily entered.
+  // undefined while loading, same "don't flash empty" reasoning as people.
+  const [workHistoryAtCompany, setWorkHistoryAtCompany] = useState(undefined);
+
   // Real interview write-ups for this job (data/realWriteups.js) -- undefined
   // while loading, kept separate from [] for the same reason `people` is,
   // so the section doesn't flash "no write-ups yet" before the fetch
@@ -112,6 +120,13 @@ export default function RealJobDetail({ jobId }) {
       })
       .catch(() => {
         if (!cancelled) setPeople([]);
+      });
+    fetchWorkHistoryAtCompany(job.company)
+      .then((rows) => {
+        if (!cancelled) setWorkHistoryAtCompany(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setWorkHistoryAtCompany([]);
       });
     return () => {
       cancelled = true;
@@ -421,6 +436,35 @@ export default function RealJobDetail({ jobId }) {
               </Link>
             )}
           </div>
+
+          {/* A genuinely different signal from "UC members at" above --
+              self-reported past roles (never scraped from LinkedIn or
+              anywhere else, see the work_history migration's own header
+              comment), so this can surface someone who no longer works
+              here but did before -- real referral/insight value the
+              current-company-only signal above can't provide. Hidden
+              entirely while empty rather than a bare "no one yet" note --
+              this is real user-submitted data, still thin app-wide,
+              nothing to apologize for by omission. */}
+          {workHistoryAtCompany && workHistoryAtCompany.length > 0 && (
+            <div className="rail-card">
+              <div className="rail-card__title">UC alumni who've worked at {job.company}</div>
+              <p className="meta" style={{ marginTop: "calc(-1 * var(--space-2))" }}>
+                Self-reported by real members — a real way in for a referral or insight before you apply.
+              </p>
+              {workHistoryAtCompany.slice(0, 3).map((entry) => (
+                <div className="person-row" key={entry.profile_id}>
+                  <div>
+                    <div className="person-row__name">{entry.display_name}</div>
+                    <div className="person-row__meta">
+                      {entry.role ? `${entry.role} · ` : ""}
+                      {entry.start_year || "—"}–{entry.end_year || "Present"}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="rail-card">
             <div className="rail-card__title">About this listing</div>

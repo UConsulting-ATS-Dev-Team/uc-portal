@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
@@ -6,6 +6,13 @@ import { INDUSTRIES, ROLES, SKILLS, LOCATIONS, COMPANIES, RECRUITING_CYCLES } fr
 import { computeProfileStrength, displayName } from "../data/profileUtils.js";
 import { uploadAvatar, removeAvatar } from "../data/avatarSync.js";
 import { uploadResume, removeResume, getResumeSignedUrl } from "../data/resumeSync.js";
+import {
+  fetchOwnWorkHistory,
+  addWorkHistoryEntry,
+  updateWorkHistoryEntry,
+  removeWorkHistoryEntry,
+  fetchCompanyInterestCount,
+} from "../data/workHistorySync.js";
 import Avatar from "../components/Avatar.jsx";
 import "../styles/jobDetail.css";
 import "../styles/onboarding.css";
@@ -14,7 +21,10 @@ import "../styles/memberProfile.css";
 import "../styles/auth.css";
 import "../styles/myProfile.css";
 
-const TABS = ["Personal", "Career Preferences", "Recruiting Settings", "Privacy"];
+const TABS = ["Personal", "Work History", "Career Preferences", "Recruiting Settings", "Privacy"];
+
+const CURRENT_YEAR = new Date().getFullYear();
+const WORK_HISTORY_YEARS = Array.from({ length: 15 }, (_, i) => CURRENT_YEAR - i);
 
 const RECRUITING_SETTINGS_COPY = [
   { key: "showOutsideTargetLocations", label: "Show jobs outside my target locations" },
@@ -74,6 +84,19 @@ export default function MyProfile() {
   const [resumeUploading, setResumeUploading] = useState(false);
   const [resumeError, setResumeError] = useState(null);
   const [resumeFoundFields, setResumeFoundFields] = useState([]);
+  const [workHistory, setWorkHistory] = useState([]);
+  const [workHistoryLoading, setWorkHistoryLoading] = useState(true);
+  const [workHistoryError, setWorkHistoryError] = useState(null);
+  const [editingWorkHistoryId, setEditingWorkHistoryId] = useState(null);
+  const [workHistoryForm, setWorkHistoryForm] = useState({ company: "", role: "", startYear: "", current: false, endYear: "" });
+  const [interestCounts, setInterestCounts] = useState({});
+
+  useEffect(() => {
+    fetchOwnWorkHistory()
+      .then(setWorkHistory)
+      .catch((err) => setWorkHistoryError(err.message))
+      .finally(() => setWorkHistoryLoading(false));
+  }, []);
   const [skillQuery, setSkillQuery] = useState("");
   const [industryQuery, setIndustryQuery] = useState("");
   const [roleQuery, setRoleQuery] = useState("");
@@ -206,6 +229,74 @@ export default function MyProfile() {
     const url = await getResumeSignedUrl(profileOverrides.resumePath);
     if (url) window.open(url, "_blank", "noopener,noreferrer");
     else setResumeError("Couldn't open the resume right now — try again.");
+  }
+
+  function startAddWorkHistory() {
+    setEditingWorkHistoryId("new");
+    setWorkHistoryForm({ company: "", role: "", startYear: "", current: false, endYear: "" });
+    setWorkHistoryError(null);
+  }
+
+  function startEditWorkHistory(entry) {
+    setEditingWorkHistoryId(entry.id);
+    setWorkHistoryForm({
+      company: entry.company,
+      role: entry.role || "",
+      startYear: entry.start_year || "",
+      current: entry.end_year == null,
+      endYear: entry.end_year || "",
+    });
+    setWorkHistoryError(null);
+  }
+
+  function cancelWorkHistoryEdit() {
+    setEditingWorkHistoryId(null);
+  }
+
+  // The real incentive payoff -- fetched once per company, right after a
+  // save, rather than for every entry up front (most members will only
+  // ever add a couple, so this stays cheap and simple instead of a bulk
+  // fetch on mount).
+  async function refreshInterestCount(company) {
+    const count = await fetchCompanyInterestCount(company);
+    setInterestCounts((prev) => ({ ...prev, [company]: count }));
+  }
+
+  async function handleSaveWorkHistory() {
+    const { company, role, startYear, current, endYear } = workHistoryForm;
+    if (!company.trim()) {
+      setWorkHistoryError("Company is required.");
+      return;
+    }
+    setWorkHistoryError(null);
+    const payload = {
+      company,
+      role,
+      startYear: startYear ? Number(startYear) : null,
+      endYear: current ? null : endYear ? Number(endYear) : null,
+    };
+    try {
+      if (editingWorkHistoryId && editingWorkHistoryId !== "new") {
+        await updateWorkHistoryEntry(editingWorkHistoryId, payload);
+      } else {
+        await addWorkHistoryEntry(payload);
+      }
+      const fresh = await fetchOwnWorkHistory();
+      setWorkHistory(fresh);
+      setEditingWorkHistoryId(null);
+      refreshInterestCount(payload.company.trim());
+    } catch (err) {
+      setWorkHistoryError(err.message);
+    }
+  }
+
+  async function handleRemoveWorkHistory(id) {
+    try {
+      await removeWorkHistoryEntry(id);
+      setWorkHistory((prev) => prev.filter((e) => e.id !== id));
+    } catch (err) {
+      setWorkHistoryError(err.message);
+    }
   }
 
   function toggleIndustry(name) {
@@ -380,6 +471,133 @@ export default function MyProfile() {
                   </p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {tab === "Work History" && (
+            <div className="detail-section">
+              <h2 className="detail-section__title">Work History</h2>
+              <p className="meta" style={{ marginTop: "calc(-1 * var(--space-4))" }}>
+                Your own past roles, self-reported — never pulled from LinkedIn or anywhere else. Visible to other UC
+                members so they can find real referral/insight connections before they apply somewhere.
+              </p>
+
+              {workHistory.length === 0 && !workHistoryLoading && editingWorkHistoryId !== "new" && (
+                <div className="empty-state" style={{ marginBottom: "var(--space-5)" }}>
+                  <p style={{ fontWeight: 700, marginBottom: "var(--space-2)" }}>
+                    You haven't added any work history yet
+                  </p>
+                  <p className="meta">
+                    Other members can't see where you've worked until you add it — even one entry helps someone
+                    considering the same company.
+                  </p>
+                </div>
+              )}
+
+              {workHistory.map((entry) => (
+                <div className="experience-row" key={entry.id} style={{ alignItems: "flex-start" }}>
+                  <div>
+                    <div className="experience-row__title">{entry.company}</div>
+                    <div className="experience-row__meta">
+                      {entry.role ? `${entry.role} · ` : ""}
+                      {entry.start_year || "—"}–{entry.end_year || "Present"}
+                    </div>
+                    {interestCounts[entry.company] !== undefined && (
+                      <p className="meta" style={{ marginTop: "var(--space-2)" }}>
+                        {interestCounts[entry.company] > 0
+                          ? `${interestCounts[entry.company]} member${interestCounts[entry.company] === 1 ? "" : "s"} ${
+                              interestCounts[entry.company] === 1 ? "is" : "are"
+                            } interested in ${entry.company} right now.`
+                          : `No members have ${entry.company} on their radar yet — you might be the first insight they get.`}
+                      </p>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", gap: "var(--space-3)", flexShrink: 0 }}>
+                    <button className="btn-link" onClick={() => startEditWorkHistory(entry)}>
+                      Edit
+                    </button>
+                    <button className="btn-link" onClick={() => handleRemoveWorkHistory(entry.id)}>
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {editingWorkHistoryId ? (
+                <div className="field-group" style={{ marginTop: "var(--space-5)" }}>
+                  <div className="field">
+                    <label>Company</label>
+                    <input
+                      type="text"
+                      value={workHistoryForm.company}
+                      onChange={(e) => setWorkHistoryForm((f) => ({ ...f, company: e.target.value }))}
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Role (optional)</label>
+                    <input
+                      type="text"
+                      value={workHistoryForm.role}
+                      onChange={(e) => setWorkHistoryForm((f) => ({ ...f, role: e.target.value }))}
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Start year</label>
+                    <select
+                      value={workHistoryForm.startYear}
+                      onChange={(e) => setWorkHistoryForm((f) => ({ ...f, startYear: e.target.value }))}
+                    >
+                      <option value="">—</option>
+                      {WORK_HISTORY_YEARS.map((y) => (
+                        <option key={y} value={y}>
+                          {y}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+                    <input
+                      type="checkbox"
+                      checked={workHistoryForm.current}
+                      onChange={(e) => setWorkHistoryForm((f) => ({ ...f, current: e.target.checked }))}
+                    />
+                    Currently here
+                  </label>
+                  {!workHistoryForm.current && (
+                    <div className="field">
+                      <label>End year</label>
+                      <select
+                        value={workHistoryForm.endYear}
+                        onChange={(e) => setWorkHistoryForm((f) => ({ ...f, endYear: e.target.value }))}
+                      >
+                        <option value="">—</option>
+                        {WORK_HISTORY_YEARS.map((y) => (
+                          <option key={y} value={y}>
+                            {y}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {workHistoryError && (
+                    <p className="meta" style={{ color: "#B3261E" }}>
+                      {workHistoryError}
+                    </p>
+                  )}
+                  <div style={{ display: "flex", gap: "var(--space-3)" }}>
+                    <button className="btn btn-primary" onClick={handleSaveWorkHistory}>
+                      Save
+                    </button>
+                    <button className="btn btn-secondary" onClick={cancelWorkHistoryEdit}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button className="btn btn-secondary" onClick={startAddWorkHistory}>
+                  + Add work history
+                </button>
+              )}
             </div>
           )}
 

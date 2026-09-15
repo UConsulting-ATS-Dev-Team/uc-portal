@@ -8,6 +8,7 @@ import { displayName } from "../data/profileUtils.js";
 import { fetchFeedPosts, submitFeedPost, feedRowToPost } from "../data/feedSync.js";
 import { listOpenToCoffeeChatMembers } from "../data/messagesSync.js";
 import { fetchMemberAvatars } from "../data/avatarSync.js";
+import { fetchOwnWorkHistory } from "../data/workHistorySync.js";
 import Avatar from "../components/Avatar.jsx";
 import JobCard from "../components/JobCard.jsx";
 import "../styles/jobDetail.css";
@@ -115,6 +116,18 @@ export default function Feed() {
   useEffect(() => {
     listOpenToCoffeeChatMembers()
       .then(setOpenToCoffeeChat)
+      .catch(() => {});
+  }, []);
+  // The real "incentivize submissions" piece of Work History: a nudge
+  // shown on Feed specifically (not just buried in a My Profile tab)
+  // since Feed is every real member's -- and every real alumnus's, whose
+  // landing route is Feed, not Home -- most-visited real page. Only
+  // shown while genuinely empty; stops nagging the moment someone adds
+  // even one entry.
+  const [hasWorkHistory, setHasWorkHistory] = useState(true);
+  useEffect(() => {
+    fetchOwnWorkHistory()
+      .then((rows) => setHasWorkHistory(rows.length > 0))
       .catch(() => {});
   }, []);
   const upcoming = posts.filter((p) => p.isEvent);
@@ -269,6 +282,19 @@ export default function Feed() {
             </div>
           ))}
         </div>
+
+        {!hasWorkHistory && (
+          <div className="rail-card">
+            <div className="rail-card__title">Add your work history</div>
+            <p className="meta" style={{ margin: 0 }}>
+              Other members can't see where you've worked until you add it — real referral/insight connections
+              start there.
+            </p>
+            <Link to="/profile" className="btn btn-secondary" style={{ marginTop: "var(--space-3)" }}>
+              Add on My Profile
+            </Link>
+          </div>
+        )}
 
         <div className="rail-card">
           <div className="rail-card__title">Open to a coffee chat</div>

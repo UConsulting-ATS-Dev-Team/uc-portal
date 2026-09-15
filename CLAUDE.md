@@ -2553,6 +2553,71 @@ longer breaks down to phone width either.
   people's data should keep following that rule, not re-earn public-
   safety through another rewrite later.
 
+- **Real self-reported work history — the legitimate "alumni LinkedIn
+  tracker"** — direct ask, but the literal version (automatically find
+  alumni's LinkedIn pages by name/education, extract their work history)
+  is exactly the automated LinkedIn collection this project already ruled
+  out (LinkedIn's ToS explicitly prohibits it — see
+  [JOB_ENGINE_ARCHITECTURE.md](JOB_ENGINE_ARCHITECTURE.md)'s sourcing
+  table). Scoped down to the legitimate version instead, after being
+  explicit about why: a real, voluntary "work history" a member or
+  alumnus self-reports on their own profile — never scraped, never
+  auto-populated from anywhere external.
+
+  New `work_history` table (authenticated-read, own-row write — the whole
+  point is cross-member visibility, unlike `resume_path`'s own-row-only
+  read). Two new security-definer RPCs: `company_interest_count()` (a
+  narrower, non-admin-gated cousin of `company_demand_report()` — any
+  member can look up *a count* of real interest in one company, from the
+  same real `member_preferences.followed_companies` data, never who) and
+  `list_work_history_at_company()` (resolves a real display name per
+  entry via the same people-email → profiles.full_name → email-local-part
+  fallback chain `list_recent_signups()` already established). New "Work
+  History" tab on My Profile — add/edit/remove entries (company, role,
+  start/end year, "currently here"), reusing `data/careerOptions.js`-style
+  patterns already in that file. Surfaced on `RealJobDetail.jsx` as "UC
+  alumni who've worked at {company}" — a genuinely different signal from
+  the existing "UC members at {company}" rail (current-company Directory
+  data, mostly present-tense) since this one can surface someone who
+  *used* to work there, the actual referral-value case a Directory
+  snapshot can't provide. Hidden entirely while empty rather than a bare
+  "no one yet" — this is real user-submitted data, still thin app-wide,
+  nothing to apologize for by omission.
+
+  **The real, acknowledged limitation, addressed head-on rather than
+  ignored**: self-report can't be *guaranteed* freshness or participation
+  the way an automated source could — direct user pushback on the first
+  proposal, correctly. Rather than pretend there's a technical fix (there
+  isn't one that doesn't involve either LinkedIn scraping or an
+  operational, human-driven periodic re-collection process — both ruled
+  out or out of scope here), built the incentive layer in from the start
+  instead of shipping the bare form and hoping: a real "N members are
+  interested in {company}" payoff stat shown back to whoever just added
+  an entry (the actual incentive to participate), and a real, computed
+  nudge card on Feed — not My Profile, since Feed is every real member's,
+  and every real alumnus's (whose landing route is Feed, not Home), most-
+  visited real page — shown only while the signed-in account has zero
+  entries, gone the moment they add one.
+
+  Verified live end-to-end with two throwaway accounts against a real
+  active job (Gusto, Inc.): add/edit both confirmed working, the interest
+  count correctly showed 0 then 1 (after setting a second account's real
+  `followed_companies` to match and re-saving), the Feed nudge correctly
+  appeared for the zero-entry account and disappeared for the one-entry
+  account, and — the real cross-member test — a **second**, different
+  signed-in account genuinely saw the first account's real entry on
+  `RealJobDetail.jsx`'s new rail card for a real posting. Also directly
+  verified RLS actually blocks the write path, not just trusted the
+  policy definition: attempted updating another account's real
+  `work_history` row directly — zero rows affected (the same "UPDATE
+  under RLS silently affects zero rows, not an error" behavior this
+  project already learned to check for correctly elsewhere), and the
+  row's real value confirmed unchanged afterward. Cleaned up completely
+  afterward (both throwaway accounts, `member_preferences` row, and —
+  verified directly, not assumed — the `work_history` row's own `on
+  delete cascade` actually fired) and confirmed zero residue:
+  `roster_total=52`.
+
 Run locally:
 ```bash
 npm install
