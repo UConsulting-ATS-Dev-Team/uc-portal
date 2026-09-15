@@ -2516,6 +2516,20 @@ longer breaks down to phone width either.
   residue: `roster_total=52 people_total=207 current_member_total=52
   alumni_total=155`.
 
+- **GitHub confirmed the server-side PII purge — no known blocker left
+  before going public** — closes the one open item the history-rewrite
+  entry above flagged. GitHub Support replied same-day: "I have run
+  cache clearance and garbage collection on the repository. The commit
+  URL should return a 404 error now." Not just trusted — independently
+  re-verified all 3 known dangling SHAs (`37a7897`, `d6a5fd0`, `a6f3540`)
+  directly via `gh api repos/.../commits/<sha>`; all three now return a
+  real "No commit found for SHA" (422), confirming a genuine server-side
+  purge rather than taking the support reply at face value. Ticket marked
+  Solved. This was the last real, known gap between "history was
+  rewritten" and "genuinely safe to make public" — nothing else is
+  currently flagged. Making the repo public itself is still the user's
+  own call/action to take, not something done proactively here.
+
 Run locally:
 ```bash
 npm install
