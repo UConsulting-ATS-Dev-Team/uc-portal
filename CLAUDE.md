@@ -2342,6 +2342,87 @@ longer breaks down to phone width either.
   used only ever listed current members, so it has nothing to offer for
   alumni; a different source will be needed when that's picked up.
 
+- **Real resume upload + heuristic parsing** — closes the last fake-upload
+  gap in My Profile/Onboarding: both previously only ever captured a
+  filename (`e.target.files?.[0]?.name`), never the real file, and used
+  two entirely disconnected signals for "resume attached" (Onboarding's
+  own `preferences.resumeAttached` boolean vs. My Profile's
+  `resumeFileName` string) that could each independently be true/false
+  regardless of whether a real file existed anywhere. Real, unified now:
+  a new private `resumes` Storage bucket (own-folder-only RLS for every
+  operation including read — deliberately not public like avatars, a
+  resume carries real PII no other member should ever see), a new
+  `profiles.resume_path` column (a Storage path, not a URL — the bucket's
+  private, so a real download needs a short-lived signed URL generated on
+  demand, `data/resumeSync.js#getResumeSignedUrl`), and one real upload
+  path (`uploadResume()`) both Onboarding's dropzone and My Profile's
+  Resume field now go through. `computeProfileStrength()`'s "Resume
+  attached" check now reads the real `hasResume` signal instead of the
+  old disconnected preference boolean (which had no remaining reader
+  left once this changed — left in place in the DB/sync layer, unused,
+  rather than a schema-touching removal out of scope for this).
+
+  **No LLM/external API** — a real cost/setup tradeoff (an Anthropic API
+  key needs its own funded account, separate from any personal Claude
+  subscription) the user chose to defer; heuristic regex parsing against
+  common resume phrasing instead
+  (`data/resumeParser.js#parseResumeFields()`): graduation year (near
+  "expected"/"class of"/"graduat-", bounded to a plausible near-future
+  range so a phone number or past year never matches), major (the
+  "B.S./B.A./Bachelor of ___ in ___" degree-line pattern, or a
+  "Major:" label), LinkedIn URL. Extracts real text from both PDF
+  (`pdfjs-dist` — handles a LaTeX/Overleaf export fine, since that's just
+  a normal PDF once compiled, no special-casing needed) and Word/.docx
+  (`mammoth` — also covers a Google Doc downloaded/exported as .docx,
+  the real common ground between Word and Google Docs for this app).
+  Both libraries are dynamically imported inside the extraction
+  functions, not a static top-level import — caught live via the actual
+  build output: a static import added ~1MB to the app's *main* JS bundle
+  gzipped (200KB → 478KB) for every single page load regardless of
+  whether that member ever touches resume upload; dynamic import
+  code-split them into their own chunk(s), fetched only the moment a
+  resume is actually parsed, confirmed back to the original ~203KB main
+  bundle after the fix.
+
+  Same "only ever fill a currently-EMPTY field, never overwrite a
+  member's own edit" rule every other prefill source in this app already
+  follows (Directory auto-fill, etc.) — a wrong heuristic match on a
+  messy freeform resume is real enough to guard against, unlike the
+  Directory sheet's clean structured data. The two upload entry points
+  apply this differently, deliberately: Onboarding's `StepYou` has no
+  editable text fields of its own (major/class year are read-only
+  display there, only ever edited on My Profile), so empty-only-fill +
+  immediate apply is the whole safety net — acceptable specifically
+  because a member mid-onboarding almost always has nothing set yet, and
+  any wrong value is trivially correctable later, never a one-way door.
+  My Profile's version is more conservative: the *file* still applies
+  immediately (it's genuinely already in Storage the moment it's picked,
+  same as avatar upload), but parsed field suggestions only ever populate
+  the local, still-editable form state — the member reviews them in the
+  actual input boxes (with an explicit "Found in your resume... —
+  double-check before saving" note) and has to click "Save changes" like
+  every other edit on that tab, which doubles as a real confirmation step
+  without any extra UI.
+
+  Verified live end-to-end with a throwaway account and two real
+  synthetic test files (a `reportlab`-generated PDF, a `python-docx`
+  DOCX — not hand-typed fixtures): both file types correctly extracted
+  and parsed (`classYear`, `majors`, `linkedIn` all exactly right on
+  both), auto-fill on Onboarding applied immediately and correctly
+  skipped already-known fields, My Profile's upload/replace/remove/view
+  all worked (`view` uses a real signed URL — confirmed it actually
+  fetches the right bytes with the right content-type, and confirmed a
+  direct/non-signed request to the same path is correctly rejected, not
+  publicly readable), the re-upload "only fill if empty" guard held
+  (replacing the file didn't touch the already-set major/grad-year/
+  LinkedIn), and `computeProfileStrength`'s new signal was confirmed live
+  (14% → 29% with resume+LinkedIn, back to 14% after Remove) — Remove
+  itself was independently verified to actually delete the Storage
+  object, not just clear the DB reference (a direct `storage.list()` call
+  confirmed zero files left for that account). Cleaned up completely
+  afterward (test account, roster entry, migration) and confirmed zero
+  residue: `roster_total=52`.
+
 Run locally:
 ```bash
 npm install

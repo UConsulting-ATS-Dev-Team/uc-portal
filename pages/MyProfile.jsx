@@ -5,6 +5,7 @@ import { useAppState } from "../data/store.jsx";
 import { INDUSTRIES, ROLES, SKILLS, LOCATIONS, COMPANIES, RECRUITING_CYCLES } from "../data/careerOptions.js";
 import { computeProfileStrength, displayName } from "../data/profileUtils.js";
 import { uploadAvatar, removeAvatar } from "../data/avatarSync.js";
+import { uploadResume, removeResume, getResumeSignedUrl } from "../data/resumeSync.js";
 import Avatar from "../components/Avatar.jsx";
 import "../styles/jobDetail.css";
 import "../styles/onboarding.css";
@@ -70,6 +71,9 @@ export default function MyProfile() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState(null);
   const avatarInput = useRef(null);
+  const [resumeUploading, setResumeUploading] = useState(false);
+  const [resumeError, setResumeError] = useState(null);
+  const [resumeFoundFields, setResumeFoundFields] = useState([]);
   const [skillQuery, setSkillQuery] = useState("");
   const [industryQuery, setIndustryQuery] = useState("");
   const [roleQuery, setRoleQuery] = useState("");
@@ -85,7 +89,6 @@ export default function MyProfile() {
     majors: profileOverrides.majors || currentUser.majors,
     ucCommittee: profileOverrides.ucCommittee || currentUser.ucCommittee,
     linkedIn: profileOverrides.linkedIn,
-    resumeFileName: profileOverrides.resumeFileName,
   });
 
   function handleSaveChanges() {
@@ -97,7 +100,6 @@ export default function MyProfile() {
       majors: form.majors,
       ucCommittee: form.ucCommittee,
       linkedIn,
-      resumeFileName: form.resumeFileName,
     });
     touchProfileUpdated();
     setSaved(true);
@@ -140,6 +142,72 @@ export default function MyProfile() {
     }
   }
 
+  // The file itself applies immediately (same reasoning as the avatar
+  // upload above -- it's genuinely already sitting in Storage the moment
+  // it's picked). Parsed fields are different: heuristic text-matching on
+  // a freeform resume is meaningfully less reliable than the Directory
+  // sheet's structured data, so rather than silently writing them into
+  // profileOverrides, they only ever populate this LOCAL, still-editable
+  // form state (and only into a field that's currently empty) -- the
+  // member reviews them in the actual input boxes and has to click "Save
+  // changes" like every other edit on this tab, which doubles as the
+  // confirmation step.
+  async function handleResumeChange(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setResumeError(null);
+    setResumeFoundFields([]);
+    setResumeUploading(true);
+    try {
+      const { path, fileName, parsed } = await uploadResume(file);
+      updateProfileOverrides({ resumeFileName: fileName, resumePath: path });
+      touchProfileUpdated();
+      const found = [];
+      setForm((f) => {
+        const next = { ...f };
+        if (!next.majors && parsed.majors) {
+          next.majors = parsed.majors;
+          found.push("Major");
+        }
+        if (!next.classYear && parsed.classYear) {
+          next.classYear = parsed.classYear;
+          found.push("Graduation year");
+        }
+        if (!next.linkedIn && parsed.linkedIn) {
+          next.linkedIn = parsed.linkedIn;
+          found.push("LinkedIn");
+        }
+        return next;
+      });
+      setResumeFoundFields(found);
+    } catch (err) {
+      setResumeError(err.message);
+    } finally {
+      setResumeUploading(false);
+    }
+  }
+
+  async function handleRemoveResume() {
+    setResumeError(null);
+    setResumeUploading(true);
+    try {
+      await removeResume(profileOverrides.resumePath);
+      updateProfileOverrides({ resumeFileName: null, resumePath: null });
+      touchProfileUpdated();
+    } catch (err) {
+      setResumeError(err.message);
+    } finally {
+      setResumeUploading(false);
+    }
+  }
+
+  async function handleViewResume() {
+    const url = await getResumeSignedUrl(profileOverrides.resumePath);
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+    else setResumeError("Couldn't open the resume right now — try again.");
+  }
+
   function toggleIndustry(name) {
     const already = preferences.industries.includes(name);
     if (already) updatePreferences({ industries: preferences.industries.filter((n) => n !== name) });
@@ -171,7 +239,11 @@ export default function MyProfile() {
     });
   }
 
-  const { checks: strengthChecks, pct: strengthPct } = computeProfileStrength(preferences, form.linkedIn);
+  const { checks: strengthChecks, pct: strengthPct } = computeProfileStrength(
+    preferences,
+    form.linkedIn,
+    profileOverrides.resumePath
+  );
 
   return (
     <div>
@@ -260,18 +332,52 @@ export default function MyProfile() {
                 </div>
                 <div className="field">
                   <label>Resume</label>
-                  <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center" }}>
-                    <span className="meta">{form.resumeFileName || "No resume uploaded"}</span>
-                    <button className="btn btn-secondary" onClick={() => fileInput.current?.click()}>
-                      Replace
+                  <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", flexWrap: "wrap" }}>
+                    <span className="meta">
+                      {resumeUploading
+                        ? "Uploading…"
+                        : profileOverrides.resumeFileName || "No resume uploaded"}
+                    </span>
+                    {profileOverrides.resumePath && !resumeUploading && (
+                      <button className="btn-link" type="button" onClick={handleViewResume}>
+                        View
+                      </button>
+                    )}
+                    <button
+                      className="btn btn-secondary"
+                      type="button"
+                      disabled={resumeUploading}
+                      onClick={() => fileInput.current?.click()}
+                    >
+                      {profileOverrides.resumePath ? "Replace" : "Upload"}
                     </button>
+                    {profileOverrides.resumePath && !resumeUploading && (
+                      <button className="btn-link" type="button" onClick={handleRemoveResume}>
+                        Remove
+                      </button>
+                    )}
                     <input
                       ref={fileInput}
                       type="file"
+                      accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                       style={{ display: "none" }}
-                      onChange={(e) => setForm((f) => ({ ...f, resumeFileName: e.target.files?.[0]?.name || f.resumeFileName }))}
+                      onChange={handleResumeChange}
                     />
                   </div>
+                  {resumeError && (
+                    <p className="meta" style={{ marginTop: "var(--space-2)", color: "#B3261E" }}>
+                      {resumeError}
+                    </p>
+                  )}
+                  {resumeFoundFields.length > 0 && (
+                    <p className="meta" style={{ marginTop: "var(--space-2)" }}>
+                      Found in your resume and filled in below: {resumeFoundFields.join(", ")} — double-check before
+                      saving.
+                    </p>
+                  )}
+                  <p className="meta" style={{ marginTop: "var(--space-2)" }}>
+                    PDF or Word (.docx). Private to you — never shown to other members.
+                  </p>
                 </div>
               </div>
             </div>

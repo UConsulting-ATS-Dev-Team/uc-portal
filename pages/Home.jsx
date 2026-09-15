@@ -96,7 +96,7 @@ export default function Home() {
 
   // First login / nothing tracked yet -- empty state per wireframe 3e.
   if (trackedEntries.length === 0) {
-    const { pct } = computeProfileStrength(preferences, profileOverrides.linkedIn);
+    const { pct } = computeProfileStrength(preferences, profileOverrides.linkedIn, profileOverrides.resumePath);
     return (
       <div className="empty-state">
         <h1>Welcome to UC Portal, {displayName(currentUser, profileOverrides).split(" ")[0]}</h1>
@@ -132,7 +132,7 @@ export default function Home() {
     );
   }
 
-  const { pct: strengthPct } = computeProfileStrength(preferences, profileOverrides.linkedIn);
+  const { pct: strengthPct } = computeProfileStrength(preferences, profileOverrides.linkedIn, profileOverrides.resumePath);
 
   const recommended = [...realJobs].sort((a, b) => b.matchScore - a.matchScore).slice(0, 2);
 

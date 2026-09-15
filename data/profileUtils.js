@@ -39,9 +39,14 @@ export function initialsFromName(fullName) {
     .map((w) => w[0].toUpperCase())
     .join("");
 }
-export function computeProfileStrength(preferences, linkedIn) {
+// hasResume is passed in (profileOverrides.resumePath, truthy-checked)
+// rather than read off preferences.resumeAttached, a separate boolean two
+// different fake "upload" entry points (Onboarding, My Profile) used to
+// toggle independently, never actually tied to a real file. Now there's
+// one real upload path (data/resumeSync.js) and one real signal.
+export function computeProfileStrength(preferences, linkedIn, hasResume) {
   const checks = [
-    { label: "Resume attached", done: preferences.resumeAttached },
+    { label: "Resume attached", done: !!hasResume },
     { label: "Target industries selected", done: preferences.industries.length > 0 },
     { label: "Target roles selected", done: preferences.roles.length > 0 },
     { label: "Target locations selected", done: preferences.locations.length > 0 },

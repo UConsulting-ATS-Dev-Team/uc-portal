@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAppState } from "../data/store.jsx";
 import { currentUser } from "../data/mockUser.js";
 import { displayName } from "../data/profileUtils.js";
+import { uploadResume } from "../data/resumeSync.js";
 import {
   INDUSTRIES,
   ROLES,
@@ -42,7 +43,7 @@ function Brand() {
   );
 }
 
-function StepYou({ resumeName, onAttach }) {
+function StepYou({ resumeFileName, resumeUploading, resumeError, onAttach }) {
   const { profileOverrides } = useAppState();
   // Reads profileOverrides directly here, NOT through resolvedClassYear/
   // resolvedMajors/resolvedUcCommittee -- those fall back to mockUser.js's
@@ -87,13 +88,27 @@ function StepYou({ resumeName, onAttach }) {
           cursor: "pointer",
         }}
       >
-        {resumeName ? `Attached: ${resumeName}` : "Drop your resume here (optional) — it pre-fills later steps"}
+        {resumeUploading
+          ? "Uploading…"
+          : resumeFileName
+            ? `Attached: ${resumeFileName}`
+            : "Drop your resume here (optional) — it pre-fills later steps"}
         <input
           type="file"
+          accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           style={{ display: "none" }}
-          onChange={(e) => onAttach(e.target.files?.[0]?.name)}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) onAttach(file);
+          }}
         />
       </label>
+      {resumeError && (
+        <p className="meta" style={{ marginTop: "var(--space-2)", color: "#B3261E" }}>
+          {resumeError}
+        </p>
+      )}
     </>
   );
 }
@@ -381,8 +396,9 @@ function Completion({ preferences, profileOverrides, onFinish }) {
 export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [showCompletion, setShowCompletion] = useState(false);
-  const [resumeName, setResumeName] = useState(null);
-  const { preferences, updatePreferences, completeOnboarding, profileOverrides } = useAppState();
+  const [resumeUploading, setResumeUploading] = useState(false);
+  const [resumeError, setResumeError] = useState(null);
+  const { preferences, updatePreferences, updateProfileOverrides, completeOnboarding, profileOverrides } = useAppState();
   const navigate = useNavigate();
 
   function toggleIndustry(name) {
@@ -434,10 +450,28 @@ export default function Onboarding() {
     });
   }
 
-  function handleAttachResume(name) {
-    if (!name) return;
-    setResumeName(name);
-    updatePreferences({ resumeAttached: true });
+  // No local staging/review step here, unlike My Profile's version of this
+  // same upload -- StepYou has no editable text fields of its own (major/
+  // class year/etc. are read-only display, only ever edited on My
+  // Profile), so "only fill if currently empty" is the whole safety net.
+  // Acceptable here specifically because a member mid-onboarding almost
+  // always has nothing set yet, and any wrong value is trivially
+  // correctable later on My Profile -- nothing here is a one-way door.
+  async function handleAttachResume(file) {
+    setResumeError(null);
+    setResumeUploading(true);
+    try {
+      const { path, fileName, parsed } = await uploadResume(file);
+      const patch = { resumeFileName: fileName, resumePath: path };
+      if (!profileOverrides.majors && parsed.majors) patch.majors = parsed.majors;
+      if (!profileOverrides.classYear && parsed.classYear) patch.classYear = parsed.classYear;
+      if (!profileOverrides.linkedIn && parsed.linkedIn) patch.linkedIn = parsed.linkedIn;
+      updateProfileOverrides(patch);
+    } catch (err) {
+      setResumeError(err.message);
+    } finally {
+      setResumeUploading(false);
+    }
   }
 
   function handleFinish() {
@@ -477,7 +511,14 @@ export default function Onboarding() {
       </div>
 
       <div className="onboarding__content">
-        {step === 0 && <StepYou resumeName={resumeName} onAttach={handleAttachResume} />}
+        {step === 0 && (
+          <StepYou
+            resumeFileName={profileOverrides.resumeFileName}
+            resumeUploading={resumeUploading}
+            resumeError={resumeError}
+            onAttach={handleAttachResume}
+          />
+        )}
         {step === 1 && (
           <StepIndustries industries={preferences.industries} onToggle={toggleIndustry} onReorder={reorderIndustry} />
         )}
