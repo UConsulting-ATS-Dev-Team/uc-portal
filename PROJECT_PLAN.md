@@ -90,16 +90,20 @@ now visibly labeled ("Demo data"/"Illustrative"), not presented as fact.
 This doc no longer tries to re-narrate that build history play-by-play —
 see [CLAUDE.md](CLAUDE.md)'s Progress log for the full, evidence-based,
 dated entry-by-entry account. Genuinely still open toward the
-2026-09-25 production-ready bar: real transactional email (blocked on
-AWS SES access — see Risks & blockers), and gesture nav (swipe-back,
-swipe-between-tabs) — the one piece of the phone UX pass confirmed, via
-a live 375px click-through and a zero-match code search, to genuinely
-not exist yet. Everything else phone-specific (44px touch targets,
-a real Messages show-list/show-thread toggle, a bottom tab bar,
-collapsible filters) shipped back on 2026-09-08 alongside the responsive
-redesign — this doc's own earlier draft, like CLAUDE.md's, had missed
-that and described it as unscoped; corrected 2026-09-14 after a live
-re-verification pass found it all still genuinely working.
+2026-09-25 production-ready bar: real transactional email only (blocked
+on AWS SES access — see Risks & blockers). Everything phone-specific
+(44px touch targets, a real Messages show-list/show-thread toggle, a
+bottom tab bar, collapsible filters — all shipped 2026-09-08 alongside
+the responsive redesign but missed by this doc's own earlier draft,
+corrected 2026-09-14) is done, and so is gesture nav for the piece that
+turned out to matter: the Applications Board's stage-change interaction
+didn't work via touch at all (native HTML5 Drag and Drop has no touch
+equivalent, and neither Table nor Timeline offered any other way to
+change stage), rebuilt on Pointer Events plus a real "Move to" control
+on both Board and Table, and real edge-swipe-back on Messages' thread
+pane — see CLAUDE.md's "Gesture nav, scoped and built" entry. Broader
+gesture patterns (swipe-between-tabs, pull-to-refresh, swipe-to-delete)
+remain genuinely unscoped, not part of this pass.
 
 ## MVP plan
 
@@ -184,8 +188,15 @@ stretch / beyond this initiative's timeline.
       the responsive pass above but never logged in either planning doc
       until a 2026-09-14 re-audit found and fixed the gap (see CLAUDE.md's
       Progress log) — re-verified live at 375px the same day, still fully
-      working. Gesture nav specifically (swipe-back, swipe-between-tabs)
-      was never part of this and remains the one real open item.
+      working.
+- [x] Gesture nav (the piece that mattered) — real Pointer Events
+      touch-drag on the Applications Board, replacing native HTML5 Drag
+      and Drop (which had no touch equivalent at all, and left no way to
+      change a tracked application's stage on a phone from any tracker
+      view), plus a real "Move to" control on both Board and Table and
+      real edge-swipe-back on the Messages thread pane. Broader gesture
+      patterns (swipe-between-tabs, pull-to-refresh, swipe-to-delete)
+      remain genuinely unscoped, not part of this ask.
 - [x] Bear-icon logo asset wired into the brandmark
 - [x] Real company logos — all 8 companies in the mock data now show
       their real logo (sourced from Wikimedia Commons), wired into

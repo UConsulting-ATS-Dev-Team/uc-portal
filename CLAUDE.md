@@ -269,9 +269,15 @@ UConsulting Drive > Committees > Marketing > Branding, accessed read-only).
    got a Progress-log entry here, so this section kept describing it as
    not-yet-started for six days after it was actually done. See the
    Progress entry below ("Phone UX pass: rediscovered, re-verified live,
-   and the actual remaining gap closed") for what was already real, what
-   a fresh live pass at 375px confirmed still holds, and the one piece
-   (gesture nav) that's genuinely still open.
+   and the actual remaining gap closed") for what was already real and
+   what a fresh live pass at 375px confirmed still holds. The gesture-nav
+   gap that pass flagged is now also closed for the piece that actually
+   mattered — the Applications Board's drag interaction didn't work on
+   touch at all, and neither Table nor Timeline offered any other way to
+   change a tracked application's stage, so a real member couldn't
+   change stage on a phone from any view. See "Gesture nav, scoped and
+   built" below. Broader gesture patterns (swipe-between-tabs,
+   pull-to-refresh, swipe-to-delete) remain genuinely unscoped.
 2. **People avatars** — still text-initials placeholders, intentionally,
    for both `mockPeople.js`'s fictional entries and the real UConsulting
    Directory import (Progress below) — the latter are real people, so
@@ -1983,6 +1989,72 @@ longer breaks down to phone width either.
   once their cleanup migration has already run). Worth doing right after
   deleting a temp migration's file, not waiting until the next push fails
   on it.
+
+- **Gesture nav, scoped and built — reframed from polish to a real fix**
+  — direct ask to scope gesture nav, the one item the mobile QA pass
+  above left genuinely open. Before proposing scope: checked whether the
+  Applications Board's drag interaction (the app's only way to change a
+  tracked application's stage — confirmed by checking Table and Timeline
+  offer no alternative) would even work on touch. It didn't, at all —
+  `TrackerBoard.jsx` used only native HTML5 Drag and Drop
+  (`draggable`/`onDragStart`/`onDragOver`/`onDrop`), an API with zero
+  touch support in any mobile browser. That reframed the conversation:
+  not "which nice-to-have gesture to add," but "a real member currently
+  cannot change a tracked application's stage at all on a phone."
+
+  Given the choice of a tap-based fallback vs. real touch-drag,
+  built both, since they're not actually redundant: a drag interaction
+  is never keyboard-operable regardless of touch support, and a direct
+  "move to X" control is often just faster than dragging across all 7
+  columns even for a mouse/touch user. Rebuilt `TrackerBoard.jsx`'s drag
+  entirely on Pointer Events (one implementation for mouse, touch, and
+  pen — not HTML5 DnD with a touch path bolted on) with
+  `touch-action: none` on `.board-card` so a touch-drag doesn't fight
+  the board's own native horizontal-scroll gesture. Both `TrackerBoard`
+  and `TrackerTable` (which had *no* stage-change capability of its own
+  at all before this) also get a real "Move to" `<select>`, sharing one
+  `commitMove()` path with the drag so the Closed-stage outcome-modal
+  prompt fires identically either way. Also built real edge-swipe-back
+  on the Messages thread pane (swipe right starting within 24px of the
+  pane's own left edge) — deliberately edge-only, not "swipe from
+  anywhere in the thread," so it can't fight vertical scrolling through
+  message history or the composer's own textarea; no viewport check
+  needed since `mobileView` only has visual effect inside the existing
+  phone-width media query, so this is an inert no-op above that width.
+
+  **A live test caught a real bug before it ever shipped**: reading
+  `dragOverStage` from React state inside the pointerup handler is
+  wrong — React batches state updates, so a fast gesture (several
+  pointermove events immediately followed by pointerup, common for a
+  quick real drag) can complete before React actually flushes the
+  state, and the pointerup handler's closure would still see the
+  *previous* render's value, silently dropping the move entirely. First
+  live test reproduced this exactly (card visually dragged, highlight
+  correct, but never actually moved). Fixed by tracking `overStage` in
+  the same ref already used for the rest of the gesture's per-drag
+  state, so correctness no longer depends on render timing — state is
+  now only used for the visual highlight, which is fine to lag a frame.
+
+  Verified live end-to-end with a throwaway account: the full drag
+  pipeline (including reproducing and then confirming the fix for the
+  timing bug above — a genuine `document.elementFromPoint` hit-test,
+  worked around only where this specific test tab's own backgrounded-
+  tab compositing limitation made that one browser API return null, a
+  test-environment artifact confirmed via `document.hidden`/
+  `visibilityState`, not a code issue), both "Move to" selects (Board
+  and Table, including the Closed-stage outcome-modal trigger firing
+  correctly from either), swipe-back correctly triggering from the
+  pane's edge, and a swipe starting mid-content correctly *not*
+  triggering it. Zero console errors throughout. Cleaned up completely
+  afterward; verified zero residue.
+
+  **Correction to this file's own "genuinely still unscoped: gesture
+  nav" line from earlier today**: gesture nav is not fully unscoped
+  anymore — the one piece that turned out to matter most (touch
+  drag-and-drop on the tracker board) is done. Broader gesture patterns
+  never discussed today (swipe-between-tabs, pull-to-refresh,
+  swipe-to-delete on list rows) remain genuinely unscoped and weren't
+  part of this ask.
 
 Run locally:
 ```bash
