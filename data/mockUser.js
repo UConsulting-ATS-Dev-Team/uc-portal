@@ -14,18 +14,18 @@ export const currentUser = {
   role: "member",
 };
 
-// members is a real, exact count -- read directly from the real
-// "UConsulting Directory" Google Sheet's own Active-status rows (2026-09-14,
-// the same read used to seed the real roster table -- 67 unique people,
-// see 20260914010000_seed_roster_from_directory.sql), not hand-typed.
-// Previously 52 (Sept 2026); the difference is a new admitted class
-// (several real people in the sheet show Admit Class "Winter 2026") that
-// hadn't joined yet when 52 was last counted. Worth re-reading the sheet
-// again before this goes to production if much time passes. alumni stays
-// an approximate "+" floor per the club website -- there's no
-// membership-roster backend to compute an exact historical alumni count
-// from, and nobody's counted it by hand.
+// members is a real, exact count, read directly from the real `people`
+// table's own Current-member rows (2026-09-15). Was 67 (2026-09-14, from
+// the Directory sheet's Active tab at that time) -- corrected down to 52
+// the next day once 15 of those 67 were confirmed to have actually
+// graduated since (see the dated Progress entry below for the
+// reclassification) and moved to Alumni status. Worth re-checking the
+// real `people` table's Current-member count again before this goes to
+// production if much time passes, rather than trusting this hardcoded
+// number indefinitely. alumni stays an approximate "+" floor per the
+// club website -- there's no membership-roster backend to compute an
+// exact historical alumni count from, and nobody's counted it by hand.
 export const clubStats = {
-  members: 67,
+  members: 52,
   alumni: "150+",
 };

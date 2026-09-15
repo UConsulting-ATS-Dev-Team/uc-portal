@@ -2317,6 +2317,27 @@ longer breaks down to phone width either.
   showing the real photo pulled from the team page). `vite build`: clean
   throughout.
 
+- **15 real current members reclassified as alumni** — direct correction
+  from the user, same day: those exact 15 people (the ones the headshot
+  import above had already flagged as "not on the team page") had
+  actually graduated since the Directory sheet was last read. Real
+  `people.status` updated `Current member` → `Alumni` for all 15 (matched
+  by `slug`, not name, to avoid any encoding ambiguity); nothing else
+  touched — `class_year`/`graduating_class` stay whatever they already
+  were rather than guessing a specific graduating term not actually on
+  file. `data/mockUser.js#clubStats.members` corrected 67 → 52 to match
+  (coincidentally the same number as the original Sept 2026 count, not
+  the same 52 people). Verified via a self-cleaning diagnostic:
+  `reclassified_count=15 current_member_total=52 alumni_total=155` — all
+  matching expectations exactly. Not committed to git (same "real member
+  data never committed" policy the history rewrite established — this
+  migration's own `slug` values embed real names, so it was applied via
+  `db push` and deleted locally, never `git add`ed). Real alumni photos
+  for these 15 (or any other alumnus) are a real, separate future need —
+  the team page this session's headshot import used only ever listed
+  current members, so it has nothing to offer for alumni; a different
+  source will be needed when that's picked up.
+
 Run locally:
 ```bash
 npm install
