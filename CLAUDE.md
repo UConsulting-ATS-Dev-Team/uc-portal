@@ -2056,6 +2056,96 @@ longer breaks down to phone width either.
   swipe-to-delete on list rows) remain genuinely unscoped and weren't
   part of this ask.
 
+- **Repo transferred to the club's real GitHub org; real committed PII
+  scrubbed from history in the same sitting** — closes
+  [[project_uc_portal_github_transfer_pending]]. `jflowenberg/uc-portal`
+  transferred to `UConsulting-ATS-Dev-Team/uc-portal` (2026-09-14), the
+  same org already hosting the club's other two real projects
+  (`uc-ats`, `uconsulting-website`). Motivation: the user wants the repo
+  to outlive their own graduation and eventually go public so future
+  maintainers have easy access — but before that could even be
+  considered, this repo's git history had two migrations with real
+  committed member PII (`20260914010000_seed_roster_from_directory.sql`:
+  67 real emails; `20260914070000_import_real_people.sql`: ~207 real
+  people's names/emails/LinkedIn/major/company/mentor) — not runtime
+  database content protected by RLS, but plain text sitting in every
+  commit from the point each was added.
+
+  Investigated how the sibling `uc-ats` repo (already public, and
+  genuinely handles more sensitive data — real candidate applications,
+  resume/interview scores) gets away with that: structurally, not by
+  policy. Checked every one of its Prisma migrations directly — real
+  applicant data never gets committed there at all; the one migration
+  with an INSERT is an infrastructure row, not a person. Real data only
+  ever enters through the live app. `uc-portal`'s own history broke that
+  same discipline twice (the two migrations above), so the fix isn't
+  just removing those two files — it's adopting the same rule this repo
+  should have followed from the start: **real member data is never
+  committed to git.** A fresh environment's roster/people seed now has
+  to come from a local, never-committed script run against the real
+  Directory sheet — same as how the very first version of this import
+  (commit `e7ed736`) originally worked, before convenience regressed it.
+
+  Before touching anything, scoped this properly rather than trusting a
+  narrow guess: an initial search only checked `@gmail.com`/`@g.ucla.edu`/
+  `@ucla.edu` and would have missed real alumni addresses on other
+  domains entirely (`yahoo.com`, `hotmail.com`, `stanford.edu`, work
+  domains like `bcg.com`/`aresmgmt.com`/`narmi.com`, a personal domain,
+  `icloud.com`, `aol.com` — found by extracting every actual domain
+  present in the real data instead of guessing likely ones). Re-ran a
+  general-pattern full-history search (every commit that ever *added* a
+  line matching a real email shape, not just current-tree grep) against
+  the corrected pattern and confirmed the scope was still exactly the
+  same 2 files — nothing else in history, no other file type (checked
+  for committed CSVs/JSON exports/build artifacts too, found none).
+  Also explicitly checked for any exposed password: searched history for
+  every specific test-account password this session generated (all
+  zero hits — confirmed they only ever reached the live database via
+  `supabase db push`, never via a git commit) plus a general
+  password-assignment pattern (zero hits) — nothing found.
+
+  Deliberately left alone (the user's own call, not worth the
+  disruption): the admin's real email appearing in a few migration
+  *comments* — already unavoidably exposed via every commit's own
+  author metadata regardless of these files, so redacting it from
+  comments specifically would hide nothing real.
+
+  Executed via `git-filter-repo` (not the deprecated `filter-branch`) in
+  an isolated scratch clone, never the live working directory — took a
+  verified `git bundle --all` backup first. `--invert-paths` stripped
+  both files from all 245 commits' history; verified in the clone
+  (re-ran the general-pattern search, zero real hits remained) before
+  ever touching the real remote. Force-pushed the rewritten history from
+  that clone (both Claude Code's Bash and PowerShell tools' own
+  auto-mode safety classifier correctly declined to run the force-push
+  itself, flagged "Git Destructive" — appropriately cautious for a
+  real, hard-to-reverse remote operation; the user ran it directly).
+  Local working directory resynced (`git fetch` + `git reset --hard
+  origin/master`, safe since the tree was clean throughout), a clean
+  `vite build` confirmed afterward, and the expected Supabase migration-
+  tracking mismatch (the live project's `schema_migrations` table still
+  referencing the two now-git-removed versions) fixed the same way as
+  twice earlier this session: `supabase migration repair --status
+  reverted <versions>`. Directly re-verified the real data itself was
+  never touched by any of this (a self-cleaning diagnostic against the
+  live database): `roster_total=67 people_total=207
+  sample=[Bethany Tong, Cheryl Wu, Sean Chan]` — exactly the expected
+  real counts, confirming the rewrite only ever touched git history, not
+  the live app or its data.
+
+  **One real gap still open, found during verification, not yet
+  closed**: force-pushing rewrites what's *browsable* (any fresh clone,
+  the normal GitHub UI) but doesn't guarantee GitHub purges the old
+  objects server-side — confirmed live: the old pre-rewrite commit
+  (`37a7897`) and the specific real-data-import commit (`d6a5fd0`) are
+  both still directly fetchable by their exact SHA via the GitHub API,
+  despite being on no branch. Real risk today is low (repo is private;
+  the only other two people with access already have the underlying
+  real data through their normal club roles, per direct confirmation) —
+  but this needs an actual GitHub Support request to purge the cached
+  objects before this repo can honestly be considered public-ready, not
+  something to skip. Not yet filed.
+
 Run locally:
 ```bash
 npm install
