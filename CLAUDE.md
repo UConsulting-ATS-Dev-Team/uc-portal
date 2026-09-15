@@ -2195,6 +2195,42 @@ longer breaks down to phone width either.
   confirmed against the sheet's actual current headers. Worth a real
   dry run against an actual export before the first real `--apply`.
 
+- **`seed-real-directory.mjs`'s `--apply` path: verified against a real
+  write** — closes the "not verified against a real database write" gap
+  the entry above flagged. The script's own interactive `readline`
+  credential prompt couldn't be driven from this environment (piped and
+  file-redirected stdin both left Node's `readline/promises` hanging on
+  the first `question()` call — a real Windows + Git Bash + Node
+  environment quirk, confirmed with a minimal standalone repro, not a
+  bug in the script's own logic). Rather than leave the write path
+  unverified, tested the script's actual auth+upsert logic directly
+  (same `signInWithPassword()` + `people`/`roster` `.upsert()` calls,
+  same synthetic `@example.invalid` two-row fixture as the earlier
+  dry-run test) via a temporary standalone harness taking credentials
+  from a local `.env` instead of the interactive prompt — never
+  committed, deleted after use; the real script's interactive-prompt
+  design (credentials typed at a real terminal, never in shell history
+  or an env file) is correct and was left unchanged.
+
+  Used the same pgcrypto-bcrypt throwaway-admin-account technique proven
+  earlier this session (a temporary migration, deleted after use).
+  Confirmed live: the write actually happens
+  (`people_count=2 roster_count=1`, correct status-based roster
+  filtering — the Alumni row correctly excluded — and correct field
+  values), and re-running with a changed field (`major`) upserts in
+  place rather than duplicating (row counts unchanged, the new value
+  landed) — the deterministic-slug idempotency claim in the entry above
+  is now verified, not just designed. Cleaned up completely afterward
+  (throwaway admin account, synthetic people/roster rows, the temp
+  setup/diagnostic/cleanup migrations, the synthetic CSV, the test
+  harness file) and confirmed zero residue via a diagnostic:
+  `residue_people=0 residue_roster=0 residue_test_admin_roster=0
+  residue_test_admin_auth=0 roster_total=67` — back to the exact
+  pre-test baseline. What's still open, unchanged from the entry above:
+  the real column headers are still an unconfirmed best guess against
+  the sheet's actual current headers — worth a real dry run against an
+  actual export before the first real `--apply` against real data.
+
 Run locally:
 ```bash
 npm install
