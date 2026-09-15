@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { fetchRealPersonById } from "../data/realPeople.js";
 import {
@@ -62,6 +62,42 @@ export default function Messages() {
   const [showNewPicker, setShowNewPicker] = useState(false);
   const [messageable, setMessageable] = useState([]);
   const [mobileView, setMobileView] = useState("list");
+
+  // Edge-swipe-back on the thread pane, real gesture nav (2026-09-14 mobile
+  // QA pass) -- only the "← Back" button existed before. Deliberately an
+  // edge swipe (must start within 24px of the pane's own left edge, the
+  // same pattern iOS's own system back-swipe uses) rather than "swipe
+  // starting anywhere in the thread" -- a swipe from the middle of the
+  // screen would fight vertical scrolling through message history and
+  // horizontal text selection/dragging inside the composer's textarea. No
+  // viewport check needed: mobileView only has any visual effect inside
+  // the phone-width media query (styles/messages.css), so this is a no-op
+  // everywhere else.
+  const swipeRef = useRef({ active: false, startX: 0, startY: 0 });
+  const SWIPE_EDGE_PX = 24;
+  const SWIPE_COMMIT_PX = 60;
+
+  function handleThreadPointerDown(event) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (event.clientX - rect.left > SWIPE_EDGE_PX) return; // not an edge touch -- ignore
+    swipeRef.current = { active: true, startX: event.clientX, startY: event.clientY };
+  }
+
+  function handleThreadPointerMove(event) {
+    const swipe = swipeRef.current;
+    if (!swipe.active) return;
+    const dx = event.clientX - swipe.startX;
+    const dy = event.clientY - swipe.startY;
+    // Mostly-horizontal, mostly-rightward, past the commit threshold.
+    if (dx > SWIPE_COMMIT_PX && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      swipe.active = false;
+      setMobileView("list");
+    }
+  }
+
+  function handleThreadPointerEnd() {
+    swipeRef.current.active = false;
+  }
 
   function loadConversations() {
     setConversationsLoading(true);
@@ -209,7 +245,13 @@ export default function Messages() {
       </div>
 
       {notOnPortalName && !activeId && (
-        <div className="thread-pane">
+        <div
+          className="thread-pane"
+          onPointerDown={handleThreadPointerDown}
+          onPointerMove={handleThreadPointerMove}
+          onPointerUp={handleThreadPointerEnd}
+          onPointerCancel={handleThreadPointerEnd}
+        >
           <div className="thread-pane__header">
             <button className="thread-pane__back" onClick={() => setMobileView("list")} aria-label="Back to conversations">
               ← Back
@@ -224,7 +266,13 @@ export default function Messages() {
       )}
 
       {activeId && (
-        <div className="thread-pane">
+        <div
+          className="thread-pane"
+          onPointerDown={handleThreadPointerDown}
+          onPointerMove={handleThreadPointerMove}
+          onPointerUp={handleThreadPointerEnd}
+          onPointerCancel={handleThreadPointerEnd}
+        >
           <div className="thread-pane__header">
             <button className="thread-pane__back" onClick={() => setMobileView("list")} aria-label="Back to conversations">
               ← Back

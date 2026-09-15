@@ -182,6 +182,7 @@ export default function Applications() {
               sortDirection={sortDirection}
               onSort={handleSort}
               onExportCsv={() => downloadCsv(toCsv(applications))}
+              onMoveStage={updateApplicationStage}
               onRequestOutcome={setOutcomeModalJobId}
             />
           )}

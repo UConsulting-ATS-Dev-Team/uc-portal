@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { nextActionForStage, formatDate, outcomeLabel, rejectionStageLabel } from "../data/trackerUtils.js";
+import { STAGES, nextActionForStage, formatDate, outcomeLabel, rejectionStageLabel } from "../data/trackerUtils.js";
 import { deadlineLabel } from "../data/jobUtils.js";
 import { SEED_TRACKED_JOB_IDS } from "../data/store.jsx";
 import CompanyLogo from "./CompanyLogo.jsx";
@@ -16,12 +16,21 @@ const COLUMNS = [
   { key: "outcome", label: "Outcome" },
 ];
 
-// onRequestOutcome: (jobId) => void, optional -- same callback TrackerBoard
-// takes, passed down from Applications.jsx so the one outcome-capture
-// modal works from either view. Table has no stage-change interaction of
-// its own (sorting/export only), so this column is read-only except for
-// the "Record outcome" link on a Closed row with nothing recorded yet.
-export default function TrackerTable({ applications, sortColumn, sortDirection, onSort, onExportCsv, onRequestOutcome }) {
+// onMoveStage/onRequestOutcome: same callbacks TrackerBoard takes, passed
+// down from Applications.jsx so both views share one outcome-capture
+// modal and one stage-change path. Table used to have no stage-change
+// interaction of its own at all (sorting/export only) -- closed as part
+// of the 2026-09-14 mobile QA pass, which found the Board's stage-change
+// interaction (then HTML5 drag-and-drop only) didn't work on touch
+// either, meaning there was no way to change a tracked application's
+// stage on a real phone from any view. Same real <select> control as
+// the Board's own "Move to" now.
+export default function TrackerTable({ applications, sortColumn, sortDirection, onSort, onExportCsv, onMoveStage, onRequestOutcome }) {
+  function commitMove(jobId, stage) {
+    onMoveStage(jobId, stage);
+    if (stage === "Closed") onRequestOutcome?.(jobId);
+  }
+
   return (
     <div>
       <div className="tracker-table__scroll">
@@ -54,7 +63,18 @@ export default function TrackerTable({ applications, sortColumn, sortDirection, 
                 </td>
                 <td>{job.role}</td>
                 <td>
-                  <span className="chip">{stage}</span>
+                  <select
+                    className="tracker-table__stage-select"
+                    aria-label={`Move ${job.company} — ${job.role} to a different stage`}
+                    value={stage}
+                    onChange={(e) => commitMove(jobId, e.target.value)}
+                  >
+                    {STAGES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td>{formatDate(addedAt)}</td>
                 <td>{job.rolling ? "Rolling" : deadlineLabel(job)}</td>

@@ -100,6 +100,15 @@
   padding: var(--space-4);
   margin-bottom: var(--space-3);
   cursor: grab;
+  /* Required alongside the Pointer Events drag implementation
+     (components/TrackerBoard.jsx) -- without this, a touch-drag on a
+     card also triggers the board's own native horizontal-scroll
+     gesture, fighting the JS-driven drag. Scrolling the board on touch
+     still works by touching a column header or the gaps between cards,
+     just not by starting the touch directly on a card -- same tradeoff
+     every kanban-style board (Trello included) makes. */
+  touch-action: none;
+  user-select: none;
 }
 
 .board-card.is-imminent {
@@ -108,6 +117,14 @@
 
 .board-card.is-closed {
   opacity: 0.55;
+}
+
+.board-card.is-dragging {
+  cursor: grabbing;
+  position: relative;
+  z-index: 20;
+  box-shadow: 0 6px 16px rgba(4, 39, 66, 0.25);
+  opacity: 0.95;
 }
 
 .board-card__company {
@@ -148,6 +165,38 @@
 
 .board-card__followup {
   margin-top: var(--space-3);
+}
+
+/* Real keyboard/touch-tap alternative to dragging (never itself
+   keyboard-operable, by nature) -- also just faster than dragging
+   across all 7 columns for a big jump regardless of device. */
+.board-card__move {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  font-size: var(--text-meta);
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+.board-card__move-label {
+  flex: 0 0 auto;
+}
+
+.board-card__move select {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 32px;
+  font-size: var(--text-meta);
+  /* padding-right, not the padding shorthand -- styles/global.css's
+     shared select-arrow rule already reserves this exact width; a plain
+     `padding` here would override it and reproduce the "arrow not
+     inside the box" bug that rule's own comment documents fixing once
+     already. */
+  padding: 2px var(--space-2);
+  padding-right: calc(var(--space-2) + 14px);
+  cursor: pointer;
 }
 
 /* Table */
@@ -202,6 +251,15 @@
   padding: var(--space-4);
   border-bottom: var(--border-hairline);
   font-size: var(--text-secondary);
+}
+
+/* Real stage-change control -- closes the "Table has no stage-change
+   interaction of its own" gap the 2026-09-14 mobile QA pass flagged
+   (the Board's own drag interaction, the only other way to change
+   stage, didn't work on touch at all). */
+.tracker-table__stage-select {
+  font-size: var(--text-secondary);
+  min-height: 36px;
 }
 
 .tracker-table tr.is-closed td {
