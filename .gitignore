@@ -8,3 +8,9 @@ supabase/.temp/
 
 .vercel
 .env*
+
+# Real member data for scripts/seed-real-directory.mjs -- never commit a
+# real export of the club's Directory sheet. See that script's own
+# header comment for the full rationale (CLAUDE.md's 2026-09-15 entry).
+scripts/directory-export.csv
+scripts/*.csv

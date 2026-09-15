@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test:server": "vitest run --config server/vitest.config.ts",
     "typecheck:server": "tsc --noEmit -p server/tsconfig.json",
-    "check-source": "node scripts/check-company-source.mjs"
+    "check-source": "node scripts/check-company-source.mjs",
+    "seed-directory": "node scripts/seed-real-directory.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

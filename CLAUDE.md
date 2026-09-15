@@ -2155,6 +2155,46 @@ longer breaks down to phone width either.
   likely by email) before this repo is genuinely public-ready. If asked
   for more detail, the cut-off reasoning is worth resending in full.
 
+- **Built the replacement for the removed real-data migrations**
+  (`scripts/seed-real-directory.mjs`) — closes a gap the history-rewrite
+  entry above left open: the policy ("real member data is never
+  committed to git again") was documented, but nothing yet let a fresh
+  environment actually get that data back. A reusable, gitignored-input
+  script (`scripts/directory-export.csv` — added to `.gitignore`, never
+  committed): export the real Directory sheet as CSV, run the script in
+  dry-run mode (default, prints a full summary and sample, writes
+  nothing) to sanity-check the parse, then `--apply` to actually write.
+  Authenticates as a real admin account at runtime (prompted
+  interactively, never stored) rather than using a service-role key —
+  `roster`/`people` already grant admins full write access via RLS
+  (`roster_admin_all`/`people_admin_all`), so this writes through the
+  same real permission path a human admin already has, not a
+  higher-privilege secret needing separate distribution/rotation. Slugs
+  are deterministic (hashed from email, not random) specifically so
+  re-running the script on an updated export safely upserts existing
+  people instead of creating duplicates. Same no-invented-precision
+  discipline as the original import: doesn't estimate class_year from
+  admit_class, doesn't populate role/industry from a committee-
+  designation column.
+
+  The CSV parser is deliberately index-aligned throughout (handles
+  quoted fields with embedded commas, and — the specific bug this is
+  guarding against — preserves empty cells as empty at their real
+  column position rather than shifting later values into the wrong
+  field, the exact mistake a prior pass at this same real import caught
+  and fixed once already). Verified with a synthetic test CSV (fake
+  `@example.invalid` rows, not real data): confirmed empty-field
+  handling doesn't shift columns, a quoted field with an embedded comma
+  parses as one field not two, an unrecognized status value is skipped
+  with a warning, a duplicate email is skipped with a warning, and
+  Alumni rows are correctly excluded from the roster count. **Not
+  verified against a real CSV export or a real database write** — no
+  real export was available to test against while writing this, and the
+  real column headers (`COLUMN_MAP` at the top of the script) are a
+  best guess based on what fields the original import populated, not
+  confirmed against the sheet's actual current headers. Worth a real
+  dry run against an actual export before the first real `--apply`.
+
 Run locally:
 ```bash
 npm install
