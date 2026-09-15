@@ -75,13 +75,23 @@ exported, so treat every "UC Career" in design/handoff/ as this product.
   within their own container instead of widening the page, matching the
   pattern the Board/Timeline tracker views already used. Verified live
   page-by-page at both the 900px and 640px tiers (zero
-  `document.documentElement.scrollWidth` overflow, no console errors);
-  Messages' fixed two-pane layout is the one deliberate exception, since
-  stacking it needed a capped-height scrollable list rather than a real
-  show-list/show-thread toggle (no state for that exists). Nothing here
-  is phone-first — touch targets, gesture nav, and true mobile UX are
-  still unscoped — but the app now reflows correctly at laptop/tablet
-  widths and doesn't break down to phone width either.
+  `document.documentElement.scrollWidth` overflow, no console errors).
+
+  **Correction, 2026-09-14**: this paragraph used to end by claiming
+  "nothing here is phone-first" and that Messages had no real show-list/
+  show-thread toggle state — both wrong, and had been wrong since
+  2026-09-08. A real Phone UX pass shipped the same day as the responsive
+  redesign above (11 commits: 44px touch targets app-wide, Messages' real
+  `mobileView` toggle, a bottom tab bar replacing the persistent rail
+  below 1100px, collapsible filter sidebars on Jobs/Companies, a
+  collapsible categories nav on Career Resources, and a real, widespread
+  CSS Grid overflow bug fix) — it just never got logged here, so this
+  section kept describing shipped work as unscoped for six days. A fresh
+  live pass at 375px on 2026-09-14 re-confirmed every piece is still
+  genuinely working (see the dedicated Progress entry below for the full
+  page-by-page verification). What's still genuinely unscoped: gesture
+  nav (swipe-back, swipe-between-tabs, etc. — never built, confirmed via
+  a zero-match code search for any touch/swipe handler anywhere).
 
 ## Page inventory & flow
 
@@ -251,12 +261,17 @@ UConsulting Drive > Committees > Marketing > Branding, accessed read-only).
 
 1. **Mobile** — the real responsive redesign is done (see the Responsive
    note above): every page and all 6 action modals reflow at 1100/900/
-   640px instead of scaling via the old `zoom` stopgap. What's still
-   genuinely unscoped is phone-first UX proper — touch targets, gesture
-   nav, a real show-list/show-thread toggle for Messages instead of its
-   capped-height stacked fallback — none of that was in scope for this
-   pass, which targeted "doesn't break down to phone width," not "designed
-   for phone first."
+   640px instead of scaling via the old `zoom` stopgap. **Correction,
+   2026-09-14**: this section used to also claim phone-first UX itself
+   (touch targets, a real Messages show-list/show-thread toggle) was
+   entirely unscoped — that was stale. A real, dedicated "Phone UX pass"
+   (11 commits, 2026-09-08, MVP day) shipped all of that; it just never
+   got a Progress-log entry here, so this section kept describing it as
+   not-yet-started for six days after it was actually done. See the
+   Progress entry below ("Phone UX pass: rediscovered, re-verified live,
+   and the actual remaining gap closed") for what was already real, what
+   a fresh live pass at 375px confirmed still holds, and the one piece
+   (gesture nav) that's genuinely still open.
 2. **People avatars** — still text-initials placeholders, intentionally,
    for both `mockPeople.js`'s fictional entries and the real UConsulting
    Directory import (Progress below) — the latter are real people, so
@@ -1879,6 +1894,95 @@ longer breaks down to phone width either.
     placeholder styling instead, outside this app's control. Zero live
     user impact today; worth remembering if this token is ever actually
     wired up later.
+
+- **Both flagged color-contrast gaps fixed** — closes the two "found, not
+  fixed" items the color-contrast re-verification pass above deliberately
+  left for a real design call, once actually asked: darken-for-text-only
+  for the accent link color (plain `a` and every local `.btn-link`-style
+  reimplementation now use `--color-accent-deep`, clearing 6.26:1+
+  everywhere instead of the plain accent's narrow 4.38:1 miss on ground —
+  `--color-accent` itself untouched, since every border/chip/background
+  use of it only needs the lower 3:1 UI bar it already clears), and
+  darken-to-3:1-everywhere for the hairline borders (`--color-border`/
+  `--color-border-inner` solved directly against the real formula rather
+  than guessed: `#848484`/`#8c8c8c`, both clearing >=3.01:1 against every
+  real background, preserving the original border > border-inner
+  hierarchy). Also corrected the Sept 2026 palette comment in
+  `styles/tokens.css` itself, which had claimed the borders already hit
+  the 3:1 bar — they measured 1.3-2.0:1 in reality, a real gap between
+  what that comment claimed and what the formula actually said. Verified
+  live in the browser via `getComputedStyle` on a real rendered `<a>`
+  (computed color: `rgb(10, 92, 152)` = `#0a5c98` = accent-deep, exactly
+  as intended) as part of the mobile QA pass below, not just a clean
+  build.
+
+- **Phone UX pass: rediscovered, re-verified live, and the actual
+  remaining gap closed** — direct ask to do "the mobile pass," which
+  surfaced a real documentation problem before any new code: this file's
+  own Navigation-shell and "Still open" sections both confidently claimed
+  phone-first UX (touch targets, a real Messages toggle) was entirely
+  unscoped. `git log --all` found that was wrong — an 11-commit "Phone UX
+  pass" shipped 2026-09-08 (MVP day): 44px touch targets app-wide, a real
+  `mobileView` show-list/show-thread toggle for Messages, a bottom tab
+  bar replacing the persistent nav rail below 1100px, collapsible filter
+  sidebars on Jobs and Companies, a collapsible categories/skills nav on
+  Career Resources, a real widespread CSS Grid `minmax(0,1fr)` overflow
+  fix across every `styles/*.css` grid, and fixes to Feed's tab-row
+  overflow and a flexbox width trap across two-pane layouts. None of it
+  ever got a Progress-log entry here — confirmed each piece is still
+  genuinely live in current code (not reverted) before trusting the
+  commit history at all.
+
+  With that corrected, did the actual ask — a fresh live QA pass at real
+  375px width — rather than assuming the six-day-old commits still held.
+  Used the same throwaway-account technique as earlier sessions (a real
+  loginable account + a synthetic `people` row, approved live), clicked
+  through the entire member-facing app at 375px: Home, Jobs (incl. the
+  mobile filter toggle), all 3 Applications tracker views (incl. the
+  sortable-column fix's real `aria-sort` toggle), Network, Messages
+  (a genuine send/receive round trip, confirmed the `is-thread-view`
+  class and the "← Back" affordance both work), Feed, Companies, Career
+  Resources (incl. a resource detail page and its checklist-toggle
+  fix's real `aria-pressed` toggle), My Profile, a real Job detail page
+  (confirmed the odds model's stacked-card layout is active via
+  `thead { display: none }`), the Add Application modal (confirmed the
+  radio-group fix's shared `name` actually produces real
+  mutually-exclusive-group behavior), Onboarding (confirmed the resume
+  drop-zone's real `<label>` fix), Notifications, and Global Search.
+  Zero horizontal overflow and zero console errors on every single page;
+  every accessibility fix from earlier today confirmed genuinely working
+  live, not just compiling. **Net result: no new mobile bugs found** —
+  the 2026-09-08 pass holds up completely six days (and a large amount
+  of unrelated real-backend work) later.
+
+  The one thing a full code search confirmed is still genuinely open:
+  gesture nav (zero matches anywhere for `touchstart`/`touchend`/swipe
+  handling) — not built this pass, since the direct ask was specifically
+  the live QA pass, not new gesture-nav scoping/building.
+
+  Corrected both stale sections this uncovered (Navigation shell's
+  Responsive note, and "Still open"'s Mobile item) to state plainly what
+  was already true, rather than leaving them describing six-day-old
+  shipped work as unscoped.
+
+  Cleaned up completely afterward (test account, its one real sent
+  message, roster entry, synthetic people row all deleted); verified
+  zero residue via a diagnostic: `residue_people=0 residue_roster=0
+  residue_auth_users=0 messages_total=0 roster_total=67`.
+
+  **Operational note for next time**: deleting a local migration file
+  after it's been applied-and-cleaned-up (the established "temporary,
+  deleted after use" convention this session and prior ones both follow)
+  leaves the remote migration-history table out of sync with the local
+  `supabase/migrations/` directory, and blocks the *next* `supabase db
+  push` entirely (`LegacyDbPushMissingLocalError`) until repaired —
+  hit twice this session. Fix: `supabase migration repair --status
+  reverted <version> <version>` for the deleted version(s) (metadata-only
+  — it doesn't touch real schema/data, just tells the tracker those
+  versions aren't part of the lineage anymore, which matches reality
+  once their cleanup migration has already run). Worth doing right after
+  deleting a temp migration's file, not waiting until the next push fails
+  on it.
 
 Run locally:
 ```bash

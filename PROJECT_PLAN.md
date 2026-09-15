@@ -91,10 +91,15 @@ This doc no longer tries to re-narrate that build history play-by-play —
 see [CLAUDE.md](CLAUDE.md)'s Progress log for the full, evidence-based,
 dated entry-by-entry account. Genuinely still open toward the
 2026-09-25 production-ready bar: real transactional email (blocked on
-AWS SES access — see Risks & blockers), and the mobile/phone-first UX
-pass (explicitly deprioritized, not unscoped — real breakpoint reflow
-down to 640px exists, but touch targets/gesture nav/a true mobile
-Messages layout don't yet).
+AWS SES access — see Risks & blockers), and gesture nav (swipe-back,
+swipe-between-tabs) — the one piece of the phone UX pass confirmed, via
+a live 375px click-through and a zero-match code search, to genuinely
+not exist yet. Everything else phone-specific (44px touch targets,
+a real Messages show-list/show-thread toggle, a bottom tab bar,
+collapsible filters) shipped back on 2026-09-08 alongside the responsive
+redesign — this doc's own earlier draft, like CLAUDE.md's, had missed
+that and described it as unscoped; corrected 2026-09-14 after a live
+re-verification pass found it all still genuinely working.
 
 ## MVP plan
 
@@ -172,6 +177,15 @@ stretch / beyond this initiative's timeline.
       Phones below ~640px specifically are still lower-priority per the
       initiative's own steer — this makes the app usable down to laptop/
       tablet widths without breaking, not a phone-first redesign.
+- [x] Phone UX pass — 44px touch targets app-wide, a real Messages
+      show-list/show-thread toggle, a bottom tab bar below 1100px,
+      collapsible filter sidebars (Jobs/Companies/Career Resources), and
+      a widespread CSS Grid overflow fix. Shipped 2026-09-08 alongside
+      the responsive pass above but never logged in either planning doc
+      until a 2026-09-14 re-audit found and fixed the gap (see CLAUDE.md's
+      Progress log) — re-verified live at 375px the same day, still fully
+      working. Gesture nav specifically (swipe-back, swipe-between-tabs)
+      was never part of this and remains the one real open item.
 - [x] Bear-icon logo asset wired into the brandmark
 - [x] Real company logos — all 8 companies in the mock data now show
       their real logo (sourced from Wikimedia Commons), wired into
