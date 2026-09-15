@@ -9,13 +9,11 @@ import {
   sendMessage,
   markThreadRead,
 } from "../data/messagesSync.js";
+import { fetchMemberAvatars } from "../data/avatarSync.js";
 import Modal from "../components/Modal.jsx";
+import Avatar from "../components/Avatar.jsx";
 
 const TABS = ["All", "Unread"];
-
-function initials(name) {
-  return name.split(" ").map((p) => p[0]).join("").slice(0, 2);
-}
 
 function relativeTime(iso) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -62,6 +60,7 @@ export default function Messages() {
   const [showNewPicker, setShowNewPicker] = useState(false);
   const [messageable, setMessageable] = useState([]);
   const [mobileView, setMobileView] = useState("list");
+  const [avatarsById, setAvatarsById] = useState(new Map());
 
   // Edge-swipe-back on the thread pane, real gesture nav (2026-09-14 mobile
   // QA pass) -- only the "← Back" button existed before. Deliberately an
@@ -109,6 +108,7 @@ export default function Messages() {
 
   useEffect(() => {
     loadConversations();
+    fetchMemberAvatars().then(({ byId }) => setAvatarsById(byId));
   }, []);
 
   useEffect(() => {
@@ -277,7 +277,9 @@ export default function Messages() {
             <button className="thread-pane__back" onClick={() => setMobileView("list")} aria-label="Back to conversations">
               ← Back
             </button>
-            <div className="post-card__avatar">{initials(activeName || "?")}</div>
+            <div className="post-card__avatar">
+              <Avatar name={activeName || "?"} url={avatarsById.get(activeId)} />
+            </div>
             <div style={{ fontWeight: 700 }}>{activeName}</div>
           </div>
 

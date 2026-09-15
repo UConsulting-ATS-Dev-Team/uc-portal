@@ -4,17 +4,15 @@ import { findPerson as findMockPerson } from "../data/mockPeople.js";
 import { fetchRealPeople } from "../data/realPeople.js";
 import { capabilitiesFor } from "../data/peopleUtils.js";
 import { useAppState, SEED_COFFEE_CHAT_IDS } from "../data/store.jsx";
+import { fetchMemberAvatars } from "../data/avatarSync.js";
 import RequestCoffeeChatModal from "../components/modals/RequestCoffeeChatModal.jsx";
 import DemoDataBadge from "../components/DemoDataBadge.jsx";
+import Avatar from "../components/Avatar.jsx";
 import "../styles/jobDetail.css";
 import "../styles/network.css";
 import "../styles/home.css";
 
 const AUDIENCES = ["All", "Alumni", "Current members"];
-
-function initials(name) {
-  return name.split(" ").map((p) => p[0]).join("");
-}
 
 function uniqueValues(people, key) {
   return ["All", ...new Set(people.map((p) => p[key]).filter(Boolean))];
@@ -45,11 +43,13 @@ export default function Network() {
   // those ids and shouldn't 404.
   const [PEOPLE, setPeople] = useState([]);
   const [peopleLoading, setPeopleLoading] = useState(true);
+  const [avatarsByEmail, setAvatarsByEmail] = useState(new Map());
 
   useEffect(() => {
     fetchRealPeople()
       .then(setPeople)
       .finally(() => setPeopleLoading(false));
+    fetchMemberAvatars().then(({ byEmail }) => setAvatarsByEmail(byEmail));
   }, []);
 
   function findPerson(id) {
@@ -172,7 +172,9 @@ export default function Network() {
               const chatStatus = coffeeChatStatus[p.id];
               return (
                 <div className="person-card" key={p.id}>
-                  <div className="person-card__avatar">{initials(p.name)}</div>
+                  <div className="person-card__avatar">
+                    <Avatar name={p.name} url={(p.email && avatarsByEmail.get(p.email.toLowerCase())) || p.avatarUrl} />
+                  </div>
                   <div className="person-card__name">{p.name}</div>
                   <div className="person-card__status">
                     {isMember ? "Current member" : `${p.status} · Class of ${p.classYear}`}

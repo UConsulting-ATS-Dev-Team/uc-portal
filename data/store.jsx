@@ -150,6 +150,7 @@ const DEFAULT_STATE = {
     ucCommittee: "",
     linkedIn: "",
     resumeFileName: null,
+    avatarUrl: null,
   },
   profileLastUpdated: "2026-08-02T12:00:00.000Z",
   notificationSettings: {

@@ -204,6 +204,17 @@ select {
   object-fit: contain;
 }
 
+/* Real profile photos inside any of the __avatar boxes (topbar, avatar
+   card, person card, profile header, composer, post card) -- fills the
+   box edge-to-edge and crops to a circle, unlike company logos above,
+   since every __avatar box is already a fixed-size circle. */
+[class$="__avatar"] img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
 /* ---- Responsive: touch targets ----
    Start of the phone-UX pass (CLAUDE.md's own "Still open" note: the
    1100/900/640px reflow done earlier made the app not break down at

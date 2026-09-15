@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
 import { INDUSTRIES, ROLES, SKILLS, LOCATIONS, COMPANIES, RECRUITING_CYCLES } from "../data/careerOptions.js";
-import { computeProfileStrength, displayName, initialsFromName } from "../data/profileUtils.js";
+import { computeProfileStrength, displayName } from "../data/profileUtils.js";
+import { uploadAvatar, removeAvatar } from "../data/avatarSync.js";
+import Avatar from "../components/Avatar.jsx";
 import "../styles/jobDetail.css";
 import "../styles/onboarding.css";
 import "../styles/tracker.css";
@@ -65,7 +67,9 @@ export default function MyProfile() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("Personal");
   const [saved, setSaved] = useState(false);
-  const [photoNote, setPhotoNote] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState(null);
+  const avatarInput = useRef(null);
   const [skillQuery, setSkillQuery] = useState("");
   const [industryQuery, setIndustryQuery] = useState("");
   const [roleQuery, setRoleQuery] = useState("");
@@ -98,6 +102,42 @@ export default function MyProfile() {
     touchProfileUpdated();
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
+  }
+
+  // Applies immediately on choosing a file, unlike the rest of this tab's
+  // fields (which wait for "Save changes") -- an image picker with a
+  // separate save step is a worse, less expected pattern for this specific
+  // kind of control. touchProfileUpdated() so this shows up in
+  // profile_last_updated the same as any other real Personal-tab edit.
+  async function handleAvatarChange(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setAvatarError(null);
+    setAvatarUploading(true);
+    try {
+      const url = await uploadAvatar(file);
+      updateProfileOverrides({ avatarUrl: url });
+      touchProfileUpdated();
+    } catch (err) {
+      setAvatarError(err.message);
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
+
+  async function handleRemoveAvatar() {
+    setAvatarError(null);
+    setAvatarUploading(true);
+    try {
+      await removeAvatar(profileOverrides.avatarUrl);
+      updateProfileOverrides({ avatarUrl: null });
+      touchProfileUpdated();
+    } catch (err) {
+      setAvatarError(err.message);
+    } finally {
+      setAvatarUploading(false);
+    }
   }
 
   function toggleIndustry(name) {
@@ -509,15 +549,34 @@ export default function MyProfile() {
 
         <div className="detail-rail">
           <div className="avatar-card">
-            <div className="avatar-card__avatar">{initialsFromName(form.fullName)}</div>
-            <button className="btn-link" onClick={() => setPhotoNote(true)}>
-              Change photo
-            </button>
-            {photoNote && (
-              <p className="meta" style={{ marginTop: "var(--space-2)" }}>
-                Profile photos aren't supported yet — members are shown by initials for now.
+            <div className="avatar-card__avatar">
+              <Avatar name={form.fullName} url={profileOverrides.avatarUrl} />
+            </div>
+            <div style={{ display: "flex", gap: "var(--space-3)", justifyContent: "center", flexWrap: "wrap" }}>
+              <button className="btn-link" disabled={avatarUploading} onClick={() => avatarInput.current?.click()}>
+                {avatarUploading ? "Uploading…" : profileOverrides.avatarUrl ? "Change photo" : "Add photo"}
+              </button>
+              {profileOverrides.avatarUrl && (
+                <button className="btn-link" disabled={avatarUploading} onClick={handleRemoveAvatar}>
+                  Remove
+                </button>
+              )}
+            </div>
+            <input
+              ref={avatarInput}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              style={{ display: "none" }}
+              onChange={handleAvatarChange}
+            />
+            {avatarError && (
+              <p className="meta" style={{ marginTop: "var(--space-2)", color: "#B3261E" }}>
+                {avatarError}
               </p>
             )}
+            <p className="meta" style={{ marginTop: "var(--space-2)" }}>
+              Visible to other UC members once uploaded.
+            </p>
           </div>
 
           <div className="rail-card">

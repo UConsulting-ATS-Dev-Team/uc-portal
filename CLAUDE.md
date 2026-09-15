@@ -278,12 +278,15 @@ UConsulting Drive > Committees > Marketing > Branding, accessed read-only).
    change stage on a phone from any view. See "Gesture nav, scoped and
    built" below. Broader gesture patterns (swipe-between-tabs,
    pull-to-refresh, swipe-to-delete) remain genuinely unscoped.
-2. **People avatars** — still text-initials placeholders, intentionally,
-   for both `mockPeople.js`'s fictional entries and the real UConsulting
-   Directory import (Progress below) — the latter are real people, so
-   sourcing photos for them without consent would be worse than not
-   having one, not just a mock-data convenience. Only companies got real
-   logos (see Progress below).
+2. **People avatars** — **Correction, 2026-09-15**: real profile photos
+   now exist (see the dated Progress entry below) — both a real
+   self-upload path and, for current members, real headshots imported
+   from the club's own public team page. `mockPeople.js`'s 13 fictional
+   entries still stay text-initials, intentionally (no real person, no
+   real photo to use). What's still genuinely text-initials for a real
+   person: any real current member neither on the team page nor
+   self-uploaded yet, and every real alumnus (the team page only ever
+   covers current members).
 
 ## Stack
 
@@ -2230,6 +2233,89 @@ longer breaks down to phone width either.
   the real column headers are still an unconfirmed best guess against
   the sheet's actual current headers — worth a real dry run against an
   actual export before the first real `--apply` against real data.
+
+- **Real profile pictures** — closes CLAUDE.md's own long-standing People
+  avatars note (every person, mock or real, was text-initials). Two real,
+  separate pieces:
+
+  **Self-upload** (`components/Avatar.jsx`, `data/avatarSync.js`,
+  `pages/MyProfile.jsx`'s avatar card) — a member picks an image, it
+  uploads to a new real Supabase Storage bucket (`avatars`, public read —
+  a deliberate choice over a signed-URL pattern: these are voluntarily
+  self-uploaded, not sensitive the way email/major/mentor is, and a
+  public bucket keeps every render a plain `<img src>` like every other
+  real asset here, rather than introducing a new pattern solely for this),
+  and `profiles.avatar_url` picks it up through the exact same local-
+  state-then-background-sync path every other Personal-tab field already
+  uses (no new sync machinery). Applies immediately on picking a file,
+  unlike the rest of that tab's fields (an image picker with a separate
+  "Save" step is a worse, less expected pattern here). Own-folder-only
+  write RLS (`(storage.foldername(name))[1] = auth.uid()`), a "Remove"
+  action, 5MB/JPEG-PNG-WEBP-GIF validation. New `list_member_avatars()`
+  security-definer RPC (same shape as `list_open_to_coffee_chat_members()`)
+  is the real cross-member read path — `profiles`' own RLS is
+  own-row-only, so Network/RealMemberProfile/Messages need a real way to
+  resolve someone *else's* avatar_url; matched by email (people directory)
+  or account id (Messages' real counterpart ids) depending on the surface.
+  New shared `Avatar.jsx` (real photo, falling back to
+  `initialsFromName()` — same pattern as `CompanyLogo.jsx`) replaced every
+  ad hoc `initials()` helper across TopBar, Home, Feed (composer + each
+  post's own author), MyProfile, Network, RealMemberProfile, and Messages'
+  thread header — one shared `[class$="__avatar"] img` CSS rule
+  (`styles/global.css`, mirroring the existing `__logo` rule) covers every
+  box since they're all already fixed-size circles.
+
+  **Real headshot import from the club's own public team page**
+  (uconsultingla.com/team) — direct instruction, given mid-session: most
+  real Directory people have no account yet, so self-upload alone would
+  leave the directory almost entirely text-initials for a long time. The
+  club's own official site already publishes real headshots with each
+  current member's real name attached for its own recruiting/PR purposes
+  — a real, deliberate consent signal distinct from the original People
+  avatars note's concern (sourcing a photo for someone with *no*
+  publication consent at all). New `people.avatar_url` column (separate
+  from, and lower-precedence than, a self-uploaded `profiles.avatar_url`
+  — `data/realPeopleAdapter.js` exposes both, Network.jsx/
+  RealMemberProfile.jsx prefer the self-upload when a member has since
+  signed up and set one) plus a scoped admin-only storage policy (`bucket_id
+  = 'avatars' and (storage.foldername(name))[1] = 'people' and is_admin()`
+  — an admin uploading on *others'* behalf needs a broader grant than the
+  self-upload policies' own-folder-only rule). Extracted 53 real
+  {name, headshot URL} pairs directly from the live page's own
+  `.eael-team-item` card structure (not guessed/typed by hand); matched
+  52 of them to real `people` rows by exact name (one team-page duplicate
+  entry for the same person under "Robert"/"Robbie Bjerre" correctly
+  collapsed to one; one explicit reviewed mapping, "Hazel Jeon" → the
+  Directory's "Haeryung Jeon," called out rather than silently
+  fuzzy-matched, since the last name is a unique match in both lists but
+  the first name genuinely differs — almost certainly a preferred English
+  name, not blind guessing). Downloaded and re-uploaded via a one-time
+  script run as a temporary throwaway admin account (same pgcrypto-bcrypt
+  technique used elsewhere this session); if the team page is ever
+  refreshed later, redo this the same way (re-extract from the live
+  page's cards) rather than resurrecting the deleted one-time script.
+
+  **Caught and fixed a real bug during verification, not just this
+  feature's own code**: `list_member_avatars()` first failed every call
+  with "structure of query does not match function result type" —
+  `auth.users.email` is `varchar(255)`, not `text`, the same exact bug
+  class two earlier real functions in this project already hit and fixed
+  (`list_members`, `member_engagement_report`) — fixed with an explicit
+  `::text` cast.
+
+  Verified live end-to-end with real throwaway accounts (all cleaned up
+  afterward, zero residue confirmed: `roster_total=67 people_total=207
+  people_with_avatar=52`, back to exact baseline plus the real permanent
+  headshot data): a real upload actually lands in Storage and
+  `profiles.avatar_url`, renders immediately on TopBar/Home/MyProfile/
+  Feed's composer; a real post shows the real photo once `authorId` was
+  added to `feedRowToPost()`'s mapped shape; a **second**, different
+  signed-in account genuinely sees the first account's real photo on
+  Network's card, RealMemberProfile's header, and Messages' thread
+  header — not just self-view; and the real headshot import was verified
+  directly in the browser too (Joshua Lowenberg's own real card/profile
+  showing the real photo pulled from the team page). `vite build`: clean
+  throughout.
 
 Run locally:
 ```bash

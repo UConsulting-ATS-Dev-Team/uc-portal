@@ -38,5 +38,11 @@ export function realPersonToCardShape(row) {
     mentor: row.mentor,
     admitClass: row.admit_class,
     graduatingClass: row.graduating_class,
+    // A real headshot sourced from the club's own public team page (see
+    // CLAUDE.md's dated entry) -- Network.jsx/RealMemberProfile.jsx treat
+    // this as a fallback, preferring a self-uploaded profiles.avatar_url
+    // (via avatarsByEmail) when a member has since signed up and uploaded
+    // their own photo.
+    avatarUrl: row.avatar_url,
   };
 }

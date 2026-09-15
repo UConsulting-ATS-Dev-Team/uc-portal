@@ -11,6 +11,7 @@ export function feedRowToPost(row) {
   return {
     id: row.id,
     author: row.author_name,
+    authorId: row.author_id,
     roleChip: "Member",
     postType: row.post_type,
     roleLine: row.author_role_line,

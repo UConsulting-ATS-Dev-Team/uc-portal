@@ -4,9 +4,11 @@ import { Link } from "react-router-dom";
 import { JOBS } from "../data/mockJobs.js";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
-import { displayName, initialsFromName } from "../data/profileUtils.js";
+import { displayName } from "../data/profileUtils.js";
 import { fetchFeedPosts, submitFeedPost, feedRowToPost } from "../data/feedSync.js";
 import { listOpenToCoffeeChatMembers } from "../data/messagesSync.js";
+import { fetchMemberAvatars } from "../data/avatarSync.js";
+import Avatar from "../components/Avatar.jsx";
 import JobCard from "../components/JobCard.jsx";
 import "../styles/jobDetail.css";
 import "../styles/feed.css";
@@ -18,10 +20,6 @@ const POST_TYPES = [
   { label: "Ask the network", value: "Advice" },
   { label: "Event", value: "Event" },
 ];
-
-function initials(name) {
-  return name.split(" ").map((p) => p[0]).join("").slice(0, 2);
-}
 
 export default function Feed() {
   const { savedJobIds, toggleSavedJob, profileOverrides } = useAppState();
@@ -39,12 +37,14 @@ export default function Feed() {
   const [helpfulPosts, setHelpfulPosts] = useState([]);
   const [savedPosts, setSavedPosts] = useState([]);
   const [rsvpedPosts, setRsvpedPosts] = useState([]);
+  const [avatarsById, setAvatarsById] = useState(new Map());
 
   useEffect(() => {
     fetchFeedPosts()
       .then((rows) => setPosts(rows.map(feedRowToPost)))
       .catch((err) => setPostsError(err.message))
       .finally(() => setPostsLoading(false));
+    fetchMemberAvatars().then(({ byId }) => setAvatarsById(byId));
   }, []);
 
   async function handlePost() {
@@ -132,7 +132,9 @@ export default function Feed() {
       <div className="feed-main">
         <div className="composer">
           <div className="composer__top">
-            <div className="composer__avatar">{initialsFromName(displayName(currentUser, profileOverrides))}</div>
+            <div className="composer__avatar">
+              <Avatar name={displayName(currentUser, profileOverrides)} url={profileOverrides.avatarUrl} />
+            </div>
             <textarea
               placeholder="Share something with UC…"
               value={composerText}
@@ -195,7 +197,9 @@ export default function Feed() {
           return (
             <div className="post-card" key={post.id}>
               <div className="post-card__header">
-                <div className="post-card__avatar">{initials(post.author)}</div>
+                <div className="post-card__avatar">
+                  <Avatar name={post.author} url={avatarsById.get(post.authorId)} />
+                </div>
                 <span className="post-card__name">{post.author}</span>
                 <span className="chip">{post.roleChip}</span>
                 <span className="chip chip-accent">{post.postType}</span>

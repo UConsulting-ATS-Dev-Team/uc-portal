@@ -6,7 +6,8 @@ import { useAppState } from "../data/store.jsx";
 import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { fetchFeedPosts, feedRowToPost } from "../data/feedSync.js";
 import { listOpenToCoffeeChatMembers } from "../data/messagesSync.js";
-import { computeProfileStrength, displayName, initialsFromName, resolvedClassYear } from "../data/profileUtils.js";
+import { computeProfileStrength, displayName, resolvedClassYear } from "../data/profileUtils.js";
+import Avatar from "../components/Avatar.jsx";
 import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
 import { nextActionForStage } from "../data/trackerUtils.js";
 import { fetchAllRows } from "../data/fetchAllRows.js";
@@ -177,7 +178,9 @@ export default function Home() {
       <div className="welcome-card">
         <div>
           <div className="welcome-card__greeting">
-            <div className="avatar-card__avatar" style={{ margin: 0 }}>{initialsFromName(displayName(currentUser, profileOverrides))}</div>
+            <div className="avatar-card__avatar" style={{ margin: 0 }}>
+              <Avatar name={displayName(currentUser, profileOverrides)} url={profileOverrides.avatarUrl} />
+            </div>
             <div>
               <h1>Welcome back, {displayName(currentUser, profileOverrides).split(" ")[0]}</h1>
               {/* Built from profileOverrides directly (not resolvedClassYear/

@@ -5,7 +5,8 @@ import { useAppState } from "../data/store.jsx";
 import { supabase } from "../data/supabaseClient.js";
 import { fetchUnreadCount } from "../data/messagesSync.js";
 import { countNewSignupsSince } from "../data/adminNotificationsSync.js";
-import { displayName, initialsFromName } from "../data/profileUtils.js";
+import { displayName } from "../data/profileUtils.js";
+import Avatar from "./Avatar.jsx";
 import RequestFeatureModal from "./modals/RequestFeatureModal.jsx";
 import bearMark from "../assets/uc-bear-mark-navy.png";
 
@@ -43,7 +44,7 @@ export default function TopBar() {
     localStorage.setItem(SIGNUPS_LAST_SEEN_KEY, new Date().toISOString());
     setNewSignupsCount(0);
   }
-  const initials = initialsFromName(displayName(currentUser, profileOverrides));
+  const fullName = displayName(currentUser, profileOverrides);
   const navigate = useNavigate();
   const location = useLocation();
   const isAdminMode = location.pathname.startsWith("/admin");
@@ -114,7 +115,7 @@ export default function TopBar() {
             aria-haspopup="menu"
             aria-expanded={menuOpen}
           >
-            {initials}
+            <Avatar name={fullName} url={profileOverrides.avatarUrl} />
           </button>
           {menuOpen && (
             <div className="topbar__menu" role="menu" onMouseLeave={() => setMenuOpen(false)}>

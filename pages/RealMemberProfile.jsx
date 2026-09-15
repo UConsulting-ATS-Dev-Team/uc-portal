@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchRealPersonById } from "../data/realPeople.js";
+import { fetchMemberAvatars } from "../data/avatarSync.js";
 import { useAppState } from "../data/store.jsx";
 import Placeholder from "./Placeholder.jsx";
 import Skeleton from "../components/Skeleton.jsx";
+import Avatar from "../components/Avatar.jsx";
 import RequestCoffeeChatModal from "../components/modals/RequestCoffeeChatModal.jsx";
 import "../styles/jobDetail.css";
 import "../styles/memberProfile.css";
@@ -21,19 +23,19 @@ import "../styles/memberProfile.css";
 // attached to someone who never provided them. This page shows only fields
 // that trace directly to the source spreadsheet, and says so explicitly
 // wherever something isn't known rather than inventing it.
-function initials(name) {
-  return name.split(" ").map((p) => p[0]).join("");
-}
-
 export default function RealMemberProfile({ personId }) {
   const [person, setPerson] = useState(undefined); // undefined = loading, null = not found
   const { savedConnections, coffeeChatStatus, toggleSavedConnection } = useAppState();
   const [showChatModal, setShowChatModal] = useState(false);
+  const [avatarsByEmail, setAvatarsByEmail] = useState(new Map());
 
   useEffect(() => {
     let cancelled = false;
     fetchRealPersonById(personId).then((p) => {
       if (!cancelled) setPerson(p);
+    });
+    fetchMemberAvatars().then(({ byEmail }) => {
+      if (!cancelled) setAvatarsByEmail(byEmail);
     });
     return () => {
       cancelled = true;
@@ -63,7 +65,12 @@ export default function RealMemberProfile({ personId }) {
       <div className="profile-header">
         <div className="profile-header__main">
           <div className="profile-header__top">
-            <div className="profile-header__avatar">{initials(person.name)}</div>
+            <div className="profile-header__avatar">
+              <Avatar
+                name={person.name}
+                url={(person.email && avatarsByEmail.get(person.email.toLowerCase())) || person.avatarUrl}
+              />
+            </div>
             <div>
               <div className="profile-header__name-row">
                 <h1>{person.name}</h1>
