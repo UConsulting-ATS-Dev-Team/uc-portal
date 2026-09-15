@@ -3,9 +3,10 @@ import { fetchRemotePreferences, syncPreferencesToRemote } from "./memberPrefere
 import { fetchRemoteTrackedApplications, syncTrackedApplicationToRemote } from "./trackerSync.js";
 import { fetchRemoteNetworkConnections, syncNetworkConnectionToRemote } from "./networkSync.js";
 import { fetchRemoteSavedJobs, syncSavedJobToRemote } from "./savedJobsSync.js";
-import { fetchRealRole } from "./profileRoleSync.js";
+import { fetchRealRole, fetchRealMemberStatus } from "./profileRoleSync.js";
 import { fetchRemoteProfileOverrides, syncProfileOverridesToRemote } from "./profileOverridesSync.js";
 import { fetchDirectoryPrefill } from "./directoryPrefillSync.js";
+import { supabase } from "./supabaseClient.js";
 
 // Prototype-wide shared state (career preferences, onboarding progress,
 // and later: saved jobs, tracker stage, etc.) -- persisted to
@@ -206,13 +207,43 @@ export function AppStateProvider({ children }) {
   // resolves (not signed in, or not yet loaded) -- treated as "not admin",
   // never as "admin" by default.
   const [realRole, setRealRole] = useState(null);
+  // Same shape as realRole above -- profiles.member_status
+  // ("current_member" | "alumni"), live auth-derived, never persisted.
+  // null until resolved, treated as "not alumni" by default (same
+  // fail-safe direction realRole/isAdmin already uses).
+  const [realMemberStatus, setRealMemberStatus] = useState(null);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
+  // Real bug, confirmed live (2026-09-15): a plain mount-time-only effect
+  // here means realRole/realMemberStatus are fetched exactly once, at
+  // AppStateProvider's own first mount -- which happens once per browser
+  // tab, at whatever route the tab first loaded (often /sign-in, before
+  // any session exists). Signing in afterward, in the SAME tab, never
+  // re-runs this fetch (no onAuthStateChange listener existed here at
+  // all), so isAdmin/isAlumni stayed permanently wrong -- not just
+  // briefly stale -- for the rest of that session, until a full page
+  // reload re-mounted the provider fresh with a session already present.
+  // Caught building real alumni route-guarding (RequireCurrentMember.jsx):
+  // a sign-IN to an already-onboarded alumni account landed on Home
+  // instead of being redirected to Feed, since isAlumni was still stuck
+  // at its default `false`. Same subscription pattern RequireAuth.jsx
+  // already uses for the identical reason.
   useEffect(() => {
     fetchRealRole().then(setRealRole);
+    fetchRealMemberStatus().then(setRealMemberStatus);
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        setRealRole(null);
+        setRealMemberStatus(null);
+        return;
+      }
+      fetchRealRole().then(setRealRole);
+      fetchRealMemberStatus().then(setRealMemberStatus);
+    });
+    return () => subscription.subscription.unsubscribe();
   }, []);
 
   // Stage 2: one-time hydration from Supabase on mount, if this signed-in
@@ -582,6 +613,8 @@ export function AppStateProvider({ children }) {
         needsActionCount,
         realRole,
         isAdmin: realRole === "admin",
+        realMemberStatus,
+        isAlumni: realMemberStatus === "alumni",
         updatePreferences,
         updateRecruitingSetting,
         updateProfileOverrides,

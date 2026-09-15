@@ -1,5 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import RequireAuth from "./components/RequireAuth.jsx";
+import RequireCurrentMember from "./components/RequireCurrentMember.jsx";
 import NavShell from "./components/NavShell.jsx";
 import Placeholder from "./pages/Placeholder.jsx";
 import SignIn from "./pages/SignIn.jsx";
@@ -44,6 +45,10 @@ export default function App() {
           comment for why this exists (it didn't, until real jobs/network/
           etc. data started needing `authenticated`-only RLS). */}
       <Route element={<RequireAuth />}>
+      {/* Current-member-only routes (active job-searching) -- real alumni
+          accounts are redirected to /feed instead. See
+          components/RequireCurrentMember.jsx's own header comment. */}
+      <Route element={<RequireCurrentMember />}>
       <Route
         path="/"
         element={
@@ -76,6 +81,7 @@ export default function App() {
           </NavShell>
         }
       />
+      </Route>
       <Route
         path="/network"
         element={
@@ -129,6 +135,7 @@ export default function App() {
           </NavShell>
         }
       />
+      <Route element={<RequireCurrentMember />}>
       <Route
         path="/resources"
         element={
@@ -153,6 +160,7 @@ export default function App() {
           </NavShell>
         }
       />
+      </Route>
       <Route
         path="/profile"
         element={

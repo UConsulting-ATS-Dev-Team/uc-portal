@@ -7,20 +7,26 @@ import bearMark from "../assets/uc-bear-mark-navy.png";
 import "../styles/auth.css";
 
 // Wireframe 3a — four states: sign-in, not-on-roster, access-pending,
-// loading. Sign-in/sign-up hit real Supabase Auth (Stage 2). Roster-gating
-// is real now too (2026-09-13, pre-production audit follow-up): a sign-up
-// attempt calls is_on_roster() via RPC *before* ever calling signUp() --
-// checking first rather than parsing signUp()'s own error is deliberate;
-// a live test found a rejected signup surfaces to supabase-js as a generic
-// "Database error saving new user" (GoTrue doesn't pass the database
-// trigger's real message through), so message-matching would never have
-// been reliable. A BEFORE INSERT trigger on auth.users
+// loading. Sign-in/sign-up hit real Supabase Auth (Stage 2). Signup-gating
+// is real (2026-09-13, pre-production audit follow-up; extended
+// 2026-09-15 to cover real alumni too, not just current members): a
+// sign-up attempt calls can_sign_up() via RPC *before* ever calling
+// signUp() -- checking first rather than parsing signUp()'s own error is
+// deliberate; a live test found a rejected signup surfaces to supabase-js
+// as a generic "Database error saving new user" (GoTrue doesn't pass the
+// database trigger's real message through), so message-matching would
+// never have been reliable. can_sign_up() itself covers two real, separate
+// paths -- current members (a roster match) and alumni (a real
+// people.status = 'Alumni' match) -- see the alumni-accounts migration's
+// own header comment. A BEFORE INSERT trigger on auth.users
 // (supabase/migrations/20260913010000_roster_gating.sql) still backstops
 // this at the database layer for any direct API call that skips the
-// pre-check. "Alumni — request access" now writes a real row to
-// access_requests (admin-reviewable on Admin Dashboard) instead of just
-// a local state transition. Google sign-in is still genuinely out of
-// scope (button stays honestly disabled below).
+// pre-check. "Alumni — request access" writes a real row to
+// access_requests (admin-reviewable on Admin Dashboard) instead of just a
+// local state transition -- now genuinely a fallback for someone not
+// found in the real Directory at all, since a real alumnus who *is* in it
+// can just sign up directly and succeed. Google sign-in is still
+// genuinely out of scope (button stays honestly disabled below).
 const STATE = {
   SIGN_IN: "sign-in",
   LOADING: "loading",
@@ -68,10 +74,13 @@ export default function SignIn() {
     setState(STATE.LOADING);
 
     if (mode === "sign-up") {
-      // Real roster check, before ever attempting signUp() -- see this
-      // file's own header comment for why checking first (not parsing
-      // signUp()'s own error) is the reliable path.
-      const { data: onRoster, error: rosterCheckError } = await supabase.rpc("is_on_roster", { check_email: email });
+      // Real signup-eligibility check, before ever attempting signUp() --
+      // see this file's own header comment for why checking first (not
+      // parsing signUp()'s own error) is the reliable path. can_sign_up()
+      // covers both current members (roster) and real alumni (a
+      // people.status = 'Alumni' match) -- see the alumni-accounts
+      // migration's own header comment for why this isn't just roster.
+      const { data: onRoster, error: rosterCheckError } = await supabase.rpc("can_sign_up", { check_email: email });
       if (rosterCheckError) {
         setAuthError(rosterCheckError.message);
         setState(STATE.SIGN_IN);
@@ -117,15 +126,22 @@ export default function SignIn() {
     // (false), incorrectly sending a fully onboarded real member back
     // through onboarding. Querying profiles directly with the session we
     // just created sidesteps the race entirely; falls back to the
-    // context value only if this query itself fails.
+    // context value only if this query itself fails. member_status hits
+    // the exact same race, confirmed live (2026-09-15): a fresh alumni
+    // signup landed on the full 5-step onboarding instead of the
+    // lightweight alumni flow, since AppStateProvider's own
+    // fetchRealMemberStatus() had already resolved to null (no session
+    // yet) before this sign-up ever happened. Passed forward via router
+    // state rather than waiting on the context value to catch up.
     const { data: profileRow } = await supabase
       .from("profiles")
-      .select("onboarding_complete")
+      .select("onboarding_complete, member_status")
       .eq("id", data.user.id)
       .maybeSingle();
     const isOnboarded = profileRow?.onboarding_complete ?? onboardingComplete;
+    const isAlumniAccount = profileRow?.member_status === "alumni";
 
-    navigate(isOnboarded ? redirectTo || "/" : "/onboarding");
+    navigate(isOnboarded ? redirectTo || "/" : "/onboarding", { state: { isAlumni: isAlumniAccount } });
   }
 
   function requestAccess() {
@@ -334,8 +350,8 @@ export default function SignIn() {
           </div>
         </div>
         <p className="auth__note">
-          Accounts are provisioned from the UC roster. Members convert to alumni automatically at
-          commencement.
+          Current members sign up using the UC roster; alumni sign up with the email on file in the
+          UConsulting Directory.
         </p>
       </div>
     </div>

@@ -2423,6 +2423,99 @@ longer breaks down to phone width either.
   afterward (test account, roster entry, migration) and confirmed zero
   residue: `roster_total=52`.
 
+- **Real alumni accounts: signup access + a Feed/Network-focused view** —
+  direct instruction, following up on the profile-pictures session's
+  "eventually have something for alumni to create accounts... more
+  focused on feed/network than jobs/education." Scoped via 4 real
+  decisions before building: (1) signup access is `roster` (current
+  members) **or** a real `people.status = 'Alumni'` email match — reuses
+  the 155 real alumni already on file, no new data entry, roster itself
+  keeps meaning exactly what it always has; (2) a new, separate
+  `profiles.member_status` column (`current_member`/`alumni`), not a
+  third `role` value — `role` stays access-level only (member/admin),
+  membership status is a genuinely different axis that happens to also
+  have two values today; (3) Jobs/Applications/Career Resources (and Home,
+  which is really just a recruiting dashboard) are hidden from an alumni's
+  nav **and** route-guarded, not just hidden — a direct URL still worked
+  before route-guarding was added, same "guard the route, don't just hide
+  the link" principle `RequireAuth.jsx` already established; (4) alumni
+  skip the full 5-step recruiting-focused onboarding entirely (industries/
+  roles/locations/companies/timeline are all about active job-searching),
+  getting just `StepYou`'s real "confirm your info" + resume upload,
+  landing on Feed.
+
+  `can_sign_up()` (renamed from `is_on_roster()` — it checks more than
+  roster now, the old name would be actively misleading) covers both
+  paths; `handle_new_user()` sets `member_status` from the same real
+  `people.status` match at the moment of signup (defaults to
+  `current_member` when there's no match at all, e.g. an admin account
+  created outside the normal Directory flow). New
+  `components/RequireCurrentMember.jsx` wraps `/`, `/jobs`, `/jobs/:id`,
+  `/applications`, `/resources/*` — redirects an alumni to `/feed`
+  instead of rendering; `data/navItems.js`'s new `currentMemberOnly` flag
+  drives the same hiding in `NavRail.jsx` and `BottomTabBar.jsx` (whose
+  curated 4-slot primary-tab picks were built entirely around
+  current-member priorities — Jobs/Applications are two of the four — so
+  alumni get their own primary set: all 4 of their remaining items,
+  Network/Feed/Companies/My Profile, fit exactly with no "More" overflow
+  needed). `SignIn.jsx`'s own footer copy ("Members convert to alumni
+  automatically at commencement") was already false before this — nothing
+  has ever auto-converted anyone — fixed to state the two real paths
+  plainly; "Alumni — request access" is now genuinely a fallback for
+  someone not found in the real Directory at all, since a real alumnus
+  who *is* in it can just sign up directly and succeed.
+
+  **Caught and fixed a real, more serious pre-existing bug while
+  verifying this, not just new code**: `realRole`/`isAdmin` (and the new
+  `realMemberStatus`/`isAlumni`) were fetched exactly once, at
+  `AppStateProvider`'s own first mount — which happens once per browser
+  tab, often at `/sign-in` before any session exists. Signing in
+  afterward, in the same tab, never re-ran that fetch (no
+  `onAuthStateChange` listener existed for it at all) — so `isAdmin`/
+  `isAlumni` stayed **permanently** wrong, not just briefly stale, for
+  the rest of that session, until a full page reload happened to
+  re-mount the provider fresh with a session already present. This had
+  silently applied to `isAdmin`'s own Leadership-nav gating the whole
+  time too, just never hit in a way anyone noticed (every real admin
+  test this session happened to involve a fresh page load after signing
+  in, never testing nav-gating in the exact same tab immediately after
+  sign-in). Caught only because alumni routing needed to work correctly
+  *immediately* after a fresh sign-in, in the same tab, for the first
+  time. Fixed with a real `onAuthStateChange` subscription in
+  `data/store.jsx` (same pattern `RequireAuth.jsx` already used for the
+  identical reason) that re-fetches both on every auth state change, not
+  just once. `Onboarding.jsx` also gets a faster, zero-latency version of
+  the same fix specifically for the moment right after signup:
+  `SignIn.jsx` now fetches `member_status` in the same query it already
+  had for `onboarding_complete`, and passes it forward via router state
+  (`location.state.isAlumni`), which `Onboarding.jsx` prefers over the
+  (still technically correct, but one real round-trip slower) store
+  value — mirrors the exact fix already in place for
+  `onboarding_complete`'s own identical race.
+
+  Verified live end-to-end, including catching the above bug live rather
+  than shipping it: `can_sign_up()` directly confirmed correct for a
+  roster email, a real alumni match, and a genuinely unknown email;
+  `handle_new_user()`'s branching directly confirmed correct for both an
+  alumni and a roster signup; a real signup through the actual browser
+  sign-up form for a synthetic alumni-status person (needed `.com`, not
+  `.invalid` — Supabase Auth's own `signUp()` validator rejects
+  `.invalid` as a real email domain even though direct SQL inserts, used
+  throughout this session for throwaway accounts, bypass that validation
+  entirely and always worked fine with it); the real onboarding flow
+  correctly showed the lightweight alumni version (and, after the
+  hydration-race fix, correctly showed the full 5-step version for a
+  fresh current-member signup, confirmed as a real regression check, not
+  assumed); direct URL navigation to every guarded route correctly
+  redirected to `/feed` for the alumni account and correctly did **not**
+  redirect for the current-member account; the nav rail showed exactly
+  the right 4 vs. 8 items for each; a returning alumni's plain sign-in
+  (not a fresh signup) correctly landed on Feed, not Home. Cleaned up
+  completely afterward (both throwaway accounts, the synthetic alumni
+  `people` row, roster entry, every migration) and confirmed zero
+  residue: `roster_total=52 people_total=207 current_member_total=52
+  alumni_total=155`.
+
 Run locally:
 ```bash
 npm install

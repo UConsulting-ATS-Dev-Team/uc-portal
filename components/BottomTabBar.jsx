@@ -25,10 +25,16 @@ export default function BottomTabBar() {
   const location = useLocation();
   // Real profiles.role, not the disconnected mock data/mockUser.js#
   // currentUser.role -- same fix as NavRail.jsx's identical check.
-  const { isAdmin, trackedJobs } = useAppState();
+  const { isAdmin, isAlumni, trackedJobs } = useAppState();
 
-  const primaryItems = MAIN_ITEMS.filter((item) => BOTTOM_BAR_PRIMARY_KEYS.includes(item.to));
-  const moreItems = MAIN_ITEMS.filter((item) => !BOTTOM_BAR_PRIMARY_KEYS.includes(item.to));
+  const availableItems = isAlumni ? MAIN_ITEMS.filter((item) => !item.currentMemberOnly) : MAIN_ITEMS;
+  // BOTTOM_BAR_PRIMARY_KEYS was picked around current-member priorities
+  // (Jobs/Applications are two of its four slots) -- meaningless for
+  // alumni, who don't have those routes at all. Alumni's whole available
+  // set (Network, Feed, Companies, My Profile) happens to be exactly 4,
+  // so it fits directly as primary tabs with no "More" overflow needed.
+  const primaryItems = isAlumni ? availableItems : availableItems.filter((item) => BOTTOM_BAR_PRIMARY_KEYS.includes(item.to));
+  const moreItems = isAlumni ? [] : availableItems.filter((item) => !BOTTOM_BAR_PRIMARY_KEYS.includes(item.to));
   // "More" itself reads as active on any route not covered by a primary
   // tab (e.g. a job/company/resource detail page, or any /admin/* route)
   // so the bar always shows *something* selected instead of going blank.

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAppState } from "../data/store.jsx";
 import { currentUser } from "../data/mockUser.js";
 import { displayName } from "../data/profileUtils.js";
@@ -43,7 +43,7 @@ function Brand() {
   );
 }
 
-function StepYou({ resumeFileName, resumeUploading, resumeError, onAttach }) {
+function StepYou({ resumeFileName, resumeUploading, resumeError, onAttach, kicker = "Step 1 of 5" }) {
   const { profileOverrides } = useAppState();
   // Reads profileOverrides directly here, NOT through resolvedClassYear/
   // resolvedMajors/resolvedUcCommittee -- those fall back to mockUser.js's
@@ -62,7 +62,7 @@ function StepYou({ resumeFileName, resumeUploading, resumeError, onAttach }) {
   const ucCommittee = profileOverrides?.ucCommittee;
   return (
     <>
-      <div className="onboarding__kicker">Step 1 of 5</div>
+      <div className="onboarding__kicker">{kicker}</div>
       <h1 className="onboarding__title">Confirm your info</h1>
       <p className="onboarding__subtitle">
         Let us know if anything's out of date at a GM.
@@ -394,12 +394,23 @@ function Completion({ preferences, profileOverrides, onFinish }) {
 }
 
 export default function Onboarding() {
+  const location = useLocation();
   const [step, setStep] = useState(0);
   const [showCompletion, setShowCompletion] = useState(false);
   const [resumeUploading, setResumeUploading] = useState(false);
   const [resumeError, setResumeError] = useState(null);
-  const { preferences, updatePreferences, updateProfileOverrides, completeOnboarding, profileOverrides } = useAppState();
+  const { preferences, updatePreferences, updateProfileOverrides, completeOnboarding, profileOverrides, isAlumni: isAlumniFromStore } =
+    useAppState();
   const navigate = useNavigate();
+  // Prefers the value SignIn.jsx just fetched fresh and passed forward,
+  // falling back to the store's own value for any other way this page
+  // gets reached (e.g. "Update interests" from an already-loaded
+  // session). See SignIn.jsx's own comment -- same stale-hydration race
+  // onboarding_complete already had, confirmed live for member_status too
+  // (a fresh alumni signup rendered the full 5-step flow instead of the
+  // lightweight one, since the store's own fetch hadn't resolved yet at
+  // that exact moment).
+  const isAlumni = location.state?.isAlumni ?? isAlumniFromStore;
 
   function toggleIndustry(name) {
     const already = preferences.industries.includes(name);
@@ -489,6 +500,48 @@ export default function Onboarding() {
         <div className="onboarding__content" style={{ marginTop: "var(--space-8)" }}>
           <Brand />
           <Completion preferences={preferences} profileOverrides={profileOverrides} onFinish={handleFinish} />
+        </div>
+      </div>
+    );
+  }
+
+  // The full 5-step flow below is built entirely around active
+  // recruiting (target industries/roles/locations/companies, a
+  // recruiting-cycle timeline) -- none of it fits someone who's already
+  // graduated and employed. Alumni get just StepYou's real "confirm your
+  // info" + resume-upload content, reused as-is (same component, same
+  // handleAttachResume wiring), with no progress bar and no other steps,
+  // landing on Feed (their real landing page -- see
+  // components/RequireCurrentMember.jsx) instead of the recruiting-
+  // focused completion screen/dashboard.
+  if (isAlumni) {
+    return (
+      <div className="onboarding">
+        <div className="onboarding__header">
+          <button className="btn-link" onClick={() => navigate("/feed")}>
+            Save & finish later
+          </button>
+        </div>
+        <div className="onboarding__content">
+          <StepYou
+            resumeFileName={profileOverrides.resumeFileName}
+            resumeUploading={resumeUploading}
+            resumeError={resumeError}
+            onAttach={handleAttachResume}
+            kicker="Welcome back"
+          />
+        </div>
+        <div className="onboarding__footer">
+          <span />
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              completeOnboarding();
+              navigate("/feed");
+            }}
+          >
+            Finish
+          </button>
         </div>
       </div>
     );

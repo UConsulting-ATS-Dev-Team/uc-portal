@@ -22,19 +22,28 @@ import {
 // signed in or how many applications they'd really tracked) -- takes the
 // real trackedJobs object now instead, same "active, not Closed" count
 // Home.jsx's own stat strip already uses.
+// currentMemberOnly items are about active job-searching (Home's own
+// recruiting dashboard included -- see pages/Home.jsx) -- hidden from the
+// nav, and route-guarded (components/RequireCurrentMember.jsx), for real
+// alumni accounts, which get a Feed/Network-focused experience instead
+// (direct product decision, see CLAUDE.md's dated "Real alumni accounts"
+// entry). Home isn't even alumni's landing route -- RequireCurrentMember
+// redirects "/" itself to "/feed" for them, so Feed effectively becomes
+// the alumni Home.
 export const MAIN_ITEMS = [
-  { label: "Home", to: "/", icon: Home },
-  { label: "Jobs", to: "/jobs", icon: Briefcase },
+  { label: "Home", to: "/", icon: Home, currentMemberOnly: true },
+  { label: "Jobs", to: "/jobs", icon: Briefcase, currentMemberOnly: true },
   {
     label: "Applications",
     to: "/applications",
     icon: ClipboardList,
     badge: (trackedJobs) => Object.values(trackedJobs ?? {}).filter((info) => info.stage !== "Closed").length,
+    currentMemberOnly: true,
   },
   { label: "Network", to: "/network", icon: Users },
   { label: "Feed", to: "/feed", icon: Rss },
   { label: "Companies", to: "/companies", icon: Building2 },
-  { label: "Career Resources", to: "/resources", icon: GraduationCap },
+  { label: "Career Resources", to: "/resources", icon: GraduationCap, currentMemberOnly: true },
   { label: "My Profile", to: "/profile", icon: CircleUserRound },
 ];
 

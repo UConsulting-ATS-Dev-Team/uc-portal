@@ -17,3 +17,20 @@ export async function fetchRealRole() {
   if (error || !data) return null;
   return data.role;
 }
+
+// Same fetch-session-then-query-by-id shape as fetchRealRole() above, for
+// the separate member_status column (membership status: current_member vs
+// alumni -- not an access level, that's still role above). A second query
+// rather than folding into fetchRealRole()'s single select, matching how
+// every other small real-data signal in this app gets its own tiny sync
+// function/effect rather than one growing combined one.
+export async function fetchRealMemberStatus() {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) return null;
+
+  const { data, error } = await supabase.from("profiles").select("member_status").eq("id", session.user.id).maybeSingle();
+  if (error || !data) return null;
+  return data.member_status;
+}

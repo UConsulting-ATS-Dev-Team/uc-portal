@@ -33,12 +33,13 @@ export default function NavRail() {
   // Real profiles.role, not the disconnected mock data/mockUser.js#
   // currentUser.role every session used to see the exact same hardcoded
   // "member" for regardless of who was actually signed in.
-  const { isAdmin, trackedJobs } = useAppState();
+  const { isAdmin, isAlumni, trackedJobs } = useAppState();
+  const items = isAlumni ? MAIN_ITEMS.filter((item) => !item.currentMemberOnly) : MAIN_ITEMS;
 
   return (
     <nav className="rail">
       <ul className="rail__items">
-        {MAIN_ITEMS.map((item) => (
+        {items.map((item) => (
           <RailLink key={item.to} {...item} badge={item.badge ? () => item.badge(trackedJobs) : undefined} />
         ))}
       </ul>
