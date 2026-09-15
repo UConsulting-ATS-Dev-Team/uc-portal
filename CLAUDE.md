@@ -2526,9 +2526,32 @@ longer breaks down to phone width either.
   real "No commit found for SHA" (422), confirming a genuine server-side
   purge rather than taking the support reply at face value. Ticket marked
   Solved. This was the last real, known gap between "history was
-  rewritten" and "genuinely safe to make public" — nothing else is
-  currently flagged. Making the repo public itself is still the user's
-  own call/action to take, not something done proactively here.
+  rewritten" and "genuinely safe to make public."
+
+- **The repo is now public** — direct go-ahead from the user, following
+  one final sanity pass rather than assuming the earlier scrub still
+  held. Re-ran the same general-pattern email-shape search
+  (`git log --all -p | grep -oE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' | sort -u`)
+  against current full history: only the user's own real email + their
+  own `+ucportaltest` alias (already reviewed, unavoidably in commit
+  author metadata regardless), two purpose-built throwaway test Gmail
+  accounts explicitly documented in their own commit as "neither is a
+  real club member," one synthetic `@example.com` placeholder,
+  `noreply@anthropic.com`, and the two already-reviewed wireframe
+  placeholders — zero real club-member PII. Also reconfirmed the two
+  originally-scrubbed migration files return zero hits anywhere in
+  history. Flipped via `gh repo edit ... --visibility public
+  --accept-visibility-change-consequences`, then independently confirmed
+  via a separate `gh repo view` call (`isPrivate: false`) rather than
+  trusting the edit command's silent success. Live at
+  https://github.com/UConsulting-ATS-Dev-Team/uc-portal.
+
+  **If real member data work happens again in the future**: the
+  discipline that made this safe was structural, not a one-time cleanup
+  — real member data is never committed to git, full stop (see the
+  history-rewrite entry above). Any new feature that touches real
+  people's data should keep following that rule, not re-earn public-
+  safety through another rewrite later.
 
 Run locally:
 ```bash
