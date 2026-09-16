@@ -2748,6 +2748,16 @@ longer breaks down to phone width either.
   -- flagged rather than claimed, same honesty standard as the tracker
   board's own DnD-testing limitation before its Pointer Events rewrite.
 
+- **Josh Chan / Jessica Wong email mix-up: blanked rather than guessed** —
+  direct instruction, since the real sheet still can't be edited: rather
+  than keep the one real shared email (jessicacwong@ucla.edu) attributed
+  to Josh Chan's row (an unreviewed guess left over from both imports),
+  set it to null on his row and inserted Jessica Wong as her own real
+  person for the first time (she'd never existed as a row before --
+  every prior import's duplicate-email collision resolved to keeping
+  whichever row came first). Both real, both correctly missing an email
+  now rather than one of them wrongly owning the other's.
+
 Run locally:
 ```bash
 npm install
