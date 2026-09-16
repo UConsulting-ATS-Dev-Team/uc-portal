@@ -2618,6 +2618,30 @@ longer breaks down to phone width either.
   delete cascade` actually fired) and confirmed zero residue:
   `roster_total=52`.
 
+- **Alumni photo nudge on Feed** — closes the "still need to pull pictures
+  for alumni" item the profile-pictures entry above flagged. Checked
+  first whether a real, honest source existed the same way the
+  current-member team-page import did: the Wayback Machine has **zero**
+  archived snapshots of `uconsultingla.com` at all (confirmed via its CDX
+  API, not just the `/team` path) — there's no historical page to recover
+  past alumni headshots from. Automated LinkedIn lookup was raised again
+  and declined again, same reasoning as the work-history feature (LinkedIn
+  ToS, this project's own no-scraping policy). Self-upload
+  (`components/Avatar.jsx`/`data/avatarSync.js`) already worked for alumni
+  accounts with zero code changes — My Profile's Personal tab isn't
+  current-member-gated — but nothing nudged anyone to actually use it.
+  Added an "Add your photo" rail card on `pages/Feed.jsx`, same pattern as
+  the existing work-history nudge card directly above it: shown only when
+  `isAlumni && !profileOverrides.avatarUrl`. Deliberately alumni-only, not
+  every member without a photo — the team-page import already covers all
+  52 current members, so showing this to them would incorrectly nag
+  someone who already has a real photo showing everywhere else. Verified
+  with a clean `vite build` and a live dev-server load (no console errors,
+  correct sign-in redirect); not click-tested with a real alumni session
+  — low risk, reuses an already-proven pattern exactly, no new throwaway
+  account spun up for this one, same call made on several other small
+  idle-time fixes earlier.
+
 Run locally:
 ```bash
 npm install

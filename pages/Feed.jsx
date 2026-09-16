@@ -23,7 +23,7 @@ const POST_TYPES = [
 ];
 
 export default function Feed() {
-  const { savedJobIds, toggleSavedJob, profileOverrides } = useAppState();
+  const { savedJobIds, toggleSavedJob, profileOverrides, isAlumni } = useAppState();
   const location = useLocation();
   const [tab, setTab] = useState("All");
   // "Ask the network" from Global search's no-results state hands off a
@@ -289,6 +289,23 @@ export default function Feed() {
             <p className="meta" style={{ margin: 0 }}>
               Other members can't see where you've worked until you add it — real referral/insight connections
               start there.
+            </p>
+            <Link to="/profile" className="btn btn-secondary" style={{ marginTop: "var(--space-3)" }}>
+              Add on My Profile
+            </Link>
+          </div>
+        )}
+
+        {/* Alumni-only: the team-page import already covers every current
+            member's photo, so this would wrongly nag someone who already
+            has a real one showing everywhere else. Alumni have no
+            equivalent source at all -- self-upload is genuinely the only
+            way they get a real photo, so the nudge matters more here. */}
+        {isAlumni && !profileOverrides.avatarUrl && (
+          <div className="rail-card">
+            <div className="rail-card__title">Add your photo</div>
+            <p className="meta" style={{ margin: 0 }}>
+              Members recognize a face faster than a name — add yours so people you've never met can spot you.
             </p>
             <Link to="/profile" className="btn btn-secondary" style={{ marginTop: "var(--space-3)" }}>
               Add on My Profile
