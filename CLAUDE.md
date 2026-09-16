@@ -2642,6 +2642,65 @@ longer breaks down to phone width either.
   account spun up for this one, same call made on several other small
   idle-time fixes earlier.
 
+- **First real run of `seed-real-directory.mjs` against live exports —
+  three script bugs found and fixed, one real production incident caught
+  and fixed same-day** — closes the "column headers are an unconfirmed
+  guess" gap the script's own entry above flagged, using two real exports
+  of the Directory sheet's Active Members and Alumni tabs. The dry run
+  caught three real bugs in the script itself before anything was
+  written: a title-banner row (present with real text on the Alumni tab;
+  present but fully blank -- and so silently filtered out -- on Active
+  Members, masking the same bug there) was being read as the header row;
+  the sheet's real header is missing a "Location" label entirely,
+  shifting Venmo Handle/Mentor/Major/LinkedIn each one column early; and
+  the Alumni tab additionally has blank LinkedIn/Projects header cells
+  where Active Members has real text. All three fixed by detecting and
+  inserting the correct labels rather than hardcoding around the sheet's
+  own mislabeling -- self-correcting if the sheet is ever fixed for real.
+  Also caught a real, pre-existing data-quality issue in the club's own
+  sheet (not fixed, not this project's data to guess-correct): "Josh
+  Chan" and "Jessica Wong" share one email in the Alumni tab, so Jessica
+  Wong has never actually been imported as her own person, then or now.
+  Also confirmed live (per direct instruction, since the sheet itself
+  can't be edited) that the 15 people already reclassified Alumni earlier
+  today still show as Active in this fresh export -- expected, the sheet
+  lags reality -- so applying needed a follow-up correction regardless.
+
+  **The real incident**: the user ran `--apply` for real (this agent
+  never handles real admin passwords, even when asked -- the script's own
+  interactive prompt is the only path, by design). Its upsert used
+  `onConflict: "slug"`, but this script's `slugFor()` produces different
+  slugs than the original, now-removed one-time import migration did for
+  the same real people -- so instead of updating 206 existing rows, every
+  real person who reappeared in the export got a brand-new duplicate row
+  (`people_total`: 207 -> 414, confirmed live, not assumed from the
+  apply's own "success" output). Diagnosed directly against the live
+  database rather than guessed: every duplicate pair's older row (by
+  `created_at`) still carried its real data intact, including current
+  members' real `avatar_url` from the team-page import, which the newer
+  duplicate row never had (upsert doesn't set fields absent from the
+  payload). Confirmed via `pg_constraint` that nothing foreign-keys to
+  `people.id`, so merging was safe. Fixed via a single migration (applied
+  via `db push`, deleted locally, never committed -- same real-PII
+  convention as every other data migration here): merge each pair
+  (keep the older row's id/slug/avatar_url, take every other real field
+  from the fresher import), delete the newly-inserted duplicate, and
+  re-apply the 15-person Alumni correction the fresh export had
+  regressed back to Current member (and re-added to `roster`). Verified
+  live: `people_total=208 alumni_total=155 current_total=53
+  roster_total=52 duplicate_emails=0 people_with_avatar=52` -- zero
+  duplicates, all 52 real photos intact, the 15-person correction holding
+  again, and exactly one genuinely new real current member landing
+  correctly (the only real net change tonight, everyone else already
+  existed as of the Sept 14 import).
+
+  Worth remembering for any future one-time-migration-to-reusable-script
+  conversion in this project: a script's own newly-computed identifier
+  (slug, hash, etc.) has to be verified against what's *actually already
+  live*, not just internally consistent with itself -- consistency alone
+  doesn't catch a mismatched join key, only a live dry run (or, as
+  happened here, a live apply) against the real data does.
+
 Run locally:
 ```bash
 npm install
