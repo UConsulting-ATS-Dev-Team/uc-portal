@@ -68,7 +68,7 @@ const COLUMN_MAP = {
   status: "Status", // must read as "Active" or "Alumni" (case-insensitive) -- other values are skipped
   admitClass: "Admit Class",
   major: "Major",
-  company: "Company",
+  company: "Firm Affiliations", // the real sheet's actual header text -- verified against a live export, "Company" never existed
   location: "Location",
   email: "Email",
   linkedin: "LinkedIn",
@@ -138,7 +138,47 @@ function parseCsv(text) {
 }
 
 function rowsToObjects(rows) {
-  const [header, ...body] = rows;
+  // The real sheet's export has a title/banner row above the actual
+  // header ("UConsulting Directory  Alumni  Need help finding..." on the
+  // Alumni tab specifically -- confirmed against a live export; the
+  // Active Members tab's equivalent banner row happens to be fully
+  // blank and gets dropped by parseCsv's own empty-row filter, but
+  // Alumni's has real text in column A, so it survives). Find the real
+  // header by content (its first cell is literally "Name") instead of
+  // assuming row 0 -- correct for both tabs regardless of whether a
+  // banner row precedes it.
+  const headerIndex = rows.findIndex((r) => (r[0] || "").trim() === "Name");
+  if (headerIndex === -1) return [];
+  const header = [...rows[headerIndex]];
+  const body = rows.slice(headerIndex + 1);
+
+  // The real sheet's header row is also missing a label for a real
+  // "Location" data column -- verified against live exports (e.g. a
+  // real city like "LA" sits under the header cell literally labeled
+  // "Venmo Handle", with every field after it shifted one column early
+  // the same way). Insert the missing label rather than have COLUMN_MAP
+  // reference the sheet's own mislabeled column names -- this is
+  // self-correcting if the sheet's header is ever fixed for real (the
+  // "already has Location" check just no-ops).
+  const firmIdx = header.indexOf("Firm Affiliations");
+  if (firmIdx !== -1 && !header.includes("Location")) {
+    header.splice(firmIdx + 1, 0, "Location");
+  }
+
+  // The Alumni tab's export goes one gap further than Active Members'
+  // does: its trailing "LinkedIn"/"Projects" header cells are blank
+  // entirely (Active Members' are real text) -- verified against a live
+  // export (a real LinkedIn URL landing under a blank "" key instead of
+  // "LinkedIn"). Same self-correcting insert-if-missing approach.
+  const majorIdx = header.indexOf("Major");
+  if (majorIdx !== -1 && !header.includes("LinkedIn")) {
+    header.splice(majorIdx + 1, 0, "LinkedIn");
+  }
+  const linkedinIdx = header.indexOf("LinkedIn");
+  if (linkedinIdx !== -1 && !header.includes("Projects")) {
+    header.splice(linkedinIdx + 1, 0, "Projects");
+  }
+
   return body.map((cells) => Object.fromEntries(header.map((h, i) => [h.trim(), (cells[i] ?? "").trim()])));
 }
 
