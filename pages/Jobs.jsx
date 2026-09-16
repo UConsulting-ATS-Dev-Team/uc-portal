@@ -13,6 +13,7 @@ import { realJobToCardShape, JOB_LIST_COLUMNS } from "../data/realJobAdapter.js"
 import { currentUser } from "../data/mockUser.js";
 import { resolvedClassYear } from "../data/profileUtils.js";
 import { parseJobQuery } from "../data/nlSearchParser.js";
+import { useSwipeTabs } from "../data/useSwipeTabs.js";
 import "../styles/jobs.css";
 import "../styles/search.css";
 import "../styles/home.css";
@@ -47,6 +48,7 @@ const TABS = [
   { key: "all", label: "All jobs" },
   { key: "saved", label: "Saved" },
 ];
+const TAB_KEYS = TABS.map((t) => t.key);
 // Member-selectable, not fixed -- was a flat 5, meaning even a fairly
 // short filtered list needed several "next page" clicks. Default 25
 // (a member request: "give options for 10, 25, or 50 so that you don't
@@ -251,6 +253,7 @@ export default function Jobs() {
   // column stays exactly as it always was on desktop/tablet.
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [tab, setTab] = useState("recommended");
+  const swipeHandlers = useSwipeTabs(TAB_KEYS, tab, setTab);
   const [sortBy, setSortBy] = useState("bestMatch");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -674,6 +677,7 @@ export default function Jobs() {
           </div>
         </div>
 
+        <div {...swipeHandlers}>
         {activeChips.length > 0 && (
           <div className="active-filter-chips" style={{ marginBottom: "var(--space-6)" }}>
             {activeChips.map((chip, i) => (
@@ -758,6 +762,7 @@ export default function Jobs() {
             </button>
           </div>
         )}
+        </div>
       </div>
 
       {showPostModal && <PostOpportunityModal onClose={() => setShowPostModal(false)} />}

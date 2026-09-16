@@ -9,7 +9,9 @@ import { fetchFeedPosts, submitFeedPost, feedRowToPost } from "../data/feedSync.
 import { listOpenToCoffeeChatMembers } from "../data/messagesSync.js";
 import { fetchMemberAvatars } from "../data/avatarSync.js";
 import { fetchOwnWorkHistory } from "../data/workHistorySync.js";
+import { useSwipeTabs } from "../data/useSwipeTabs.js";
 import Avatar from "../components/Avatar.jsx";
+import PullToRefresh from "../components/PullToRefresh.jsx";
 import JobCard from "../components/JobCard.jsx";
 import "../styles/jobDetail.css";
 import "../styles/feed.css";
@@ -40,13 +42,21 @@ export default function Feed() {
   const [rsvpedPosts, setRsvpedPosts] = useState([]);
   const [avatarsById, setAvatarsById] = useState(new Map());
 
-  useEffect(() => {
-    fetchFeedPosts()
+  // Shared by the mount fetch and pull-to-refresh -- same fetch, just
+  // triggered two different ways.
+  function refreshFeed() {
+    return fetchFeedPosts()
       .then((rows) => setPosts(rows.map(feedRowToPost)))
       .catch((err) => setPostsError(err.message))
       .finally(() => setPostsLoading(false));
+  }
+
+  useEffect(() => {
+    refreshFeed();
     fetchMemberAvatars().then(({ byId }) => setAvatarsById(byId));
   }, []);
+
+  const swipeHandlers = useSwipeTabs(TABS, tab, setTab);
 
   async function handlePost() {
     if (!composerText.trim() || posting) return;
@@ -141,6 +151,7 @@ export default function Feed() {
   ];
 
   return (
+    <PullToRefresh onRefresh={refreshFeed}>
     <div className="feed-layout">
       <div className="feed-main">
         <div className="composer">
@@ -185,6 +196,7 @@ export default function Feed() {
           ))}
         </div>
 
+        <div {...swipeHandlers}>
         {postsLoading && (
           <div className="skeleton-card" style={{ textAlign: "center", color: "var(--color-text-muted)" }}>
             Loading the feed…
@@ -262,6 +274,7 @@ export default function Feed() {
             </div>
           );
         })}
+        </div>
       </div>
 
       <div className="feed-rail">
@@ -344,5 +357,6 @@ export default function Feed() {
         </div>
       </div>
     </div>
+    </PullToRefresh>
   );
 }

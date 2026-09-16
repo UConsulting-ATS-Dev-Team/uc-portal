@@ -256,3 +256,16 @@ select {
     min-height: 44px;
   }
 }
+
+/* Pull-to-refresh indicator (components/PullToRefresh.jsx) -- a plain
+   text row that grows/shrinks with the drag via inline height/opacity
+   set by the component itself; this just styles its box. */
+.pull-to-refresh__indicator {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-secondary);
+  color: var(--color-text-muted);
+  transition: height 0.15s ease, opacity 0.15s ease;
+}

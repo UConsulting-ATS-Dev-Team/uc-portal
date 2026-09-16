@@ -10,6 +10,7 @@ import { deadlineLabel } from "../data/jobUtils.js";
 import { supabase } from "../data/supabaseClient.js";
 import { fetchFeedPosts } from "../data/feedSync.js";
 import { fetchConversations } from "../data/messagesSync.js";
+import PullToRefresh from "../components/PullToRefresh.jsx";
 import "../styles/jobs.css";
 import "../styles/jobDetail.css";
 import "../styles/onboarding.css";
@@ -61,9 +62,17 @@ export default function Notifications() {
   const [feedPosts, setFeedPosts] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [currentAccountId, setCurrentAccountId] = useState(null);
+  // Shared by the mount fetch and pull-to-refresh. trackedJobs/prepLogged/
+  // coffeeChatStatus/savedJobIds are already live from the store, and
+  // realJobs has its own fetch-on-mount -- feed posts and conversations
+  // are the two sources that genuinely go stale while sitting on this
+  // page, since they change from another member's action, not this one.
+  function refreshNotificationSources() {
+    return Promise.all([fetchFeedPosts().then(setFeedPosts), fetchConversations().then(setConversations)]).catch(() => {});
+  }
+
   useEffect(() => {
-    fetchFeedPosts().then(setFeedPosts).catch(() => {});
-    fetchConversations().then(setConversations).catch(() => {});
+    refreshNotificationSources();
     supabase.auth.getUser().then(({ data }) => setCurrentAccountId(data?.user?.id ?? null));
   }, []);
 
@@ -84,6 +93,7 @@ export default function Notifications() {
     .slice(0, 4);
 
   return (
+    <PullToRefresh onRefresh={refreshNotificationSources}>
     <div>
       <h1>Notifications</h1>
 
@@ -186,5 +196,6 @@ export default function Notifications() {
         </div>
       </div>
     </div>
+    </PullToRefresh>
   );
 }

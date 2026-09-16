@@ -2701,6 +2701,53 @@ longer breaks down to phone width either.
   doesn't catch a mismatched join key, only a live dry run (or, as
   happened here, a live apply) against the real data does.
 
+- **Broader gesture nav: pull-to-refresh and swipe-between-tabs** — closes
+  most of the "genuinely unscoped" gap the earlier gesture-nav entry
+  above left open (swipe-to-delete deliberately not included -- see
+  below). Scoped before building rather than guessed broadly: checked
+  first whether a real swipe-to-delete would add genuine new capability
+  anywhere, and found neither Notifications nor Messages has *any*
+  dismiss/archive/delete today (no button, no gesture) -- Notifications'
+  rows are computed live with nothing to persist a "dismissed" state
+  against, and Messages' conversations are shared rows, so a real
+  per-viewer archive needs new backend state, not just a gesture
+  wrapper. Given the choice to build that as part of "gesture nav" or
+  scope it out as its own real feature, judged it the latter -- flagged
+  explicitly rather than silently skipped.
+
+  What shipped: `components/PullToRefresh.jsx` (pull down while already
+  scrolled to the very top to re-fetch) on Feed and Notifications -- the
+  two pages where another real member's action can add new content
+  while this one is already looking at the page -- and
+  `data/useSwipeTabs.js` (swipe left/right to move to the next/previous
+  tab) on Feed's and Jobs' tab rows, the two most-used tabbed views in
+  the app. Both are real Pointer Events, matching the same approach
+  already proven working for touch across this app by the Applications
+  tracker's drag rebuild -- not HTML5 DnD or a touchstart/touchend pair.
+  Both deliberately exclude `pointerType === "mouse"` -- neither gesture
+  is something a mouse does in any real app, unlike the tracker board's
+  drag (which stayed mouse-compatible since a desktop admin might
+  legitimately use it). Deliberately *not* built: swipe-to-unsave on
+  Jobs' Saved tab or swipe-to-remove on Work History entries -- both
+  already have a one-tap button doing the exact same thing, so a gesture
+  there would be redundant chrome, not a real addition.
+
+  **Verification note, worth being honest about**: the mouse-exclusion
+  above is also why this couldn't be click-tested live the way the
+  tracker board's drag was -- this session's browser tool drives touch
+  gestures by simulating a mouse drag, and `pointerType: "mouse"` is
+  exactly what these two components are built to ignore, by design (the
+  tool's own docs confirm clicks arrive as mouse events even under phone
+  viewport emulation). Verified instead via a clean `vite build` (JSX
+  requires strictly balanced tags to even compile, so this rules out a
+  mismatched wrapper div, a real risk given how much manual re-nesting
+  this needed across 3 pages) and a direct check that neither
+  `.feed-main` nor `.jobs-main` has any flex/grid gap-based child layout
+  the new wrapper divs could have silently broken. The actual gesture
+  trigger itself is verified by code review, not a live touch simulation
+  -- flagged rather than claimed, same honesty standard as the tracker
+  board's own DnD-testing limitation before its Pointer Events rewrite.
+
 Run locally:
 ```bash
 npm install
