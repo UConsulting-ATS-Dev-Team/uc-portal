@@ -8,12 +8,15 @@ import {
   fetchThread,
   sendMessage,
   markThreadRead,
+  archiveConversation,
+  unarchiveConversation,
 } from "../data/messagesSync.js";
 import { fetchMemberAvatars } from "../data/avatarSync.js";
 import Modal from "../components/Modal.jsx";
 import Avatar from "../components/Avatar.jsx";
 
-const TABS = ["All", "Unread"];
+const TABS = ["All", "Unread", "Archived"];
+const SWIPE_ARCHIVE_PX = 70;
 
 function relativeTime(iso) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -24,6 +27,65 @@ function relativeTime(iso) {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+// Its own component (not inlined in a .map()) since it needs its own
+// pointer-gesture state per row -- React hooks can't be called inside a
+// loop. Real per-row swipe-to-archive, same simple "decide on release,
+// no live drag-following" approach as data/useSwipeTabs.js -- mouse
+// excluded, swiping isn't a mouse gesture. The button next to it is the
+// primary, always-visible, fully accessible way to do the same thing;
+// the swipe is a convenience on top, not a replacement.
+function ConversationRow({ conversation, isActive, onOpen, onArchive, onUnarchive }) {
+  const dragRef = useRef(null);
+
+  function handlePointerDown(e) {
+    if (e.pointerType === "mouse") return;
+    dragRef.current = { startX: e.clientX, startY: e.clientY };
+  }
+
+  function handlePointerUp(e) {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    if (!drag) return;
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+    if (dx < -SWIPE_ARCHIVE_PX && Math.abs(dx) > Math.abs(dy)) {
+      conversation.archived ? onUnarchive(conversation.counterpartId) : onArchive(conversation.counterpartId);
+    }
+  }
+
+  return (
+    <div
+      className="conversation-row-wrap"
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={() => (dragRef.current = null)}
+    >
+      <button
+        className={`conversation-row${isActive ? " is-active" : ""}`}
+        onClick={() => onOpen(conversation)}
+      >
+        <div className="conversation-row__top">
+          <span>{conversation.counterpartName}</span>
+          <span className="conversation-row__time">{relativeTime(conversation.lastMessage.created_at)}</span>
+        </div>
+        <div className="conversation-row__preview">
+          {conversation.lastMessage.sender_id === conversation.counterpartId ? "" : "You: "}
+          {conversation.lastMessage.body}
+        </div>
+      </button>
+      <button
+        className="conversation-row__archive-btn btn-link"
+        onClick={(e) => {
+          e.stopPropagation();
+          conversation.archived ? onUnarchive(conversation.counterpartId) : onArchive(conversation.counterpartId);
+        }}
+      >
+        {conversation.archived ? "Unarchive" : "Archive"}
+      </button>
+    </div>
+  );
 }
 
 // Real 1:1 messaging (see the real_messages migration for the full
@@ -104,6 +166,25 @@ export default function Messages() {
       .then(setConversations)
       .catch((err) => setError(err.message))
       .finally(() => setConversationsLoading(false));
+  }
+
+  // Archiving the thread you're currently looking at closes it back to
+  // the list view -- staying open on a conversation you just tucked away
+  // would be a confusing dead end.
+  function handleArchive(counterpartId) {
+    archiveConversation(counterpartId)
+      .then(loadConversations)
+      .then(() => {
+        if (activeId === counterpartId) {
+          setActiveId(null);
+          setMobileView("list");
+        }
+      })
+      .catch((err) => setError(err.message));
+  }
+
+  function handleUnarchive(counterpartId) {
+    unarchiveConversation(counterpartId).then(loadConversations).catch((err) => setError(err.message));
   }
 
   useEffect(() => {
@@ -191,6 +272,8 @@ export default function Messages() {
   }
 
   const filtered = conversations.filter((c) => {
+    if (tab === "Archived") return c.archived;
+    if (c.archived) return false; // All/Unread never show an archived thread
     if (tab === "Unread" && c.unreadCount === 0) return false;
     if (search && !c.counterpartName.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
@@ -210,7 +293,12 @@ export default function Messages() {
         </div>
         <div className="conversation-list__tabs">
           {TABS.map((t) => {
-            const count = t === "All" ? conversations.length : conversations.filter((c) => c.unreadCount > 0).length;
+            const count =
+              t === "All"
+                ? conversations.filter((c) => !c.archived).length
+                : t === "Archived"
+                ? conversations.filter((c) => c.archived).length
+                : conversations.filter((c) => !c.archived && c.unreadCount > 0).length;
             return (
               <button key={t} className={tab === t ? "is-active" : ""} onClick={() => setTab(t)}>
                 {t} ({count})
@@ -226,20 +314,14 @@ export default function Messages() {
             </p>
           )}
           {filtered.map((c) => (
-            <button
+            <ConversationRow
               key={c.counterpartId}
-              className={`conversation-row${c.counterpartId === activeId ? " is-active" : ""}`}
-              onClick={() => openConversation(c)}
-            >
-              <div className="conversation-row__top">
-                <span>{c.counterpartName}</span>
-                <span className="conversation-row__time">{relativeTime(c.lastMessage.created_at)}</span>
-              </div>
-              <div className="conversation-row__preview">
-                {c.lastMessage.sender_id === activeId ? "" : "You: "}
-                {c.lastMessage.body}
-              </div>
-            </button>
+              conversation={c}
+              isActive={c.counterpartId === activeId}
+              onOpen={openConversation}
+              onArchive={handleArchive}
+              onUnarchive={handleUnarchive}
+            />
           ))}
         </div>
       </div>

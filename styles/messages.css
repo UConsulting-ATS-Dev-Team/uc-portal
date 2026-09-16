@@ -97,6 +97,28 @@
   text-overflow: ellipsis;
 }
 
+/* Real message archiving -- the row and its Archive/Unarchive button
+   share one bordered wrap so the row's own border-bottom doesn't double
+   up (removed on .conversation-row below, moved here). */
+.conversation-row-wrap {
+  display: flex;
+  align-items: stretch;
+  border-bottom: var(--border-hairline);
+}
+
+.conversation-row-wrap .conversation-row {
+  border-bottom: none;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.conversation-row__archive-btn {
+  flex: 0 0 auto;
+  padding: 0 var(--space-4);
+  font-size: var(--text-meta);
+  white-space: nowrap;
+}
+
 .thread-pane {
   flex: 1 1 auto;
   display: flex;

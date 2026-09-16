@@ -35,14 +35,17 @@ export async function listOpenToCoffeeChatMembers() {
 // display name (from members, the same list_messageable_members() result
 // the "New" picker uses -- so a name is available even for a counterpart
 // with zero messages sent, and consistent everywhere it's shown), the
-// most recent message, and how many of their messages to me are unread.
+// most recent message, how many of their messages to me are unread, and
+// whether I've archived this thread (data/archived_conversations.js --
+// own-row-only, so this is just a second small fetch, not a join).
 export async function fetchConversations() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const [{ data: rows, error }, members] = await Promise.all([
+  const [{ data: rows, error }, members, archivedIds] = await Promise.all([
     supabase.from("messages").select("*").or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`).order("created_at", { ascending: true }),
     listMessageableMembers(),
+    fetchArchivedCounterpartIds(),
   ]);
   if (error) throw new Error(error.message);
 
@@ -59,8 +62,39 @@ export async function fetchConversations() {
       counterpartName: nameById.get(counterpartId) ?? "Former member",
       lastMessage,
       unreadCount: (rows ?? []).filter((r) => r.sender_id === counterpartId && r.recipient_id === user.id && !r.read_at).length,
+      archived: archivedIds.has(counterpartId),
     }))
     .sort((a, b) => new Date(b.lastMessage.created_at) - new Date(a.lastMessage.created_at));
+}
+
+// Real per-viewer archiving -- a row's existence is the signal, same
+// "derive it, don't duplicate-store a flag" approach as the rest of this
+// file. Never deletes the underlying messages (the other participant's
+// copy of the conversation is untouched); a new message from an archived
+// counterpart un-archives automatically (see the migration's trigger).
+export async function fetchArchivedCounterpartIds() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data, error } = await supabase.from("archived_conversations").select("counterpart_id").eq("account_id", user.id);
+  if (error) throw new Error(error.message);
+  return new Set((data ?? []).map((r) => r.counterpart_id));
+}
+
+export async function archiveConversation(counterpartId) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { error } = await supabase.from("archived_conversations").upsert({ account_id: user.id, counterpart_id: counterpartId });
+  if (error) throw new Error(error.message);
+}
+
+export async function unarchiveConversation(counterpartId) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { error } = await supabase.from("archived_conversations").delete().eq("account_id", user.id).eq("counterpart_id", counterpartId);
+  if (error) throw new Error(error.message);
 }
 
 export async function fetchThread(counterpartId) {

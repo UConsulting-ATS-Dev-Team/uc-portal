@@ -68,7 +68,13 @@ export default function Notifications() {
   // are the two sources that genuinely go stale while sitting on this
   // page, since they change from another member's action, not this one.
   function refreshNotificationSources() {
-    return Promise.all([fetchFeedPosts().then(setFeedPosts), fetchConversations().then(setConversations)]).catch(() => {});
+    return Promise.all([
+      fetchFeedPosts().then(setFeedPosts),
+      // Archived conversations are deliberately excluded -- surfacing a
+      // notification about a thread a member just tucked away would
+      // undermine the point of archiving it.
+      fetchConversations().then((rows) => setConversations(rows.filter((c) => !c.archived))),
+    ]).catch(() => {});
   }
 
   useEffect(() => {

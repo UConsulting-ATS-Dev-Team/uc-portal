@@ -2758,6 +2758,64 @@ longer breaks down to phone width either.
   whichever row came first). Both real, both correctly missing an email
   now rather than one of them wrongly owning the other's.
 
+- **Real message archiving** — closes the gap flagged while scoping
+  gesture nav: Messages had no way to hide/archive a conversation at
+  all. Since conversations are shared rows (`messages`), a real archive
+  can't be a delete -- that would remove the other participant's copy
+  too. New own-row-only `archived_conversations` table
+  (`account_id`, `counterpart_id`) -- a row's existence is the signal,
+  same "derive it, don't duplicate-store a flag" approach as
+  `savedJobIds`/`savedConnections`, just server-side since Messages
+  already syncs across devices. `fetchConversations()` now returns an
+  `archived` field per conversation (a second small own-row fetch, not a
+  join -- RLS already scopes it). Messages.jsx gets a new "Archived" tab
+  (All/Unread never show an archived thread), a real "Archive"/
+  "Unarchive" button on every row (the primary, fully accessible path),
+  and a real swipe-left-to-archive gesture on top -- extracted the row
+  into its own `ConversationRow` component specifically because a
+  per-row Pointer Events gesture can't live inside a `.map()` callback
+  (Rules of Hooks), same simple "decide on release, no live drag-
+  following" approach as `data/useSwipeTabs.js`, mouse excluded again.
+  A new message from an archived counterpart auto-unarchives the
+  recipient's view via a real trigger (`unarchive_on_new_message()`,
+  `after insert on messages`) -- matches the same expectation Gmail's
+  own archive already sets (a reply un-archives), so a member can't
+  silently miss a real new message just because they tidied an old
+  conversation away once. Notifications.jsx's "recent unread
+  conversations" preview now filters archived ones out at the fetch
+  call site -- surfacing a notification about a thread someone just
+  archived would undermine the point of archiving it.
+
+  Verified live end-to-end with two real throwaway accounts (the
+  pgcrypto-bcrypt technique used elsewhere this session needed one real
+  fix this time: the direct `auth.users` insert hit a genuine "Database
+  error querying schema" from GoTrue until the token columns
+  --confirmation_token, recovery_token, email_change, etc. -- were set
+  to `''` instead of left `null`, a known real quirk of inserting
+  directly into that table rather than through `signUp()`): the Archive
+  button correctly moved a real conversation out of All/Unread into
+  Archived and closed the open thread pane; Unarchive correctly moved it
+  back; a second, different signed-in account's own view of the same
+  conversation was confirmed unaffected by the first account's archive
+  (real per-viewer isolation, not just a client-side filter); RLS was
+  tested directly through the real client, not just trusted from the
+  policy text -- a cross-account delete attempt silently affected zero
+  rows (the same "UPDATE/DELETE under RLS returns success but touches
+  nothing" behavior this project already learned to check for
+  explicitly) and a cross-account insert attempt correctly returned a
+  real `42501` row-level-security error; and the auto-unarchive trigger
+  was confirmed by archiving a thread, sending a new message from the
+  other real account, and watching it reappear in the first account's
+  Unread list without either account touching Unarchive. Both throwaway
+  accounts, their real messages, and the archived-conversation row were
+  all deleted afterward and confirmed at zero residue:
+  `residue_auth=0 residue_roster=0 archived_total=0 messages_total=0
+  roster_total=52`. The swipe gesture itself has the same live-testing
+  limitation as the rest of this session's gesture-nav work (mouse-based
+  browser automation can't trigger a touch-only Pointer Events gesture)
+  -- verified by code review, not a live drag; the button path above is
+  the fully-verified, always-available primary interaction regardless.
+
 Run locally:
 ```bash
 npm install
