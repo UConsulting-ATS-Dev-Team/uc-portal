@@ -140,6 +140,15 @@ export default function SignIn() {
       .maybeSingle();
     const isOnboarded = profileRow?.onboarding_complete ?? onboardingComplete;
     const isAlumniAccount = profileRow?.member_status === "alumni";
+    const isInternAccount = profileRow?.member_status === "intern";
+
+    // An intern has no Directory record to "confirm" (they're brand new,
+    // not on the Directory sheet at all yet) -- skip onboarding entirely
+    // and land straight on the one real thing their account can do.
+    if (isInternAccount) {
+      navigate("/accelerator");
+      return;
+    }
 
     navigate(isOnboarded ? redirectTo || "/" : "/onboarding", { state: { isAlumni: isAlumniAccount } });
   }
@@ -351,7 +360,8 @@ export default function SignIn() {
         </div>
         <p className="auth__note">
           Current members sign up using the UC roster; alumni sign up with the email on file in the
-          UConsulting Directory.
+          UConsulting Directory; incoming accelerator interns sign up with the email an admin's added
+          for them.
         </p>
       </div>
     </div>

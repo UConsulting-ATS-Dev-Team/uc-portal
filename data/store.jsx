@@ -615,6 +615,7 @@ export function AppStateProvider({ children }) {
         isAdmin: realRole === "admin",
         realMemberStatus,
         isAlumni: realMemberStatus === "alumni",
+        isIntern: realMemberStatus === "intern",
         updatePreferences,
         updateRecruitingSetting,
         updateProfileOverrides,

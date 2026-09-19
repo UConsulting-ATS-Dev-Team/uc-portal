@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../data/supabaseClient.js";
+import { graduateIntern } from "../data/acceleratorSync.js";
 import "../styles/jobDetail.css";
 import "../styles/admin.css";
 
@@ -51,6 +52,17 @@ export default function AdminMembers() {
     setActioningId(null);
   }
 
+  async function graduate(member) {
+    setActioningId(member.member_id);
+    try {
+      await graduateIntern(member.member_id);
+      setMembers((prev) => prev.map((m) => (m.member_id === member.member_id ? { ...m, member_status: "current_member" } : m)));
+    } catch (err) {
+      setError(err.message);
+    }
+    setActioningId(null);
+  }
+
   return (
     <div>
       <h1>Members</h1>
@@ -71,6 +83,7 @@ export default function AdminMembers() {
                 <th>Email</th>
                 <th>Joined</th>
                 <th>Role</th>
+                <th>Status</th>
                 <th></th>
               </tr>
             </thead>
@@ -91,6 +104,11 @@ export default function AdminMembers() {
                       </span>
                     </td>
                     <td>
+                      <span className={`chip${m.member_status === "intern" ? " chip-accent" : ""}`}>
+                        {m.member_status === "current_member" ? "Current member" : m.member_status === "alumni" ? "Alumni" : "Intern"}
+                      </span>
+                    </td>
+                    <td style={{ display: "flex", gap: "var(--space-2)" }}>
                       <button
                         className="btn btn-secondary"
                         disabled={isBusy || isSelf}
@@ -99,20 +117,25 @@ export default function AdminMembers() {
                       >
                         {isBusy ? "Saving…" : m.role === "admin" ? "Demote to member" : "Promote to admin"}
                       </button>
+                      {m.member_status === "intern" && (
+                        <button className="btn btn-secondary" disabled={isBusy} onClick={() => graduate(m)}>
+                          Graduate to current member
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
               })}
               {!loading && members.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="meta">
+                  <td colSpan={6} className="meta">
                     No real signed-up accounts yet.
                   </td>
                 </tr>
               )}
               {loading && (
                 <tr>
-                  <td colSpan={5} className="meta">
+                  <td colSpan={6} className="meta">
                     Loading…
                   </td>
                 </tr>

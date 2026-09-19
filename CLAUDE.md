@@ -2816,6 +2816,87 @@ longer breaks down to phone width either.
   -- verified by code review, not a live drag; the button path above is
   the fully-verified, always-available primary interaction regardless.
 
+- **Real intern accounts + accelerator program** — direct ask from the
+  user's advisor: a 6-8 week weekly curriculum for incoming freshmen
+  (prep material to review, a real graded assignment per week), gated
+  behind a new "Intern" account tier that "essentially only has this
+  education function until they finish." Scoped via 4 real decisions
+  before building: (1) interns are brand-new recruits with no roster/
+  Directory record at all, so a new admin-managed `intern_roster`
+  allowlist (same shape as `roster`) is how they get signup access, not
+  either existing path; (2) the anti-skip mechanism is a required
+  submission, not a timer -- no submission means no progress to the next
+  lesson, and a rushed/empty one shows up plainly when an admin grades
+  it; (3) "students can interact with" the uploaded slideshows/PDFs/
+  Excel means view/download the material and submit a separate response
+  (text and/or file) -- not true in-browser editing of the file itself,
+  a meaningfully bigger build declined for now; (4) one evergreen
+  curriculum, not per-cohort content, but built as plain admin CRUD
+  (`pages/AdminAccelerator.jsx`) so it's genuinely easy to adjust year to
+  year without a code change, per direct instruction.
+
+  `profiles.member_status` gains a third real value (`intern`, alongside
+  `current_member`/`alumni`) rather than a new column -- same axis,
+  same precedent the alumni-accounts migration already established.
+  `can_sign_up()`/`handle_new_user()` extended with an `intern_roster`
+  branch (precedence: real roster/alumni matches still win if somehow
+  both are true for one email). New tables
+  (`accelerator_lessons`, `accelerator_materials`,
+  `accelerator_submissions` -- own-row select/insert/update for a
+  submission, admin-all for grading) and two Storage buckets
+  (`accelerator-materials`: public, admin-only write, same reasoning as
+  avatars -- not sensitive; `accelerator-submissions`: private, own-
+  folder RLS plus a real admin-read-all policy, same shape as resumes).
+  `components/RequireNotIntern.jsx` guards essentially the entire route
+  tree except `/accelerator`, `/profile`, and `/onboarding` -- an
+  intern's real allowed set -- mirroring `RequireCurrentMember.jsx`'s
+  existing "guard the route, don't just hide the link" principle; a new
+  `INTERN_ITEMS` nav set (`data/navItems.js`) hides everything else from
+  NavRail/BottomTabBar, and `TopBar.jsx`'s Messages/Notifications icons
+  are hidden too (the route guard already blocked them, but showing a
+  dead-end icon contradicted the whole point). `SignIn.jsx` routes a
+  fresh intern signup straight to `/accelerator`, skipping onboarding
+  entirely -- there's no Directory record to "confirm." Admin gets a
+  real "Graduate to current member" action on the existing Members page
+  (`pages/AdminMembers.jsx`, a plain `profiles` update through the same
+  RLS path its existing role-toggle already uses).
+
+  **A real, separate security gap found and fixed while building this**:
+  `profiles_update_own` lets any signed-in account update its own row
+  directly, and the existing role-escalation trigger only ever clamped
+  `role` -- `member_status` (added later, for alumni) was never covered,
+  so any member could already self-promote their own `member_status` via
+  a plain client call. Pre-existing, not introduced here, but it matters
+  far more now that an intern's entire access model depends on
+  `member_status` only ever changing through an admin action -- extended
+  `prevent_role_self_escalation()` to clamp both columns.
+
+  Verified live end-to-end with two real throwaway accounts (admin +
+  intern): a real `signUp()` for the intern-roster email correctly
+  proceeded past the roster gate (not "not on the roster") -- caught and
+  fixed a real quirk along the way, Supabase's signup validator rejects
+  `@example.com` specifically (a reserved documentation domain) even
+  though direct SQL inserts bypass that check entirely, so this one
+  needed a real disposable-mail domain instead; `handle_new_user()`
+  correctly set `member_status = 'intern'`; sign-in landed straight on
+  Accelerator, not onboarding; nav showed only Accelerator + My Profile;
+  a direct `/jobs` URL correctly bounced back to `/accelerator`; the
+  admin's uploaded material was visible to the intern; submitting week
+  1's assignment correctly unlocked week 2; the admin's grade appeared
+  on the intern's own view; the intern's own attempt to self-promote
+  their `member_status` via a direct client call silently no-opped (the
+  trigger fix, confirmed against the live database, not just the
+  client's optimistic response); and the admin's real "Graduate to
+  current member" click correctly flipped the status where the intern's
+  own attempt couldn't. Cleaned up completely afterward -- both
+  accounts, the test lesson/material/submission, and (after discovering
+  the Storage CLI's `rm` needs an explicit confirmation the first
+  non-interactive attempts silently skipped) the uploaded test file
+  itself -- confirmed zero residue: `residue_auth=0 residue_roster=0
+  residue_intern_roster=0 residue_lessons=0 residue_materials=0
+  residue_submissions=0 roster_total=52`, zero objects left in either
+  Storage bucket.
+
 Run locally:
 ```bash
 npm install

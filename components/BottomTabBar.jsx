@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { MoreHorizontal, X } from "lucide-react";
-import { MAIN_ITEMS, LEADERSHIP_ITEMS, BOTTOM_BAR_PRIMARY_KEYS } from "../data/navItems.js";
+import { MAIN_ITEMS, INTERN_ITEMS, LEADERSHIP_ITEMS, BOTTOM_BAR_PRIMARY_KEYS } from "../data/navItems.js";
 import { useAppState } from "../data/store.jsx";
 
 // Phone-UX pass: below 640px (styles/shell.css's phone tier), this
@@ -25,16 +25,18 @@ export default function BottomTabBar() {
   const location = useLocation();
   // Real profiles.role, not the disconnected mock data/mockUser.js#
   // currentUser.role -- same fix as NavRail.jsx's identical check.
-  const { isAdmin, isAlumni, trackedJobs } = useAppState();
+  const { isAdmin, isAlumni, isIntern, trackedJobs } = useAppState();
 
-  const availableItems = isAlumni ? MAIN_ITEMS.filter((item) => !item.currentMemberOnly) : MAIN_ITEMS;
+  const availableItems = isIntern ? INTERN_ITEMS : isAlumni ? MAIN_ITEMS.filter((item) => !item.currentMemberOnly) : MAIN_ITEMS;
   // BOTTOM_BAR_PRIMARY_KEYS was picked around current-member priorities
   // (Jobs/Applications are two of its four slots) -- meaningless for
-  // alumni, who don't have those routes at all. Alumni's whole available
-  // set (Network, Feed, Companies, My Profile) happens to be exactly 4,
-  // so it fits directly as primary tabs with no "More" overflow needed.
-  const primaryItems = isAlumni ? availableItems : availableItems.filter((item) => BOTTOM_BAR_PRIMARY_KEYS.includes(item.to));
-  const moreItems = isAlumni ? [] : availableItems.filter((item) => !BOTTOM_BAR_PRIMARY_KEYS.includes(item.to));
+  // alumni/interns, who don't have those routes at all. Alumni's whole
+  // available set (Network, Feed, Companies, My Profile) happens to be
+  // exactly 4, and an intern's (Accelerator, My Profile) is only 2 -- both
+  // fit directly as primary tabs with no "More" overflow needed.
+  const noOverflow = isAlumni || isIntern;
+  const primaryItems = noOverflow ? availableItems : availableItems.filter((item) => BOTTOM_BAR_PRIMARY_KEYS.includes(item.to));
+  const moreItems = noOverflow ? [] : availableItems.filter((item) => !BOTTOM_BAR_PRIMARY_KEYS.includes(item.to));
   // "More" itself reads as active on any route not covered by a primary
   // tab (e.g. a job/company/resource detail page, or any /admin/* route)
   // so the bar always shows *something* selected instead of going blank.

@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import RequireAuth from "./components/RequireAuth.jsx";
 import RequireCurrentMember from "./components/RequireCurrentMember.jsx";
+import RequireNotIntern from "./components/RequireNotIntern.jsx";
 import NavShell from "./components/NavShell.jsx";
 import Placeholder from "./pages/Placeholder.jsx";
 import SignIn from "./pages/SignIn.jsx";
@@ -24,6 +25,8 @@ import Home from "./pages/Home.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import GlobalSearch from "./pages/GlobalSearch.jsx";
 import Messages from "./pages/Messages.jsx";
+import Accelerator from "./pages/Accelerator.jsx";
+import AdminAccelerator from "./pages/AdminAccelerator.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
 // Each route below is a stub until it's built for real, per the build
@@ -45,6 +48,11 @@ export default function App() {
           comment for why this exists (it didn't, until real jobs/network/
           etc. data started needing `authenticated`-only RLS). */}
       <Route element={<RequireAuth />}>
+      {/* Everything below (except /accelerator, /profile, /onboarding)
+          is off-limits to an intern account -- redirected to /accelerator
+          instead. See components/RequireNotIntern.jsx's own header
+          comment. */}
+      <Route element={<RequireNotIntern />}>
       {/* Current-member-only routes (active job-searching) -- real alumni
           accounts are redirected to /feed instead. See
           components/RequireCurrentMember.jsx's own header comment. */}
@@ -162,14 +170,6 @@ export default function App() {
       />
       </Route>
       <Route
-        path="/profile"
-        element={
-          <NavShell>
-            <MyProfile />
-          </NavShell>
-        }
-      />
-      <Route
         path="/notifications"
         element={
           <NavShell>
@@ -193,7 +193,6 @@ export default function App() {
           </NavShell>
         }
       />
-      <Route path="/onboarding" element={<Onboarding />} />
 
       {/* Leadership only — see components/NavRail.jsx for the visibility gate */}
       <Route
@@ -228,6 +227,37 @@ export default function App() {
           </NavShell>
         }
       />
+      <Route
+        path="/admin/accelerator"
+        element={
+          <NavShell>
+            <AdminAccelerator />
+          </NavShell>
+        }
+      />
+
+      </Route>
+
+      {/* Intern-accessible: /accelerator, /profile, /onboarding stay
+          outside the RequireNotIntern block above -- an intern's own
+          allowed set. */}
+      <Route
+        path="/accelerator"
+        element={
+          <NavShell>
+            <Accelerator />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <NavShell>
+            <MyProfile />
+          </NavShell>
+        }
+      />
+      <Route path="/onboarding" element={<Onboarding />} />
 
       </Route>
 

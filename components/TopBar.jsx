@@ -15,7 +15,7 @@ const SIGNUPS_LAST_SEEN_KEY = "uc-portal-admin-signups-last-seen";
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showRequestFeature, setShowRequestFeature] = useState(false);
-  const { profileOverrides, needsActionCount, isAdmin } = useAppState();
+  const { profileOverrides, needsActionCount, isAdmin, isIntern } = useAppState();
   // Was CONVERSATIONS.filter(c => c.unread).length -- a fixed mock count
   // shown to every signed-in user regardless of their real inbox, same
   // bug class as the notification bell's old navCounts.notificationsUnread.
@@ -97,15 +97,19 @@ export default function TopBar() {
           </Link>
         )}
 
-        <Link className="topbar__notifications" to="/messages" aria-label="Messages">
-          ✉️
-          {unreadMessageCount > 0 && <span className="topbar__notifications-count">{unreadMessageCount}</span>}
-        </Link>
+        {!isIntern && (
+          <>
+            <Link className="topbar__notifications" to="/messages" aria-label="Messages">
+              ✉️
+              {unreadMessageCount > 0 && <span className="topbar__notifications-count">{unreadMessageCount}</span>}
+            </Link>
 
-        <Link className="topbar__notifications" to="/notifications" aria-label="Notifications">
-          🔔
-          {needsActionCount > 0 && <span className="topbar__notifications-count">{needsActionCount}</span>}
-        </Link>
+            <Link className="topbar__notifications" to="/notifications" aria-label="Notifications">
+              🔔
+              {needsActionCount > 0 && <span className="topbar__notifications-count">{needsActionCount}</span>}
+            </Link>
+          </>
+        )}
 
         <div>
           <button

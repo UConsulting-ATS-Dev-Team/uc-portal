@@ -11,6 +11,7 @@ import {
   Database,
   UserCog,
   FileText,
+  Rocket,
 } from "lucide-react";
 
 // Extracted out of components/NavRail.jsx so components/BottomTabBar.jsx
@@ -44,6 +45,18 @@ export const MAIN_ITEMS = [
   { label: "Feed", to: "/feed", icon: Rss },
   { label: "Companies", to: "/companies", icon: Building2 },
   { label: "Career Resources", to: "/resources", icon: GraduationCap, currentMemberOnly: true },
+  { label: "Accelerator", to: "/accelerator", icon: Rocket },
+  { label: "My Profile", to: "/profile", icon: CircleUserRound },
+];
+
+// A signed-in account with member_status = 'intern' sees only this --
+// essentially just the accelerator program, per direct ask ("essentially
+// only has this education function until they finish"). Route-guarded
+// too (components/RequireNotIntern.jsx), not just hidden from nav -- same
+// "guard the route, don't just hide the link" principle
+// RequireCurrentMember.jsx already established for alumni.
+export const INTERN_ITEMS = [
+  { label: "Accelerator", to: "/accelerator", icon: Rocket },
   { label: "My Profile", to: "/profile", icon: CircleUserRound },
 ];
 
@@ -52,6 +65,7 @@ export const LEADERSHIP_ITEMS = [
   { label: "Job sources", to: "/admin/opportunities", icon: Database },
   { label: "Members", to: "/admin/members", icon: UserCog },
   { label: "Content", to: "/admin/content", icon: FileText },
+  { label: "Accelerator", to: "/admin/accelerator", icon: Rocket },
 ];
 
 // The 4 highest-priority destinations for the phone-width bottom tab bar
