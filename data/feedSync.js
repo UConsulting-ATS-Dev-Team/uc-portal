@@ -82,3 +82,17 @@ export async function submitFeedPost({ body, postType, authorName, authorRoleLin
   if (error) throw new Error(error.message);
   return data;
 }
+
+// Real own-row update/delete -- feed_posts_update_own/delete_own (RLS)
+// already scoped these to author_id = auth.uid(); this closes the
+// missing UI, not a new backend capability.
+export async function updateFeedPost(id, body) {
+  const { data, error } = await supabase.from("feed_posts").update({ body }).eq("id", id).select().single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function deleteFeedPost(id) {
+  const { error } = await supabase.from("feed_posts").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}

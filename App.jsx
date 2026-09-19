@@ -1,11 +1,12 @@
+import { Suspense, lazy } from "react";
 import { Routes, Route } from "react-router-dom";
 import RequireAuth from "./components/RequireAuth.jsx";
 import RequireCurrentMember from "./components/RequireCurrentMember.jsx";
 import RequireNotIntern from "./components/RequireNotIntern.jsx";
 import NavShell from "./components/NavShell.jsx";
+import Skeleton from "./components/Skeleton.jsx";
 import Placeholder from "./pages/Placeholder.jsx";
 import SignIn from "./pages/SignIn.jsx";
-import Onboarding from "./pages/Onboarding.jsx";
 import Jobs from "./pages/Jobs.jsx";
 import JobDetail from "./pages/JobDetail.jsx";
 import Applications from "./pages/Applications.jsx";
@@ -18,16 +19,35 @@ import CareerResources from "./pages/CareerResources.jsx";
 import ResourceDetail from "./pages/ResourceDetail.jsx";
 import LearningTrackDetail from "./pages/LearningTrackDetail.jsx";
 import MyProfile from "./pages/MyProfile.jsx";
-import AdminDashboard from "./pages/AdminDashboard.jsx";
-import AdminMembers from "./pages/AdminMembers.jsx";
-import SourceManagement from "./pages/SourceManagement.jsx";
 import Home from "./pages/Home.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import GlobalSearch from "./pages/GlobalSearch.jsx";
 import Messages from "./pages/Messages.jsx";
 import Accelerator from "./pages/Accelerator.jsx";
-import AdminAccelerator from "./pages/AdminAccelerator.jsx";
 import NotFound from "./pages/NotFound.jsx";
+
+// Lazy-loaded: every real member hits the routes above on essentially
+// every session, but these are each either a one-time flow (Onboarding)
+// or Leadership-only (the rest) -- most real members never load this
+// code at all. Code-splitting them out of the main bundle means a
+// regular member's first load doesn't pay for admin/onboarding-only
+// code. Each gets its own Suspense boundary at the route level (not one
+// wrapping all of <Routes>) so NavShell -- the nav rail/top bar -- stays
+// mounted and stable during the chunk fetch instead of the whole page
+// flashing to a fallback.
+const Onboarding = lazy(() => import("./pages/Onboarding.jsx"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard.jsx"));
+const AdminMembers = lazy(() => import("./pages/AdminMembers.jsx"));
+const SourceManagement = lazy(() => import("./pages/SourceManagement.jsx"));
+const AdminAccelerator = lazy(() => import("./pages/AdminAccelerator.jsx"));
+
+function LazyPage({ Component }) {
+  return (
+    <Suspense fallback={<Skeleton lines={4} />}>
+      <Component />
+    </Suspense>
+  );
+}
 
 // Each route below is a stub until it's built for real, per the build
 // order in CLAUDE.md (shell → auth → onboarding → jobs → job detail →
@@ -199,7 +219,7 @@ export default function App() {
         path="/admin"
         element={
           <NavShell>
-            <AdminDashboard />
+            <LazyPage Component={AdminDashboard} />
           </NavShell>
         }
       />
@@ -207,7 +227,7 @@ export default function App() {
         path="/admin/opportunities"
         element={
           <NavShell>
-            <SourceManagement />
+            <LazyPage Component={SourceManagement} />
           </NavShell>
         }
       />
@@ -215,7 +235,7 @@ export default function App() {
         path="/admin/members"
         element={
           <NavShell>
-            <AdminMembers />
+            <LazyPage Component={AdminMembers} />
           </NavShell>
         }
       />
@@ -231,7 +251,7 @@ export default function App() {
         path="/admin/accelerator"
         element={
           <NavShell>
-            <AdminAccelerator />
+            <LazyPage Component={AdminAccelerator} />
           </NavShell>
         }
       />
@@ -257,7 +277,7 @@ export default function App() {
           </NavShell>
         }
       />
-      <Route path="/onboarding" element={<Onboarding />} />
+      <Route path="/onboarding" element={<LazyPage Component={Onboarding} />} />
 
       </Route>
 

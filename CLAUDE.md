@@ -2897,6 +2897,75 @@ longer breaks down to phone width either.
   residue_submissions=0 roster_total=52`, zero objects left in either
   Storage bucket.
 
+- **Five self-proposed improvements, all built in one pass** — asked
+  directly "what else do we need," gave five concrete, grounded
+  recommendations (not speculative), then built all five on approval:
+
+  1. **Bulk-add for the intern roster** — the single-entry admin form
+     from the accelerator build was real friction waiting to happen the
+     first time an advisor onboards a whole incoming class. New
+     `bulkAddInternRoster()` (`data/acceleratorSync.js`) parses one
+     email (or "email, name") per line and upserts them all in one
+     call, on `AdminAccelerator.jsx`'s existing intern-roster section.
+  2. **Intern progress overview** — Admin → Accelerator only ever showed
+     submissions *per lesson*; there was no single "every intern, how
+     far along" view. New `fetchInternProgress()` joins `list_members()`
+     against every real submission (client-side, small tables) into one
+     table: submitted/graded counts, furthest week reached, last
+     submission date.
+  3. **Edit/delete your own Feed post; delete your own interview
+     write-up** — both `feed_posts` and `interview_writeups` already had
+     own-row update/delete RLS from an earlier pass (`20260914030000_rls
+     _gap_fixes.sql`) -- this was purely a missing-UI gap, no new
+     backend capability. Feed posts get real inline edit (textarea +
+     Save/Cancel) and delete; write-ups get delete only, scoped to
+     `RealJobDetail.jsx`'s full write-up card (not the excerpted
+     "quotes" on Company Page, a different, less natural place to
+     manage your own submission).
+  4. **Route-level code-splitting** — the main JS bundle had grown
+     across this session's feature work (200KB gzipped at the start,
+     ~212KB by this point) with Vite's own build output warning about
+     the 500KB-chunk threshold for a while. `React.lazy()` +
+     per-route `Suspense` (not one boundary around all of `<Routes>` --
+     that would unmount `NavShell` itself on every lazy navigation) for
+     Onboarding and every Leadership-only page (`AdminDashboard`,
+     `AdminMembers`, `SourceManagement`, `AdminAccelerator`) -- a
+     one-time flow and admin-only screens respectively, code most real
+     members never load at all. Verified via real build output: main
+     chunk 769.79KB → 709.34KB (gzip 212.11KB → 198.13KB), with each
+     split page appearing as its own on-demand chunk (AdminDashboard
+     30.19KB, Onboarding 12.81KB, AdminAccelerator 10.47KB,
+     SourceManagement 5.53KB, AdminMembers 3.01KB).
+  5. **A refreshed RLS/pagination audit** — the last full pass was
+     months ago and substantial new surface has shipped since (work
+     history, message archiving, interns/accelerator). Queried every
+     public table's RLS status directly rather than trusting memory:
+     all 30 tables have RLS enabled with at least one real policy, zero
+     gaps. Inspected every single-policy table's exact definition
+     (`qual`/`with_check`, not just policy count) to rule out an
+     overly-broad `USING` clause -- all correctly scoped (reference
+     tables read-only-for-authenticated with no write path at all,
+     internal pipeline tables admin-only, `people` split
+     read-for-authenticated/write-for-admin as documented). Found one
+     real, if low-urgency, pagination gap: `fetchInternProgress()`'s
+     app-wide `accelerator_submissions` fetch was a bare `.select()`,
+     the same silent-1000-row-truncation shape that already bit the
+     Jobs board, the Companies grid, and `feed_posts` once each in this
+     project's history. Fixed proactively via `fetchAllRows()` before
+     it became a fourth real incident, even though this club's real
+     scale (one cohort's worth of interns × ~8 lessons/year) is nowhere
+     near the threshold today.
+
+  Verified live with one more throwaway admin account: both lazy-loaded
+  Onboarding and `AdminDashboard` rendered correctly with real data (not
+  a blank Suspense fallback stuck mid-load); bulk-add correctly created
+  both real `intern_roster` rows from a two-line paste; a real Feed post
+  was edited (confirmed the new body persisted in the database, not just
+  the optimistic UI) and then deleted; a real interview write-up was
+  submitted and deleted the same way. Cleaned up completely afterward;
+  confirmed zero residue (`auth_total=1 roster_total=52
+  intern_roster_total=0 feed_posts_total=0 writeups_total=0`).
+
 Run locally:
 ```bash
 npm install

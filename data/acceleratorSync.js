@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient.js";
+import { fetchAllRows } from "./fetchAllRows.js";
 
 // Real accelerator program (freshmen onboarding) -- see the
 // intern_accelerator migration's own header comment for the full
@@ -129,6 +130,47 @@ export async function deleteMaterial(material) {
   if (error) throw new Error(error.message);
 }
 
+// Real "at a glance" roster progress -- closes the gap the per-lesson
+// submissions table alone left: no single view of "every intern, how
+// far along are they." Joins list_members() (admin-only, already the
+// real name/email resolver AdminMembers.jsx uses) against every real
+// submission, client-side -- small enough tables that a second query
+// per row isn't worth avoiding the join for.
+export async function fetchInternProgress() {
+  // All real submissions app-wide, not one lesson's worth -- unlikely to
+  // ever near PostgREST's 1000-row default at this club's real scale
+  // (a cohort's worth of interns x ~8 lessons/year), but real, not
+  // hypothetical: fetchAllRows() closes the exact silent-truncation class
+  // of bug that already bit the Jobs board, the Companies grid, and
+  // feed_posts once each in this project's history -- cheap to apply
+  // proactively rather than wait for a fourth real incident.
+  const [{ data: members, error: membersError }, lessons, allSubmissions] = await Promise.all([
+    supabase.rpc("list_members"),
+    fetchLessons(),
+    fetchAllRows("accelerator_submissions", "*"),
+  ]);
+  if (membersError) throw new Error(membersError.message);
+
+  const interns = (members ?? []).filter((m) => m.member_status === "intern");
+  const lessonByWeek = new Map(lessons.map((l) => [l.id, l.week_number]));
+
+  return interns.map((intern) => {
+    const own = allSubmissions.filter((s) => s.profile_id === intern.member_id);
+    const weeksSubmitted = own.map((s) => lessonByWeek.get(s.lesson_id)).filter((w) => w != null);
+    const graded = own.filter((s) => s.graded_at != null);
+    return {
+      memberId: intern.member_id,
+      displayName: intern.display_name,
+      email: intern.email,
+      submittedCount: own.length,
+      totalLessons: lessons.length,
+      highestWeek: weeksSubmitted.length ? Math.max(...weeksSubmitted) : 0,
+      gradedCount: graded.length,
+      lastSubmittedAt: own.length ? own.map((s) => s.submitted_at).sort().at(-1) : null,
+    };
+  });
+}
+
 export async function fetchSubmissionsForLesson(lessonId) {
   const { data, error } = await supabase.from("accelerator_submissions").select("*").eq("lesson_id", lessonId);
   if (error) throw new Error(error.message);
@@ -163,6 +205,30 @@ export async function addInternRosterEntry(email, name) {
 export async function removeInternRosterEntry(email) {
   const { error } = await supabase.from("intern_roster").delete().eq("email", email);
   if (error) throw new Error(error.message);
+}
+
+// Real bulk-add for onboarding a whole incoming cohort at once -- one row
+// per line, "email" or "email, name". Real friction otherwise: an
+// advisor adding 10-30 freshmen one at a time through the single-entry
+// form above. Upserts (on_conflict: email) so re-pasting an already-added
+// email is harmless, not a duplicate-key error mid-batch.
+export async function bulkAddInternRoster(text) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const rows = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [email, ...rest] = line.split(",");
+      return { email: email.trim().toLowerCase(), name: rest.join(",").trim() || null, added_by: user.id };
+    })
+    .filter((r) => r.email.includes("@"));
+  if (rows.length === 0) return 0;
+  const { error } = await supabase.from("intern_roster").upsert(rows, { onConflict: "email" });
+  if (error) throw new Error(error.message);
+  return rows.length;
 }
 
 // Real "graduate to current member" action -- a plain update against

@@ -5,7 +5,8 @@ import { JOBS } from "../data/mockJobs.js";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
 import { displayName } from "../data/profileUtils.js";
-import { fetchFeedPosts, submitFeedPost, feedRowToPost } from "../data/feedSync.js";
+import { fetchFeedPosts, submitFeedPost, updateFeedPost, deleteFeedPost, feedRowToPost } from "../data/feedSync.js";
+import { supabase } from "../data/supabaseClient.js";
 import { listOpenToCoffeeChatMembers } from "../data/messagesSync.js";
 import { fetchMemberAvatars } from "../data/avatarSync.js";
 import { fetchOwnWorkHistory } from "../data/workHistorySync.js";
@@ -41,6 +42,9 @@ export default function Feed() {
   const [savedPosts, setSavedPosts] = useState([]);
   const [rsvpedPosts, setRsvpedPosts] = useState([]);
   const [avatarsById, setAvatarsById] = useState(new Map());
+  const [currentAccountId, setCurrentAccountId] = useState(null);
+  const [editingPostId, setEditingPostId] = useState(null);
+  const [editDraft, setEditDraft] = useState("");
 
   // Shared by the mount fetch and pull-to-refresh -- same fetch, just
   // triggered two different ways.
@@ -50,6 +54,27 @@ export default function Feed() {
       .catch((err) => setPostsError(err.message))
       .finally(() => setPostsLoading(false));
   }
+
+  function startEditPost(post) {
+    setEditingPostId(post.id);
+    setEditDraft(post.body);
+  }
+
+  function saveEditPost(postId) {
+    if (!editDraft.trim()) return;
+    updateFeedPost(postId, editDraft.trim()).then(() => {
+      setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, body: editDraft.trim() } : p)));
+      setEditingPostId(null);
+    });
+  }
+
+  function handleDeletePost(postId) {
+    deleteFeedPost(postId).then(() => setPosts((prev) => prev.filter((p) => p.id !== postId)));
+  }
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentAccountId(data?.user?.id ?? null));
+  }, []);
 
   useEffect(() => {
     refreshFeed();
@@ -233,7 +258,26 @@ export default function Feed() {
                 {post.roleLine ? `${post.roleLine} · ` : ""}
                 {post.timestamp}
               </p>
-              <p className="post-card__body">{post.body}</p>
+              {editingPostId === post.id ? (
+                <div style={{ marginBottom: "var(--space-3)" }}>
+                  <textarea
+                    rows={3}
+                    value={editDraft}
+                    onChange={(e) => setEditDraft(e.target.value)}
+                    style={{ width: "100%" }}
+                  />
+                  <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
+                    <button className="btn btn-secondary" onClick={() => saveEditPost(post.id)} disabled={!editDraft.trim()}>
+                      Save
+                    </button>
+                    <button className="btn-link" onClick={() => setEditingPostId(null)}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="post-card__body">{post.body}</p>
+              )}
 
               {job && (
                 <div className="post-card__embed">
@@ -255,6 +299,16 @@ export default function Feed() {
                     Add to calendar
                   </button>
                   <span className="post-card__proof">{rsvpCount} attending</span>
+                  {post.authorId === currentAccountId && (
+                    <>
+                      <button className="btn-link" onClick={() => startEditPost(post)}>
+                        Edit
+                      </button>
+                      <button className="btn-link" onClick={() => handleDeletePost(post.id)}>
+                        Delete
+                      </button>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="post-card__engagement">
@@ -269,6 +323,16 @@ export default function Feed() {
                     Share
                   </button>
                   {post.socialProof && <span className="post-card__proof">{post.socialProof}</span>}
+                  {post.authorId === currentAccountId && (
+                    <>
+                      <button className="btn-link" onClick={() => startEditPost(post)}>
+                        Edit
+                      </button>
+                      <button className="btn-link" onClick={() => handleDeletePost(post.id)}>
+                        Delete
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>

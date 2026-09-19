@@ -71,3 +71,11 @@ export async function submitInterviewWriteup({ jobId, company, title, round, out
   });
   if (error) throw new Error(error.message);
 }
+
+// Real own-row delete -- interview_writeups_delete_own (RLS) already
+// scoped this to submitted_by = auth.uid() since the RLS gap fixes pass;
+// this just closes the missing UI, not a new backend capability.
+export async function deleteInterviewWriteup(id) {
+  const { error } = await supabase.from("interview_writeups").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}

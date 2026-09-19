@@ -15,6 +15,8 @@ import {
   fetchInternRoster,
   addInternRosterEntry,
   removeInternRosterEntry,
+  bulkAddInternRoster,
+  fetchInternProgress,
 } from "../data/acceleratorSync.js";
 import "../styles/jobDetail.css";
 import "../styles/admin.css";
@@ -27,6 +29,10 @@ function InternRoster() {
   const [name, setName] = useState("");
   const [error, setError] = useState(null);
   const [adding, setAdding] = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const [bulkAdding, setBulkAdding] = useState(false);
+  const [bulkResult, setBulkResult] = useState(null);
 
   function load() {
     fetchInternRoster().then(setEntries).catch((e) => setError(e.message));
@@ -57,6 +63,23 @@ function InternRoster() {
     load();
   }
 
+  async function bulkAdd() {
+    if (!bulkText.trim()) return;
+    setBulkAdding(true);
+    setError(null);
+    setBulkResult(null);
+    try {
+      const count = await bulkAddInternRoster(bulkText);
+      setBulkResult(`Added/updated ${count} email${count === 1 ? "" : "s"}.`);
+      setBulkText("");
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBulkAdding(false);
+    }
+  }
+
   return (
     <div className="detail-section">
       <p style={{ fontWeight: 700 }}>Who can sign up as an intern</p>
@@ -76,7 +99,29 @@ function InternRoster() {
         <button className="btn btn-primary" onClick={add} disabled={adding || !email.trim()}>
           {adding ? "Adding…" : "Add"}
         </button>
+        <button className="btn-link" onClick={() => setShowBulk((s) => !s)}>
+          {showBulk ? "Hide bulk add" : "Bulk add a whole cohort"}
+        </button>
       </div>
+
+      {showBulk && (
+        <div style={{ marginTop: "var(--space-4)" }}>
+          <div className="field">
+            <label>One per line -- "email" or "email, name"</label>
+            <textarea
+              rows={6}
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+              placeholder={"freshman1@ucla.edu, Jane Doe\nfreshman2@ucla.edu"}
+            />
+          </div>
+          <button className="btn btn-primary" onClick={bulkAdd} disabled={bulkAdding || !bulkText.trim()}>
+            {bulkAdding ? "Adding…" : "Add all"}
+          </button>
+          {bulkResult && <p className="meta">{bulkResult}</p>}
+        </div>
+      )}
+
       {error && <p className="meta" style={{ color: "#B3261E" }}>{error}</p>}
       <ul style={{ marginTop: "var(--space-4)" }}>
         {entries.map((e) => (
@@ -144,6 +189,65 @@ function GradeRow({ submission, displayName, onGraded }) {
         </button>
       </td>
     </tr>
+  );
+}
+
+function InternProgress() {
+  const [progress, setProgress] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchInternProgress().then(setProgress).catch((e) => setError(e.message));
+  }, []);
+
+  return (
+    <div className="detail-section">
+      <p style={{ fontWeight: 700 }}>Intern progress</p>
+      <p className="meta">Every real intern account, at a glance -- who's on track and who's stalled.</p>
+      {error && <p className="meta" style={{ color: "#B3261E" }}>{error}</p>}
+      <div className="queue-table__scroll">
+        <table className="queue-table">
+          <thead>
+            <tr>
+              <th>Intern</th>
+              <th>Submitted</th>
+              <th>Graded</th>
+              <th>Furthest week</th>
+              <th>Last submission</th>
+            </tr>
+          </thead>
+          <tbody>
+            {progress === null && (
+              <tr>
+                <td colSpan={5} className="meta">
+                  Loading…
+                </td>
+              </tr>
+            )}
+            {progress?.length === 0 && (
+              <tr>
+                <td colSpan={5} className="meta">
+                  No real intern accounts have signed up yet.
+                </td>
+              </tr>
+            )}
+            {progress?.map((p) => (
+              <tr key={p.memberId}>
+                <td>
+                  {p.displayName} <span className="meta">({p.email})</span>
+                </td>
+                <td>
+                  {p.submittedCount} / {p.totalLessons}
+                </td>
+                <td>{p.gradedCount}</td>
+                <td>{p.highestWeek || "—"}</td>
+                <td className="meta">{p.lastSubmittedAt ? new Date(p.lastSubmittedAt).toLocaleDateString() : "Never"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
@@ -311,6 +415,8 @@ export default function AdminAccelerator() {
       {error && <p className="meta" style={{ color: "#B3261E" }}>{error}</p>}
 
       <InternRoster />
+
+      <InternProgress />
 
       <div className="detail-section">
         <p style={{ fontWeight: 700 }}>{editingId ? "Edit lesson" : "Add a lesson"}</p>

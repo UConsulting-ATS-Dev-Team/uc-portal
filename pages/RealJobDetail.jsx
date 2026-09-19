@@ -8,7 +8,7 @@ import { currentUser } from "../data/mockUser.js";
 import { resolvedClassYear } from "../data/profileUtils.js";
 import { fetchRealPeopleAtCompany } from "../data/realPeople.js";
 import { fetchWorkHistoryAtCompany } from "../data/workHistorySync.js";
-import { fetchRealWriteupsForJob } from "../data/realWriteups.js";
+import { fetchRealWriteupsForJob, deleteInterviewWriteup } from "../data/realWriteups.js";
 import { COMPANIES } from "../data/mockCompanies.js";
 import CompanyLogo from "../components/CompanyLogo.jsx";
 import OddsModel from "../components/OddsModel.jsx";
@@ -94,6 +94,14 @@ export default function RealJobDetail({ jobId }) {
   // resolves.
   const [writeups, setWriteups] = useState(undefined);
   const [showContributeModal, setShowContributeModal] = useState(false);
+  const [currentAccountId, setCurrentAccountId] = useState(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentAccountId(data?.user?.id ?? null));
+  }, []);
+
+  function handleDeleteWriteup(id) {
+    deleteInterviewWriteup(id).then(() => setWriteups((prev) => prev.filter((w) => w.id !== id)));
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -393,6 +401,11 @@ export default function RealJobDetail({ jobId }) {
                 </div>
                 <p style={{ fontWeight: 700, margin: "0 0 var(--space-2)" }}>{w.title}</p>
                 <p style={{ margin: 0 }}>{w.body}</p>
+                {w.submitted_by === currentAccountId && (
+                  <button className="btn-link" style={{ marginTop: "var(--space-2)" }} onClick={() => handleDeleteWriteup(w.id)}>
+                    Delete
+                  </button>
+                )}
               </div>
             ))}
             <button className="btn btn-secondary" style={{ marginTop: "var(--space-3)" }} onClick={() => setShowContributeModal(true)}>
