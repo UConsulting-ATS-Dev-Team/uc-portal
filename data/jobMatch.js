@@ -17,6 +17,7 @@
 // than server/src/rank.ts's real one -- see finalScore()'s own comment.
 
 import { canonicalIndustry } from "./careerOptions.js";
+import { DEFAULT_COMPANY_TIER } from "./companyTiers.js";
 
 // --- Hard constraints (US-33): filter out entirely, never just down-rank ---
 function isEligible(job, preferences, classYear) {
@@ -114,13 +115,79 @@ const DEFAULT_WEIGHTS = {
   quality: 0.05,
 };
 
-// Same mild decay as server/src/rank.ts's freshnessScore: full score at
-// <=7 days, tapering to 0 by 90 days. Reads the already-derived
+// Direct ask: "Best match" should lean on recency differently by company
+// tier -- a T0/T1 posting (core consulting, other elite name-brand) is
+// worth applying to even if it's a few days old (a 5-day-old McKinsey
+// posting should still usually beat a just-posted role at an
+// unclassified company), while T2/T3 postings should favor recency more,
+// since there's no scarcity value in an old posting there the way there
+// is at a name-brand firm.
+//
+// First attempt at this varied only *freshness's weight* per tier and
+// was wrong: it meant two jobs being compared used entirely different
+// weight vectors, and a company's own tier score never entered the
+// formula on its own -- freshness had to do double duty as both "how new
+// is this" and "how much does this company's prestige matter," and a
+// verification script (the user's own exact example: 5-day-old McKinsey
+// vs. a same-instant-fresh random company, equal match score) showed the
+// random company winning, backwards from the stated intent. Fixed with
+// two separate signals instead: a direct companyTierScore (a real, flat
+// preference for a better tier, independent of age) plus a *tier-varying
+// decay rate* for freshness (not weight -- every job's freshness
+// contribution uses the same shared weight, so comparisons stay
+// apples-to-apples; only how fast a posting "goes stale" differs by
+// tier). Re-verified against the same script before committing to these
+// numbers: T0 5-day-old beats T3 same-instant-fresh at equal match, a
+// genuinely stale T0 (60d) does eventually cede to a fresh T3 (leeway,
+// not immunity), and freshness swings far more sharply within T2/T3
+// (fast decay) than within T0/T1 (slow decay).
+const TIER_SCORE_BY_TIER = {
+  0: 1.0, // core consulting
+  1: 0.8, // other elite name-brand
+  2: 0.5, // recognizable corporate
+  3: 0.25, // everyone else -- also the fallback for an unclassified company
+};
+const FRESHNESS_DECAY_DAYS_BY_TIER = {
+  0: 90, // takes ~3 months to fully "go stale" -- real leeway
+  1: 75,
+  2: 30, // decays much faster -- recency starts to matter more
+  3: 14, // decays fastest -- freshness is the dominant real signal here
+};
+const TIER_WEIGHT = 0.1;
+const FRESHNESS_WEIGHT = 0.12;
+
+function weightsForTier() {
+  // A single shared vector, not tier-dependent -- only the two new
+  // factors' own *values* (not weights) vary by tier, via
+  // TIER_SCORE_BY_TIER / FRESHNESS_DECAY_DAYS_BY_TIER above. Every other
+  // factor is scaled proportionally into the remaining budget once,
+  // keeping the same relative balance DEFAULT_WEIGHTS already has to
+  // itself.
+  const scale = (1 - TIER_WEIGHT - FRESHNESS_WEIGHT) / (1 - DEFAULT_WEIGHTS.freshness);
+  return {
+    relevance: DEFAULT_WEIGHTS.relevance * scale,
+    memberMatch: DEFAULT_WEIGHTS.memberMatch * scale,
+    ucRelevance: DEFAULT_WEIGHTS.ucRelevance * scale,
+    deadlineUrgency: DEFAULT_WEIGHTS.deadlineUrgency * scale,
+    quality: DEFAULT_WEIGHTS.quality * scale,
+    companyTier: TIER_WEIGHT,
+    freshness: FRESHNESS_WEIGHT,
+  };
+}
+
+function companyTierScore(tier) {
+  return TIER_SCORE_BY_TIER[tier] ?? TIER_SCORE_BY_TIER[DEFAULT_COMPANY_TIER];
+}
+
+// Same mild-decay shape as server/src/rank.ts's freshnessScore, but the
+// decay window itself now depends on the company's tier (see above)
+// instead of a flat 90 days for everyone. Reads the already-derived
 // postedDaysAgo instead of re-diffing posted_date, since that's what the
 // adapted card shape carries.
-function freshnessScore(job) {
+function freshnessScore(job, tier) {
   if (job.postedDaysAgo == null) return 0.5;
-  return Math.max(0, Math.min(1, 1 - job.postedDaysAgo / 90));
+  const decayDays = FRESHNESS_DECAY_DAYS_BY_TIER[tier] ?? FRESHNESS_DECAY_DAYS_BY_TIER[DEFAULT_COMPANY_TIER];
+  return Math.max(0, Math.min(1, 1 - job.postedDaysAgo / decayDays));
 }
 
 // Same shape as server/src/rank.ts's deadlineUrgencyScore. `deadlineDate`
@@ -162,13 +229,22 @@ function textRelevanceScore(job, query) {
 // by this. Only sort order should reflect freshness/deadline/quality/UC-
 // relevance too; what's *displayed* as "this member's % match" should
 // keep meaning exactly what it says.
-export function finalScore(job, preferences, query, now = new Date(), weights = DEFAULT_WEIGHTS) {
+//
+// tierByCompany (data/companyTiers.js's fetchCompanyTiers() result) is
+// optional -- omitting it (or a company that isn't in the map) falls
+// back to DEFAULT_COMPANY_TIER's own weights, same "cap conservatively
+// rather than crash" fallback pages/Jobs.jsx's capPerCompany already
+// uses for the identical lookup.
+export function finalScore(job, preferences, query, now = new Date(), tierByCompany = null) {
+  const tier = tierByCompany?.get(job.company) ?? DEFAULT_COMPANY_TIER;
+  const weights = weightsForTier();
   return (
     weights.relevance * textRelevanceScore(job, query) +
     weights.memberMatch * (job.matchScore / 100) +
     weights.ucRelevance * ucRelevanceScore(job, preferences) +
     weights.deadlineUrgency * deadlineUrgencyScore(job, now) +
-    weights.freshness * freshnessScore(job) +
-    weights.quality * (job.qualityScore ?? 0.5)
+    weights.quality * (job.qualityScore ?? 0.5) +
+    weights.companyTier * companyTierScore(tier) +
+    weights.freshness * freshnessScore(job, tier)
   );
 }

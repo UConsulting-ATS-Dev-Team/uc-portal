@@ -2966,6 +2966,90 @@ longer breaks down to phone width either.
   confirmed zero residue (`auth_total=1 roster_total=52
   intern_roster_total=0 feed_posts_total=0 writeups_total=0`).
 
+- **Real job pipeline health checked, then "Best match" made company-tier
+  aware** — direct ask: postings looked "a couple weeks old" to the user.
+  Investigated before assuming a bug: all 6 pg_cron ingestion jobs
+  (Greenhouse, Lever, Deloitte, link-health, snapshot, deadline-expiry)
+  have succeeded on every run for the last 3+ days checked directly
+  against `cron.job_run_details`, and the real data backs it up (355
+  jobs first-seen today, ~2,600 in the last week). The pipeline was never
+  the problem. Two real, separate reasons for the impression instead:
+  `postedDaysAgo` is the employer's own real advertised date, not
+  ingestion date (a genuinely-still-open role can honestly be weeks old
+  -- ~15% of active postings are, real and not stale data), and "Best
+  match" -- the default sort -- already blended in freshness at only a
+  flat 5% weight, so recency barely moved the needle regardless of
+  company.
+
+  Direct follow-up ask: make "Best match" combine match quality and
+  recency, but let company tier shift the balance -- real leeway on
+  recency for T0/T1 (core consulting, other elite name-brand), more
+  emphasis on newness for T2/T3, using the exact stated example as the
+  acceptance test ("a 5-day-old McKinsey posting should beat a
+  just-posted random company's"). `data/jobMatch.js#finalScore()`
+  already existed as a real, tested weighted formula (relevance +
+  memberMatch + ucRelevance + deadlineUrgency + freshness + quality) --
+  wired into Jobs.jsx's "Best match" sort already, just with no
+  tier-awareness and a trivial freshness weight. Extended rather than
+  replaced.
+
+  **First attempt was wrong, caught by verifying against the user's own
+  example before shipping it**: varying only *freshness's weight* per
+  tier meant two compared jobs used entirely different weight vectors,
+  and company tier had no direct signal of its own -- a `vite-node` pure-
+  function script reproducing the exact stated scenario (5-day-old
+  McKinsey vs. same-instant-fresh random company, equal match score)
+  showed the random company winning, backwards from the ask. Redesigned
+  with two separate signals instead: a direct `companyTierScore(tier)`
+  (a flat preference for a better tier, independent of age -- 1.0/0.8/
+  0.5/0.25 for T0-T3) at a fixed 10% weight, plus a *tier-varying decay
+  rate* for freshness (not weight -- every job shares the same freshness
+  weight, 12%, so comparisons stay apples-to-apples; only how fast a
+  posting "goes stale" differs: 90/75/30/14 days for T0-T3). The other 5
+  original factors are scaled proportionally into the remaining budget
+  once, preserving their relative balance to each other rather than
+  becoming four independently hand-tuned weight vectors.
+
+  Re-verified the redesign against the same script before wiring it in:
+  T0 5-day-old beats T3 same-instant-fresh at equal match (0.628 vs
+  0.560, matching the stated example); a genuinely stale T0 (60d) does
+  eventually cede to a fresh T3 (0.555 vs 0.560) -- leeway, not immunity,
+  confirming recency still matters at the extreme even for a top-tier
+  company; freshness swings sharply within T3 (20d old vs. fresh: 0.440
+  vs. 0.560) but gently within T0 (0.608 vs. 0.628) -- the actual "T2/T3
+  should focus more on newer postings" ask; and a large genuine
+  match-score gap (20% vs 95%) still outweighs tier/freshness combined
+  (0.487 vs 0.597), confirming this didn't become "only tier matters."
+  An unclassified company falls back to T3's numbers, the same
+  `DEFAULT_COMPANY_TIER` fallback `capPerCompany` already uses for the
+  identical lookup, so a company's tier can never disagree between the
+  cap and the sort. `server/src/rank.ts`'s own mirror of this formula
+  was deliberately left untouched -- confirmed via a real grep that
+  nothing live calls it (test-only), unlike `data/jobMatch.js`'s copy,
+  which directly drives what a real member sees.
+
+  Verified live with a throwaway account: the real Jobs board (8,972
+  active jobs) loaded and rendered correctly under the new sort with
+  zero console errors -- not just the isolated pure-function checks.
+  Cleaned up completely afterward.
+
+- **Directory import: a missing or shared email no longer drops a real
+  person** — direct instruction, since the real sheet can't be edited:
+  `scripts/seed-real-directory.mjs` used to skip a row entirely if it had
+  no email, and silently drop the second occurrence of a duplicate email
+  -- both meant a real person could vanish from an import with only a
+  warning to notice it by. Now imports them anyway with the email left
+  blank (on *both* sides of a real duplicate, since neither can be
+  trusted -- generalizes the one-off Josh Chan/Jessica Wong fix from
+  earlier into the reusable script itself) and lets them fill it in
+  themselves later. A current member with no email just can't get an
+  automatic roster entry -- flagged clearly in the script's own warning
+  output rather than silently skipped. `slugFor()` falls back to hashing
+  the name when there's no email to key off, so idempotent re-runs still
+  hold for these people too (verified: re-running against the same
+  synthetic fixture produces the same slugs). Verified with a synthetic
+  CSV covering both a missing-email row and a real duplicate-email pair.
+
 Run locally:
 ```bash
 npm install

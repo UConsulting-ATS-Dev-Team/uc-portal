@@ -190,15 +190,20 @@ function matchesTab(job, tab, savedJobIds) {
   return true;
 }
 
-function sortJobs(jobs, sortBy, preferences, keyword) {
+function sortJobs(jobs, sortBy, preferences, keyword, companyTierByName) {
   const copy = [...jobs];
   if (sortBy === "bestMatch") {
     // US-40/41/42/43's real weighted formula (data/jobMatch.js's
     // finalScore) -- blends in freshness/deadline urgency/quality/UC
     // relevance on top of the pure preference-fit percentage, so "Best
     // match" isn't just re-sorting by matchScore alone. matchScore itself
-    // (the displayed "94% match" badge) is untouched by this.
-    copy.sort((a, b) => finalScore(b, preferences, keyword) - finalScore(a, preferences, keyword));
+    // (the displayed "94% match" badge) is untouched by this. Company
+    // tier shifts how much freshness actually counts (direct ask: a
+    // T0/T1 posting gets real leeway on age, T2/T3 leans on recency
+    // more) -- same companyTierByName lookup capPerCompany below already
+    // uses, so this can never disagree with the per-company cap about
+    // which tier a company is in.
+    copy.sort((a, b) => finalScore(b, preferences, keyword, undefined, companyTierByName) - finalScore(a, preferences, keyword, undefined, companyTierByName));
   } else if (sortBy === "deadline")
     copy.sort((a, b) => (daysUntil(a.deadlineDate) ?? Infinity) - (daysUntil(b.deadlineDate) ?? Infinity));
   else if (sortBy === "newest") copy.sort((a, b) => a.postedDaysAgo - b.postedDaysAgo);
@@ -367,8 +372,8 @@ export default function Jobs() {
   // the badge honest regardless of why an id stopped resolving.
   const savedCount = useMemo(() => JOBS.filter((j) => savedJobIds.includes(j.id)).length, [JOBS, savedJobIds]);
   const sorted = useMemo(
-    () => sortJobs(tabbed, sortBy, preferences, filters.keyword),
-    [tabbed, sortBy, preferences, filters.keyword]
+    () => sortJobs(tabbed, sortBy, preferences, filters.keyword, companyTierByName),
+    [tabbed, sortBy, preferences, filters.keyword, companyTierByName]
   );
   // Skip capping once a keyword search is active -- "View N more at
   // Company" works by setting the keyword filter to that company's name,
