@@ -184,14 +184,18 @@ function rowsToObjects(rows) {
 
 // Deterministic, not random -- same email always produces the same slug,
 // so re-running this script on the same/updated CSV safely upserts
-// existing people instead of creating duplicates.
+// existing people instead of creating duplicates. Falls back to hashing
+// the name when there's no real email to key off (a genuinely blank
+// field, or one blanked below because two people shared it) -- still
+// deterministic, so idempotent re-runs still hold for these people too.
 function slugFor(name, email) {
   const base = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+  const hashSource = (email || name).toLowerCase();
   let hash = 0;
-  for (const ch of email.toLowerCase()) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  for (const ch of hashSource) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
   return `${base}-${hash.toString(16).slice(0, 6).padStart(6, "0")}`;
 }
 
@@ -210,7 +214,11 @@ async function main() {
 
   const peopleRows = [];
   const rosterRows = [];
-  const seenEmails = new Set();
+  // Maps a claimed email to the peopleRows entry currently holding it --
+  // an object reference, not an index, so a later collision can mutate
+  // that earlier row directly (blank its email) without tracking array
+  // positions.
+  const emailOwner = new Map();
   const warnings = [];
 
   for (const [i, obj] of objects.entries()) {
@@ -222,35 +230,56 @@ async function main() {
     }
 
     const name = (obj[COLUMN_MAP.name] || "").trim();
-    const email = (obj[COLUMN_MAP.email] || "").trim().toLowerCase();
-    if (!name || !email) {
-      warnings.push(`Row ${i + 2}: missing name or email, skipped.`);
+    if (!name) {
+      warnings.push(`Row ${i + 2}: missing name, skipped.`);
       continue;
     }
-    if (seenEmails.has(email)) {
-      warnings.push(`Row ${i + 2}: duplicate email ${email}, skipped.`);
-      continue;
-    }
-    seenEmails.add(email);
 
-    peopleRows.push({
-      slug: slugFor(name, email),
+    // Real, direct instruction: don't skip a real person for a missing
+    // or shared email -- import them anyway with email left blank, and
+    // let them fill it in themselves once they have an account (same
+    // resolution already applied by hand once for a real duplicate-
+    // email pair in the sheet -- this generalizes that fix into the
+    // reusable script instead of it being a one-off). A blank email
+    // just means no automatic roster entry and no Directory auto-fill
+    // match for that person until a real email is known.
+    let email = (obj[COLUMN_MAP.email] || "").trim().toLowerCase();
+    if (email) {
+      const existing = emailOwner.get(email);
+      if (existing) {
+        existing.email = null;
+        warnings.push(`Row ${i + 2}: email ${email} also claimed by an earlier row (${existing.name}) -- can't tell whose it really is, left blank on both.`);
+        email = null;
+      }
+    }
+
+    const personRow = {
+      slug: slugFor(name, email || ""),
       name,
       status,
       admit_class: obj[COLUMN_MAP.admitClass] || null,
       major: obj[COLUMN_MAP.major] || null,
       company: obj[COLUMN_MAP.company] || null,
       location: obj[COLUMN_MAP.location] || null,
-      email,
+      email: email || null,
       linkedin: obj[COLUMN_MAP.linkedin] || null,
       mentor: obj[COLUMN_MAP.mentor] || null,
-    });
+    };
+    peopleRows.push(personRow);
+    if (email) emailOwner.set(email, personRow);
 
     // roster (the sign-up allowlist) is current members only -- alumni
     // get access via the real "Alumni -- request access" admin-approval
-    // flow instead, same as the original seed's own scoping.
+    // flow instead, same as the original seed's own scoping. A current
+    // member with no real email can't get an automatic roster entry at
+    // all (roster is keyed by email) -- flagged so an admin knows to
+    // add them manually once a real address is known.
     if (status === "Current member") {
-      rosterRows.push({ email, name });
+      if (email) {
+        rosterRows.push({ email, name });
+      } else {
+        warnings.push(`Row ${i + 2}: ${name} has no email on file -- can't be added to the roster automatically; add them manually once a real email is known.`);
+      }
     }
   }
 
