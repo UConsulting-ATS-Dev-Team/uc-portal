@@ -2,6 +2,8 @@ import { useState } from "react";
 import Modal from "../Modal.jsx";
 import { submitInterviewWriteup } from "../../data/realWriteups.js";
 import { currentUser } from "../../data/mockUser.js";
+import { useAppState } from "../../data/store.jsx";
+import { displayName } from "../../data/profileUtils.js";
 import "../../styles/onboarding.css";
 
 const TYPES = ["Interview write-up", "Company guide", "Resource / guide", "Question", "Event", "Job posting"];
@@ -25,6 +27,7 @@ const NOTE_LIMIT = 1500;
 // Opened generically from Career Resources' "+ Contribute", `job` is
 // undefined and company stays the original free-text field.
 export default function ContributeModal({ onClose, job }) {
+  const { profileOverrides } = useAppState();
   const [type, setType] = useState(TYPES[0]);
   const [company, setCompany] = useState("");
   const [round, setRound] = useState("");
@@ -61,7 +64,7 @@ export default function ContributeModal({ onClose, job }) {
         outcome,
         body,
         isAnonymous: anonymous,
-        submitterName: `${currentUser.firstName} ${currentUser.lastName}`,
+        submitterName: displayName(currentUser, profileOverrides),
       });
       setPublished(true);
     } catch (err) {

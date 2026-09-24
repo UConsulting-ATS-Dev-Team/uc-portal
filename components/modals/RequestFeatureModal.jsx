@@ -2,19 +2,26 @@ import { useState } from "react";
 import Modal from "../Modal.jsx";
 import { supabase } from "../../data/supabaseClient.js";
 import { currentUser } from "../../data/mockUser.js";
+import { useAppState } from "../../data/store.jsx";
+import { displayName } from "../../data/profileUtils.js";
 import "../../styles/onboarding.css";
 
 const CATEGORIES = ["Jobs & search", "Applications tracker", "Network & messaging", "Career resources", "Admin tools", "Other"];
 
 // Writes a real row to feature_requests -- submitted_by is the signed-in
 // member's real auth id (so RLS lets them see their own request later);
-// submitted_by_name is captured from data/mockUser.js's currentUser, the
-// same prototype identity-display convention MyProfile's Personal tab
-// already uses, since nothing populates profiles.full_name yet. Unlike the
-// company-demand aggregate or member_preferences, this is deliberately not
-// anonymized -- the entire point (per the admin side of this feature) is
-// that an admin sees exactly who asked for what.
+// submitted_by_name uses displayName(), which prefers the member's own
+// real profileOverrides.fullName and only falls back to mockUser.js's
+// fake "Test Account" name when genuinely unset -- found live (2026-09-24)
+// this used to read currentUser.firstName/lastName directly, meaning a
+// real member's real submission would get permanently attributed to
+// "Test Account" in the admin queue unless they'd already set their name
+// on My Profile. Unlike the company-demand aggregate or
+// member_preferences, this is deliberately not anonymized -- the entire
+// point (per the admin side of this feature) is that an admin sees
+// exactly who asked for what, so getting the real name right matters.
 export default function RequestFeatureModal({ onClose }) {
+  const { profileOverrides } = useAppState();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
@@ -32,7 +39,7 @@ export default function RequestFeatureModal({ onClose }) {
 
     const { error } = await supabase.from("feature_requests").insert({
       submitted_by: user.id,
-      submitted_by_name: `${currentUser.firstName} ${currentUser.lastName}`,
+      submitted_by_name: displayName(currentUser, profileOverrides),
       title: title.trim(),
       description: description.trim(),
       category,
