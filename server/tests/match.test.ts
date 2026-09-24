@@ -1,7 +1,53 @@
 import { describe, expect, it } from "vitest";
 import { matchJob } from "../src/match.js";
 import { normalizeJob } from "../src/normalize.js";
-import type { MemberProfile, RawJob } from "../src/types.js";
+import type { MemberProfile, NormalizedJob, RawJob } from "../src/types.js";
+
+// Bypasses normalizeJob()'s real taxonomy pipeline for the graduated-
+// scoring tests below, which need exact control over relevantIndustries/
+// relevantRoles/salaryMin rather than whatever a real title happens to
+// classify to.
+function normalizedJob(overrides: Partial<NormalizedJob> = {}): NormalizedJob {
+  return {
+    id: "job-1",
+    sources: [{ sourceId: "source-a", sourceJobId: "1", sourceUrl: "https://example.com/1", isPrimary: true }],
+    company: "Example Co",
+    title: "Example Role",
+    employmentType: "internship",
+    applicationUrl: "https://example.com/jobs/1",
+    description: null,
+    department: null,
+    jobFunction: null,
+    city: null,
+    state: null,
+    country: null,
+    remoteType: null,
+    salaryMin: null,
+    salaryMax: null,
+    salaryCurrency: "USD",
+    compensationType: "hourly",
+    compensationText: null,
+    postedDate: null,
+    updatedDate: null,
+    applicationDeadline: null,
+    graduationYears: null,
+    requiredSkills: null,
+    preferredSkills: null,
+    qualificationsText: null,
+    relevantIndustries: [],
+    relevantRoles: [],
+    ucRecruitingNotes: null,
+    firstSeenAt: new Date().toISOString(),
+    lastSeenAt: new Date().toISOString(),
+    lastVerifiedAt: null,
+    active: true,
+    status: "active",
+    confidenceScore: null,
+    qualityScore: null,
+    classificationMethod: "rule",
+    ...overrides,
+  };
+}
 
 function rawJob(overrides: Partial<RawJob> = {}): RawJob {
   return {
@@ -112,5 +158,98 @@ describe("matchJob — soft preferences and explainability (US-34)", () => {
     const skillsFactor = (result: typeof withPreferredMatch) => result.factors.find((f) => f.key === "skills")!;
     expect(skillsFactor(withPreferredMatch).detail).toContain("Administration and Management");
     expect(withPreferredMatch.score).toBeGreaterThan(withoutPreferredMatch.score);
+  });
+});
+
+// 2026-09-23 redesign: direct report that every real job showed the same
+// 75% match. Root cause was binary pass/fail factors flattening once a
+// member's onboarding answers are broad enough to satisfy them on most of
+// an already-curated board -- see matchJob()'s own header comment. These
+// tests exercise the graduated/applicability-gated replacement directly
+// against literal NormalizedJob fixtures (normalizedJob() above) rather
+// than fighting real taxonomy classification, since what's under test is
+// this function's own math, not normalizeJob()'s occupation matching.
+describe("matchJob — graduated scoring differentiates sparse/broad profiles", () => {
+  it("scores a job matching a member's #1 ranked industry higher than one matching only their #3", () => {
+    const rankedProfile = profile({ industries: ["Management consulting", "Investment banking", "Technology"], roles: [], locations: [], skills: [] });
+    const topPick = normalizedJob({ relevantIndustries: ["Management consulting"] });
+    const thirdPick = normalizedJob({ relevantIndustries: ["Technology"] });
+    expect(matchJob(topPick, rankedProfile).score).toBeGreaterThan(matchJob(thirdPick, rankedProfile).score);
+  });
+
+  it("scores a job matching more of a member's selected role chips higher than one matching fewer", () => {
+    const roleProfile = profile({ industries: [], locations: [], skills: [], roles: ["Consultant", "Analyst", "Strategist"] });
+    const matchesAll = normalizedJob({ relevantRoles: ["Consultant", "Analyst", "Strategist"] });
+    const matchesOne = normalizedJob({ relevantRoles: ["Consultant"] });
+    expect(matchJob(matchesAll, roleProfile).score).toBeGreaterThan(matchJob(matchesOne, roleProfile).score);
+  });
+
+  it("does not penalize a job that simply doesn't list a salary, vs. one that lists a salary below target", () => {
+    const compProfile = profile({ industries: [], roles: [], locations: [], skills: [], compTarget: 40 });
+    const noSalaryListed = normalizedJob({ salaryMin: null });
+    const belowTarget = normalizedJob({ salaryMin: 20 });
+    // Unlisted salary is excluded from scoring entirely (nothing to check);
+    // a job that actively lists pay below the target should score lower,
+    // not the same -- the old formula's compTarget-is-null bypass didn't
+    // apply here (compTarget always has a real value), but this still
+    // confirms "no data" and "confirmed miss" aren't conflated.
+    expect(matchJob(noSalaryListed, compProfile).score).toBeGreaterThan(matchJob(belowTarget, compProfile).score);
+  });
+
+  it("differentiates between two jobs for a member with an entirely empty preferences profile", () => {
+    // This is the exact bug: an empty profile used to make every job
+    // resolve to the same flat score regardless of real per-job
+    // differences. Now, factors with no member-side data (industry, role,
+    // location, skills -- all empty here) are excluded from scoring
+    // entirely, and compensation (always applicable when the job lists a
+    // number, since compTarget has a real default) still differentiates.
+    const emptyProfile = profile({ industries: [], roles: [], locations: [], skills: [], openToRelocating: false, remoteOrHybridOnly: false, compTarget: 30 });
+    const paysWell = normalizedJob({ salaryMin: 50 });
+    const paysPoorly = normalizedJob({ salaryMin: 15 });
+    const strong = matchJob(paysWell, emptyProfile);
+    const weak = matchJob(paysPoorly, emptyProfile);
+    expect(strong.score).toBeGreaterThan(weak.score);
+  });
+
+  it("falls back to a neutral 50, not a false 0 or 100, when nothing is applicable on either side", () => {
+    const emptyProfile = profile({ industries: [], roles: [], locations: [], skills: [], openToRelocating: false, remoteOrHybridOnly: false });
+    const blankJob = normalizedJob({ relevantIndustries: [], relevantRoles: [], salaryMin: null, requiredSkills: [], preferredSkills: [] });
+    expect(matchJob(blankJob, emptyProfile).score).toBe(50);
+  });
+});
+
+// 2026-09-23 follow-up: the graduated redesign above was correct but
+// couldn't fully solve the reported flatness alone, since ~76% of real
+// active jobs have empty relevantIndustries/relevantRoles (the ingestion
+// taxonomy is a small stub covering only a handful of occupations -- see
+// matchJob()'s own comment). These test the title-text fallback signal
+// directly against *unclassified* jobs (empty relevantIndustries/Roles),
+// which the structured-tag-only formula could never differentiate.
+describe("matchJob — title-text signal differentiates unclassified jobs", () => {
+  it("credits an industry match from the job's own title when relevantIndustries is empty", () => {
+    const consultingProfile = profile({ industries: ["Management consulting"], roles: [], locations: [], skills: [] });
+    const unclassifiedConsultingTitle = normalizedJob({ relevantIndustries: [], title: "Strategy Consulting Summer Analyst" });
+    const unclassifiedUnrelatedTitle = normalizedJob({ relevantIndustries: [], title: "Capital Processing Specialist II" });
+    expect(matchJob(unclassifiedConsultingTitle, consultingProfile).score).toBeGreaterThan(
+      matchJob(unclassifiedUnrelatedTitle, consultingProfile).score
+    );
+  });
+
+  it("credits a role match from the job's own title when relevantRoles is empty", () => {
+    const roleProfile = profile({ industries: [], locations: [], skills: [], roles: ["Product Manager"] });
+    const unclassifiedMatchingTitle = normalizedJob({ relevantRoles: [], title: "Senior Product Manager, Payments" });
+    const unclassifiedUnrelatedTitle = normalizedJob({ relevantRoles: [], title: "Performance Engineer" });
+    expect(matchJob(unclassifiedMatchingTitle, roleProfile).score).toBeGreaterThan(matchJob(unclassifiedUnrelatedTitle, roleProfile).score);
+  });
+
+  it("doesn't let the title signal override a real, differently-classified structured tag -- both signals contribute, neither replaces the other", () => {
+    // A job genuinely classified "Investment banking" but whose title also
+    // happens to mention "strategy" shouldn't lose credit for the real tag
+    // just because the title text is ambiguous -- structured OR title, not
+    // structured overridden by title.
+    const ibProfile = profile({ industries: ["Investment banking"], roles: [], locations: [], skills: [] });
+    const job = normalizedJob({ relevantIndustries: ["Investment banking"], title: "Corporate Strategy & Investment Banking Analyst" });
+    const industryFactor = matchJob(job, ibProfile).factors.find((f) => f.key === "industry")!;
+    expect(industryFactor.match).toBe(true);
   });
 });
