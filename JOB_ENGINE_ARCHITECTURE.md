@@ -6026,3 +6026,40 @@ count against the live `sources` table grouped by `config->>'platform'`
 tally), up from 164 at the start of this pass (a real, exact +2 match).
 
 Committed and pushed per standing permission for this repo.
+
+**2026-09-24 -- Nineteenth addition: one more Greenhouse company
+(Pacaso), proptech/insurtech vertical.** Same autonomous-work-session
+pass as the Eighteenth addition, checked immediately after -- confirmed
+the live starting count first (166, matching that addition's own closing
+figure).
+
+No usable board on either platform: Opendoor, Compass, Zillow, Redfin,
+Flyhomes, Hippo, Lemonade, Root, Next Insurance, Clearcover, Kin,
+Policygenius. Real-but-empty board: "ethos" (presumably the real Ethos
+life-insurance company) resolves but returns zero active postings --
+excluded, same precedent as this pass's own Stax/Compass Lexecon
+exclusions. One thin/ambiguous exclusion on the same rigor bar as the
+Seventeenth addition's "Indigo" precedent: "branch" (Greenhouse) resolves
+with only 3 postings and company_name "Branch" -- but "Branch" is a
+genuinely common company name (Branch Insurance, Branch Metrics, Branch
+International, Branch Furniture are all real, different companies) with
+no title content specific enough to confirm which one this board
+actually is. Excluded rather than guessed.
+
+**Pacaso** -- real, well-known proptech unicorn (~$1.5B valuation,
+co-founded by a former Zillow co-founder), luxury vacation-home
+co-ownership platform. Greenhouse slug "pacaso", `company_name` "Pacaso"
+verified. Small board (5 postings): "Contract Asset Manager, Malibu" and
+"Maintenance Manager, Tahoe" are real, identity-confirming titles
+matching Pacaso's actual co-ownership markets. 5 of 5 sampled titles
+survive the relevance filter locally -- added per the same
+small-but-real-and-famous precedent as Consensys (1/6)/SeatGeek
+(6/20)/StubHub (8/17) from prior additions. Does not match a
+`NAMED_COMPANY_RATES` entry -- falls through to the broader industry-tier
+fallback. Config-only, no adapter code changes.
+
+**Total company job-listing sources after this addition: 167**, confirmed
+via direct count, up from 166 at the start of this pass (a real, exact
++1 match).
+
+Committed and pushed per standing permission for this repo.
