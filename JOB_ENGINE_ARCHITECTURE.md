@@ -6063,3 +6063,33 @@ via direct count, up from 166 at the start of this pass (a real, exact
 +1 match).
 
 Committed and pushed per standing permission for this repo.
+
+**2026-09-24 -- Twentieth addition: one more Greenhouse company (Abnormal
+Security), cybersecurity/gaming vertical.** Same autonomous-work-session
+pass, immediately after the Nineteenth addition -- confirmed the live
+starting count first (167, matching that addition's own closing figure).
+
+Seven of nine candidates checked were already live sources from earlier
+passes -- confirmed directly against the `sources` table before spending
+any verification effort: Netskope, Zscaler, Discord, Roblox, Epic Games,
+Twitch, Riot Games. One identity rejection: "orca" (Greenhouse) resolves
+but `company_name` says "ORCA Service Technologies" -- a small UK IT
+support/sales company (Maidenhead), not the real Orca Security. Excluded.
+
+**Abnormal Security** -- real, well-known AI-based email/behavioral
+cybersecurity unicorn (~$5B+ valuation). Greenhouse slug
+"abnormalsecurity", `company_name` "Abnormal" verified. 84 postings,
+genuinely large and diverse: "FedRamp Compliance Analyst", "Software
+Engineer II - Identity Security Posture Management (ISPM)", "Software
+Engineer - Behavioral Security Products" are all specific to Abnormal's
+actual real product lines, not generic titles that could belong to an
+unrelated company. 84 of 84 sampled titles survive the relevance filter
+locally -- a genuinely large, 100% white-collar board; will be capped to
+30 active. Does not match a `NAMED_COMPANY_RATES` entry. Config-only, no
+adapter code changes.
+
+**Total company job-listing sources after this addition: 168**, confirmed
+via direct count, up from 167 at the start of this pass (a real, exact
++1 match).
+
+Committed and pushed per standing permission for this repo.
