@@ -5,15 +5,7 @@ import { supabase } from "../data/supabaseClient.js";
 import { fetchAllRows } from "../data/fetchAllRows.js";
 import { capForCompanyTier } from "../data/companyTiers.js";
 import { fetchRecentSignups } from "../data/adminNotificationsSync.js";
-import {
-  KPIS,
-  INDUSTRY_INTEREST,
-  biggestGap,
-  CLASS_YEAR_BREAKDOWN,
-  MOST_TARGETED_COMPANIES,
-  ACCESS_CONTROL,
-  FLAGGED_FEED_POSTS,
-} from "../data/mockAdmin.js";
+import { ACCESS_CONTROL, FLAGGED_FEED_POSTS } from "../data/mockAdmin.js";
 import DemoDataBadge from "../components/DemoDataBadge.jsx";
 import "../styles/jobs.css";
 import "../styles/jobDetail.css";
@@ -70,8 +62,9 @@ export default function AdminDashboard() {
   const [recentSignups, setRecentSignups] = useState([]);
   const [recentSignupsLoading, setRecentSignupsLoading] = useState(true);
   const [recentSignupsError, setRecentSignupsError] = useState(null);
-  const gap = biggestGap();
-  const maxMembers = Math.max(...INDUSTRY_INTEREST.map((i) => i.members));
+  const [clientErrors, setClientErrors] = useState([]);
+  const [clientErrorsLoading, setClientErrorsLoading] = useState(true);
+  const [clientErrorsError, setClientErrorsError] = useState(null);
 
   // US-09 -- duplicate_tier/duplicate_best_job_id are written by
   // score-submission-duplicate right after a member submits (see that
@@ -299,6 +292,22 @@ export default function AdminDashboard() {
     setRecentSignupsLoading(false);
   }
 
+  // client_error_reports -- see that table's own migration for the full
+  // rationale (self-hosted crash reporting, no third-party service). Most
+  // recent first, capped at 50 -- this is meant to be glanced at, not a
+  // full triage workflow like feature_requests' status pipeline.
+  async function loadClientErrors() {
+    setClientErrorsLoading(true);
+    const { data, error } = await supabase
+      .from("client_error_reports")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) setClientErrorsError(error.message);
+    else setClientErrors(data ?? []);
+    setClientErrorsLoading(false);
+  }
+
   useEffect(() => {
     loadQueue();
     loadDuplicates();
@@ -309,6 +318,7 @@ export default function AdminDashboard() {
     loadCompanyTiers();
     loadAccessRequests();
     loadRecentSignups();
+    loadClientErrors();
   }, []);
 
   const disengagedCount = engagement.filter((m) => m.is_disengaged).length;
@@ -484,82 +494,8 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div style={{ marginBottom: "var(--space-3)" }}>
-        <DemoDataBadge
-          label="Illustrative"
-          title="Club-wide survey/analytics figures no single browser session can really compute yet (no real survey data exists) -- estimated, not live-computed from real signups"
-        />
-      </div>
-      <div className="admin-kpi-strip">
-        <div className="admin-kpi-cell">
-          <div className="admin-kpi-cell__number">{KPIS.activeMembers}</div>
-          <div className="admin-kpi-cell__label">Active members</div>
-          <div className="admin-kpi-cell__change">+{KPIS.activeMembersChange} vs last quarter</div>
-        </div>
-        <div className="admin-kpi-cell">
-          <div className="admin-kpi-cell__number">{KPIS.profilesUpToDatePct}%</div>
-          <div className="admin-kpi-cell__label">Profiles up to date</div>
-          <div className="admin-kpi-cell__change">{KPIS.staleProfiles} stale</div>
-        </div>
-        <div className="admin-kpi-cell">
-          <div className="admin-kpi-cell__number">{KPIS.applicationsTracked}</div>
-          <div className="admin-kpi-cell__label">Applications tracked</div>
-          <div className="admin-kpi-cell__change">{KPIS.applicationsPerMember} per member</div>
-        </div>
-        <div className="admin-kpi-cell">
-          <div className="admin-kpi-cell__number">{KPIS.coffeeChatsBooked}</div>
-          <div className="admin-kpi-cell__label">Coffee chats booked</div>
-          <div className="admin-kpi-cell__change">+{KPIS.coffeeChatsChange} vs last cycle</div>
-        </div>
-        <div className="admin-kpi-cell">
-          <div className="admin-kpi-cell__number">{KPIS.offersReported}</div>
-          <div className="admin-kpi-cell__label">Offers reported</div>
-          <div className="admin-kpi-cell__change">
-            {KPIS.offersInternship} internships · {KPIS.offersFullTime} FT
-          </div>
-        </div>
-      </div>
-
       <div className="detail-layout">
         <div className="detail-main">
-          <div className="detail-section">
-            <h2 className="detail-section__title">
-              Where members want to work <DemoDataBadge label="Illustrative" />
-            </h2>
-            {INDUSTRY_INTEREST.map((i) => (
-              <div className="industry-bar-row" key={i.industry}>
-                <span>{i.industry}</span>
-                <div className="industry-bar-track">
-                  <div className="industry-bar-fill" style={{ width: `${(i.members / maxMembers) * 100}%` }} />
-                </div>
-                <span className="meta">{i.members}</span>
-              </div>
-            ))}
-            <div className="gap-insight">
-              Gap: {gap.members} members target {gap.industry} but UC has only {gap.alumni} alumni there — a
-              recruiting-outreach target for this cycle.
-            </div>
-          </div>
-
-          <div className="detail-section">
-            <h2 className="detail-section__title">
-              Class-year breakdown <DemoDataBadge label="Illustrative" />
-            </h2>
-            <div className="class-year-grid">
-              {CLASS_YEAR_BREAKDOWN.map((c) => (
-                <div className="class-year-cell" key={c.year}>
-                  <div className="class-year-cell__label">{c.label}</div>
-                  <div className="class-year-cell__year">Class of {c.year}</div>
-                  <p className="meta">{c.members} members</p>
-                  <div className="progress-bar-track">
-                    <div className="progress-bar-fill" style={{ width: `${c.profileCompletePct}%` }} />
-                  </div>
-                  <p className="meta" style={{ marginBottom: 0 }}>{c.profileCompletePct}% profiles complete</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
           <div className="detail-section">
             <h2 className="detail-section__title">Opportunity queue</h2>
             {queueError && <p className="meta" style={{ color: "#B3261E" }}>{queueError}</p>}
@@ -1089,6 +1025,56 @@ export default function AdminDashboard() {
             </table>
             </div>
           </div>
+
+          <div className="detail-section">
+            <h2 className="detail-section__title">Client errors</h2>
+            <p className="meta" style={{ marginTop: 0 }}>
+              Real crashes and failures reported from members' own browsers -- the error boundary,
+              a page/promise failure outside it, or a member clicking "Report to Exec" on an empty
+              state. Most recent 50.
+            </p>
+            {clientErrorsError && <p className="meta" style={{ color: "#B3261E" }}>{clientErrorsError}</p>}
+            <div className="queue-table__scroll">
+            <table className="queue-table">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Message</th>
+                  <th>Where</th>
+                  <th>Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {clientErrors.map((e) => (
+                  <tr key={e.id}>
+                    <td className="meta">
+                      {new Date(e.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                    </td>
+                    <td style={{ fontWeight: 700 }}>{e.message}</td>
+                    <td className="meta">{e.page_path ?? "—"}</td>
+                    <td>
+                      <span className="chip">{e.context}</span>
+                    </td>
+                  </tr>
+                ))}
+                {!clientErrorsLoading && clientErrors.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="meta">
+                      No errors reported yet.
+                    </td>
+                  </tr>
+                )}
+                {clientErrorsLoading && (
+                  <tr>
+                    <td colSpan={4} className="meta">
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            </div>
+          </div>
         </div>
 
         <div className="detail-rail">
@@ -1107,17 +1093,6 @@ export default function AdminDashboard() {
             {recentSignupsLoading && <p className="meta" style={{ margin: 0 }}>Loading…</p>}
           </div>
 
-          <div className="rail-card">
-            <div className="rail-card__title">
-              Most targeted companies <DemoDataBadge label="Illustrative" />
-            </div>
-            {MOST_TARGETED_COMPANIES.map((c) => (
-              <div className="company-count-row" key={c.company}>
-                <span>{c.company}</span>
-                <span>{c.members}</span>
-              </div>
-            ))}
-          </div>
 
           <div className="rail-card">
             <div className="rail-card__title">Member engagement</div>

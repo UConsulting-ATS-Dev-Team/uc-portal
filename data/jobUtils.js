@@ -60,11 +60,13 @@ export function qualificationsFor(job) {
   ];
 }
 
+// Author names match data/mockPeople.js's fictional roster (2026-09-23
+// rename to obviously-fake placeholders -- see that file's own comment).
 const WRITEUP_POOL = [
-  { author: "Sana Liu", classYear: 2019, outcome: "Offer", cycle: "Fall 2025", body: "Case rounds leaned heavily on market-sizing — UC's case guide framework carried me through both rounds." },
-  { author: "Marcus Webb", classYear: 2021, outcome: "Final round", cycle: "Spring 2025", body: "Behavioral questions focused on team conflict examples. Wish I'd prepped more stories in advance." },
-  { author: "Priya Nair", classYear: 2022, outcome: "Offer", cycle: "Fall 2025", body: "First round was a fit interview, second was a full case with a partner. Very conversational, not adversarial." },
-  { author: "Grace Kim", classYear: 2023, outcome: "No offer", cycle: "Fall 2024", body: "Got dinged on quantitative speed under pressure — practicing mental math would have helped a lot." },
+  { author: "Demo Alum A", classYear: 2019, outcome: "Offer", cycle: "Fall 2025", body: "Case rounds leaned heavily on market-sizing — UC's case guide framework carried me through both rounds." },
+  { author: "Demo Alum B", classYear: 2021, outcome: "Final round", cycle: "Spring 2025", body: "Behavioral questions focused on team conflict examples. Wish I'd prepped more stories in advance." },
+  { author: "Demo Alum C", classYear: 2022, outcome: "Offer", cycle: "Fall 2025", body: "First round was a fit interview, second was a full case with a partner. Very conversational, not adversarial." },
+  { author: "Demo Alum E", classYear: 2023, outcome: "No offer", cycle: "Fall 2024", body: "Got dinged on quantitative speed under pressure — practicing mental math would have helped a lot." },
 ];
 
 export function writeupsFor(job) {

@@ -14,98 +14,24 @@ import { supabase } from "./supabaseClient.js";
 // answers actually show up later on My Profile / Jobs.
 const STORAGE_KEY = "uc-portal-state";
 
-// Seeded so the tracker (1f/1g/1j) has cards across most stages on first
-// load instead of looking empty -- real usage adds more via "Add to
-// tracker" / "Mark interested" on Job detail. stageHistory records when
-// each stage was entered -- required for the Timeline view (1j) to draw
-// real per-stage bars rather than a single blob; addToTracker/
-// updateApplicationStage append to it going forward the same way.
-const SEED_TRACKED_JOBS = {
-  "bain-consulting-intern": {
-    stage: "First round",
-    addedAt: "2026-08-05T12:00:00.000Z",
-    stageHistory: [
-      { stage: "Interested", date: "2026-08-05T12:00:00.000Z" },
-      { stage: "Preparing", date: "2026-08-07T12:00:00.000Z" },
-      { stage: "Applied", date: "2026-08-10T12:00:00.000Z" },
-      { stage: "Assessment", date: "2026-08-13T12:00:00.000Z" },
-      { stage: "First round", date: "2026-08-16T12:00:00.000Z" },
-    ],
-  },
-  "mckinsey-generalist-intern": {
-    stage: "Preparing",
-    addedAt: "2026-08-10T12:00:00.000Z",
-    stageHistory: [
-      { stage: "Interested", date: "2026-08-10T12:00:00.000Z" },
-      { stage: "Preparing", date: "2026-08-12T12:00:00.000Z" },
-    ],
-  },
-  "deloitte-human-capital": {
-    stage: "Applied",
-    addedAt: "2026-08-12T12:00:00.000Z",
-    stageHistory: [
-      { stage: "Interested", date: "2026-08-12T12:00:00.000Z" },
-      { stage: "Preparing", date: "2026-08-13T12:00:00.000Z" },
-      { stage: "Applied", date: "2026-08-15T12:00:00.000Z" },
-    ],
-  },
-  "goldman-ibd-summer": {
-    stage: "Assessment",
-    addedAt: "2026-08-08T12:00:00.000Z",
-    stageHistory: [
-      { stage: "Interested", date: "2026-08-08T12:00:00.000Z" },
-      { stage: "Preparing", date: "2026-08-09T12:00:00.000Z" },
-      { stage: "Applied", date: "2026-08-11T12:00:00.000Z" },
-      { stage: "Assessment", date: "2026-08-14T12:00:00.000Z" },
-    ],
-  },
-  "stripe-strategy-ops": {
-    stage: "Interested",
-    addedAt: "2026-08-15T12:00:00.000Z",
-    stageHistory: [{ stage: "Interested", date: "2026-08-15T12:00:00.000Z" }],
-  },
-  "bcg-summer-associate": {
-    stage: "Final round",
-    addedAt: "2026-08-01T12:00:00.000Z",
-    stageHistory: [
-      { stage: "Interested", date: "2026-08-01T12:00:00.000Z" },
-      { stage: "Preparing", date: "2026-08-03T12:00:00.000Z" },
-      { stage: "Applied", date: "2026-08-06T12:00:00.000Z" },
-      { stage: "Assessment", date: "2026-08-09T12:00:00.000Z" },
-      { stage: "First round", date: "2026-08-12T12:00:00.000Z" },
-      { stage: "Final round", date: "2026-08-17T12:00:00.000Z" },
-    ],
-  },
-  "accenture-strategy-fulltime": {
-    stage: "Closed",
-    addedAt: "2026-07-20T12:00:00.000Z",
-    stageHistory: [
-      { stage: "Interested", date: "2026-07-20T12:00:00.000Z" },
-      { stage: "Preparing", date: "2026-07-22T12:00:00.000Z" },
-      { stage: "Applied", date: "2026-07-25T12:00:00.000Z" },
-      { stage: "Closed", date: "2026-08-01T12:00:00.000Z" },
-    ],
-    // The one seeded application already at Closed gets a real outcome so
-    // the Board/Table demo the "recorded" rendering, not just the "Record
-    // outcome" prompt -- see data/trackerUtils.js's OUTCOMES for the four
-    // real values this field can hold.
-    outcome: "offer",
-  },
-};
-
-// Exported so Applications tracker views can flag these specific 7 cards
-// as demo data (components/DemoDataBadge.jsx) -- a real member's own
-// tracked applications sit in the exact same list with no visual
-// distinction otherwise, which a supervisor reviewing the app could
-// easily mistake for real activity.
+// Removed (2026-09-23, direct instruction to trim mock content down to a
+// couple of clearly-labeled things rather than scattered fake activity):
+// the Applications tracker used to seed 7 demo cards here so it wasn't
+// empty on first load. The real empty state (Home's first-login branch,
+// Applications' own "no tracked applications yet" state) already covers
+// this honestly, so a fabricated tracker history isn't needed -- and a
+// new real member seeing stage progress on companies they never applied
+// to was exactly the kind of "is this real?" confusion worth removing.
+// SEED_TRACKED_JOB_IDS/SEED_COFFEE_CHAT_IDS stay exported as empty arrays
+// so the existing DemoDataBadge checks across the tracker views/Network
+// keep working (they just never match anything now) without touching
+// every call site.
+const SEED_TRACKED_JOBS = {};
 export const SEED_TRACKED_JOB_IDS = Object.keys(SEED_TRACKED_JOBS);
 
-// Seeded so Network's "Your coffee chats" isn't empty on first load --
-// real requests (via "Request coffee chat") add "Request sent" entries.
-const SEED_COFFEE_CHATS = {
-  "marcus-webb": "Confirmed · Wed 4:00pm",
-  "priya-nair": "Follow-up due",
-};
+// Same reasoning -- Network's "Your coffee chats" now shows its own real
+// "No coffee chats yet" empty state instead of 2 fabricated ones.
+const SEED_COFFEE_CHATS = {};
 export const SEED_COFFEE_CHAT_IDS = Object.keys(SEED_COFFEE_CHATS);
 
 const DEFAULT_STATE = {

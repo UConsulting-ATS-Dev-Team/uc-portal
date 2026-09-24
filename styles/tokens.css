@@ -19,19 +19,6 @@
      white, up from 2.0-4.3:1 -- text-muted alone was used at 11-12px
      (--text-meta/--text-secondary) across nearly every "meta" label in the
      app and was failing WCAG AA's 4.5:1 normal-text minimum outright.
-     border/border-inner were meant to clear WCAG's lower 3:1 component-
-     boundary bar here too, but a 2026-09-14 re-verification against the
-     real formula found they never actually had: #b8b8bc/#d3d3d7 measured
-     only 1.98:1/1.49:1 against white (worse against ground) -- the "same
-     proportion" darkening this comment used to describe wasn't enough.
-     Corrected the same day to values solved directly against the formula
-     (darkest real background, ground, as the binding constraint): border
-     now clears >=3.34:1 everywhere, border-inner >=3.01:1, preserving the
-     original hierarchy (border darker/more emphasized than border-inner)
-     while both genuinely clear the bar instead of one of them silently
-     missing it. Still meant to read as hairlines, not bold rules -- this
-     is the minimum darkening that actually clears 3:1, not an aesthetic
-     maximum.
      --color-ground/--color-surface (the actual page/card backgrounds, not
      text) are untouched -- the reported problem was text and lines being
      too faint to read, not the base page wash. */
@@ -39,8 +26,24 @@
   --color-placeholder: #7d7d80;
   --color-neutral: #6e6e72;
 
-  --color-border: #848484;
-  --color-border-inner: #8c8c8c;
+  /* border/border-inner: 2026-09-14 darkened these to #848484/#8c8c8c to
+     clear WCAG 1.4.11's 3:1 non-text-contrast bar (>=3.34:1/3.01:1 against
+     ground) -- but this token pair is used everywhere (162 call sites
+     across every stylesheet, cards/tables/dividers/inputs alike, all
+     through one shared --border-hairline), not just on real interactive
+     UI-component edges (inputs, buttons) that 1.4.11 actually governs, so
+     that fix landed as a visibly heavier line on every purely decorative
+     divider and card edge too. Member-reported again 2026-09-23 ("the
+     border lines seem a little too forced/bold") -- softened to
+     #a3a3a3/#adadad (~2.25:1/2.52:1 against ground, ~2.52:1/2.81:1 against
+     surface), a deliberate step back below the strict 3:1 minimum in
+     exchange for reading as a hairline again. Splitting the shared token
+     into a compliant value for real interactive-component edges and a
+     lighter one for decorative dividers would resolve this without any
+     accessibility trade-off, but touching all 162 call sites individually
+     is a real, separate refactor -- not done here. */
+  --color-border: #a3a3a3;
+  --color-border-inner: #adadad;
   --color-table-header: #f5f5f8;
 
   --color-primary: #042742; /* UC navy */
