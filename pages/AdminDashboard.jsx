@@ -58,6 +58,9 @@ export default function AdminDashboard() {
   const [accessRequests, setAccessRequests] = useState([]);
   const [accessRequestsLoading, setAccessRequestsLoading] = useState(true);
   const [accessRequestsError, setAccessRequestsError] = useState(null);
+  const [provisioning, setProvisioning] = useState(false);
+  const [provisionResult, setProvisionResult] = useState(null);
+  const [provisionError, setProvisionError] = useState(null);
   const [updatingAccessRequestId, setUpdatingAccessRequestId] = useState(null);
   const [recentSignups, setRecentSignups] = useState([]);
   const [recentSignupsLoading, setRecentSignupsLoading] = useState(true);
@@ -392,6 +395,26 @@ export default function AdminDashboard() {
     if (error) setAccessRequestsError(error.message);
     await loadAccessRequests();
     setUpdatingAccessRequestId(null);
+  }
+
+  // Real account pre-provisioning (supabase/functions/pre-provision-
+  // accounts) -- creates a real, usable auth account for every roster
+  // email that hasn't signed up yet, no email sent. See that function's
+  // own header comment for the full design (why it needs service_role,
+  // why it deliberately doesn't pre-fill profile fields itself, why it
+  // never sends an invite).
+  async function handlePreProvision() {
+    setProvisioning(true);
+    setProvisionError(null);
+    setProvisionResult(null);
+    const { data, error } = await supabase.functions.invoke("pre-provision-accounts", { method: "POST" });
+    setProvisioning(false);
+    if (error) {
+      const detail = await error.context?.json?.().catch(() => null);
+      setProvisionError(detail?.error ?? error.message);
+      return;
+    }
+    setProvisionResult(data);
   }
 
   // Runs the real reassign-sources-and-deactivate flow server-side
@@ -895,6 +918,36 @@ export default function AdminDashboard() {
               </tbody>
             </table>
             </div>
+          </div>
+
+          <div className="detail-section">
+            <h2 className="detail-section__title">Pre-create accounts</h2>
+            <p className="meta" style={{ marginTop: 0 }}>
+              Creates a real, usable account for every roster member who hasn't signed up yet — no email
+              is sent. They claim it later through "Forgot your password?" on Sign-in, which sets a real
+              password and lands them on "Confirm your info" already pre-filled from the Directory
+              (name/major/LinkedIn), rather than a blank signup form.
+            </p>
+            {provisionError && <p className="meta" style={{ color: "#B3261E" }}>{provisionError}</p>}
+            {provisionResult && (
+              <p className="meta">
+                Created {provisionResult.createdCount} new account{provisionResult.createdCount === 1 ? "" : "s"}.{" "}
+                {provisionResult.alreadyExists.length} already had one.
+                {provisionResult.errors.length > 0 ? ` ${provisionResult.errors.length} failed.` : ""}
+              </p>
+            )}
+            {provisionResult?.errors.length > 0 && (
+              <ul style={{ margin: 0, paddingLeft: "var(--space-6)" }}>
+                {provisionResult.errors.map((e) => (
+                  <li key={e.email} className="meta" style={{ color: "#B3261E" }}>
+                    {e.email}: {e.message}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button className="btn btn-secondary" onClick={handlePreProvision} disabled={provisioning}>
+              {provisioning ? "Creating accounts…" : "Pre-create accounts for roster"}
+            </button>
           </div>
 
           <div className="detail-section">

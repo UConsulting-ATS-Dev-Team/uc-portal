@@ -124,6 +124,10 @@ const AppStateContext = createContext(null);
 export function AppStateProvider({ children }) {
   const [state, setState] = useState(loadState);
   const [hydratedFromRemote, setHydratedFromRemote] = useState(false);
+  // Separate from hydratedFromRemote (which only tracks the preferences
+  // fetch) -- see the Directory-prefill effect's own comment below for
+  // why this exists.
+  const [profileOverridesHydrated, setProfileOverridesHydrated] = useState(false);
   // The real signed-in member's real profiles.role -- not part of `state`
   // (never persisted to localStorage or the mock-data blob; it's live
   // auth-derived data, re-fetched fresh each session). Replaces the fully
@@ -217,16 +221,18 @@ export function AppStateProvider({ children }) {
   // (writing back the same data just read), same accepted characteristic
   // preferences' own effect already has.
   useEffect(() => {
-    fetchRemoteProfileOverrides().then((remote) => {
-      if (remote) {
-        setState((prev) => ({
-          ...prev,
-          profileOverrides: { ...prev.profileOverrides, ...remote.profileOverrides },
-          onboardingComplete: remote.onboardingComplete || prev.onboardingComplete,
-          profileLastUpdated: remote.profileLastUpdated ?? prev.profileLastUpdated,
-        }));
-      }
-    });
+    fetchRemoteProfileOverrides()
+      .then((remote) => {
+        if (remote) {
+          setState((prev) => ({
+            ...prev,
+            profileOverrides: { ...prev.profileOverrides, ...remote.profileOverrides },
+            onboardingComplete: remote.onboardingComplete || prev.onboardingComplete,
+            profileLastUpdated: remote.profileLastUpdated ?? prev.profileLastUpdated,
+          }));
+        }
+      })
+      .finally(() => setProfileOverridesHydrated(true));
   }, []);
 
   useEffect(() => {
@@ -235,15 +241,24 @@ export function AppStateProvider({ children }) {
   }, [state.profileOverrides, state.onboardingComplete, state.profileLastUpdated, hydratedFromRemote]);
 
   // Real Directory auto-fill (see data/directoryPrefillSync.js for the
-  // full rationale). Gated on hydratedFromRemote so this can never race
-  // ahead of a real saved profileOverrides value fetched above -- only
-  // runs once that's resolved, and even then only ever fills a field
-  // that's still empty, so a member's own edit (past or future) always
-  // wins. Silently does nothing on no match (not everyone in the club is
-  // in the Directory sheet yet) or a fetch failure -- this is a nice-to-
-  // have prefill, never something a member should be blocked on.
+  // full rationale). This comment used to claim gating on hydratedFromRemote
+  // alone was enough to "never race ahead of a real saved profileOverrides
+  // value fetched above" -- wrong, caught live (2026-09-24) while verifying
+  // account pre-provisioning end to end: hydratedFromRemote only tracks the
+  // *preferences* hydration effect, a genuinely separate network call from
+  // the profileOverrides one above, with no ordering guarantee between the
+  // two. On a real pre-provisioned account (profiles row exists but every
+  // field genuinely empty), the profileOverrides fetch resolving *after*
+  // this effect's setState would blindly spread its own all-empty fields
+  // back over whatever the prefill had just set, silently erasing it --
+  // reproduced directly, not just theorized. Now gated on both hydration
+  // flags, so this always runs after the real saved value is already in
+  // place, however the two network calls happen to finish. Still only
+  // ever fills a field that's still empty at that point, and still
+  // silently does nothing on no match/fetch failure -- a nice-to-have
+  // prefill, never something a member should be blocked on.
   useEffect(() => {
-    if (!hydratedFromRemote) return;
+    if (!hydratedFromRemote || !profileOverridesHydrated) return;
     fetchDirectoryPrefill()
       .then((match) => {
         if (!match) return;
@@ -257,7 +272,7 @@ export function AppStateProvider({ children }) {
         });
       })
       .catch(() => {});
-  }, [hydratedFromRemote]);
+  }, [hydratedFromRemote, profileOverridesHydrated]);
 
   // Real applications tracker (Stage 5) -- same one-time-hydrate-on-mount
   // shape as preferences above, except merged into local state rather than

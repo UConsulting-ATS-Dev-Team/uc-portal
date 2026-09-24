@@ -39,14 +39,39 @@ export default function ResetPassword() {
       return;
     }
     setSubmitting(true);
-    const { error: updateError } = await supabase.auth.updateUser({ password });
+    const { data, error: updateError } = await supabase.auth.updateUser({ password });
     setSubmitting(false);
     if (updateError) {
       setError(updateError.message);
       return;
     }
     setStatus("done");
-    setTimeout(() => navigate("/"), 1500);
+
+    // Same real routing check as SignIn.jsx's own post-auth handling --
+    // this page used to always land on "/" regardless, which meant a
+    // pre-provisioned account (created by an admin, onboarding_complete
+    // still false) claiming its password here would skip straight past
+    // "Confirm your info" instead of landing on it -- exactly the one
+    // step pre-provisioning exists to make quick, not skippable. Queries
+    // profiles directly with the session updateUser() just established,
+    // same reasoning as SignIn.jsx's own comment on why this can't just
+    // trust useAppState()'s value (same mount-time hydration race).
+    const { data: profileRow } = await supabase
+      .from("profiles")
+      .select("onboarding_complete, member_status")
+      .eq("id", data.user.id)
+      .maybeSingle();
+    const isOnboarded = profileRow?.onboarding_complete ?? false;
+    const isAlumniAccount = profileRow?.member_status === "alumni";
+    const isInternAccount = profileRow?.member_status === "intern";
+
+    setTimeout(() => {
+      if (isInternAccount) {
+        navigate("/accelerator");
+      } else {
+        navigate(isOnboarded ? "/" : "/onboarding", { state: { isAlumni: isAlumniAccount } });
+      }
+    }, 1500);
   }
 
   return (
