@@ -7,6 +7,7 @@ import NavShell from "./components/NavShell.jsx";
 import Skeleton from "./components/Skeleton.jsx";
 import Placeholder from "./pages/Placeholder.jsx";
 import SignIn from "./pages/SignIn.jsx";
+import ResetPassword from "./pages/ResetPassword.jsx";
 import Jobs from "./pages/Jobs.jsx";
 import JobDetail from "./pages/JobDetail.jsx";
 import Applications from "./pages/Applications.jsx";
@@ -62,6 +63,7 @@ export default function App() {
           case rather than renaming the canonical route out from under
           anything that already links to it. */}
       <Route path="/signin" element={<SignIn />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* Every route below requires a real Supabase session --
           RequireAuth redirects to /sign-in otherwise. See its own header

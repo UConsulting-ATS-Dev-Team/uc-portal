@@ -57,6 +57,9 @@ export default function SignIn() {
   const [requestName, setRequestName] = useState("");
   const [requestError, setRequestError] = useState(null);
   const [requestSubmitting, setRequestSubmitting] = useState(false);
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotError, setForgotError] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { onboardingComplete } = useAppState();
@@ -155,6 +158,28 @@ export default function SignIn() {
 
   function requestAccess() {
     setState(STATE.NOT_ON_ROSTER);
+  }
+
+  // Real password recovery -- there was no self-serve path at all before
+  // this (grepped the app to confirm), meaning every forgotten password
+  // became a manual support request only an admin could resolve. Sends
+  // through Supabase's own mailer, same one signup confirmation uses --
+  // redirectTo has to be an *exact* URL already on the project's
+  // additional_redirect_urls allow-list (see supabase/config.toml), not
+  // just any same-origin path.
+  async function handleForgotPassword(event) {
+    event.preventDefault();
+    setForgotError(null);
+    setForgotSubmitting(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setForgotSubmitting(false);
+    if (error) {
+      setForgotError(error.message);
+      return;
+    }
+    setForgotSent(true);
   }
 
   // Real insert into access_requests now (2026-09-13) -- admin-reviewable
@@ -288,6 +313,58 @@ export default function SignIn() {
     );
   }
 
+  if (mode === "forgot-password") {
+    return (
+      <div className="auth">
+        <div className="auth__stack">
+          <Brand />
+          <div className="auth__card">
+            <h1 className="auth__title">Reset your password</h1>
+            <p className="auth__subtitle">Enter your email and we'll send you a reset link.</p>
+            {forgotSent && (
+              <p className="auth__note" style={{ color: "var(--color-accent-deep)" }}>
+                Check {email} for a reset link. It can take a few minutes to arrive.
+              </p>
+            )}
+            {forgotError && (
+              <p className="auth__note" style={{ color: "#B3261E" }}>
+                {forgotError}
+              </p>
+            )}
+            <form onSubmit={handleForgotPassword}>
+              <div className="field">
+                <label htmlFor="forgot-email">Email</label>
+                <input
+                  id="forgot-email"
+                  type="email"
+                  placeholder="you@university.edu"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <button className="btn btn-secondary" type="submit" style={{ width: "100%" }} disabled={forgotSubmitting}>
+                {forgotSubmitting ? "Sending…" : "Send reset link"}
+              </button>
+            </form>
+            <div className="auth__footer-links">
+              <button
+                className="btn-link"
+                onClick={() => {
+                  setMode("sign-in");
+                  setForgotError(null);
+                  setForgotSent(false);
+                }}
+              >
+                Back to sign in
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="auth">
       <div className="auth__stack">
@@ -342,6 +419,14 @@ export default function SignIn() {
             </button>
           </form>
 
+          {mode === "sign-up" && (
+            <p className="auth__note" style={{ marginTop: "var(--space-4)" }}>
+              Other members can see your name, photo, and basic profile info, plus anything you post
+              to the Feed or share as an interview write-up. Admins see club-wide stats only, never
+              your individual application list. Your resume and direct messages stay private.
+            </p>
+          )}
+
           <div className="auth__footer-links">
             <button
               className="btn-link"
@@ -353,6 +438,11 @@ export default function SignIn() {
             >
               {mode === "sign-in" ? "New here? Create an account" : "Already have an account? Sign in"}
             </button>
+            {mode === "sign-in" && (
+              <button className="btn-link" onClick={() => setMode("forgot-password")}>
+                Forgot your password?
+              </button>
+            )}
             <button className="btn-link" onClick={requestAccess}>
               Alumni — request access
             </button>
