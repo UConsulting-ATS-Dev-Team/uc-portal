@@ -91,11 +91,20 @@ export function isLikelySeniorRole(title: string): boolean {
 //   - "Data Entry Specialist" (Carvana) is included per an explicit human
 //     judgment call: not manual trade in the literal sense, but not a
 //     business/finance/consulting/tech role either.
+//   - "fulfillment associate" (scoped, not bare "fulfillment" -- same
+//     reasoning as "warehouse") and bare "pharmacists?" were added
+//     evaluating Ro (telehealth, runs its own pharmacy fulfillment
+//     centers): "Fulfillment Associate"/"Fulfillment Pharmacist" postings
+//     at Romeoville/Boynton Beach/Torrance are real warehouse/dispensing
+//     roles, not the corporate consulting/finance/tech work UC Portal
+//     serves. Checked against the live jobs table first (zero existing
+//     titles contain "pharmacist" or "fulfillment") -- no collision risk
+//     at the time these were added.
 const MANUAL_TRADE_TITLE_PATTERN =
-  /\b(technicians?|mechanics?|painters?|detailers?|preppers?|airbrush(es)?|inspectors?|cdl|lot\s+attendants?|lot\s+assistants?|auto\s*body|upholstery|security\s+guards?|data\s+entry|wheel\s+repair|dent\s+repair|parts\s+associates?|line\s+operators?|machine\s+operators?|warehouse\s+(associates?|workers?|supervisors?|technicians?)|delivery\s+(drivers?|ambassadors?|advocates?|specialists?)|(vehicle|customer)\s+delivery|drivers?|forklift|custodians?|housekeeping|cashiers?|pdr|lube|refinish\w*|interior\s+repair|glass\s+repair|heavy\s+body|body\s+techs?|rim\s+repair|restoration|brakes?|combo\s+techs?|diagnostic\s+techs?|auto\s+techs?)\b/i;
+  /\b(technicians?|mechanics?|painters?|detailers?|preppers?|airbrush(es)?|inspectors?|cdl|lot\s+attendants?|lot\s+assistants?|auto\s*body|upholstery|security\s+guards?|data\s+entry|wheel\s+repair|dent\s+repair|parts\s+associates?|line\s+operators?|machine\s+operators?|warehouse\s+(associates?|workers?|supervisors?|technicians?)|fulfillment\s+associates?|delivery\s+(drivers?|ambassadors?|advocates?|specialists?)|(vehicle|customer)\s+delivery|drivers?|forklift|custodians?|housekeeping|cashiers?|pdr|lube|refinish\w*|interior\s+repair|glass\s+repair|heavy\s+body|body\s+techs?|rim\s+repair|restoration|brakes?|combo\s+techs?|diagnostic\s+techs?|auto\s+techs?)\b/i;
 
 const CLINICAL_CARE_TITLE_PATTERN =
-  /\b(therapists?|clinicians?|counselors?|nurses?|nursing|physicians?|psychiatr\w*|social\s+workers?|care\s+coach(es)?|crisis\s+intervention|behavioral\s+health(\s+specialists?)?|clinical|facilitators?|mental\s+health|substance\s+use\s+disorder|lcsw|lmft|lpc|rn|care\s+navigators?|(clinical|patient)\s+case\s+managers?)\b/i;
+  /\b(therapists?|clinicians?|counselors?|nurses?|nursing|physicians?|pharmacists?|psychiatr\w*|social\s+workers?|care\s+coach(es)?|crisis\s+intervention|behavioral\s+health(\s+specialists?)?|clinical|facilitators?|mental\s+health|substance\s+use\s+disorder|lcsw|lmft|lpc|rn|care\s+navigators?|(clinical|patient)\s+case\s+managers?)\b/i;
 
 export function isLikelyNonCorporateRole(title: string): boolean {
   return MANUAL_TRADE_TITLE_PATTERN.test(title) || CLINICAL_CARE_TITLE_PATTERN.test(title);

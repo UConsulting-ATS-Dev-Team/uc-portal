@@ -6093,3 +6093,100 @@ via direct count, up from 167 at the start of this pass (a real, exact
 +1 match).
 
 Committed and pushed per standing permission for this repo.
+
+**2026-09-24 -- Twenty-first addition: 4 more companies (Watershed
+Informatics, Calm.com, Ro, Patch Media), healthcare/wellness/consumer
+vertical -- plus a real relevance-filter gap fix.** Same autonomous-work-
+session pass. Confirmed the live starting count first (173 -- higher than
+the Twentieth addition's closing 168, meaning other work in between had
+already added 5 more; trusted the live count over the stale figure, per
+this file's own standing discipline).
+
+Checked a healthcare/climate-tech candidate list: Tempus, Flatiron
+Health, Color, Ro, Hims, Cityblock, Oscar, Devoted Health, Included
+Health, Ginger, Headspace, Calm, Noom, Carbon, Sunrun, Climeworks, Charm
+Industrial, Watershed, Patch, Aclima. No usable board on either platform:
+Tempus, Flatiron Health, Color, Hims, Cityblock, Devoted Health, Included
+Health, Ginger, Headspace, Noom, Sunrun, Climeworks, Charm Industrial,
+Aclima. Already a live source: "oscar" (Greenhouse) -- resolved to the
+real Oscar Health, confirmed already present before any further
+verification effort.
+
+One real hit rejected on the actual combined relevance filter (not just
+eyeballed): "carbon" (Greenhouse) resolves to the real Carbon, Inc.
+(3D-printing hardware unicorn, Sunnyvale, `company_name` verified), 13
+postings -- but 0 of 13 survive `isLikelySeniorRole() OR
+isLikelyNonCorporateRole()` together (entirely Senior/Director-level
+hardware/manufacturing engineering titles). Not worth a source with
+nothing to show. Also excluded on human judgment despite technically
+passing the keyword filter: "patch" (Greenhouse) resolves to Patch
+(childcare staffing, patchcaregiving.com), 5 postings, all substitute/
+lead childcare teacher roles -- not the kind of corporate role this app
+serves, same bar as prior additions' thin/off-fit exclusions.
+
+Four real hits, each identity-verified via `company_name` plus sampled
+office locations and title content:
+
+- **Watershed Informatics** (Greenhouse, slug `watershed`) -- a genomics/
+  bioinformatics software company in Cambridge, MA. Deliberately **not**
+  the well-known climate-tech "Watershed" (carbon accounting SaaS, San
+  Francisco) -- a distinct, smaller real company confirmed via exact
+  `company_name` match and real Cambridge/Boston offices plus
+  bioinformatics-specific titles ("Customer Success Engineer,
+  Bioinformatics", "High Performance Computing Engineer"). 7 of 8 sampled
+  titles survive the combined filter. Named distinctly in the source
+  record to avoid future confusion with the more famous Watershed.
+- **Calm.com** (Greenhouse, slug `calm`) -- the real, well-known
+  meditation/sleep app, `company_name` "Calm.com" verified. Very small
+  board (2 postings), 1 of 2 survives the combined filter ("Growth
+  Product Manager"). Thin, added per the established small-but-real-and-
+  famous precedent (Consensys 1/6, Pacaso 5/5, SeatGeek 6/20).
+- **Ro** (Lever, site `ro`) -- real, well-known telehealth unicorn
+  (parent of Roman/Rory), NYC HQ confirmed via office locations and
+  posting text. 52 total postings, 11 of 52 survive the combined filter
+  -- most of the board is pharmacy-fulfillment-center operations work at
+  Ro's own dispensing centers (Romeoville IL / Boynton Beach FL /
+  Torrance CA), which is what surfaced the relevance-filter gap below.
+  Survivors include real corporate roles: Analytics Engineer, Engineering
+  Manager, Inventory Allocation Analyst, Technical Lead.
+- **Patch Media** (Lever, site `patch`) -- real hyperlocal news company
+  (patch.com), `company_name`/posting content verified ("Patch Media is
+  an equal opportunity employer..."). Distinct from the unrelated
+  childcare-staffing "Patch" rejected above -- same bare slug word, two
+  different real companies, each verified independently. Small board (5
+  postings), 4 of 5 survive the combined filter (Account Executive -
+  Local Sales, Ad Ops Associate, 2x Local News Content Producer).
+
+**Relevance-filter gap fix, applied alongside this batch.** Evaluating
+Ro's real board surfaced "Fulfillment Associate" and "Fulfillment
+Pharmacist" postings that neither existing denylist pattern caught --
+real warehouse/dispensing-center roles, not corporate work, that would
+otherwise have shown up on a member's Jobs board. Added `fulfillment
+associates?` (scoped, matching the existing `warehouse` precedent -- not
+bare "fulfillment", since a legitimate "Fulfillment Manager, Enterprise
+Ops" title is plausible elsewhere) to `MANUAL_TRADE_TITLE_PATTERN`, and
+bare `pharmacists?` (matching the existing bare `nurses?`/`physicians?`
+precedent) to `CLINICAL_CARE_TITLE_PATTERN`, in both
+`server/src/relevance.ts` and
+`supabase/functions/_shared/pipeline/relevance.ts`. Checked against the
+live `jobs` table first via the anon PostgREST endpoint -- zero existing
+titles contained "pharmacist" or "fulfillment" at the time, so no
+collision risk with any already-ingested posting. Verified with 2 new
+cases in `server/tests/relevance.test.ts` (excludes "Fulfillment
+Associate - Romeoville, IL" / "Fulfillment Pharmacist - Boynton Beach,
+FL"; keeps "Fulfillment Manager, Enterprise Ops" as a control). Ro's
+survivor count above (11/52) already reflects the fixed filter.
+`npm run test:server`: 145/145 green (up from 134 -- 11 new tests: 2 for
+this fix, the rest from the match-score redesign earlier this session).
+
+None of the four matches a `NAMED_COMPANY_RATES` entry in
+`data/industryBaseRates.js`. All four inherit Part 1's relevance filter
+and Part 2's `MAX_ACTIVE_JOBS_PER_COMPANY=30` cap automatically --
+config-only, aside from the relevance-filter fix (pipeline-wide, not
+per-company).
+
+**Total company job-listing sources after this addition: 177**, confirmed
+via a temporary diagnostic table (dropped immediately after, verified at
+zero residue -- `PGRST205` on re-query).
+
+Committed and pushed per standing permission for this repo.

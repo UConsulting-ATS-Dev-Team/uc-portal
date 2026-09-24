@@ -34,8 +34,13 @@ describe("isLikelyNonCorporateRole - manual trade / hourly operations", () => {
     "Auto Interior Restoration Specialist",
     "Customer Vehicle Delivery Ambassador",
     "Customer Service Delivery Advocate",
+    "Fulfillment Associate - Romeoville, IL",
   ])("excludes %s", (title) => {
     expect(isLikelyNonCorporateRole(title)).toBe(true);
+  });
+
+  it("does not exclude Fulfillment Manager, Enterprise Ops (bare 'fulfillment' stays ungated)", () => {
+    expect(isLikelyNonCorporateRole("Fulfillment Manager, Enterprise Ops")).toBe(false);
   });
 
   it("does not exclude Market Operations Manager (real Carvana corporate role)", () => {
@@ -85,6 +90,7 @@ describe("isLikelyNonCorporateRole - direct clinical / patient care", () => {
     "Care Coach (Part-Time)",
     "Care Navigator",
     "Registered Nurse",
+    "Fulfillment Pharmacist - Boynton Beach, FL",
   ])("excludes %s", (title) => {
     expect(isLikelyNonCorporateRole(title)).toBe(true);
   });
