@@ -115,31 +115,49 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'resolution must be "confirmed_duplicate" or "not_duplicate"' }, 400);
   }
 
-  const { data: candidate, error: candidateError } = await adminClient
-    .from("duplicate_candidates")
-    .select("*")
-    .eq("id", body.candidateId)
-    .single();
-  if (candidateError || !candidate) return jsonResponse({ error: "Duplicate candidate not found" }, 404);
-  // Idempotency guard -- a candidate already resolved can't be re-resolved
-  // by a duplicate/retried request.
-  if (candidate.status !== "pending") {
-    return jsonResponse({ error: `Candidate is already "${candidate.status}", not pending` }, 409);
-  }
-
+  // Idempotency guard, made atomic (2026-09-25) -- same fix, same reasoning
+  // as approve-submission's identical claim pattern: the original
+  // SELECT-then-check-in-application-code version had a real TOCTOU race
+  // under true concurrent double-submission (two requests both reading
+  // status = "pending" before either writes). This UPDATE ... WHERE
+  // status = 'pending' AND reviewed_by IS NULL RETURNING * is the actual
+  // atomic claim -- only one concurrent request's WHERE clause can still
+  // match once it holds the row lock; the loser affects zero rows and gets
+  // a clean 409 instead of racing ahead to double-process a merge.
   const nowIso = new Date().toISOString();
+  const { data: claimedRows, error: claimError } = await adminClient
+    .from("duplicate_candidates")
+    .update({ reviewed_by: user.id, reviewed_at: nowIso })
+    .eq("id", body.candidateId)
+    .eq("status", "pending")
+    .is("reviewed_by", null)
+    .select();
+  if (claimError) return jsonResponse({ error: claimError.message }, 500);
+  if (!claimedRows || claimedRows.length === 0) {
+    return jsonResponse({ error: "Duplicate candidate not found, or already claimed/resolved" }, 409);
+  }
+  const candidate = claimedRows[0];
+
+  // Same reasoning as approve-submission's identical fail() helper: every
+  // early-return error path below releases the claim first, so a
+  // candidate that fails partway through (e.g. the merge's job-loading
+  // step) doesn't stay permanently "claimed" -- an admin can retry it.
+  async function fail(errorBody: Record<string, unknown>, status: number) {
+    await adminClient.from("duplicate_candidates").update({ reviewed_by: null, reviewed_at: null }).eq("id", candidate.id);
+    return jsonResponse(errorBody, status);
+  }
 
   if (body.resolution === "not_duplicate") {
     const { error } = await adminClient
       .from("duplicate_candidates")
       .update({ status: "not_duplicate", reviewed_by: user.id, reviewed_at: nowIso })
       .eq("id", candidate.id);
-    if (error) return jsonResponse({ error: error.message }, 500);
+    if (error) return await fail({ error: error.message }, 500);
     return jsonResponse({ outcome: "not_duplicate" });
   }
 
   if (body.keepJobId !== candidate.job_id_a && body.keepJobId !== candidate.job_id_b) {
-    return jsonResponse({ error: "keepJobId must match this candidate's job_id_a or job_id_b" }, 400);
+    return await fail({ error: "keepJobId must match this candidate's job_id_a or job_id_b" }, 400);
   }
   const keepId = body.keepJobId;
   const removeId = keepId === candidate.job_id_a ? candidate.job_id_b : candidate.job_id_a;
@@ -148,7 +166,7 @@ Deno.serve(async (req) => {
   // the rest of this handler already had.
   const { data: bothJobs, error: bothJobsError } = await adminClient.from("jobs").select("*").in("id", [keepId, removeId]);
   if (bothJobsError || !bothJobs || bothJobs.length !== 2) {
-    return jsonResponse({ error: bothJobsError?.message ?? "Could not load both jobs to merge" }, 500);
+    return await fail({ error: bothJobsError?.message ?? "Could not load both jobs to merge" }, 500);
   }
   const keepJob = bothJobs.find((j) => j.id === keepId)!;
   const removeJob = bothJobs.find((j) => j.id === removeId)!;
@@ -158,25 +176,25 @@ Deno.serve(async (req) => {
     .from("job_sources")
     .update({ job_id: keepId, is_primary: false })
     .eq("job_id", removeId);
-  if (reassignError) return jsonResponse({ error: `Reassigning sources failed: ${reassignError.message}` }, 500);
+  if (reassignError) return await fail({ error: `Reassigning sources failed: ${reassignError.message}` }, 500);
 
   const { error: deactivateError } = await adminClient
     .from("jobs")
     .update({ active: false, status: "removed", updated_at: nowIso })
     .eq("id", removeId);
-  if (deactivateError) return jsonResponse({ error: `Deactivating the duplicate failed: ${deactivateError.message}` }, 500);
+  if (deactivateError) return await fail({ error: `Deactivating the duplicate failed: ${deactivateError.message}` }, 500);
 
   const { error: mergeUpdateError } = await adminClient
     .from("jobs")
     .update({ ...mergedFields, last_seen_at: nowIso, updated_at: nowIso })
     .eq("id", keepId);
-  if (mergeUpdateError) return jsonResponse({ error: `Applying merged fields failed: ${mergeUpdateError.message}` }, 500);
+  if (mergeUpdateError) return await fail({ error: `Applying merged fields failed: ${mergeUpdateError.message}` }, 500);
 
   const { error: updateCandidateError } = await adminClient
     .from("duplicate_candidates")
     .update({ status: "confirmed_duplicate", reviewed_by: user.id, reviewed_at: nowIso })
     .eq("id", candidate.id);
-  if (updateCandidateError) return jsonResponse({ error: updateCandidateError.message }, 500);
+  if (updateCandidateError) return await fail({ error: updateCandidateError.message }, 500);
 
   return jsonResponse({ outcome: "confirmed_duplicate", keptJobId: keepId, removedJobId: removeId, mergedFields: Object.keys(mergedFields) });
 });

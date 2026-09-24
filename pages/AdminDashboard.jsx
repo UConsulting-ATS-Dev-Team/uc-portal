@@ -1198,10 +1198,10 @@ export default function AdminDashboard() {
 
           <div className="rail-card">
             <div className="rail-card__title">
-              Access control <DemoDataBadge label="Illustrative" title="'Roster-provisioned' is real (see the Access requests queue above); 'pending removals' is a placeholder figure, not a real tracked count" />
+              Access control <DemoDataBadge label="Illustrative" title="'Roster-provisioned' and the access mechanism line are real (see the Access requests queue above and the roster/alumni-accounts migrations); 'pending removals' is a placeholder figure, not a real tracked count" />
             </div>
             <p className="meta" style={{ marginBottom: "var(--space-2)" }}>{ACCESS_CONTROL.provisioned}</p>
-            <p className="meta" style={{ marginBottom: "var(--space-2)" }}>{ACCESS_CONTROL.autoConversion}</p>
+            <p className="meta" style={{ marginBottom: "var(--space-2)" }}>{ACCESS_CONTROL.accessMechanism}</p>
             <p className="meta" style={{ marginBottom: 0 }}>{ACCESS_CONTROL.pendingRemovals} pending removals</p>
           </div>
         </div>

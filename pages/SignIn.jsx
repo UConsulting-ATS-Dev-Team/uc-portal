@@ -184,26 +184,37 @@ export default function SignIn() {
 
   // Real insert into access_requests now (2026-09-13) -- admin-reviewable
   // on Admin Dashboard, same pending -> approved/declined shape as
-  // feature_requests. Reachable with no session at all (anon insert, see
-  // that table's own RLS policy) since this runs before any account
-  // exists for a genuinely new person.
+  // feature_requests. Reachable with no session at all since this runs
+  // before any account exists for a genuinely new person.
+  //
+  // Routed through the submit-access-request Edge Function (2026-09-25),
+  // not a direct client insert anymore -- the anon-insert RLS policy this
+  // used to rely on is gone (see 20260925010000_access_request_rate_limit
+  // .sql's own header comment), since a direct insert had no way to apply
+  // real IP-based rate limiting. functions.invoke() never throws on a
+  // non-2xx response (the error comes back as `error`, with the real body
+  // on `error.context`), so the 23505-vs-other-error branch below reads
+  // the response body rather than a thrown error's own message.
   async function submitAccessRequest() {
     setRequestSubmitting(true);
     setRequestError(null);
-    const { error } = await supabase.from("access_requests").insert({
-      email: email.trim(),
-      name: requestName.trim() || null,
+    const { data, error } = await supabase.functions.invoke("submit-access-request", {
+      body: { email: email.trim(), name: requestName.trim() || null },
     });
     setRequestSubmitting(false);
     if (error) {
-      // 23505 here means access_requests_one_pending_per_email fired
-      // (see 20260914030000_rls_gap_fixes.sql) -- a real, friendlier
-      // message instead of surfacing the raw constraint-violation text.
-      setRequestError(
-        error.code === "23505"
-          ? "You already have a pending request in with Exec -- no need to submit another."
-          : error.message,
-      );
+      let message = error.message;
+      try {
+        const body = await error.context?.json();
+        if (body?.error) message = body.error;
+      } catch {
+        // Non-JSON or unreadable error body -- fall back to error.message.
+      }
+      setRequestError(message);
+      return;
+    }
+    if (data?.error) {
+      setRequestError(data.error);
       return;
     }
     setSubmittedAt(new Date());

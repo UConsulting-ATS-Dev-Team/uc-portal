@@ -70,16 +70,48 @@ Deno.serve(async (req) => {
   }
   if (!body.submissionId) return jsonResponse({ error: "submissionId is required" }, 400);
 
-  const { data: submission, error: submissionError } = await adminClient
+  // Idempotency guard, made atomic (2026-09-25): the original version did
+  // a plain SELECT, checked submission.status in application code, and
+  // only updated reviewed_by/reviewed_at at the very end -- a real TOCTOU
+  // race under true concurrent double-submission (a network retry landing
+  // while the first request is still in flight, or the same admin
+  // double-clicking on a slow connection before the button disables):
+  // both requests could read status = "needs_review" before either wrote
+  // anything, and both would proceed to insert a duplicate job row. This
+  // UPDATE ... WHERE status = 'needs_review' AND reviewed_by IS NULL
+  // RETURNING * is the actual atomic claim -- Postgres serializes
+  // concurrent UPDATEs against the same row, so only one request's WHERE
+  // clause can still match once it acquires the row lock; the loser's
+  // UPDATE affects zero rows and gets a clean 409 instead of racing ahead.
+  const nowClaimedIso = new Date().toISOString();
+  const { data: claimedRows, error: claimError } = await adminClient
     .from("opportunity_submissions")
-    .select("*")
+    .update({ reviewed_by: user.id, reviewed_at: nowClaimedIso })
     .eq("id", body.submissionId)
-    .single();
-  if (submissionError || !submission) return jsonResponse({ error: "Submission not found" }, 404);
-  // Idempotency guard -- a submission already resolved (approved, rejected,
-  // or expired) can't be re-approved by a duplicate/retried request.
-  if (submission.status !== "needs_review") {
-    return jsonResponse({ error: `Submission is already "${submission.status}", not needs_review` }, 409);
+    .eq("status", "needs_review")
+    .is("reviewed_by", null)
+    .select();
+  if (claimError) return jsonResponse({ error: claimError.message }, 500);
+  if (!claimedRows || claimedRows.length === 0) {
+    // Ambiguous on purpose between "doesn't exist" and "already
+    // claimed/resolved" -- distinguishing them needs a second read that
+    // would just reopen the same race this guard exists to close.
+    return jsonResponse({ error: "Submission not found, or already claimed/resolved" }, 409);
+  }
+  const submission = claimedRows[0];
+
+  // Every early-return error path below goes through fail() instead of a
+  // bare jsonResponse(), so a submission that fails validation (or any
+  // other real failure after the claim) doesn't stay permanently
+  // "claimed" -- the original pre-atomic-claim version left status
+  // untouched on every one of these paths specifically so an admin could
+  // fix and re-approve the same submission; releasing reviewed_by/
+  // reviewed_at here preserves that same retryability under the new
+  // claim mechanism instead of accidentally locking the submission out
+  // forever the first time normalization/validation/an insert fails.
+  async function fail(errorBody: Record<string, unknown>, status: number) {
+    await adminClient.from("opportunity_submissions").update({ reviewed_by: null, reviewed_at: null }).eq("id", submission.id);
+    return jsonResponse(errorBody, status);
   }
 
   const { data: submitterProfile } = await adminClient
@@ -95,12 +127,12 @@ Deno.serve(async (req) => {
     .eq("name", sourceName)
     .single();
   if (sourceError || !source) {
-    return jsonResponse({ error: `Source "${sourceName}" not found -- has the seed migration been applied?` }, 500);
+    return await fail({ error: `Source "${sourceName}" not found -- has the seed migration been applied?` }, 500);
   }
   if (source.authorization_status === "disabled" || source.authorization_status === "not_approved") {
     // §3.7's actual enforcement point: a disabled/unapproved source cannot
     // reach the database, full stop, regardless of what an admin clicks.
-    return jsonResponse({ error: `Source "${sourceName}" is not currently authorized to contribute jobs` }, 403);
+    return await fail({ error: `Source "${sourceName}" is not currently authorized to contribute jobs` }, 403);
   }
 
   const payload = submission.raw_payload as SubmissionPayload;
@@ -112,7 +144,7 @@ Deno.serve(async (req) => {
     // Required-field failure -- per §3.1, never insert a broken record.
     // Submission status is left as "needs_review" so the admin can fix the
     // submission (or reject it) rather than silently losing it.
-    return jsonResponse({ error: "Normalized job failed validation", issues }, 422);
+    return await fail({ error: "Normalized job failed validation", issues }, 422);
   }
 
   const qualityScore = scoreQuality(normalized);
@@ -129,7 +161,7 @@ Deno.serve(async (req) => {
     activeJobs = await fetchAllRows(adminClient, "jobs", "id, company, title, application_url, remote_type, city, posted_date, salary_min", (q) => q.eq("active", true));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return jsonResponse({ error: message }, 500);
+    return await fail({ error: message }, 500);
   }
 
   let bestMatch: { jobId: string; score: number } | null = null;
@@ -155,7 +187,7 @@ Deno.serve(async (req) => {
       source_url: payload.link,
       is_primary: false,
     });
-    if (jobSourceError) return jsonResponse({ error: jobSourceError.message }, 500);
+    if (jobSourceError) return await fail({ error: jobSourceError.message }, 500);
 
     await adminClient.from("jobs").update({ last_seen_at: nowIso, updated_at: nowIso }).eq("id", bestMatch.jobId);
 
@@ -163,7 +195,7 @@ Deno.serve(async (req) => {
       .from("opportunity_submissions")
       .update({ job_id: bestMatch.jobId, status: "live", reviewed_by: user.id, reviewed_at: nowIso })
       .eq("id", submission.id);
-    if (updateSubmissionError) return jsonResponse({ error: updateSubmissionError.message }, 500);
+    if (updateSubmissionError) return await fail({ error: updateSubmissionError.message }, 500);
 
     return jsonResponse({ outcome: "merged", jobId: bestMatch.jobId, matchedScore: bestMatch.score });
   }
@@ -184,7 +216,7 @@ Deno.serve(async (req) => {
     .insert(insertRow)
     .select()
     .single();
-  if (jobInsertError) return jsonResponse({ error: jobInsertError.message }, 500);
+  if (jobInsertError) return await fail({ error: jobInsertError.message }, 500);
 
   const { error: jobSourceInsertError } = await adminClient.from("job_sources").insert({
     job_id: newJob.id,
@@ -193,7 +225,7 @@ Deno.serve(async (req) => {
     source_url: payload.link,
     is_primary: true,
   });
-  if (jobSourceInsertError) return jsonResponse({ error: jobSourceInsertError.message }, 500);
+  if (jobSourceInsertError) return await fail({ error: jobSourceInsertError.message }, 500);
 
   // Review band (70-89): the submission still goes live -- the admin already
   // approved it -- but flagged in the same duplicate_candidates queue an
@@ -209,14 +241,14 @@ Deno.serve(async (req) => {
       score,
       signals,
     });
-    if (duplicateInsertError) return jsonResponse({ error: duplicateInsertError.message }, 500);
+    if (duplicateInsertError) return await fail({ error: duplicateInsertError.message }, 500);
   }
 
   const { error: updateSubmissionError } = await adminClient
     .from("opportunity_submissions")
     .update({ job_id: newJob.id, status: "live", reviewed_by: user.id, reviewed_at: nowIso })
     .eq("id", submission.id);
-  if (updateSubmissionError) return jsonResponse({ error: updateSubmissionError.message }, 500);
+  if (updateSubmissionError) return await fail({ error: updateSubmissionError.message }, 500);
 
   return jsonResponse({
     outcome: tier === "review" ? "live_flagged_duplicate" : "live",

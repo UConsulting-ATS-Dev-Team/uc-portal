@@ -9,7 +9,14 @@
 // enough to keep labeled "Illustrative" rather than remove outright.
 export const ACCESS_CONTROL = {
   provisioned: "Roster-provisioned",
-  autoConversion: "Auto-converts to alumni at commencement",
+  // Was "Auto-converts to alumni at commencement" -- false, and directly
+  // contradicted by real behavior: nothing has ever auto-converted anyone
+  // (see the alumni-accounts migration's own writeup in CLAUDE.md). A
+  // member's real member_status only ever changes via can_sign_up()'s
+  // real Directory-alumni-match at signup, or an admin's own action --
+  // never automatically at any later point. Corrected to state the real
+  // mechanism, matching the wording SignIn.jsx's own footer note uses.
+  accessMechanism: "New accounts: roster match (current members) or a real Directory alumni match (alumni) at signup.",
   pendingRemovals: 3,
 };
 
