@@ -1,0 +1,17 @@
+-- Found live while re-verifying clubStats.members against the real
+-- people table (53 current members vs. 52 on roster -- an unexplained
+-- gap worth chasing, per this file's own established discipline of
+-- checking a live number rather than trusting a 9-day-old hardcoded one).
+-- Root-caused to a genuine duplicate "Parker Hall" row, same class of bug
+-- already documented and mostly cleaned up in the
+-- "seed-real-directory.mjs's --apply path" incident (slugFor() producing
+-- a different slug than the original import for the same real person,
+-- because of an email-casing difference -- "Parkerh4242@ucla.edu" vs
+-- "parkerh4242@ucla.edu" -- causing an insert instead of an update). That
+-- cleanup evidently missed this one pair. Confirmed via pg_constraint in
+-- the original incident that nothing foreign-keys to people.id, so a
+-- plain delete of the newer, less-complete duplicate is safe -- kept the
+-- older row (2026-09-14), which already has the real headshot avatar_url
+-- from the team-page import; the newer row (2026-09-16) has none and is
+-- otherwise identical data.
+delete from people where id = '074f34eb-404d-4509-bce4-2624f3ec7934';
