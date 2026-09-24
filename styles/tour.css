@@ -1,0 +1,99 @@
+/* Guided product tour overlay -- see components/tour/TourOverlay.jsx.
+   Follows the app's own flat/square-corner/hairline-border visual language
+   (CLAUDE.md's Shape section) rather than a typical rounded-corner,
+   drop-shadow tour-library look. The dim/spotlight effect is a single
+   element's oversized box-shadow (the "cutout" technique), not a separate
+   full-viewport overlay -- .tour-catcher underneath is just there to block
+   clicks to the real page while a tour is active. */
+
+.tour-catcher {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: transparent;
+  cursor: default;
+}
+
+.tour-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(4, 39, 66, 0.65);
+  pointer-events: none;
+}
+
+.tour-spotlight {
+  position: fixed;
+  z-index: 9998;
+  box-shadow: 0 0 0 9999px rgba(4, 39, 66, 0.65);
+  outline: 2px solid var(--color-accent);
+  pointer-events: none;
+  transition: top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease;
+}
+
+.tour-tooltip {
+  position: fixed;
+  z-index: 9999;
+  box-sizing: border-box;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-accent);
+  padding: var(--space-5);
+}
+
+.tour-tooltip__kicker {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-accent-deep);
+  margin: 0 0 var(--space-2);
+}
+
+.tour-tooltip__title {
+  margin: 0 0 var(--space-2);
+  font-size: 16px;
+  color: var(--color-text);
+}
+
+.tour-tooltip__body {
+  margin: 0 0 var(--space-4);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.tour-tooltip__dots {
+  display: flex;
+  gap: 6px;
+  margin-bottom: var(--space-4);
+}
+
+.tour-tooltip__dot {
+  width: 6px;
+  height: 6px;
+  background: var(--color-border);
+}
+
+.tour-tooltip__dot.is-active {
+  background: var(--color-accent);
+}
+
+.tour-tooltip__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.tour-tooltip__nav {
+  display: flex;
+  gap: var(--space-2);
+}
+
+@media (max-width: 640px) {
+  .tour-tooltip {
+    left: 16px !important;
+    right: 16px;
+    width: auto !important;
+  }
+}

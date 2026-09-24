@@ -14,7 +14,7 @@ import { useAppState } from "../data/store.jsx";
 
 function RailLink({ label, to, icon: Icon, badge }) {
   return (
-    <li>
+    <li data-tour-nav={to}>
       <NavLink
         to={to}
         end={to === "/"}

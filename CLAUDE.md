@@ -3050,6 +3050,80 @@ longer breaks down to phone width either.
   synthetic fixture produces the same slugs). Verified with a synthetic
   CSV covering both a missing-email row and a real duplicate-email pair.
 
+- **Guided product tour** (`components/tour/TourContext.jsx` +
+  `components/tour/TourOverlay.jsx` + `data/tours.js`, new
+  `styles/tour.css`) -- direct ask: a skippable, spotlight-and-tooltip
+  walkthrough of the core screens, scoped per real account type since each
+  sees a genuinely different nav rail (current member, alumni, intern,
+  admin). Follows the app's own flat/square-corner/hairline-border visual
+  language rather than a typical rounded-corner tour-library look -- the
+  dim/spotlight effect is one element's oversized `box-shadow` (the
+  "cutout" technique), not a rounded highlight ring.
+
+  Four tours (`data/tours.js`'s `TOURS`): `memberWelcome` (Home → Jobs →
+  Applications → Network → Career Resources, 11 steps),
+  `alumniWelcome` (Feed → Network → Work History on My Profile, 6 steps),
+  `internWelcome` (Accelerator → My Profile's resume upload, 5 steps), and
+  `adminTools` (Admin Dashboard's opportunity queue and company tiers →
+  Members, additive on top of `memberWelcome` for real admins). Each
+  step's target is a CSS selector -- wherever an existing stable
+  className already identified the right element (`.filters`,
+  `.job-card__match`, `.tracker-view-toggle`, `.composer`, `.step-row`,
+  etc.), the tour reuses it rather than adding a new hook; new
+  `data-tour-nav={to}` attributes on every `NavRail.jsx` `<li>` and two
+  `data-tour="admin-*"` attributes on AdminDashboard's otherwise-identical
+  `.detail-section` blocks were the only places nothing stable already
+  existed to select on.
+
+  `TourProvider` lives in `App.jsx` wrapping `<Routes>` from the outside
+  (not inside any one route's own `<NavShell>` element, which resets on
+  every navigation) so it survives page changes, and calls
+  `useNavigate()`/`useLocation()` directly to drive multi-page tours --
+  advancing to a step on a different route navigates there first, then
+  polls (up to ~1.5s) for that step's target to appear before showing the
+  tooltip, since the destination page hasn't rendered yet the instant the
+  step changes. A step whose target never appears (e.g. the match-score
+  step on a profile with zero current job matches -- a real case, hit
+  live while testing) degrades to a centered, un-highlighted card rather
+  than getting stuck or crashing -- the screen dims immediately even
+  during that poll window, not just once resolved, so it never reads as a
+  blank/broken page while waiting.
+
+  Auto-starts once per account per tour, the first time that account
+  reaches its own real landing route (Home / Feed / Accelerator) --
+  gated on `realRole`/`realMemberStatus` actually being loaded first
+  (`null` initially), so an alum isn't briefly auto-started into the
+  regular member tour before `isAlumni` resolves true, same class of race
+  `data/store.jsx` already documents for the identical fields. "Take a
+  tour" in the avatar menu (`TopBar.jsx`) always replays any tour
+  available to that role, regardless of whether it's been seen --
+  completion/skip state (`localStorage['uc-portal-tours-seen']`) is a
+  per-browser convenience, not synced to Supabase, on the same reasoning
+  as `recentSearches`: the worst case on a new device is seeing an
+  already-familiar tour once more, a fine failure mode for a skippable
+  walkthrough (unlike `onboardingComplete`, which gates a real one-time
+  flow and does need to follow the member across devices).
+
+  Verified live end-to-end with a real throwaway current-member account
+  (the pgcrypto-bcrypt technique used throughout this project): auto-start
+  firing on first real landing at Home; a real cross-page hop (Jobs'
+  `.filters`) correctly navigating, scrolling the target into view, and
+  spotlighting it; the match-score step's real empty-match fallback (this
+  test account's onboarding answers matched zero real jobs) correctly
+  degrading to a centered card after a brief dim instead of hanging or
+  going blank; Skip tour correctly marking `memberWelcome` seen and
+  dismissing; a full page reload correctly *not* re-auto-starting after
+  being seen; and "Take a tour" from the avatar menu correctly replaying
+  from step 1 regardless of the seen flag. `alumniWelcome`/
+  `internWelcome`/`adminTools` share the exact same now-proven engine and
+  reuse selectors already confirmed to exist in each target page's real
+  markup, but weren't separately click-tested live this session (would
+  have meant three more throwaway accounts through three more real
+  signup/onboarding flows) -- worth a live pass on those three
+  specifically before treating them as equally proven. `vite build`:
+  clean. `npm run test:server`: 145/145 (unchanged -- this feature has no
+  server-mirrored logic).
+
 Run locally:
 ```bash
 npm install

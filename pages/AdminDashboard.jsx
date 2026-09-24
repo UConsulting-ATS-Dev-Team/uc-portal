@@ -519,7 +519,7 @@ export default function AdminDashboard() {
 
       <div className="detail-layout">
         <div className="detail-main">
-          <div className="detail-section">
+          <div className="detail-section" data-tour="admin-opportunity-queue">
             <h2 className="detail-section__title">Opportunity queue</h2>
             {queueError && <p className="meta" style={{ color: "#B3261E" }}>{queueError}</p>}
             {queueNote && <p className="meta">{queueNote}</p>}
@@ -780,7 +780,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="detail-section">
+          <div className="detail-section" data-tour="admin-company-tiers">
             <h2 className="detail-section__title">Company tiers</h2>
             <p className="meta" style={{ marginTop: 0 }}>
               Every real company's active-job cap (data/companyTiers.js's TIER_CAPS: tier 0 "core consulting" 25,

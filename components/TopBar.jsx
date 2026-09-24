@@ -8,6 +8,7 @@ import { countNewSignupsSince } from "../data/adminNotificationsSync.js";
 import { displayName } from "../data/profileUtils.js";
 import Avatar from "./Avatar.jsx";
 import RequestFeatureModal from "./modals/RequestFeatureModal.jsx";
+import { useTour } from "./tour/TourContext.jsx";
 import bearMark from "../assets/uc-bear-mark-navy.png";
 
 const SIGNUPS_LAST_SEEN_KEY = "uc-portal-admin-signups-last-seen";
@@ -16,6 +17,7 @@ export default function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showRequestFeature, setShowRequestFeature] = useState(false);
   const { profileOverrides, needsActionCount, isAdmin, isIntern } = useAppState();
+  const { availableTours, start: startTour } = useTour();
   // Was CONVERSATIONS.filter(c => c.unread).length -- a fixed mock count
   // shown to every signed-in user regardless of their real inbox, same
   // bug class as the notification bell's old navCounts.notificationsUnread.
@@ -129,6 +131,19 @@ export default function TopBar() {
               <Link to="/profile" role="menuitem" onClick={() => setMenuOpen(false)}>
                 Settings
               </Link>
+              {availableTours.map((tour) => (
+                <button
+                  key={tour.id}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    startTour(tour.id);
+                  }}
+                >
+                  Take a tour{availableTours.length > 1 ? `: ${tour.label}` : ""}
+                </button>
+              ))}
               <button
                 type="button"
                 role="menuitem"

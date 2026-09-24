@@ -26,6 +26,8 @@ import GlobalSearch from "./pages/GlobalSearch.jsx";
 import Messages from "./pages/Messages.jsx";
 import Accelerator from "./pages/Accelerator.jsx";
 import NotFound from "./pages/NotFound.jsx";
+import { TourProvider } from "./components/tour/TourContext.jsx";
+import TourOverlay from "./components/tour/TourOverlay.jsx";
 
 // Lazy-loaded: every real member hits the routes above on essentially
 // every session, but these are each either a one-time flow (Onboarding)
@@ -54,6 +56,20 @@ function LazyPage({ Component }) {
 // order in CLAUDE.md (shell → auth → onboarding → jobs → job detail →
 // tracker, then the rest). Replace a route's element as each screen lands.
 export default function App() {
+  return (
+    <TourProvider>
+      <AppRoutes />
+      <TourOverlay />
+    </TourProvider>
+  );
+}
+
+// Split out so TourProvider (which needs useNavigate/useLocation) wraps
+// <Routes> from the outside rather than resetting on every navigation --
+// each route's element is a fresh subtree per match (NavShell included),
+// so any provider that needs to survive across pages has to live above
+// <Routes>, not inside any one route's own element.
+function AppRoutes() {
   return (
     <Routes>
       <Route path="/sign-in" element={<SignIn />} />
