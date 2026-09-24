@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseClient.js";
-import { extractResumeText, parseResumeFields } from "./resumeParser.js";
+import { extractResumeText, parseResumeFields, analyzeResumeText } from "./resumeParser.js";
 
 const MAX_RESUME_BYTES = 10 * 1024 * 1024;
 const ALLOWED_TYPES = [
@@ -35,18 +35,21 @@ export async function uploadResume(file) {
   // Best-effort -- a resume in an unusual format/scanned-image PDF with no
   // real text layer shouldn't block the actual upload, just skip parsing.
   let parsed = {};
+  let suggestions = [];
   try {
-    const text = await extractResumeText(file);
+    const { text, pageCount } = await extractResumeText(file);
     parsed = parseResumeFields(text);
+    suggestions = analyzeResumeText(text, { pageCount });
   } catch {
     parsed = {};
+    suggestions = [];
   }
 
   const path = `${session.user.id}/resume.${extensionFor(file)}`;
   const { error } = await supabase.storage.from("resumes").upload(path, file, { upsert: true, contentType: file.type });
   if (error) throw error;
 
-  return { path, fileName: file.name, parsed };
+  return { path, fileName: file.name, parsed, suggestions };
 }
 
 export async function removeResume(currentPath) {

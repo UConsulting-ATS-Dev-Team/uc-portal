@@ -13,6 +13,7 @@ import {
   removeWorkHistoryEntry,
   fetchCompanyInterestCount,
 } from "../data/workHistorySync.js";
+import { fetchOwnProjects, addProjectEntry, updateProjectEntry, removeProjectEntry, UC_PROJECT_CATEGORIES } from "../data/ucProjectsSync.js";
 import Avatar from "../components/Avatar.jsx";
 import "../styles/jobDetail.css";
 import "../styles/onboarding.css";
@@ -21,7 +22,7 @@ import "../styles/memberProfile.css";
 import "../styles/auth.css";
 import "../styles/myProfile.css";
 
-const TABS = ["Personal", "Work History", "Career Preferences", "Recruiting Settings", "Privacy"];
+const TABS = ["Personal", "Work History", "Projects", "Career Preferences", "Recruiting Settings", "Privacy"];
 
 const CURRENT_YEAR = new Date().getFullYear();
 const WORK_HISTORY_YEARS = Array.from({ length: 15 }, (_, i) => CURRENT_YEAR - i);
@@ -84,18 +85,28 @@ export default function MyProfile() {
   const [resumeUploading, setResumeUploading] = useState(false);
   const [resumeError, setResumeError] = useState(null);
   const [resumeFoundFields, setResumeFoundFields] = useState([]);
+  const [resumeSuggestions, setResumeSuggestions] = useState([]);
   const [workHistory, setWorkHistory] = useState([]);
   const [workHistoryLoading, setWorkHistoryLoading] = useState(true);
   const [workHistoryError, setWorkHistoryError] = useState(null);
   const [editingWorkHistoryId, setEditingWorkHistoryId] = useState(null);
   const [workHistoryForm, setWorkHistoryForm] = useState({ company: "", role: "", startYear: "", current: false, endYear: "" });
   const [interestCounts, setInterestCounts] = useState({});
+  const [projects, setProjects] = useState([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [projectsError, setProjectsError] = useState(null);
+  const [editingProjectId, setEditingProjectId] = useState(null);
+  const [projectForm, setProjectForm] = useState({ title: "", category: "Other", organization: "", semester: "", description: "" });
 
   useEffect(() => {
     fetchOwnWorkHistory()
       .then(setWorkHistory)
       .catch((err) => setWorkHistoryError(err.message))
       .finally(() => setWorkHistoryLoading(false));
+    fetchOwnProjects()
+      .then(setProjects)
+      .catch((err) => setProjectsError(err.message))
+      .finally(() => setProjectsLoading(false));
   }, []);
   const [skillQuery, setSkillQuery] = useState("");
   const [industryQuery, setIndustryQuery] = useState("");
@@ -106,11 +117,22 @@ export default function MyProfile() {
   const [showAllLocations, setShowAllLocations] = useState(false);
   const fileInput = useRef(null);
 
+  // classYear/majors/ucCommittee read profileOverrides directly, never
+  // falling back to currentUser (mockUser.js's fake "Test Account"
+  // defaults -- Class of 2027, "Business Economics, Data Science",
+  // "Recruitment Committee") -- found live while testing the resume-
+  // suggestions feature: a real member with these genuinely unset would
+  // see fabricated info pre-filled into their own editable form, and
+  // clicking "Save changes" for an unrelated edit would silently persist
+  // that fake data as if they'd entered it themselves. Same fix already
+  // applied to Home/Feed/MemberProfile/Onboarding's own display-only
+  // spots (see their "not on file" comments) -- this form was missed in
+  // that pass since it's an editable field, not a display string.
   const [form, setForm] = useState({
     fullName: displayName(currentUser, profileOverrides),
-    classYear: profileOverrides.classYear ?? currentUser.classYear,
-    majors: profileOverrides.majors || currentUser.majors,
-    ucCommittee: profileOverrides.ucCommittee || currentUser.ucCommittee,
+    classYear: profileOverrides.classYear ?? "",
+    majors: profileOverrides.majors ?? "",
+    ucCommittee: profileOverrides.ucCommittee ?? "",
     linkedIn: profileOverrides.linkedIn,
   });
 
@@ -181,9 +203,10 @@ export default function MyProfile() {
     if (!file) return;
     setResumeError(null);
     setResumeFoundFields([]);
+    setResumeSuggestions([]);
     setResumeUploading(true);
     try {
-      const { path, fileName, parsed } = await uploadResume(file);
+      const { path, fileName, parsed, suggestions } = await uploadResume(file);
       updateProfileOverrides({ resumeFileName: fileName, resumePath: path });
       touchProfileUpdated();
       const found = [];
@@ -204,6 +227,7 @@ export default function MyProfile() {
         return next;
       });
       setResumeFoundFields(found);
+      setResumeSuggestions(suggestions ?? []);
     } catch (err) {
       setResumeError(err.message);
     } finally {
@@ -218,6 +242,7 @@ export default function MyProfile() {
       await removeResume(profileOverrides.resumePath);
       updateProfileOverrides({ resumeFileName: null, resumePath: null });
       touchProfileUpdated();
+      setResumeSuggestions([]);
     } catch (err) {
       setResumeError(err.message);
     } finally {
@@ -296,6 +321,56 @@ export default function MyProfile() {
       setWorkHistory((prev) => prev.filter((e) => e.id !== id));
     } catch (err) {
       setWorkHistoryError(err.message);
+    }
+  }
+
+  function startAddProject() {
+    setEditingProjectId("new");
+    setProjectForm({ title: "", category: "Other", organization: "", semester: "", description: "" });
+    setProjectsError(null);
+  }
+
+  function startEditProject(entry) {
+    setEditingProjectId(entry.id);
+    setProjectForm({
+      title: entry.title,
+      category: entry.category || "Other",
+      organization: entry.organization || "",
+      semester: entry.semester || "",
+      description: entry.description || "",
+    });
+    setProjectsError(null);
+  }
+
+  function cancelProjectEdit() {
+    setEditingProjectId(null);
+  }
+
+  async function handleSaveProject() {
+    if (!projectForm.title.trim()) {
+      setProjectsError("Project title is required.");
+      return;
+    }
+    setProjectsError(null);
+    try {
+      if (editingProjectId && editingProjectId !== "new") {
+        await updateProjectEntry(editingProjectId, projectForm);
+      } else {
+        await addProjectEntry(projectForm);
+      }
+      setProjects(await fetchOwnProjects());
+      setEditingProjectId(null);
+    } catch (err) {
+      setProjectsError(err.message);
+    }
+  }
+
+  async function handleRemoveProject(id) {
+    try {
+      await removeProjectEntry(id);
+      setProjects((prev) => prev.filter((e) => e.id !== id));
+    } catch (err) {
+      setProjectsError(err.message);
     }
   }
 
@@ -466,6 +541,29 @@ export default function MyProfile() {
                       saving.
                     </p>
                   )}
+                  {resumeSuggestions.length > 0 && (
+                    <div style={{ marginTop: "var(--space-4)" }}>
+                      <p style={{ fontWeight: 700, marginBottom: "var(--space-2)" }}>
+                        A few things worth a look
+                      </p>
+                      <ul style={{ margin: 0, paddingLeft: "var(--space-6)" }}>
+                        {[...resumeSuggestions]
+                          .sort((a, b) => ({ high: 0, medium: 1, low: 2 }[a.severity] - { high: 0, medium: 1, low: 2 }[b.severity]))
+                          .map((s) => (
+                            <li
+                              key={s.id}
+                              className="meta"
+                              style={{ marginBottom: "var(--space-2)", color: s.severity === "high" ? "#B3261E" : undefined }}
+                            >
+                              {s.message}
+                            </li>
+                          ))}
+                      </ul>
+                      <p className="meta" style={{ marginTop: "var(--space-2)" }}>
+                        Automated, heuristic suggestions — not a substitute for a real review, just a quick first pass.
+                      </p>
+                    </div>
+                  )}
                   <p className="meta" style={{ marginTop: "var(--space-2)" }}>
                     PDF or Word (.docx). Private to you — never shown to other members.
                   </p>
@@ -596,6 +694,114 @@ export default function MyProfile() {
               ) : (
                 <button className="btn btn-secondary" onClick={startAddWorkHistory}>
                   + Add work history
+                </button>
+              )}
+            </div>
+          )}
+
+          {tab === "Projects" && (
+            <div className="detail-section">
+              <h2 className="detail-section__title">Projects</h2>
+              <p className="meta" style={{ marginTop: "calc(-1 * var(--space-4))" }}>
+                UC-affiliated projects you've worked on — case competitions, pro-bono consulting, committee work, client
+                projects. Self-reported, visible to other UC members, and kept for the club's own long-term record.
+              </p>
+
+              {projects.length === 0 && !projectsLoading && editingProjectId !== "new" && (
+                <div className="empty-state" style={{ marginBottom: "var(--space-5)" }}>
+                  <p style={{ fontWeight: 700, marginBottom: "var(--space-2)" }}>You haven't added any projects yet</p>
+                  <p className="meta">Add one to start building UC's own project history.</p>
+                </div>
+              )}
+
+              {projects.map((entry) => (
+                <div className="experience-row" key={entry.id} style={{ alignItems: "flex-start" }}>
+                  <div>
+                    <div className="experience-row__title">{entry.title}</div>
+                    <div className="experience-row__meta">
+                      {entry.category}
+                      {entry.organization ? ` · ${entry.organization}` : ""}
+                      {entry.semester ? ` · ${entry.semester}` : ""}
+                    </div>
+                    {entry.description && (
+                      <p className="meta" style={{ marginTop: "var(--space-2)" }}>
+                        {entry.description}
+                      </p>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", gap: "var(--space-3)", flexShrink: 0 }}>
+                    <button className="btn-link" onClick={() => startEditProject(entry)}>
+                      Edit
+                    </button>
+                    <button className="btn-link" onClick={() => handleRemoveProject(entry.id)}>
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {editingProjectId ? (
+                <div className="field-group" style={{ marginTop: "var(--space-5)" }}>
+                  <div className="field">
+                    <label>Project title</label>
+                    <input
+                      type="text"
+                      value={projectForm.title}
+                      onChange={(e) => setProjectForm((f) => ({ ...f, title: e.target.value }))}
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Category</label>
+                    <select value={projectForm.category} onChange={(e) => setProjectForm((f) => ({ ...f, category: e.target.value }))}>
+                      {UC_PROJECT_CATEGORIES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>Client / partner / competition (optional)</label>
+                    <input
+                      type="text"
+                      value={projectForm.organization}
+                      onChange={(e) => setProjectForm((f) => ({ ...f, organization: e.target.value }))}
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Semester (optional)</label>
+                    <input
+                      type="text"
+                      placeholder="Fall 2026"
+                      value={projectForm.semester}
+                      onChange={(e) => setProjectForm((f) => ({ ...f, semester: e.target.value }))}
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Description (optional)</label>
+                    <textarea
+                      rows={3}
+                      value={projectForm.description}
+                      onChange={(e) => setProjectForm((f) => ({ ...f, description: e.target.value }))}
+                    />
+                  </div>
+                  {projectsError && (
+                    <p className="meta" style={{ color: "#B3261E" }}>
+                      {projectsError}
+                    </p>
+                  )}
+                  <div style={{ display: "flex", gap: "var(--space-3)" }}>
+                    <button className="btn btn-primary" onClick={handleSaveProject}>
+                      Save
+                    </button>
+                    <button className="btn btn-secondary" onClick={cancelProjectEdit}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button className="btn btn-secondary" onClick={startAddProject}>
+                  + Add project
                 </button>
               )}
             </div>
