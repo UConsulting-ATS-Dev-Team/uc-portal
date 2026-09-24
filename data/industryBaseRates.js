@@ -95,6 +95,45 @@
 //     spots; general SWE internship low single digits) and
 //     community/analyst estimates for Meta (~1-3%, no official figure
 //     published by Meta itself).
+//
+// 2026-09-23 follow-up: none of the above were actually a live real T0
+// job source at the time they were researched (this file's own comments
+// already said so) -- checked directly against the real company_tiers
+// table for what T0 (core consulting) actually contains TODAY: Accordion,
+// AlixPartners, Baringa, Charles River Associates, Deloitte, Elixirr
+// Consulting, Point B. A genuinely different set of real, live companies
+// than what was researched three weeks ago -- re-researched accordingly:
+//   - Deloitte: no official rate published, but HackingTheCaseInterview's
+//     Deloitte-specific guide cites industry estimates of ~3-4% for the
+//     Consulting internship specifically (vs. ~8-12% for the broader
+//     Discovery internship, and ~1% for Deloitte's overall US graduate
+//     hiring across every service line including audit/tax) -- used the
+//     Consulting-specific figure, pinned to the low end (3%) per the
+//     pessimism-bias rule below, since that's the closest match to what
+//     UC members are actually pursuing there.
+//   - Charles River Associates: Firsthand.co states "lower than 1%"
+//     directly -- a single source, not cross-verified the way the MBB/
+//     Goldman/JPMorgan figures above were against a second independent
+//     citation, so treated with more caution; used 1% (not a more
+//     aggressive sub-1% guess) to avoid over-claiming precision from one
+//     source.
+//   - AlixPartners, Accordion, Baringa, Point B, Elixirr Consulting: real
+//     searches for each came up with no individually-published acceptance
+//     rate anywhere -- genuinely selective boutique/specialized
+//     consulting firms, just not the kind of famous-enough-to-be-studied
+//     name MBB/bulge-bracket IB are. Per this file's own standing
+//     principle, NOT given an invented number -- they fall through to the
+//     general tier below via their real "Management consulting"
+//     relevant_industries tag (when the job is classified at all; see the
+//     separate, much larger documented gap in this app's occupation
+//     taxonomy -- most real jobs across every company aren't classified,
+//     not specific to these five). Worth noting even though it doesn't
+//     change this file: AlixPartners' own hiring pages/community
+//     discussion describe it as rarely recruiting directly from
+//     undergrad campuses at all, filling most roles via search firms and
+//     experienced-hire referrals instead -- real undergrad odds there may
+//     be structurally different from "how selective is the process,"
+//     not something a base-rate number alone captures.
 
 function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -106,6 +145,24 @@ function companyMatchesAlias(companyName, alias) {
 }
 
 export const NAMED_COMPANY_RATES = [
+  // --- Real, live T0-tier consulting companies (2026-09-23 pass) -- see
+  // this file's own 2026-09-23 SOURCES note above for the full research.
+  {
+    aliases: ["deloitte"],
+    rate: 0.03,
+    tierLabel: "Big 4 consulting (Deloitte)",
+  },
+  {
+    // companyMatchesAlias() already wraps each alias in its own \b...\b --
+    // no need to add word-boundary markers here (and doing so would be
+    // double-escaped wrong by escapeRegex, which treats a literal
+    // backslash as a character to escape, not a regex metacharacter to
+    // preserve).
+    aliases: ["charles river associates", "cra"],
+    rate: 0.01,
+    tierLabel: "economic/litigation consulting (Charles River Associates)",
+  },
+
   // --- MBB consulting: not currently among this app's live real job
   // sources (none of the 77+ real sources are MBB -- verified by
   // scanning supabase/migrations' source-seed company names), but kept
