@@ -3124,6 +3124,58 @@ longer breaks down to phone width either.
   clean. `npm run test:server`: 145/145 (unchanged -- this feature has no
   server-mirrored logic).
 
+- **Bundle-size pass: 6 detail pages lazy-loaded; a fresh pagination/RLS
+  audit** — closes the optimizations item from the earlier fixes/security/
+  optimizations pass. Investigated before acting rather than guessing:
+  `pdfjs-dist`/`mammoth` were already correctly split into their own
+  lazy chunks (confirmed via signature grep against the built output, not
+  assumed) and `lucide-react` tree-shakes cleanly (`sideEffects: false`,
+  only 16 distinct icons imported app-wide) -- neither was actually the
+  problem. The real lever: `JobDetail.jsx`, `MemberProfile.jsx`,
+  `CompanyPage.jsx`, `ResourceDetail.jsx`, `LearningTrackDetail.jsx`, and
+  `GlobalSearch.jsx` were still eagerly bundled into the main chunk even
+  though none of them are "every session, every page load" the way
+  Jobs/Applications/Network/Feed/Companies/Career Resources/My Profile/
+  Home/Notifications/Messages are (this file's own existing reasoning for
+  keeping those eager) -- they're one click deeper, and `JobDetail.jsx`/
+  `MemberProfile.jsx` each eagerly import their real-data sibling
+  (`RealJobDetail.jsx`'s odds model, `RealMemberProfile.jsx`) regardless
+  of which one a UUID job/person actually renders. Converted all 6 to the
+  same `React.lazy()` + per-route `Suspense` pattern Onboarding/Admin
+  pages already established. Measured: main chunk 735.92KB -> 665.41KB
+  raw (206.0KB -> 189.75KB gzip), a real ~8% reduction, plus a
+  `LogPrepModal` chunk that split out transitively along with it.
+
+  Pagination audit: re-checked every `.select(` in `data/` for the
+  silent-1000-row-truncation shape that already bit Jobs/Companies/
+  feed_posts once each. Found the codebase mostly already correct
+  (`feedSync.js` was already fixed in an earlier pass -- a stale comment
+  match, not live unpaginated code) and one genuine remaining gap:
+  `messagesSync.js#fetchConversations()`'s messages query (every message
+  a signed-in account has ever sent or received, across every
+  conversation) was a bare `.select()` with no natural cap. Realistic risk
+  is low at this club's real scale, but fixed proactively via
+  `fetchAllRows()` rather than waiting for a fourth incident of the same
+  "won't hit 1000 rows for a long time" assumption. Every other candidate
+  checked (`acceleratorSync.js`, `casePartners.js`, `ucProjectsSync.js`,
+  `workHistorySync.js`, `realWriteups.js`, `realJobAdapter.js`'s search)
+  was already correctly scoped small (own-row-only, one lesson, one
+  company) or already had an explicit `.limit()`.
+
+  RLS audit: confirmed all 34 real public tables have row-level security
+  enabled with at least one real policy, except one deliberate exception
+  (`access_request_attempts` -- RLS enabled, zero policies, default-deny,
+  touched only by the rate-limiting Edge Function's service role -- see
+  that table's own migration comment) that a diagnostic query flagged and
+  this pass confirmed is the intended secure state, not a gap.
+
+  Verified live end-to-end with a throwaway account: clicked through all
+  6 newly-lazy routes (a real job detail page's odds model, a real member
+  profile, a real company page, Global Search results, a resource detail
+  page, a learning-track detail page) and confirmed each renders
+  correctly with zero console errors -- not just a clean build. `vite
+  build`: clean. `npm run test:server`: 145/145 unchanged.
+
 Run locally:
 ```bash
 npm install

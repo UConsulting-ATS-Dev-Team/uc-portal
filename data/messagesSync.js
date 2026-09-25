@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient.js";
+import { fetchAllRows } from "./fetchAllRows.js";
 
 // Real 1:1 messaging (see the real_messages migration for the full
 // rationale -- accounts only, since the 207-row real people directory
@@ -42,12 +43,20 @@ export async function fetchConversations() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const [{ data: rows, error }, members, archivedIds] = await Promise.all([
-    supabase.from("messages").select("*").or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`).order("created_at", { ascending: true }),
+  // fetchAllRows(), not a bare .select() -- this is every message this
+  // account has ever sent or received, across every conversation, the
+  // same board-wide-for-one-account shape that could in principle
+  // silently truncate at PostgREST's 1000-row default for a real
+  // long-tenured, heavily-messaging member. Realistic risk today is low
+  // (club scale), but this project has already been bitten by exactly
+  // this "won't hit 1000 rows for a long time" assumption three times
+  // (Jobs, Companies, feed_posts) -- fixed proactively rather than
+  // waiting for a fourth.
+  const [rows, members, archivedIds] = await Promise.all([
+    fetchAllRows("messages", "*", (q) => q.or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`).order("created_at", { ascending: true })),
     listMessageableMembers(),
     fetchArchivedCounterpartIds(),
   ]);
-  if (error) throw new Error(error.message);
 
   const nameById = new Map(members.map((m) => [m.member_id, m.display_name]));
   const byCounterpart = new Map();

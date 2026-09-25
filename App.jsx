@@ -9,20 +9,14 @@ import Placeholder from "./pages/Placeholder.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import Jobs from "./pages/Jobs.jsx";
-import JobDetail from "./pages/JobDetail.jsx";
 import Applications from "./pages/Applications.jsx";
 import Network from "./pages/Network.jsx";
-import MemberProfile from "./pages/MemberProfile.jsx";
 import Feed from "./pages/Feed.jsx";
 import Companies from "./pages/Companies.jsx";
-import CompanyPage from "./pages/CompanyPage.jsx";
 import CareerResources from "./pages/CareerResources.jsx";
-import ResourceDetail from "./pages/ResourceDetail.jsx";
-import LearningTrackDetail from "./pages/LearningTrackDetail.jsx";
 import MyProfile from "./pages/MyProfile.jsx";
 import Home from "./pages/Home.jsx";
 import Notifications from "./pages/Notifications.jsx";
-import GlobalSearch from "./pages/GlobalSearch.jsx";
 import Messages from "./pages/Messages.jsx";
 import Accelerator from "./pages/Accelerator.jsx";
 import NotFound from "./pages/NotFound.jsx";
@@ -43,6 +37,26 @@ const AdminDashboard = lazy(() => import("./pages/AdminDashboard.jsx"));
 const AdminMembers = lazy(() => import("./pages/AdminMembers.jsx"));
 const SourceManagement = lazy(() => import("./pages/SourceManagement.jsx"));
 const AdminAccelerator = lazy(() => import("./pages/AdminAccelerator.jsx"));
+
+// Lazy-loaded for a different reason than the block above (2026-09-25,
+// bundle-size pass): not one-time/Leadership-only, but "one click deeper"
+// -- a member browsing Jobs/Network/Companies/Career Resources doesn't
+// need a specific detail page's code until they actually click into one.
+// Unlike Jobs/Applications/Network/Feed/Companies/Career Resources/My
+// Profile/Home/Notifications/Messages (every-session nav-rail
+// destinations, deliberately kept eager -- see this file's own reasoning
+// above), these are the actual heaviest single pages in the app: JobDetail
+// eagerly imports RealJobDetail.jsx (the odds model, interview write-ups,
+// work-history rail) regardless of which one a real UUID job ends up
+// rendering, and MemberProfile eagerly imports RealMemberProfile.jsx the
+// same way -- so lazy-loading the route name also defers its real-data
+// sibling, not just the thin dispatcher.
+const JobDetail = lazy(() => import("./pages/JobDetail.jsx"));
+const MemberProfile = lazy(() => import("./pages/MemberProfile.jsx"));
+const CompanyPage = lazy(() => import("./pages/CompanyPage.jsx"));
+const ResourceDetail = lazy(() => import("./pages/ResourceDetail.jsx"));
+const LearningTrackDetail = lazy(() => import("./pages/LearningTrackDetail.jsx"));
+const GlobalSearch = lazy(() => import("./pages/GlobalSearch.jsx"));
 
 function LazyPage({ Component }) {
   return (
@@ -115,7 +129,7 @@ function AppRoutes() {
         path="/jobs/:jobId"
         element={
           <NavShell>
-            <JobDetail />
+            <LazyPage Component={JobDetail} />
           </NavShell>
         }
       />
@@ -140,7 +154,7 @@ function AppRoutes() {
         path="/network/:personId"
         element={
           <NavShell>
-            <MemberProfile />
+            <LazyPage Component={MemberProfile} />
           </NavShell>
         }
       />
@@ -164,7 +178,7 @@ function AppRoutes() {
         path="/companies/:companyId"
         element={
           <NavShell>
-            <CompanyPage />
+            <LazyPage Component={CompanyPage} />
           </NavShell>
         }
       />
@@ -177,7 +191,7 @@ function AppRoutes() {
         path="/companies/real/:companyName"
         element={
           <NavShell>
-            <CompanyPage />
+            <LazyPage Component={CompanyPage} />
           </NavShell>
         }
       />
@@ -194,7 +208,7 @@ function AppRoutes() {
         path="/resources/tracks/:trackId"
         element={
           <NavShell>
-            <LearningTrackDetail />
+            <LazyPage Component={LearningTrackDetail} />
           </NavShell>
         }
       />
@@ -202,7 +216,7 @@ function AppRoutes() {
         path="/resources/:resourceId"
         element={
           <NavShell>
-            <ResourceDetail />
+            <LazyPage Component={ResourceDetail} />
           </NavShell>
         }
       />
@@ -219,7 +233,7 @@ function AppRoutes() {
         path="/search"
         element={
           <NavShell>
-            <GlobalSearch />
+            <LazyPage Component={GlobalSearch} />
           </NavShell>
         }
       />
