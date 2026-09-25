@@ -3230,6 +3230,29 @@ longer breaks down to phone width either.
   signups now render correctly). All test data and the throwaway
   account fully cleaned up afterward, verified at zero residue.
 
+- **Network/coffee-chat CSV export** — closes the last item from the
+  fixes/security/optimizations/features pass. Same client-side Blob +
+  anchor-download pattern `pages/Applications.jsx`'s tracker CSV export
+  already established -- no backend needed for a CSV, same as that one.
+  New "Export CSV" button on Network's "Your coffee chats" rail card
+  (shown only once there's real `savedConnections`/`coffeeChatStatus`
+  content to export), unioning both into one row per person -- "who's in
+  my network" and "who I've coffee-chatted with" overlap heavily, so one
+  file covers both rather than two separate exports. Reuses `findPerson()`
+  (the same real-vs-mock person resolver the grid cards already render
+  with) for name/company/role, so the export can never disagree with what
+  the page itself shows.
+
+  Verified live with a throwaway account: saved a real connection,
+  confirmed the button correctly appears (absent when there's nothing to
+  export) and, by intercepting the real `Blob` right before download
+  (`URL.createObjectURL`), confirmed the actual CSV bytes are correct --
+  real name and company from the live Directory, "Saved to network: Yes",
+  an honestly-empty role field (not on file for this real person) and
+  coffee-chat-status field (that part of the test didn't go through,
+  correctly reflected as empty rather than guessed). Cleaned up
+  completely afterward.
+
 Run locally:
 ```bash
 npm install

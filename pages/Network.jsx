@@ -18,6 +18,41 @@ function uniqueValues(people, key) {
   return ["All", ...new Set(people.map((p) => p[key]).filter(Boolean))];
 }
 
+// Real network/coffee-chat export -- direct ask, same client-side Blob
+// download pattern Applications.jsx's tracker CSV export already
+// established (no backend needed for a CSV, same as that one). Unions
+// savedConnections and coffeeChatStatus into one row per person rather
+// than two separate exports, since "who's in my network" and "who I've
+// coffee-chatted with" overlap heavily and a member asking for "my
+// network export" almost certainly wants both in one file.
+function networkToCsv(personIds, savedConnections, coffeeChatStatus, findPerson) {
+  const header = ["Name", "Company", "Role", "Saved to network", "Coffee chat status"];
+  const rows = [...personIds]
+    .map((id) => {
+      const person = findPerson(id);
+      if (!person) return null;
+      return [
+        person.name,
+        person.company ?? "",
+        person.role ?? "",
+        savedConnections.includes(id) ? "Yes" : "No",
+        coffeeChatStatus[id] ?? "",
+      ];
+    })
+    .filter(Boolean);
+  return [header, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+}
+
+function downloadCsv(csv, filename) {
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function Network() {
   const { preferences, savedConnections, coffeeChatStatus, toggleSavedConnection } = useAppState();
   const [searchParams] = useSearchParams();
@@ -246,7 +281,21 @@ export default function Network() {
           </div>
 
           <div className="rail-card">
-            <div className="rail-card__title">Your coffee chats</div>
+            <div className="rail-card__title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>Your coffee chats</span>
+              {(savedConnections.length > 0 || Object.keys(coffeeChatStatus).length > 0) && (
+                <button
+                  type="button"
+                  className="btn-link"
+                  onClick={() => {
+                    const ids = new Set([...savedConnections, ...Object.keys(coffeeChatStatus)]);
+                    downloadCsv(networkToCsv(ids, savedConnections, coffeeChatStatus, findPerson), "uc-portal-network.csv");
+                  }}
+                >
+                  Export CSV
+                </button>
+              )}
+            </div>
             {Object.keys(coffeeChatStatus).length === 0 && <p className="meta" style={{ margin: 0 }}>No coffee chats yet.</p>}
             {Object.entries(coffeeChatStatus).map(([personId, status]) => {
               const person = findPerson(personId);
