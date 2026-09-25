@@ -3176,6 +3176,60 @@ longer breaks down to phone width either.
   correctly with zero console errors -- not just a clean build. `vite
   build`: clean. `npm run test:server`: 145/145 unchanged.
 
+- **Digest-email groundwork** (`supabase/functions/weekly-digest/`, new
+  `weekly_digests` table, `data/digestSync.js`) -- direct ask, alongside
+  the fixes/security/optimizations pass. Real email sending is blocked on
+  SES/Gavin (same blocker already noted on "Request a feature" and
+  "Notify admin on new signups"), but everything up to the actual send is
+  genuinely buildable now: real computed content, stored per real member
+  per week, admin-visible immediately via a new "Weekly digest preview"
+  section on Admin Dashboard -- so the content can be sanity-checked
+  before any email ever goes out, and flipping on real sending later is
+  "add one send call using this already-computed content," not a
+  redesign.
+
+  Content signals deliberately kept cheap, not the full odds-model/
+  `matchJob()` scoring algorithm -- a weekly summary count doesn't need a
+  fourth Deno/Node/browser mirror of the full graduated match algorithm.
+  "New matches" is a simple filtered count (posted in the last 7 days,
+  matching the member's #1 ranked industry or a followed company) --
+  real and honest, just less precise than the full scoring model the
+  Jobs board itself shows. Deadlines come from the member's own real
+  `tracked_applications` joined to `jobs.application_deadline`; unread
+  messages and new feed posts reuse existing real tables directly. Scoped
+  to `current_member`/`alumni` only (interns are route-guarded away from
+  Jobs/Messages/Feed almost entirely) and respects the real, existing
+  `member_preferences.reminders_enabled` opt-out rather than inventing a
+  new consent flag. Runs weekly via pg_cron (Mondays 13:00 UTC, same
+  `net.http_post` pattern every other scheduled fetcher already uses);
+  upserts on `(profile_id, week_of)` so a manual re-run for testing never
+  creates duplicates. A member with nothing to report that week gets no
+  row at all, not an empty one.
+
+  Verified live end-to-end, including catching and fixing a real,
+  separate bug along the way: manually invoked the function, initially
+  got `nothing_to_report` for the one real signed-up account (correct --
+  their followed companies/top industry had no jobs posted in the exact
+  last 7 days, confirmed directly against the database rather than
+  assumed), then set a throwaway account's `followed_companies` to a
+  company with real recent postings (Brex) and confirmed a real row
+  wrote with the correct count (`new_matches=11`, matching a direct
+  count query) and readable body text; re-ran the function twice more
+  and confirmed the upsert produced exactly one row, not three;
+  confirmed `list_weekly_digest_log()`'s admin gate correctly rejects an
+  unauthenticated caller and correctly resolves a display name for an
+  authenticated admin. Loading Admin Dashboard live to check the new
+  section surfaced a real, pre-existing, unrelated bug: "Recent signups"
+  was showing "structure of query does not match function result type"
+  instead of real data -- the same `auth.users.email` is `varchar(255)`-
+  not-`text` bug class this project has already hit and fixed three
+  times (`list_member_avatars`, `list_members`,
+  `member_engagement_report`), just never caught in `list_recent_
+  signups()` until this session's live admin page load. Fixed with the
+  same `::text` cast and reconfirmed live in the same session (real
+  signups now render correctly). All test data and the throwaway
+  account fully cleaned up afterward, verified at zero residue.
+
 Run locally:
 ```bash
 npm install

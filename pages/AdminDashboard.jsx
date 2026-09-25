@@ -5,6 +5,7 @@ import { supabase } from "../data/supabaseClient.js";
 import { fetchAllRows } from "../data/fetchAllRows.js";
 import { capForCompanyTier } from "../data/companyTiers.js";
 import { fetchRecentSignups } from "../data/adminNotificationsSync.js";
+import { fetchWeeklyDigestLog } from "../data/digestSync.js";
 import { ACCESS_CONTROL, FLAGGED_FEED_POSTS } from "../data/mockAdmin.js";
 import DemoDataBadge from "../components/DemoDataBadge.jsx";
 import "../styles/jobs.css";
@@ -68,6 +69,9 @@ export default function AdminDashboard() {
   const [clientErrors, setClientErrors] = useState([]);
   const [clientErrorsLoading, setClientErrorsLoading] = useState(true);
   const [clientErrorsError, setClientErrorsError] = useState(null);
+  const [weeklyDigests, setWeeklyDigests] = useState([]);
+  const [weeklyDigestsLoading, setWeeklyDigestsLoading] = useState(true);
+  const [weeklyDigestsError, setWeeklyDigestsError] = useState(null);
 
   // US-09 -- duplicate_tier/duplicate_best_job_id are written by
   // score-submission-duplicate right after a member submits (see that
@@ -311,6 +315,22 @@ export default function AdminDashboard() {
     setClientErrorsLoading(false);
   }
 
+  // weekly_digests -- real computed digest content, one row per real
+  // member per week (see that table's own migration for the "groundwork,
+  // not a finished email" rationale). Lets an admin sanity-check content
+  // is correct before any of it is ever actually emailed (blocked on
+  // SES/Gavin).
+  async function loadWeeklyDigests() {
+    setWeeklyDigestsLoading(true);
+    try {
+      setWeeklyDigests(await fetchWeeklyDigestLog(50));
+      setWeeklyDigestsError(null);
+    } catch (err) {
+      setWeeklyDigestsError(err.message);
+    }
+    setWeeklyDigestsLoading(false);
+  }
+
   useEffect(() => {
     loadQueue();
     loadDuplicates();
@@ -322,6 +342,7 @@ export default function AdminDashboard() {
     loadAccessRequests();
     loadRecentSignups();
     loadClientErrors();
+    loadWeeklyDigests();
   }, []);
 
   const disengagedCount = engagement.filter((m) => m.is_disengaged).length;
@@ -1120,6 +1141,51 @@ export default function AdminDashboard() {
                 {clientErrorsLoading && (
                   <tr>
                     <td colSpan={4} className="meta">
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            </div>
+          </div>
+
+          <div className="detail-section">
+            <h2 className="detail-section__title">Weekly digest preview</h2>
+            <p className="meta" style={{ marginTop: 0 }}>
+              Real computed content from the weekly digest run (every Monday) -- new matches, upcoming
+              deadlines, unread messages, and new feed posts, per real member. Not yet actually emailed
+              (waiting on real SMTP) -- this is here to sanity-check the content is correct before it is.
+              A member with nothing to report that week has no row.
+            </p>
+            {weeklyDigestsError && <p className="meta" style={{ color: "#B3261E" }}>{weeklyDigestsError}</p>}
+            <div className="queue-table__scroll">
+            <table className="queue-table">
+              <thead>
+                <tr>
+                  <th>Week of</th>
+                  <th>Member</th>
+                  <th>Content</th>
+                </tr>
+              </thead>
+              <tbody>
+                {weeklyDigests.map((d) => (
+                  <tr key={d.digest_id}>
+                    <td className="meta">{new Date(d.week_of).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</td>
+                    <td style={{ fontWeight: 700 }}>{d.display_name}</td>
+                    <td className="meta">{d.body_text}</td>
+                  </tr>
+                ))}
+                {!weeklyDigestsLoading && weeklyDigests.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="meta">
+                      No digest content yet -- runs every Monday, or nothing was worth reporting.
+                    </td>
+                  </tr>
+                )}
+                {weeklyDigestsLoading && (
+                  <tr>
+                    <td colSpan={3} className="meta">
                       Loading…
                     </td>
                   </tr>
