@@ -9,6 +9,7 @@ import { displayName } from "../data/profileUtils.js";
 import Avatar from "./Avatar.jsx";
 import RequestFeatureModal from "./modals/RequestFeatureModal.jsx";
 import { useTour } from "./tour/TourContext.jsx";
+import ThemeToggle from "./theme/ThemeToggle.jsx";
 import bearMark from "../assets/uc-bear-mark-navy.png";
 
 const SIGNUPS_LAST_SEEN_KEY = "uc-portal-admin-signups-last-seen";
@@ -112,6 +113,8 @@ export default function TopBar() {
             </Link>
           </>
         )}
+
+        <ThemeToggle />
 
         <div>
           <button

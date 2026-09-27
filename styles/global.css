@@ -189,9 +189,9 @@ select {
    already means something else -- "featured"/real-and-notable) and not
    error red (this isn't a problem, just a label). */
 .chip-demo {
-  border-color: #e0b64a;
-  background: #fdf3d9;
-  color: #7a5b06;
+  border-color: var(--color-demo-border);
+  background: var(--color-demo-bg);
+  color: var(--color-demo-text);
   font-weight: 700;
 }
 

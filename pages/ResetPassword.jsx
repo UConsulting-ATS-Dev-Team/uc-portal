@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../data/supabaseClient.js";
+import ThemeToggle from "../components/theme/ThemeToggle.jsx";
 import bearMark from "../assets/uc-bear-mark-navy.png";
 import "../styles/auth.css";
 
@@ -76,6 +77,9 @@ export default function ResetPassword() {
 
   return (
     <div className="auth">
+      <div className="auth__theme-toggle">
+        <ThemeToggle />
+      </div>
       <div className="auth__stack">
         <div className="auth__brand">
           <img className="auth__mark" src={bearMark} alt="" />
@@ -104,7 +108,7 @@ export default function ResetPassword() {
               <h1 className="auth__title">Set a new password</h1>
               <p className="auth__subtitle">Choose a new password for your account.</p>
               {error && (
-                <p className="auth__note" style={{ color: "#B3261E" }}>
+                <p className="auth__note" style={{ color: "var(--color-danger)" }}>
                   {error}
                 </p>
               )}

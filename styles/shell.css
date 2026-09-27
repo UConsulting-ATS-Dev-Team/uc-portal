@@ -408,7 +408,7 @@
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(4, 39, 66, 0.3);
+    background: var(--color-scrim);
     border: none;
     padding: 0;
     z-index: 20;

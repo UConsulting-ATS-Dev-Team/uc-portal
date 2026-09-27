@@ -22,6 +22,12 @@
   justify-content: center;
 }
 
+.auth__theme-toggle {
+  position: fixed;
+  top: var(--space-6);
+  right: var(--space-6);
+}
+
 .auth__mark {
   width: auto;
   height: 56px;

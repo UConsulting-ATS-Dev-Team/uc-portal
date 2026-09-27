@@ -101,7 +101,7 @@ export default function ContributeModal({ onClose, job }) {
       footer={
         <>
           <span className="modal__footer-note">
-            {submitError ? <span style={{ color: "#B3261E" }}>{submitError}</span> : "Every write-up strengthens the odds model for everyone."}
+            {submitError ? <span style={{ color: "var(--color-danger)" }}>{submitError}</span> : "Every write-up strengthens the odds model for everyone."}
           </span>
           <button className="btn btn-secondary" onClick={onClose}>Save draft</button>
           <button className="btn btn-primary" disabled={!canPublish} onClick={handlePublish}>

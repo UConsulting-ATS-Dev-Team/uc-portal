@@ -531,7 +531,7 @@ export default function MyProfile() {
                     />
                   </div>
                   {resumeError && (
-                    <p className="meta" style={{ marginTop: "var(--space-2)", color: "#B3261E" }}>
+                    <p className="meta" style={{ marginTop: "var(--space-2)", color: "var(--color-danger)" }}>
                       {resumeError}
                     </p>
                   )}
@@ -553,7 +553,7 @@ export default function MyProfile() {
                             <li
                               key={s.id}
                               className="meta"
-                              style={{ marginBottom: "var(--space-2)", color: s.severity === "high" ? "#B3261E" : undefined }}
+                              style={{ marginBottom: "var(--space-2)", color: s.severity === "high" ? "var(--color-danger)" : undefined }}
                             >
                               {s.message}
                             </li>
@@ -678,7 +678,7 @@ export default function MyProfile() {
                     </div>
                   )}
                   {workHistoryError && (
-                    <p className="meta" style={{ color: "#B3261E" }}>
+                    <p className="meta" style={{ color: "var(--color-danger)" }}>
                       {workHistoryError}
                     </p>
                   )}
@@ -786,7 +786,7 @@ export default function MyProfile() {
                     />
                   </div>
                   {projectsError && (
-                    <p className="meta" style={{ color: "#B3261E" }}>
+                    <p className="meta" style={{ color: "var(--color-danger)" }}>
                       {projectsError}
                     </p>
                   )}
@@ -1100,7 +1100,7 @@ export default function MyProfile() {
               onChange={handleAvatarChange}
             />
             {avatarError && (
-              <p className="meta" style={{ marginTop: "var(--space-2)", color: "#B3261E" }}>
+              <p className="meta" style={{ marginTop: "var(--space-2)", color: "var(--color-danger)" }}>
                 {avatarError}
               </p>
             )}

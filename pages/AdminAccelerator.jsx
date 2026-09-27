@@ -122,7 +122,7 @@ function InternRoster() {
         </div>
       )}
 
-      {error && <p className="meta" style={{ color: "#B3261E" }}>{error}</p>}
+      {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
       <ul style={{ marginTop: "var(--space-4)" }}>
         {entries.map((e) => (
           <li key={e.email}>
@@ -204,7 +204,7 @@ function InternProgress() {
     <div className="detail-section">
       <p style={{ fontWeight: 700 }}>Intern progress</p>
       <p className="meta">Every real intern account, at a glance -- who's on track and who's stalled.</p>
-      {error && <p className="meta" style={{ color: "#B3261E" }}>{error}</p>}
+      {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
       <div className="queue-table__scroll">
         <table className="queue-table">
           <thead>
@@ -297,7 +297,7 @@ function LessonManager({ lesson, onChanged }) {
   return (
     <div className="detail-section" style={{ marginTop: "var(--space-6)" }}>
       <h2>{lesson.title}</h2>
-      {error && <p className="meta" style={{ color: "#B3261E" }}>{error}</p>}
+      {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
 
       <p style={{ fontWeight: 700 }}>Prep material</p>
       <ul>
@@ -412,7 +412,7 @@ export default function AdminAccelerator() {
         change slightly year to year without a code change.
       </p>
 
-      {error && <p className="meta" style={{ color: "#B3261E" }}>{error}</p>}
+      {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
 
       <InternRoster />
 

@@ -85,7 +85,7 @@ function SubmissionForm({ lesson, submission, onSubmitted }) {
         <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
         {submission?.file_name && !file && <p className="meta">Currently attached: {submission.file_name}</p>}
       </div>
-      {error && <p className="meta" style={{ color: "#B3261E" }}>{error}</p>}
+      {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
       <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting || (!body.trim() && !file && !submission?.file_path)}>
         {submitting ? "Submitting…" : submission ? "Update submission" : "Submit"}
       </button>

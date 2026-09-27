@@ -11,6 +11,7 @@ import {
 } from "../data/timelineUtils.js";
 import { matchesDeadlineBucket } from "../data/jobUtils.js";
 import { SEED_TRACKED_JOB_IDS } from "../data/store.jsx";
+import { useTheme } from "./theme/ThemeContext.jsx";
 import CompanyLogo from "./CompanyLogo.jsx";
 import DemoDataBadge from "./DemoDataBadge.jsx";
 
@@ -24,6 +25,14 @@ const TOTAL_DAYS = (TIMELINE_END - TIMELINE_START) / 86400000;
 export default function TrackerTimeline({ applications, timelineShiftDays, onShiftTimeline }) {
   const [drag, setDrag] = useState(null);
   const trackRefs = useRef({});
+  // Not otherwise used -- shadeForStage() reads --color-border-inner/
+  // --color-accent live off the DOM rather than taking them as
+  // arguments, so without subscribing to the theme context here this
+  // component would never actually re-render (and re-evaluate those
+  // reads) when the theme toggles while this view is already open; the
+  // bars would keep showing the previous theme's colors until something
+  // else happened to force a re-render.
+  useTheme();
 
   useEffect(() => {
     if (!drag) return;

@@ -123,7 +123,7 @@
   cursor: grabbing;
   position: relative;
   z-index: 20;
-  box-shadow: 0 6px 16px rgba(4, 39, 66, 0.25);
+  box-shadow: 0 6px 16px var(--color-drag-shadow);
   opacity: 0.95;
 }
 

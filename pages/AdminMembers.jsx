@@ -72,7 +72,7 @@ export default function AdminMembers() {
         {loading ? "" : `${members.length} real account${members.length === 1 ? "" : "s"} exist today.`}
       </p>
 
-      {error && <p className="meta" style={{ color: "#B3261E" }}>{error}</p>}
+      {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
 
       <div className="detail-section">
         <div className="queue-table__scroll">

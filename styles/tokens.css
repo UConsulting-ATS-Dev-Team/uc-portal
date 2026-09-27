@@ -52,6 +52,33 @@
   --color-accent-tint: #eaf3fa;
   --color-accent-tint-border: #b8d7ec;
 
+  /* Consolidated 2026-09-27 (dark mode pass) -- these were previously ~35
+     scattered inline `color: "#B3261E"` literals (error text across every
+     admin/auth/form error state) and 3 hardcoded values for the "demo/
+     illustrative content" badge (.chip-demo, global.css) -- neither could
+     react to a theme change as a hardcoded literal, so both became real
+     tokens here instead of staying duplicated. Values unchanged from what
+     was already live in light mode; only the dark-mode block below is new. */
+  --color-danger: #b3261e;
+  --color-demo-border: #e0b64a;
+  --color-demo-bg: #fdf3d9;
+  --color-demo-text: #7a5b06;
+
+  /* Same consolidation, for the handful of navy-tinted scrims/shadows
+     (modal backdrop, mobile nav drawer backdrop, the guided tour's dim,
+     the tracker board's drag shadow) that were each a separate hardcoded
+     `rgba(4, 39, 66, X)` -- same UC navy, mostly-distinct opacities for
+     different real purposes. Three tokens, not four: the modal backdrop
+     (.4) and the mobile nav drawer's own backdrop (previously a slightly
+     lighter .3) share --color-scrim now -- close enough in practice that
+     a fourth near-duplicate token wasn't worth it. A navy-tinted scrim
+     over an already-dark dark-mode background barely dims anything --
+     these get a real, distinct dark value below rather than just staying
+     navy-at-the-same-opacity. */
+  --color-scrim: rgba(4, 39, 66, 0.4);
+  --color-scrim-strong: rgba(4, 39, 66, 0.65);
+  --color-drag-shadow: rgba(4, 39, 66, 0.25);
+
   --font-heading: "Montserrat", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-heading-weight: 700; /* Montserrat Bold */
   --font-body: "Montserrat", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -91,4 +118,81 @@
   --nav-bottom-bar-height: 56px;
   --filter-column-width: 248px;
   --right-rail-width: 280px;
+}
+
+/* Dark mode (2026-09-27) -- every color value below is either taken
+   directly from, or a documented small derivation from, the real palette
+   of UConsulting's own sibling ATS app (uconsultingats.com), read live
+   via its resolved CSS custom properties in both its light and dark
+   themes (its light values already matched this file's own light block
+   almost exactly -- --logo-text #042742, --logo-u/--primary-blue #0c74c1,
+   confirming this app's brand tokens were already correctly UC-branded
+   before any of this). Applied via `data-theme="dark"` on <html>, set by
+   components/theme/ThemeContext.jsx -- see that file for the real
+   system/light/dark toggle (data/store.jsx intentionally NOT used for
+   this; theme has to apply before React even mounts to avoid a flash of
+   the wrong theme, which the shared app-state provider can't do).
+
+   Only color values are overridden here -- spacing/type/radius/layout
+   tokens are theme-independent and stay defined once in the :root block
+   above. Applies at :root (not html/body) so a token reference resolves
+   identically regardless of where in the tree it's read, same specificity
+   pattern the light block already uses. */
+:root[data-theme="dark"] {
+  --color-ground: #0b1220; /* ATS --bg-primary (dark) */
+  --color-surface: #1e293b; /* ATS --bg-elevated (dark) -- distinct from ground so cards read as raised */
+  --color-text: #f8fafc; /* ATS --text-primary (dark) */
+  --color-text-secondary: #cbd5e1; /* ATS --text-tertiary (dark) -- brightest of ATS's 3 secondary tiers, matching how light mode's text-secondary sits just one step below text */
+  --color-text-muted: #94a3b8; /* ATS --text-secondary (dark) */
+  --color-placeholder: #64748b; /* ATS --text-muted (dark) -- dimmest tier, same relative ordering as light mode */
+  --color-neutral: #94a3b8; /* same tier as text-muted, mirroring how light mode's neutral (#6e6e72) sits close to its own text-muted (#5c5c60) */
+
+  /* border/border-inner: ATS's own "light" border tier is literally equal
+     to its own elevated-surface color in dark mode (both #1e293b) --
+     real, but would make border-inner invisible against a card here,
+     where CLAUDE.md's Shape section treats real hairlines as a visual
+     signature, not an optional detail. --color-border uses ATS's more
+     visible border-medium tier directly; --color-border-inner is a small
+     documented derivation (one step lighter than --color-surface) rather
+     than reusing ATS's value verbatim, preserving the same
+     border-is-slightly-more-visible-than-border-inner relationship the
+     light block already has. */
+  --color-border: #334155; /* ATS --border-medium (dark) */
+  --color-border-inner: #293548; /* derived: one step lighter than --color-surface (#1e293b) */
+  --color-table-header: #263449; /* derived: between --color-surface and --color-border, same "table headers read slightly heavier than surface" relationship light mode's #f5f5f8 has */
+
+  /* UC navy (#042742) is retired from every prominent dark-mode role,
+     same real choice the ATS itself makes -- --text-primary/--logo-text/
+     --nav-text all resolve to near-white in its dark theme, not navy;
+     navy on an already-dark background has no real contrast left to
+     give. --color-primary is genuinely dual-purpose in this codebase
+     (heading/label text AND solid button backgrounds -- see .btn-primary/
+     .pagination button.is-active/.onboarding__segment.is-current in
+     global.css/jobs.css/onboarding.css), so this single override affects
+     both correctly: headings go nearly-white, and what were solid-navy
+     buttons become solid-near-white buttons with dark text (button text
+     already reads var(--color-surface), so it follows automatically) --
+     confirmed this is the exact real pattern the ATS itself uses for its
+     own "contained" primary buttons in dark mode
+     (--variant-containedBg/--variant-containedColor). */
+  --color-primary: #f8fafc;
+  --color-accent: #38bdf8; /* ATS --primary-blue (dark) -- brightened from #0c74c1 for visibility against a dark background, same real "brighten the brand blue" choice the ATS makes */
+  --color-accent-deep: #0ea5e9; /* ATS --primary-blue-dark (dark) */
+  --color-accent-tint: rgba(56, 189, 248, 0.12); /* ATS --primary-subtle-bg (dark) */
+  --color-accent-tint-border: rgba(56, 189, 248, 0.35); /* derived: a dimmer border for the tint above, same relative relationship light mode's tint/tint-border pair has */
+
+  --color-danger: #fca5a5; /* ATS --status-error-text (dark) -- bright enough to read as error text on a dark background */
+  --color-demo-border: #f59e0b; /* ATS --status-warning-border (dark) */
+  --color-demo-bg: #451a03; /* ATS --status-warning-bg (dark) */
+  --color-demo-text: #fcd34d; /* ATS --status-warning-text (dark) */
+
+  /* ATS --overlay-heavy is rgba(0,0,0,.6) in dark mode -- a real black
+     scrim, not navy-at-the-same-opacity, since navy barely dims an
+     already-dark page. --color-scrim reuses that value directly;
+     --color-scrim-strong/--color-drag-shadow are documented derivations
+     preserving the same "strong dim is heavier than the modal scrim,
+     which is heavier than a drag shadow" ordering the light block has. */
+  --color-scrim: rgba(0, 0, 0, 0.6);
+  --color-scrim-strong: rgba(0, 0, 0, 0.75);
+  --color-drag-shadow: rgba(0, 0, 0, 0.5);
 }

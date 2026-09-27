@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Skeleton from "../components/Skeleton.jsx";
 import { useAppState } from "../data/store.jsx";
 import { supabase } from "../data/supabaseClient.js";
+import ThemeToggle from "../components/theme/ThemeToggle.jsx";
 import bearMark from "../assets/uc-bear-mark-navy.png";
 import "../styles/auth.css";
 
@@ -36,12 +37,24 @@ const STATE = {
 
 function Brand() {
   return (
-    <div className="auth__brand">
-      <img className="auth__mark" src={bearMark} alt="" />
-      <span className="auth__wordmark">
-        <span className="auth__wordmark-u">U</span>C Portal
-      </span>
-    </div>
+    <>
+      {/* Fixed to the viewport corner, not the (centered, variable-width)
+          auth card -- rendered once here rather than once per auth state
+          (5 separate early-return branches below all render <Brand />)
+          since this is the one shared render point across every one of
+          them. Reachable pre-auth per the direct ask ("top corner it's
+          always an option"), matching TopBar.jsx's own placement on every
+          authenticated screen. */}
+      <div className="auth__theme-toggle">
+        <ThemeToggle />
+      </div>
+      <div className="auth__brand">
+        <img className="auth__mark" src={bearMark} alt="" />
+        <span className="auth__wordmark">
+          <span className="auth__wordmark-u">U</span>C Portal
+        </span>
+      </div>
+    </>
   );
 }
 
@@ -267,7 +280,7 @@ export default function SignIn() {
               />
             </div>
             {requestError && (
-              <p className="auth__note" style={{ color: "#B3261E" }}>
+              <p className="auth__note" style={{ color: "var(--color-danger)" }}>
                 {requestError}
               </p>
             )}
@@ -338,7 +351,7 @@ export default function SignIn() {
               </p>
             )}
             {forgotError && (
-              <p className="auth__note" style={{ color: "#B3261E" }}>
+              <p className="auth__note" style={{ color: "var(--color-danger)" }}>
                 {forgotError}
               </p>
             )}
@@ -396,7 +409,7 @@ export default function SignIn() {
             </p>
           )}
           {authError && (
-            <p className="auth__note" style={{ color: "#B3261E" }}>
+            <p className="auth__note" style={{ color: "var(--color-danger)" }}>
               {authError}
             </p>
           )}

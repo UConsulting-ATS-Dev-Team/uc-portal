@@ -173,7 +173,7 @@ export default function CasePartnerFinder() {
   return (
     <>
       <h2>Find a case partner</h2>
-      {error && <p className="meta" style={{ color: "var(--color-danger, #b3261e)" }}>{error}</p>}
+      {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
 
       {!status.optedIn ? (
         <div className="rail-card is-accent">

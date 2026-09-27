@@ -3253,6 +3253,80 @@ longer breaks down to phone width either.
   correctly reflected as empty rather than guessed). Cleaned up
   completely afterward.
 
+- **Real dark mode, with a system/light/dark toggle always in the top
+  corner** — direct ask, plus "for colors throughout the website, both
+  light and dark, we should use the colors of UConsulting, similar to
+  the ATS." Did the ATS-color research literally, not from memory: a
+  read-only pass over the user's real Chrome session (already signed
+  into `uconsultingats.com`, the club's sibling real ATS app) via Claude
+  in Chrome, reading that app's actual resolved CSS custom properties in
+  both its light and dark themes rather than eyeballing screenshots.
+  That confirmed something worth knowing before touching anything: this
+  app's own light-mode brand tokens were *already* exactly right --
+  `--logo-text #042742` and `--logo-u`/`--primary-blue #0c74c1` in the
+  ATS's light theme match `--color-primary`/`--color-accent` here
+  exactly. The real new information was the ATS's *dark* palette (navy
+  retired from every prominent dark-mode role in favor of near-white
+  text, the brand blue brightened from `#0c74c1` to `#38bdf8` for
+  visibility against a dark background) and its own real toggle UI
+  pattern (three plain icon buttons -- system/light/dark -- always
+  visible top-right), both used directly here.
+
+  `components/theme/ThemeContext.jsx` -- `mode` (`system`/`light`/
+  `dark`) persisted to `localStorage` (a per-browser display preference,
+  same reasoning `data/tours.js`'s seen-state already documented for why
+  that category of state doesn't sync to Supabase), applied via
+  `data-theme` on `<html>`. Initial application happens synchronously in
+  `main.jsx`, *before* React mounts -- a purely-in-React application
+  would still show a real flash of the wrong theme on load, since
+  there's no SSR here to apply it any earlier. `components/theme/
+  ThemeToggle.jsx` -- three Lucide icon buttons (Monitor/Sun/Moon,
+  already a dependency) in a flat, square, hairline-bordered segmented
+  group matching this app's own design language (CLAUDE.md's Shape
+  section) rather than importing the ATS's own rounded-pill MUI look.
+  Rendered in `TopBar.jsx` (every authenticated screen) and also
+  `SignIn.jsx`/`ResetPassword.jsx`/`Onboarding.jsx` (all three render
+  outside `NavShell`, so each needed its own placement) -- "always an
+  option," per the direct ask, genuinely means pre-auth too.
+
+  `styles/tokens.css` gained a `:root[data-theme="dark"]` block
+  overriding every color token, each value either taken directly from,
+  or a small documented derivation of, the real ATS dark palette --
+  see that block's own header comment for the full per-token reasoning
+  (why `--color-primary` inverts to near-white rather than staying navy,
+  confirmed as the ATS's own real button-color pattern too; why
+  `--color-border-inner` doesn't reuse the ATS's value verbatim, since
+  its own "light" border tier is literally invisible against its own
+  elevated-surface color there). Three new consolidated tokens
+  (`--color-danger`, `--color-demo-border`/`-bg`/`-text`,
+  `--color-scrim`/`-strong`/`--color-drag-shadow`) replaced what used to
+  be ~38 scattered hardcoded literals across 16 `.jsx` files and 5
+  `.css` files -- a full app-wide grep for every remaining hardcoded hex/
+  rgba color outside `tokens.css` came back completely clean afterward,
+  confirmed, not assumed. `data/timelineUtils.js#shadeForStage()` (the
+  Applications Timeline view's stage-gradient bars) used to hardcode its
+  two gradient endpoint colors as literal RGB arrays -- changed to read
+  `--color-border-inner`/`--color-accent` live off the DOM instead, and
+  `TrackerTimeline.jsx` now subscribes to the theme context (even though
+  it doesn't otherwise need the value) specifically so toggling the
+  theme while that view is already open actually triggers the re-render
+  that re-evaluates those DOM reads, rather than leaving stale-theme
+  bars on screen until something else happened to re-render.
+
+  Verified live end-to-end with a throwaway account: the toggle's
+  System/Light/Dark selection persists across a reload with zero flash;
+  clicking through Sign in (all reachable states), Admin Dashboard
+  (confirmed the new `--color-danger`/demo-badge tokens resolve to the
+  right real dark values via `getComputedStyle`, and the amber
+  "Illustrative" badges render distinctly from the accent-blue chips
+  next to them), a real job detail page's full odds model, and the
+  Applications Timeline view (added one real tracked application,
+  confirmed the stage-gradient bar renders a real, correctly-colored
+  blue in dark mode rather than the stale/invisible bar the DOM-read fix
+  above was specifically guarding against) all rendered correctly with
+  zero console errors. `vite build`: clean. `npm run test:server`:
+  145/145 unchanged (no server-mirrored logic for this feature).
+
 Run locally:
 ```bash
 npm install

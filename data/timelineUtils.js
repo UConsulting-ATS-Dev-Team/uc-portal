@@ -33,14 +33,28 @@ export function groupForStage(stage) {
 
 export const GROUP_ORDER = STAGE_GROUPS;
 
-// Shade progressively darker by stage index, from ground (lightest) to
-// UC's accent blue (darkest) -- matches "Interested lightest -> Interview
-// rounds accent" from the spec.
+function hexToRgb(hex) {
+  const n = hex.trim().replace("#", "");
+  const full = n.length === 3 ? n.split("").map((c) => c + c).join("") : n;
+  const int = parseInt(full, 16);
+  return [(int >> 16) & 255, (int >> 8) & 255, int & 255];
+}
+
+// Shade progressively darker by stage index, from --color-border-inner
+// (lightest) to --color-accent (darkest) -- matches "Interested lightest
+// -> Interview rounds accent" from the spec. Reads the two endpoint
+// colors live from the DOM (not hardcoded RGB literals, as this used to)
+// specifically so the gradient stays correct under dark mode -- the
+// border-inner/accent tokens both flip to very different real values
+// there (see styles/tokens.css's dark block), and hardcoding one theme's
+// numbers would have made this bar visibly wrong, not just off-brand, in
+// the other.
 export function shadeForStage(stage) {
   const i = STAGES.indexOf(stage);
   const t = i / (STAGES.length - 1);
-  const light = [231, 231, 234]; // --color-border-inner
-  const dark = [12, 116, 193]; // UC accent
+  const cs = getComputedStyle(document.documentElement);
+  const light = hexToRgb(cs.getPropertyValue("--color-border-inner") || "#adadad");
+  const dark = hexToRgb(cs.getPropertyValue("--color-accent") || "#0c74c1");
   const rgb = light.map((c, idx) => Math.round(c + (dark[idx] - c) * t));
   return `rgb(${rgb.join(",")})`;
 }

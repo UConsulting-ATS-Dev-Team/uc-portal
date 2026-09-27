@@ -88,7 +88,7 @@ export default function PostOpportunityModal({ onClose }) {
         ) : (
           <>
             <span className="modal__footer-note">
-              {submitError ? <span style={{ color: "#B3261E" }}>{submitError}</span> : "Goes to Exec for review before it's live."}
+              {submitError ? <span style={{ color: "var(--color-danger)" }}>{submitError}</span> : "Goes to Exec for review before it's live."}
             </span>
             <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
             <button className="btn btn-primary" disabled={!canSubmit} onClick={handleSubmit}>

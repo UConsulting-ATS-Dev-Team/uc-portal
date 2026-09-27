@@ -149,7 +149,7 @@ export default function SourceManagement() {
           Companies members follow that aren't a supported source yet -- the real prioritization signal for
           which company to research next, aggregated so no individual member's preferences are exposed.
         </p>
-        {demandError && <p className="meta" style={{ color: "#B3261E" }}>{demandError}</p>}
+        {demandError && <p className="meta" style={{ color: "var(--color-danger)" }}>{demandError}</p>}
         <div className="queue-table__scroll">
         <table className="queue-table">
           <thead>
@@ -184,7 +184,7 @@ export default function SourceManagement() {
         </div>
       </div>
 
-      {error && <p className="meta" style={{ color: "#B3261E" }}>{error}</p>}
+      {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
 
       <div className="queue-table__scroll">
       <table className="queue-table">
@@ -213,7 +213,7 @@ export default function SourceManagement() {
               <td className="meta" style={{ maxWidth: 220 }}>
                 {s.lastFetch ? (
                   <>
-                    <span style={{ color: s.lastFetch.status === "failed" ? "#B3261E" : "inherit", fontWeight: 700 }}>
+                    <span style={{ color: s.lastFetch.status === "failed" ? "var(--color-danger)" : "inherit", fontWeight: 700 }}>
                       {FETCH_STATUS_LABEL[s.lastFetch.status] ?? s.lastFetch.status}
                     </span>
                     <div>{new Date(s.lastFetch.completed_at ?? s.lastFetch.started_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</div>

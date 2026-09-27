@@ -18,14 +18,14 @@
   position: fixed;
   inset: 0;
   z-index: 9998;
-  background: rgba(4, 39, 66, 0.65);
+  background: var(--color-scrim-strong);
   pointer-events: none;
 }
 
 .tour-spotlight {
   position: fixed;
   z-index: 9998;
-  box-shadow: 0 0 0 9999px rgba(4, 39, 66, 0.65);
+  box-shadow: 0 0 0 9999px var(--color-scrim-strong);
   outline: 2px solid var(--color-accent);
   pointer-events: none;
   transition: top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease;

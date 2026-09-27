@@ -381,7 +381,7 @@ export default function Messages() {
           </div>
 
           {error && (
-            <p className="meta" style={{ color: "#B3261E", padding: "0 var(--space-4)" }}>
+            <p className="meta" style={{ color: "var(--color-danger)", padding: "0 var(--space-4)" }}>
               {error}
             </p>
           )}

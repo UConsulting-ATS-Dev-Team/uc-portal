@@ -1,0 +1,42 @@
+/* Flat/square/hairline-border segmented control, matching this app's own
+   design language (CLAUDE.md's Shape section) rather than a rounded-pill
+   toggle group -- see components/theme/ThemeToggle.jsx. */
+
+.theme-toggle {
+  display: flex;
+  border: var(--border-hairline);
+}
+
+.theme-toggle__option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: var(--color-surface);
+  border: none;
+  border-left: var(--border-hairline);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.theme-toggle__option:first-child {
+  border-left: none;
+}
+
+.theme-toggle__option:hover {
+  background: var(--color-accent-tint);
+  color: var(--color-accent-deep);
+}
+
+.theme-toggle__option.is-active {
+  background: var(--color-accent-tint);
+  color: var(--color-accent-deep);
+}
+
+@media (max-width: 640px) {
+  .theme-toggle__option {
+    width: 44px;
+    height: 44px;
+  }
+}

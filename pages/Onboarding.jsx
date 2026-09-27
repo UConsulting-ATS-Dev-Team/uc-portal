@@ -4,6 +4,7 @@ import { useAppState } from "../data/store.jsx";
 import { currentUser } from "../data/mockUser.js";
 import { displayName } from "../data/profileUtils.js";
 import { uploadResume } from "../data/resumeSync.js";
+import ThemeToggle from "../components/theme/ThemeToggle.jsx";
 import {
   INDUSTRIES,
   ROLES,
@@ -105,7 +106,7 @@ function StepYou({ resumeFileName, resumeUploading, resumeError, onAttach, kicke
         />
       </label>
       {resumeError && (
-        <p className="meta" style={{ marginTop: "var(--space-2)", color: "#B3261E" }}>
+        <p className="meta" style={{ marginTop: "var(--space-2)", color: "var(--color-danger)" }}>
           {resumeError}
         </p>
       )}
@@ -497,6 +498,9 @@ export default function Onboarding() {
   if (showCompletion) {
     return (
       <div className="onboarding">
+        <div className="onboarding__theme-toggle">
+          <ThemeToggle />
+        </div>
         <div className="onboarding__content" style={{ marginTop: "var(--space-8)" }}>
           <Brand />
           <Completion preferences={preferences} profileOverrides={profileOverrides} onFinish={handleFinish} />
@@ -517,6 +521,9 @@ export default function Onboarding() {
   if (isAlumni) {
     return (
       <div className="onboarding">
+        <div className="onboarding__theme-toggle">
+          <ThemeToggle />
+        </div>
         <div className="onboarding__header">
           <button className="btn-link" onClick={() => navigate("/feed")}>
             Save & finish later
@@ -549,6 +556,9 @@ export default function Onboarding() {
 
   return (
     <div className="onboarding">
+      <div className="onboarding__theme-toggle">
+        <ThemeToggle />
+      </div>
       <div className="onboarding__header">
         <div className="onboarding__progress">
           {STEPS.map((_, i) => (

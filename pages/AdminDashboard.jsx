@@ -542,7 +542,7 @@ export default function AdminDashboard() {
         <div className="detail-main">
           <div className="detail-section" data-tour="admin-opportunity-queue">
             <h2 className="detail-section__title">Opportunity queue</h2>
-            {queueError && <p className="meta" style={{ color: "#B3261E" }}>{queueError}</p>}
+            {queueError && <p className="meta" style={{ color: "var(--color-danger)" }}>{queueError}</p>}
             {queueNote && <p className="meta">{queueNote}</p>}
             <div className="queue-table__scroll">
             <table className="queue-table">
@@ -561,7 +561,7 @@ export default function AdminDashboard() {
                     <td>
                       {o.company}
                       {o.duplicate_tier && o.duplicate_tier !== "distinct" && (
-                        <div className="meta" style={{ color: "#B3261E" }}>
+                        <div className="meta" style={{ color: "var(--color-danger)" }}>
                           {o.duplicate_tier === "auto_merge" ? "Likely duplicate" : "Possible duplicate"} of{" "}
                           {o.duplicateMatchJob ? `"${o.duplicateMatchJob.title}" (${o.duplicateMatchJob.company})` : "an existing listing"}
                           {" "}· {Math.round(o.duplicate_best_score)}% match
@@ -614,7 +614,7 @@ export default function AdminDashboard() {
               Flagged by dedup scoring (70–89 confidence band) on either a member/admin submission or an
               automated source -- not auto-merged, since the signals weren't strong enough to be certain.
             </p>
-            {duplicatesError && <p className="meta" style={{ color: "#B3261E" }}>{duplicatesError}</p>}
+            {duplicatesError && <p className="meta" style={{ color: "var(--color-danger)" }}>{duplicatesError}</p>}
             {duplicatesNote && <p className="meta">{duplicatesNote}</p>}
             <div className="queue-table__scroll">
             <table className="queue-table">
@@ -693,7 +693,7 @@ export default function AdminDashboard() {
               missing fields worth checking, not necessarily broken. Dead application links are a
               separate, live signal now -- see "Broken links" below.
             </p>
-            {lowQualityError && <p className="meta" style={{ color: "#B3261E" }}>{lowQualityError}</p>}
+            {lowQualityError && <p className="meta" style={{ color: "var(--color-danger)" }}>{lowQualityError}</p>}
             <div className="queue-table__scroll">
             <table className="queue-table">
               <thead>
@@ -746,7 +746,7 @@ export default function AdminDashboard() {
               are deliberately left out of this list rather than mass-flagged -- there's no reliable way to
               tell a blocked-but-live posting apart from a genuinely dead one from the response alone.
             </p>
-            {brokenLinkError && <p className="meta" style={{ color: "#B3261E" }}>{brokenLinkError}</p>}
+            {brokenLinkError && <p className="meta" style={{ color: "var(--color-danger)" }}>{brokenLinkError}</p>}
             <div className="queue-table__scroll">
             <table className="queue-table">
               <thead>
@@ -812,7 +812,7 @@ export default function AdminDashboard() {
               Companies with real active postings but no row here yet (defaulted to tier 3, flagged "Not yet
               classified") are the ones most worth reviewing first.
             </p>
-            {companyTiersError && <p className="meta" style={{ color: "#B3261E" }}>{companyTiersError}</p>}
+            {companyTiersError && <p className="meta" style={{ color: "var(--color-danger)" }}>{companyTiersError}</p>}
             <div className="queue-table__scroll">
             <table className="queue-table">
               <thead>
@@ -877,7 +877,7 @@ export default function AdminDashboard() {
               real gate a future sign-up attempt checks) and lets them sign up immediately; Decline
               just records the review -- their email stays gated exactly as before.
             </p>
-            {accessRequestsError && <p className="meta" style={{ color: "#B3261E" }}>{accessRequestsError}</p>}
+            {accessRequestsError && <p className="meta" style={{ color: "var(--color-danger)" }}>{accessRequestsError}</p>}
             <div className="queue-table__scroll">
             <table className="queue-table">
               <thead>
@@ -949,7 +949,7 @@ export default function AdminDashboard() {
               password and lands them on "Confirm your info" already pre-filled from the Directory
               (name/major/LinkedIn), rather than a blank signup form.
             </p>
-            {provisionError && <p className="meta" style={{ color: "#B3261E" }}>{provisionError}</p>}
+            {provisionError && <p className="meta" style={{ color: "var(--color-danger)" }}>{provisionError}</p>}
             {provisionResult && (
               <p className="meta">
                 Created {provisionResult.createdCount} new account{provisionResult.createdCount === 1 ? "" : "s"}.{" "}
@@ -960,7 +960,7 @@ export default function AdminDashboard() {
             {provisionResult?.errors.length > 0 && (
               <ul style={{ margin: 0, paddingLeft: "var(--space-6)" }}>
                 {provisionResult.errors.map((e) => (
-                  <li key={e.email} className="meta" style={{ color: "#B3261E" }}>
+                  <li key={e.email} className="meta" style={{ color: "var(--color-danger)" }}>
                     {e.email}: {e.message}
                   </li>
                 ))}
@@ -980,7 +980,7 @@ export default function AdminDashboard() {
               application list or its contents, only whether they've touched the platform at all.{" "}
               {engagementLoading ? "" : `${engagement.length} real account${engagement.length === 1 ? "" : "s"} exist today -- this list is genuinely small until real members sign up.`}
             </p>
-            {engagementError && <p className="meta" style={{ color: "#B3261E" }}>{engagementError}</p>}
+            {engagementError && <p className="meta" style={{ color: "var(--color-danger)" }}>{engagementError}</p>}
             <div className="queue-table__scroll">
             <table className="queue-table">
               <thead>
@@ -1025,7 +1025,7 @@ export default function AdminDashboard() {
 
           <div className="detail-section">
             <h2 className="detail-section__title">Feature requests</h2>
-            {featureRequestsError && <p className="meta" style={{ color: "#B3261E" }}>{featureRequestsError}</p>}
+            {featureRequestsError && <p className="meta" style={{ color: "var(--color-danger)" }}>{featureRequestsError}</p>}
             <div className="queue-table__scroll">
             <table className="queue-table">
               <thead>
@@ -1107,7 +1107,7 @@ export default function AdminDashboard() {
               a page/promise failure outside it, or a member clicking "Report to Exec" on an empty
               state. Most recent 50.
             </p>
-            {clientErrorsError && <p className="meta" style={{ color: "#B3261E" }}>{clientErrorsError}</p>}
+            {clientErrorsError && <p className="meta" style={{ color: "var(--color-danger)" }}>{clientErrorsError}</p>}
             <div className="queue-table__scroll">
             <table className="queue-table">
               <thead>
@@ -1158,7 +1158,7 @@ export default function AdminDashboard() {
               (waiting on real SMTP) -- this is here to sanity-check the content is correct before it is.
               A member with nothing to report that week has no row.
             </p>
-            {weeklyDigestsError && <p className="meta" style={{ color: "#B3261E" }}>{weeklyDigestsError}</p>}
+            {weeklyDigestsError && <p className="meta" style={{ color: "var(--color-danger)" }}>{weeklyDigestsError}</p>}
             <div className="queue-table__scroll">
             <table className="queue-table">
               <thead>
@@ -1199,7 +1199,7 @@ export default function AdminDashboard() {
         <div className="detail-rail">
           <div className="rail-card">
             <div className="rail-card__title">Recent signups</div>
-            {recentSignupsError && <p className="meta" style={{ color: "#B3261E" }}>{recentSignupsError}</p>}
+            {recentSignupsError && <p className="meta" style={{ color: "var(--color-danger)" }}>{recentSignupsError}</p>}
             {!recentSignupsLoading && recentSignups.length === 0 && !recentSignupsError && (
               <p className="meta" style={{ margin: 0 }}>No new accounts in the last 14 days.</p>
             )}
@@ -1215,7 +1215,7 @@ export default function AdminDashboard() {
 
           <div className="rail-card">
             <div className="rail-card__title">Member engagement</div>
-            {engagementError && <p className="meta" style={{ color: "#B3261E" }}>{engagementError}</p>}
+            {engagementError && <p className="meta" style={{ color: "var(--color-danger)" }}>{engagementError}</p>}
             <div className="engagement-row">
               <span>Real signed-up accounts</span>
               <span>{engagementLoading ? "…" : engagement.length}</span>

@@ -207,7 +207,7 @@ export default function Feed() {
             </button>
           </div>
           {postsError && (
-            <p className="meta" style={{ color: "#B3261E", marginTop: "var(--space-4)" }}>
+            <p className="meta" style={{ color: "var(--color-danger)", marginTop: "var(--space-4)" }}>
               {postsError}
             </p>
           )}

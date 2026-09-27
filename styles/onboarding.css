@@ -7,6 +7,12 @@
   padding: var(--space-8) var(--space-7) var(--space-8);
 }
 
+.onboarding__theme-toggle {
+  position: fixed;
+  top: var(--space-6);
+  right: var(--space-6);
+}
+
 .onboarding__header {
   width: 720px;
   max-width: 100%;

@@ -42,7 +42,7 @@ export default function RequestCasePartnerModal({ candidate, onClose, onSent }) 
           <span className="modal__footer-note">Request sent to {candidate.displayName}.</span>
         ) : (
           <>
-            {error && <span className="modal__footer-note" style={{ color: "var(--color-danger, #b3261e)" }}>{error}</span>}
+            {error && <span className="modal__footer-note" style={{ color: "var(--color-danger)" }}>{error}</span>}
             <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
             <button className="btn btn-primary" disabled={sending} onClick={handleSend}>
               {sending ? "Sending…" : "Send request"}
