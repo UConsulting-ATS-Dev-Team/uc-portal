@@ -30,6 +30,7 @@
   padding: var(--space-3) var(--space-4);
   border: var(--border-hairline);
   background-color: var(--color-surface);
+  color: var(--color-text);
 }
 
 /* background-color above (not `background`) and this extra padding-right

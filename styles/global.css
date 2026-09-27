@@ -156,12 +156,38 @@ select {
   margin-bottom: var(--space-2);
 }
 
-.field input {
+/* select/textarea added 2026-09-27 (dark mode pass) -- this rule only
+   ever covered `.field input`, so a real .field-wrapped <select>/
+   <textarea> anywhere in the app (found live: My Profile's Work History
+   "Start year"/"End year" selects) fell through to unstyled native
+   browser chrome instead -- invisible in light mode by coincidence, a
+   real jarring amber/brown native-dark-select color once dark mode
+   existed to expose it. Same combined-selector fix .modal__body's own
+   input/select/textarea rule already uses. <select> is deliberately its
+   own separate rule below, using background-color instead of the
+   `background` shorthand here -- `.field select` has higher specificity
+   than the bare `select` rule (this file, above) that draws the
+   dropdown-arrow background-image, so a shorthand `background` here
+   would reset that arrow to none regardless of source order, the exact
+   landmine that bare rule's own comment already documents for every
+   other page-specific select box in the app. */
+.field input,
+.field textarea {
   width: 100%;
   padding: var(--space-3) var(--space-4);
   border: var(--border-hairline);
   border-radius: var(--radius);
   background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.field select {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  padding-right: calc(var(--space-4) * 2 + 14px);
+  border: var(--border-hairline);
+  border-radius: var(--radius);
+  background-color: var(--color-surface);
   color: var(--color-text);
 }
 

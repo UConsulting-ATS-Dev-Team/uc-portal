@@ -45,6 +45,8 @@
 .composer__top textarea {
   flex: 1 1 auto;
   border: var(--border-hairline);
+  background: var(--color-surface);
+  color: var(--color-text);
   padding: var(--space-3);
   resize: vertical;
   min-height: 44px;

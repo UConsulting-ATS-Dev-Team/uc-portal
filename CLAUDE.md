@@ -3327,6 +3327,63 @@ longer breaks down to phone width either.
   zero console errors. `vite build`: clean. `npm run test:server`:
   145/145 unchanged (no server-mirrored logic for this feature).
 
+- **Dark mode: live QA sweep found and fixed 9 real color bugs, plus a
+  systemic root-cause gap** — direct follow-up to shipping dark mode
+  (`217c02c`), self-directed off a plain "what next?" once that landed.
+  Walked every page live in dark mode (Network, Feed, Companies, Career
+  Resources, My Profile, Messages, Notifications, Accelerator, Admin →
+  Accelerator's bulk-add form, several action modals, and a mobile-width
+  375px pass) rather than assuming the initial token-consolidation pass
+  had caught every call site.
+
+  Found the pattern early on Feed: `.composer__top textarea` set a
+  border but never its own `background`/`color`, so it rendered as a
+  stark white box against an otherwise-correctly-dark page — the
+  general bug class this whole sweep was actually checking for. Grepped
+  every stylesheet for the same "sets border but not background/color"
+  shape rather than trusting one fix was the only instance, and found 7
+  more real gaps the same way: `messages.css`'s conversation-search
+  input and composer textarea, `companies.css`'s/`jobs.css`'s/
+  `network.css`'s header/filter `<select>` boxes (missing `color` only —
+  correctly already using `background-color`, not the shorthand, so the
+  dropdown arrow was never at risk), and `tracker.css`'s controls select
+  plus two completely unstyled selects (`.board-card__move select`,
+  `.tracker-table__stage-select`).
+
+  The most impactful one, found live on My Profile's Work History tab:
+  the "Start year"/"End year" `<select>` elements rendered with a
+  jarring native-browser amber-brown background — invisible in light
+  mode by coincidence (the native default happened to look close enough
+  to white), a real bug the instant dark mode existed to expose it.
+  Root cause: `global.css`'s `.field input` rule — a generic wrapper
+  class reused across My Profile, Onboarding, and other forms — only
+  ever covered `<input>`, never `<select>`/`<textarea>`. Fixed by
+  splitting into `.field input, .field textarea` (shared rule) and a
+  separate `.field select` rule using `background-color` rather than
+  the `background` shorthand — deliberately not combined into one
+  selector list, since `.field select`'s specificity is higher than the
+  bare `select { background-image: ...arrow-svg... }` rule elsewhere in
+  this same file, and a shorthand `background` there would silently
+  reset that arrow to `none` regardless of source order, the exact
+  landmine that bare rule's own comment already documents avoiding for
+  every other page-specific select box in the app. Caught and corrected
+  during implementation, before ever testing live, by reasoning through
+  the cascade — not a bug that shipped and was found after.
+
+  Also added `color-scheme: light`/`dark` to `tokens.css`'s respective
+  root blocks — a real browser-level hint so any native form-control
+  chrome this app's own CSS doesn't explicitly style (a checkbox, a
+  scrollbar, a native date-picker popup) still renders appropriately,
+  a safety net alongside the explicit fixes above, not a substitute for
+  them.
+
+  Verified live at both desktop and 375px mobile width (Jobs' "Post a
+  job" `.btn-primary` button rendering solid white-with-dark-text in
+  dark mode was checked and confirmed as the deliberate, already-
+  documented button-inversion behavior from the original dark-mode
+  build, not a new bug). `vite build`: clean. `npm run test:server`:
+  145/145 unchanged (no server-mirrored logic touched).
+
 Run locally:
 ```bash
 npm install

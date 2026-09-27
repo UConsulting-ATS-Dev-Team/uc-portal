@@ -43,6 +43,7 @@
   padding: var(--space-3) var(--space-4);
   border: var(--border-hairline);
   background-color: var(--color-surface);
+  color: var(--color-text);
 }
 
 /* background-color above (not `background`) and this extra padding-right
@@ -189,6 +190,8 @@
   min-width: 0;
   min-height: 32px;
   font-size: var(--text-meta);
+  background: var(--color-surface);
+  color: var(--color-text);
   /* padding-right, not the padding shorthand -- styles/global.css's
      shared select-arrow rule already reserves this exact width; a plain
      `padding` here would override it and reproduce the "arrow not
@@ -260,6 +263,8 @@
 .tracker-table__stage-select {
   font-size: var(--text-secondary);
   min-height: 36px;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .tracker-table tr.is-closed td {

@@ -118,6 +118,18 @@
   --nav-bottom-bar-height: 56px;
   --filter-column-width: 248px;
   --right-rail-width: 280px;
+
+  /* Tells the browser which color scheme this page actually uses, so
+     native form-control chrome (an unstyled <select>'s own text color,
+     a scrollbar, a native date-picker popup) renders appropriately
+     instead of always defaulting to light. This is a real safety net,
+     not a substitute for the explicit background/color fixes in
+     feed.css/messages.css/etc alongside this dark-mode pass -- it
+     covers native chrome this app's own CSS never draws, not the
+     app's own surface color, which still needs to be set explicitly to
+     actually match the surrounding card rather than just "some dark
+     default." */
+  color-scheme: light;
 }
 
 /* Dark mode (2026-09-27) -- every color value below is either taken
@@ -139,6 +151,7 @@
    identically regardless of where in the tree it's read, same specificity
    pattern the light block already uses. */
 :root[data-theme="dark"] {
+  color-scheme: dark;
   --color-ground: #0b1220; /* ATS --bg-primary (dark) */
   --color-surface: #1e293b; /* ATS --bg-elevated (dark) -- distinct from ground so cards read as raised */
   --color-text: #f8fafc; /* ATS --text-primary (dark) */

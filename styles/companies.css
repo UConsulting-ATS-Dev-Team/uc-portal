@@ -35,6 +35,7 @@
   padding: var(--space-3) calc(var(--space-4) * 2 + 14px) var(--space-3) var(--space-4);
   border: var(--border-hairline);
   background-color: var(--color-surface);
+  color: var(--color-text);
 }
 
 .companies-grid {
