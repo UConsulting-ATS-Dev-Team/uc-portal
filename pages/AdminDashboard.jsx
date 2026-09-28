@@ -801,17 +801,25 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="detail-section" data-tour="admin-company-tiers">
-            <h2 className="detail-section__title">Company tiers</h2>
-            <p className="meta" style={{ marginTop: 0 }}>
-              Every real company's active-job cap (data/companyTiers.js's TIER_CAPS: tier 0 "core consulting" 25,
-              tier 1 "other elite name-brand" 15, tier 2 "recognizable corporate/finance-adjacent" 10, tier 3
-              "everyone else" 3) -- enforced on ingestion by every fetch-* source and reflected on the Jobs
-              board's own per-company display cap. Reclassifying a company here takes effect on its next
-              scheduled fetch, not immediately -- this only changes company_tiers, not any job row directly.
-              Companies with real active postings but no row here yet (defaulted to tier 3, flagged "Not yet
-              classified") are the ones most worth reviewing first.
-            </p>
+          <div className="detail-section">
+            {/* data-tour lives on just the header, not the whole section -- every
+                real company renders inline here with no pagination, so the full
+                section can run to thousands of pixels tall (150+ companies) and
+                scrollIntoView-ing the whole thing centers on some arbitrary row
+                deep in the table rather than showing the header the tour step's
+                copy is actually about. */}
+            <div data-tour="admin-company-tiers">
+              <h2 className="detail-section__title">Company tiers</h2>
+              <p className="meta" style={{ marginTop: 0 }}>
+                Every real company's active-job cap (data/companyTiers.js's TIER_CAPS: tier 0 "core consulting" 25,
+                tier 1 "other elite name-brand" 15, tier 2 "recognizable corporate/finance-adjacent" 10, tier 3
+                "everyone else" 3) -- enforced on ingestion by every fetch-* source and reflected on the Jobs
+                board's own per-company display cap. Reclassifying a company here takes effect on its next
+                scheduled fetch, not immediately -- this only changes company_tiers, not any job row directly.
+                Companies with real active postings but no row here yet (defaulted to tier 3, flagged "Not yet
+                classified") are the ones most worth reviewing first.
+              </p>
+            </div>
             {companyTiersError && <p className="meta" style={{ color: "var(--color-danger)" }}>{companyTiersError}</p>}
             <div className="queue-table__scroll">
             <table className="queue-table">

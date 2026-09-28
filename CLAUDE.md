@@ -3384,6 +3384,71 @@ longer breaks down to phone width either.
   build, not a new bug). `vite build`: clean. `npm run test:server`:
   145/145 unchanged (no server-mirrored logic touched).
 
+- **Guided tour: the 3 previously-unverified variants live-tested; a real
+  scroll-positioning bug found and fixed** — closes the gap the tour's
+  own build entry flagged: `alumniWelcome`, `internWelcome`, and
+  `adminTools` shared the same engine as the fully-verified
+  `memberWelcome` tour but were never separately click-tested live.
+
+  `alumniWelcome` (6 steps) and `internWelcome` (5 steps) both verified
+  clean end-to-end with real throwaway accounts, including confirming
+  the lightweight alumni-only onboarding step correctly precedes landing
+  on Feed, and that the intern tour's `.step-row` target genuinely
+  renders (required seeding one real `accelerator_lessons` row first,
+  since Accelerator had none -- a real, if narrow, precondition the
+  tour's own design didn't account for: a step targeting content that
+  may not exist yet for a brand-new club).
+
+  `adminTools` (5 steps) surfaced a real bug: step 3 ("Company tiers")
+  had `data-tour="admin-company-tiers"` on the whole `.detail-section`
+  wrapper, including its table -- but that table renders every real
+  company inline with no pagination (150+ rows today), making the
+  target element itself ~7,000px tall. `scrollIntoView({block:"center"})`
+  on an element that much taller than the viewport doesn't have a
+  coherent "centered" position to begin with, and
+  `TourOverlay.jsx`'s own re-measurement after the scroll used a fixed
+  320ms delay before grabbing the target's position -- not necessarily
+  long enough for a real browser's smooth-scroll animation to finish
+  moving ~10,000px. Fixed two ways: moved `data-tour` onto just the
+  section's header + description (a small, sensibly-sized target,
+  independent of how many companies exist), and replaced the fixed
+  320ms delay with a poll that waits for the target's measured position
+  to actually stop moving between reads (capped ~2s) before committing
+  it, rather than assuming any one delay is long enough -- a real,
+  latent timing assumption that would have applied to any future
+  tall/far-off tour target, not just this one.
+
+  Caught live, not guessed: the built-in browser pane's own
+  `scrollIntoView({behavior:"smooth"})` turned out to be a complete
+  no-op in this environment (verified directly -- scrollY never moved
+  over 3s for either a short 500px or the full ~10,000px scroll, while
+  `behavior:"instant"` worked immediately), a test-environment
+  limitation in the same category this project has already documented
+  for native HTML5 drag-and-drop and `elementFromPoint` in a
+  backgrounded tab -- not something a code fix can address. Verified
+  the actual fix's correctness a different way instead: manually
+  completing the scroll with `instant` behavior and confirming the
+  spotlight's rendered position exactly matches the target's real
+  post-scroll position (`spotlight.top === target.top - 8px` pad, to
+  the pixel), proving the positioning *pipeline* is sound even though
+  this harness can't exercise the smooth-scroll timing race directly.
+  One apparent mismatch mid-verification (a screenshot appearing to
+  show the wrong nav item spotlighted) was re-checked immediately via
+  direct DOM measurement and confirmed to be a transient mid-render
+  screenshot frame, not a real bug -- same category of artifact as the
+  dark-mode sweep's CSS-transition screenshots above.
+
+  All three tours' remaining steps (nav-item spotlights, cross-page
+  navigation, the centered intro/outro cards) verified correct via
+  direct tooltip-text and target-selector checks after each step.
+  `vite build`: clean. `npm run test:server`: 145/145 unchanged (no
+  server-mirrored logic for this feature). Cleaned up all 3 throwaway
+  accounts, the synthetic `people` row, and the seeded test lesson
+  afterward; verified zero residue live (Admin Dashboard's own
+  "Member engagement"/"Recent signups" correctly showed 0 real accounts
+  and "admin access required" once the now-deleted admin's session no
+  longer resolved to a real account).
+
 Run locally:
 ```bash
 npm install

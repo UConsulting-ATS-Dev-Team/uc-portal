@@ -75,11 +75,29 @@ export default function TourOverlay() {
       const r = measure(step.target);
       if (r) {
         document.querySelector(step.target)?.scrollIntoView({ block: "center", behavior: "smooth" });
-        timerRef.current = setTimeout(() => {
+        // A fixed short delay isn't enough for every target -- the "Company
+        // tiers" admin table (every company rendered inline, no pagination)
+        // is tall enough that a real browser's smooth-scroll animation can
+        // still be in flight well past a few hundred ms, which would grab a
+        // mid-scroll position here. Poll until the rect actually stops
+        // moving between reads (capped at ~2s) instead of assuming any one
+        // delay is long enough.
+        let settleAttempts = 0;
+        let lastRect = r;
+        function settle() {
           if (cancelled) return;
-          setRect(measure(step.target) || r);
-          setReady(true);
-        }, 320);
+          const next = measure(step.target) || lastRect;
+          const stable = Math.abs(next.top - lastRect.top) < 1 && Math.abs(next.left - lastRect.left) < 1;
+          settleAttempts += 1;
+          if (stable || settleAttempts > 20) {
+            setRect(next);
+            setReady(true);
+            return;
+          }
+          lastRect = next;
+          timerRef.current = setTimeout(settle, 100);
+        }
+        timerRef.current = setTimeout(settle, 150);
         return;
       }
       attempts += 1;
