@@ -3941,6 +3941,64 @@ longer breaks down to phone width either.
   counterpart). Cleaned up the throwaway account and its tracked
   application completely afterward; zero residue confirmed.
 
+- **Two more small 2026-09-02 gaps closed; a stale rate correction in an
+  earlier entry** — a final sanity sweep of the days already checked
+  during the larger 09-08/09-23 catch-up passes above (looking for any
+  remaining day with real commits and zero paired "Log X" documentation
+  commit) turned up two more real, if much smaller, gaps — both from
+  2026-09-02, both still genuinely live in current code:
+
+  **`member_engagement_report()` / Admin Dashboard's "Member engagement"
+  section** (`6f8d420`) — a security-definer function replacing what had
+  been mock engagement numbers with a real one: every signed-up account,
+  ranked least-active first, with a real last-active timestamp derived
+  from the most recent of sign-in/preference-or-profile edit/tracker
+  activity/saved job/coffee-chat-or-connection update. A deliberate,
+  explicitly-scoped carve-out from this app's usual "admins see aggregate
+  only, never an individual's data" rule (`AdminDashboard.jsx`'s own
+  section copy states this plainly) — this specific story genuinely
+  needs identity ("which members haven't engaged, so I can nudge them"),
+  but stops at presence/absence: no application list, no preference
+  content, just a name and a timestamp. Already referenced by name in
+  three later entries above (the account-pre-provisioning catch-up, the
+  profile-pictures build, and the digest-email groundwork) as a
+  precedent for the recurring `auth.users.email` `varchar(255)`-not-
+  `text` casting bug — confirmed by that same pattern to have already
+  been fixed and working by the time those later features shipped, just
+  never given its own entry here.
+
+  **Odds-model baseline rates biased toward the low end** (`b0f554f`) —
+  a direct product-instruction follow-up to the tiered industry-baseline
+  prior entry earlier in this file: when the underlying data is
+  genuinely uncertain, underestimate a member's odds rather than
+  overestimate them, so a real outcome is more likely to pleasantly
+  surprise than disappoint, rather than aiming for the single most
+  statistically likely midpoint. `data/industryBaseRates.js`'s two
+  fallback-tier constants moved from the midpoint of their cited ranges
+  to the low end: `COMPETITIVE_RATE` 10% → 7% (of a real ~5-15% band) and
+  `ACCESSIBLE_RATE` 20% → 15% (of a real ~15-25% band) — the two tiers
+  that fire for the large majority of this app's real job sources, since
+  most don't match the curated ~20-company named-rate list. **Correction
+  to the earlier "Real odds model: tiered industry-baseline prior for the
+  no-real-data case" entry above**: it describes these two tiers at their
+  original 10%/20% values, which this same-day follow-up superseded —
+  the current, correct values are 7%/15%, as `industryBaseRates.js`'s own
+  header comment (and its explicit "PESSIMISM BIAS" section) states.
+
+  Neither change was live-re-verified with a throwaway account this
+  pass — both are lower-risk than the two larger catch-ups above (a
+  read-only reporting function already exercised transitively by three
+  later features' own live verification, and a pure static-constant
+  change with no state or migration involved), and both were confirmed
+  still genuinely live and unchanged by direct code read rather than
+  assumed from the commit message alone. `vite build`: clean; no
+  server-mirrored logic touched (`server/src/` doesn't mirror either).
+
+  This closes out the systematic day-by-day audit begun during the
+  09-08 catch-up — every day from this project's first commit through
+  today with real, non-`JOB_ENGINE_ARCHITECTURE.md`-scoped commits and
+  zero paired documentation now has one.
+
 Run locally:
 ```bash
 npm install
