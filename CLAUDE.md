@@ -3449,6 +3449,66 @@ longer breaks down to phone width either.
   and "admin access required" once the now-deleted admin's session no
   longer resolved to a real account).
 
+- **Real account pre-provisioning: rediscovered and re-verified live** —
+  another documentation gap in the same category as the Phone UX pass
+  correction above: `supabase/functions/pre-provision-accounts/` (real,
+  admin-gated, deployed) and its Admin Dashboard "Pre-create accounts for
+  roster" button were fully built on 2026-09-23 (item (1) from the
+  earlier "pre-provisioned logins" design-discussion entry — "less
+  signup friction via auto-filled profile data") but never got a
+  Progress-log entry, so this file's own account of that feature never
+  existed until today. Found while grepping for something unrelated and
+  noticing live admin-page content this file had no record of.
+
+  What it does: creates a real, usable `auth.users` row (via
+  `auth.admin.createUser({email_confirm: true})`, no email sent) for
+  every roster member who hasn't signed up yet. Deliberately does *not*
+  pre-fill `profiles` fields itself — `data/directoryPrefillSync.js`
+  already does that for any account the moment it first signs in,
+  matched by email against the same `people` Directory data — this
+  function's only job is making the `auth.users` row exist before that
+  first sign-in happens; `handle_new_user()`'s `member_status`
+  classification, the Directory prefill, and avatar fallback all work
+  unmodified for a pre-provisioned account exactly as they do for a
+  self-signed-up one. `pages/ResetPassword.jsx` was fixed the same day
+  to route by `onboarding_complete`/`member_status` after a password
+  claim (it used to always land on `/`, which meant a pre-provisioned
+  account claiming its password would skip straight past "Confirm your
+  info" — the one step this feature exists to make quick, not
+  skippable), and a real hydration race in `data/store.jsx` was found
+  and fixed the same day (the Directory-prefill effect was gated on
+  `hydratedFromRemote`, which only tracks the *preferences* fetch — a
+  separate network call from the `profileOverrides` fetch with no
+  ordering guarantee, so a slower `profileOverrides` resolution could
+  silently overwrite what the prefill had just set with its own
+  all-empty fields; fixed by gating on both hydration flags).
+
+  Re-verified today, four days and several unrelated feature passes
+  later (dark mode, guided tours, message archiving, intern accounts)
+  since anything touching `data/store.jsx` or the sign-in/reset-password
+  routing paths could plausibly have regressed this without anyone
+  noticing, given it had no documentation trail to prompt a check. All
+  four pieces confirmed still intact by direct code read (the
+  `hydratedFromRemote && profileOverridesHydrated` double-gating in
+  `store.jsx`, `ResetPassword.jsx`'s routing block including its
+  since-added intern-account branch). The Edge Function itself
+  re-verified live with a real throwaway admin account, invoked
+  directly with `{emails: [...]}` scoped to one synthetic
+  `.invalid`-domain roster email — never the real button, which always
+  runs against the full real roster with no scoping in the UI, exactly
+  as the function's own header comment warns. Confirmed both branches:
+  a first call correctly created a real account
+  (`createdCount: 1`), and an identical second call correctly reported
+  it under `alreadyExists` instead of erroring or duplicating. The
+  full password-claim → prefill flow (which would need triggering a
+  real Supabase password-reset email) wasn't re-run live — code-review
+  verification of the unmodified `ResetPassword.jsx`/`store.jsx` logic
+  was judged sufficient given the original build's own thorough live
+  verification of that exact path. Cleaned up completely afterward
+  (both throwaway accounts, both roster rows); verified zero residue
+  live via Admin Dashboard's own "0 real accounts" / "admin access
+  required" state once the deleted admin's session no longer resolved.
+
 Run locally:
 ```bash
 npm install
