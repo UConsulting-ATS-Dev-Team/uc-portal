@@ -104,17 +104,47 @@ function idTokens(url: string): Set<string> {
   return new Set(url.match(/\d{4,}/g) ?? []);
 }
 
+// Generic listing-page path segments -- a real specific job page's final
+// path segment is the job's own slug/id, never one of these bare terms.
+const GENERIC_PATH_SEGMENTS = new Set(["careers", "career", "jobs", "job", "open-roles", "open-positions", "positions", "job-openings", "opportunities", ""]);
+
+function isGenericPathSegment(url: string): boolean {
+  try {
+    const segments = new URL(url).pathname.split("/").filter(Boolean);
+    return GENERIC_PATH_SEGMENTS.has((segments[segments.length - 1] ?? "").toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 // See header comment (3) -- true only when the original URL actually had
 // an id token to check AND none of them survived the redirect. A URL with
 // no long digit sequence at all (e.g. a slug-only careers page) skips this
 // check entirely and relies on status code alone, rather than producing a
 // meaningless comparison.
+//
+// 2026-09-28 fix -- real false positives found live (AlphaSights: 64 real,
+// currently-open postings all flagged "broken"; confirmed by reproducing
+// this function's exact HEAD/GET/UA behavior with curl, not guessed): a
+// missing digit-token match alone isn't proof of a generic-page redirect
+// anymore. AlphaSights' board redirects a real, valid gh_jid to a clean
+// human-readable slug URL (.../job/alphasights-launchpad-2027/) that
+// legitimately drops the numeric id -- the original heuristic couldn't
+// tell that apart from the true invalid-id case (Figma's fabricated id,
+// which redirects to a bare .../careers/ listing with no job-specific
+// segment at all). Now requires BOTH signals: no surviving digit token
+// AND the final URL's own last path segment is a bare generic-listing
+// term. A real job's final segment (its own slug or numeric id) is never
+// one of GENERIC_PATH_SEGMENTS, so this can no longer flag a redirect to
+// a real, specific job page just because its URL style doesn't happen to
+// carry the original id -- while the original Figma case (a genuinely
+// generic destination) still correctly counts as a failure either way.
 function redirectedToGenericPage(originalUrl: string, finalUrl: string): boolean {
   const original = idTokens(originalUrl);
   if (original.size === 0) return false;
   const final = idTokens(finalUrl);
   for (const token of original) if (final.has(token)) return false;
-  return true;
+  return isGenericPathSegment(finalUrl);
 }
 
 interface Attempt {

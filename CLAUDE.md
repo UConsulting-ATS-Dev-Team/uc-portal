@@ -3999,6 +3999,76 @@ longer breaks down to phone width either.
   today with real, non-`JOB_ENGINE_ARCHITECTURE.md`-scoped commits and
   zero paired documentation now has one.
 
+- **Real operational-health check surfaced a live false-positive bug in
+  `check-job-links`; fixed** — with the documentation backlog closed,
+  checked the app's real live operational signals directly (client error
+  reports, the access-request queue, the feature-request queue, the
+  broken-link queue, the duplicate-review queue) rather than continuing
+  to hunt for more documentation gaps. Zero real client errors, zero
+  pending feature requests, and the duplicate-review queue's 31 pending
+  items are all genuinely in the 0.80–0.92 "needs a human" band the
+  duplicate-detection fix earlier in this file already scoped — nothing
+  wrong there. Two real findings:
+
+  **A real access request has been sitting unactioned for a week** —
+  `rykleczynski@ucla.edu` requested access 2026-09-21 and is still
+  `pending` as of today (2026-09-28). Not something to act on
+  unilaterally (approving real member access is an admin's call, not
+  this agent's) — flagged directly to the user instead of silently
+  approved or ignored.
+
+  **240 active real postings were incorrectly flagged `link_health =
+  'broken'`, almost entirely a false-positive bug, not real link rot.**
+  All were checked within the last 1-2 days (not stale rows), so this
+  was live and current, not an old backlog. Sampling actual
+  `application_url`s and reproducing `check-job-links`' exact HEAD/GET/
+  User-Agent behavior with `curl` (not guessed) found the real cause:
+  `redirectedToGenericPage()` — built 2026-08-25 specifically to catch
+  Figma's real "invalid Greenhouse job id silently redirects to the
+  generic careers page" failure mode — flags a redirect as "generic"
+  whenever the original URL's numeric `gh_jid` token doesn't survive
+  into the final URL. AlphaSights' real board (64 of the 240, the
+  single largest company) redirects a valid `gh_jid` to a clean,
+  human-readable slug URL (`.../job/alphasights-launchpad-2027/`) that
+  legitimately drops the numeric id — confirmed live via `curl` with
+  the checker's exact UA that this is a real, currently-open posting,
+  not a dead one. The original heuristic couldn't tell "id dropped
+  because the destination is a real specific job page with a nicer URL"
+  apart from "id dropped because it redirected to the generic listing" —
+  it only ever checked for the token's absence, never what kind of page
+  the redirect actually landed on.
+
+  Fixed by requiring *both* signals before calling a redirect generic:
+  no surviving digit token, **and** the final URL's own last path
+  segment is a bare listing term (`GENERIC_PATH_SEGMENTS`: careers/jobs/
+  open-roles/open-positions/etc.). A real job's final segment is always
+  its own slug or id, never one of these — so this can no longer
+  false-flag a redirect to a real, specific job page just because its
+  URL style doesn't happen to carry the original numeric id, while the
+  original Figma case (a genuinely bare `/careers/` destination) still
+  correctly fails either way. Deployed via `npx supabase functions
+  deploy check-job-links` (confirmed via the deploy command's own
+  success response, dashboard_url included). Not independently
+  re-verified via a fresh manual invocation — this function's own header
+  comment documents a real false-positive burst from repeated manual
+  invocations during its original build (~15 calls in 10 minutes
+  triggered transient Stripe rate-limiting), so this relies on the
+  existing daily `check-job-links-daily` pg_cron schedule for its first
+  live run under the fix rather than adding another manual call; the
+  fix's correctness itself is grounded in the direct `curl` reproduction
+  above, matching the deployed function's exact method/UA/redirect
+  logic line for line, not just plausible reasoning. Worth confirming
+  live (Admin Dashboard's broken-link count dropping, AlphaSights
+  specifically clearing) once tomorrow's scheduled run has completed.
+  Tower Research (18 flagged) and GSA (13 flagged, at least one sample
+  genuinely 404s on manual check) weren't fully root-caused the same way
+  — Tower's sampled URLs already had matching digit tokens even before
+  this fix, so its false positives (if that's what they are) likely have
+  a different cause (datacenter-IP bot-blocking is the leading
+  suspicion, same class as the already-documented Carvana case, but
+  unconfirmed) — worth a closer look if the count doesn't drop enough
+  after this fix's first live run.
+
 Run locally:
 ```bash
 npm install
