@@ -63,7 +63,7 @@ goals for next week. Two hard deadlines:
 | 2026-08-18 → 09-08 | Weekly office-hours check-ins (Aug 25, Sep 1, Sep 8) |
 | **2026-09-08 (Tue)** | **MVP due** — delivered on schedule, presented to Ryan, Gavin, Harshil; went well |
 | 2026-09-08 → 09-25 | Iterate on feedback (Sep 15, Sep 22 check-ins) — in progress as of 2026-09-14 |
-| **2026-09-25 (Fri)** | **Production-ready** — final demo/presentation to UC Executive Committee for club distribution |
+| ~~2026-09-25 (Fri)~~ | ~~**Production-ready** — final demo/presentation to UC Executive Committee for club distribution~~ — **didn't happen, pushed** (confirmed 2026-09-28); no new date set yet. Feature work has continued well past this milestone regardless (see CLAUDE.md's Progress log) — the delay is a scheduling/logistics fact, not a sign the product stalled. |
 
 **Where we are (as of 2026-09-14, supersedes the paragraph this replaced,
 which was frozen at 2026-08-18 — pre-MVP and mock-data-only):** MVP
@@ -83,15 +83,25 @@ real review queue, a real Feed, real 1:1 Messages, the full real odds
 model, and a real admin toolkit (opportunity queue, company-tier
 management, access requests, feature requests, member engagement,
 broken-link detection). Remaining demo/seed content that hasn't been
-replaced with something real yet (a handful of seeded tracker cards, a
-few hand-authored mock company pages, Admin Dashboard's illustrative
-club-wide KPIs no single browser session could actually compute) is
-now visibly labeled ("Demo data"/"Illustrative"), not presented as fact.
+replaced with something real yet (8 hand-authored mock company pages,
+8 mock demo jobs) is now visibly labeled ("Demo data"/"Illustrative"),
+not presented as fact. **Correction, 2026-09-28**: this paragraph used
+to also list "a handful of seeded tracker cards" and "Admin Dashboard's
+illustrative club-wide KPIs" as labeled-but-present — as of a
+2026-09-23 pass those were removed outright (the seeded tracker cards,
+seeded coffee chats, and Admin Dashboard's KPI/breakdown/most-targeted-
+companies sections), not merely labeled; those screens now show the
+app's real empty states instead.
 This doc no longer tries to re-narrate that build history play-by-play —
 see [CLAUDE.md](CLAUDE.md)'s Progress log for the full, evidence-based,
-dated entry-by-entry account. Genuinely still open toward the
-2026-09-25 production-ready bar: real transactional email only (blocked
-on AWS SES access — see Risks & blockers). Everything phone-specific
+dated entry-by-entry account. **Correction, 2026-09-28**: the
+2026-09-25 production-ready presentation to the UC Executive Committee
+(below) didn't happen and has been pushed with no new date set yet —
+this section's own framing of "toward the 2026-09-25 production-ready
+bar" is accordingly stale; treat everything below as describing real,
+continuing progress independent of that specific date, not progress
+racing toward it. Genuinely still open: real transactional email only
+(blocked on AWS SES access — see Risks & blockers). Everything phone-specific
 (44px touch targets, a real Messages show-list/show-thread toggle, a
 bottom tab bar, collapsible filters — all shipped 2026-09-08 alongside
 the responsive redesign but missed by this doc's own earlier draft,
@@ -321,8 +331,10 @@ maintenance after Josh graduates.
 
 ## Open action items (not code)
 
-All Josh/club tasks, not something this repo can do — current as of
-2026-09-14, gathered from the supervisor's post-MVP feedback:
+All Josh/club tasks, not something this repo can do — gathered from the
+supervisor's post-MVP feedback, current as of 2026-09-14 except where a
+2026-09-28 correction below notes otherwise (domain purchase reconfirmed
+still open as of that date; GitHub transfer resolved).
 
 - **Gavin** — AWS SES access (10k emails/day). Blocks every real-email
   item above and below (feature-request notification emails, admin
@@ -335,11 +347,16 @@ All Josh/club tasks, not something this repo can do — current as of
 - Buy a domain for the real Vercel deploy.
 - A GM walkthrough, eventually — no rush.
 
-Two infrastructure decisions also need Josh's own explicit call before
-any code work starts on them (not just outreach): moving to a new repo
-under the UC GitHub account (status tangled up with the still-pending
-GitHub ownership transfer to Josh's advisor), and what AWS SES unlocks
-once Gavin's involved.
+**Correction, 2026-09-28**: this section used to note that moving to a
+new repo under the UC GitHub account needed Josh's own explicit call,
+tangled up with a still-pending ownership transfer — that's stale. The
+repo transferred to the club's real org
+(`UConsulting-ATS-Dev-Team/uc-portal`) on 2026-09-14, had its committed
+real-PII history scrubbed and GitHub-confirmed purged, and was made
+public on 2026-09-15 (see CLAUDE.md's dated Progress entries for the
+full verification transcript). What's left open is only what AWS SES
+unlocks once Gavin's involved — the repo-ownership half of this line no
+longer needs Josh's call, it already happened.
 
 ## References
 
