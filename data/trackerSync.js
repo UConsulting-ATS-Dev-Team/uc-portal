@@ -20,7 +20,13 @@ function rowsToLocalMaps(rows) {
   const prepLogged = {};
   const timelineShiftDays = {};
   for (const row of rows) {
-    trackedJobs[row.job_id] = { stage: row.stage, addedAt: row.added_at, stageHistory: row.stage_history, outcome: row.outcome ?? null };
+    trackedJobs[row.job_id] = {
+      stage: row.stage,
+      addedAt: row.added_at,
+      stageHistory: row.stage_history,
+      outcome: row.outcome ?? null,
+      rejectionStage: row.rejection_stage ?? null,
+    };
     if (row.prep_logged_hours) prepLogged[row.job_id] = row.prep_logged_hours;
     if (row.timeline_shift_days) timelineShiftDays[row.job_id] = row.timeline_shift_days;
   }
@@ -45,15 +51,23 @@ export async function fetchRemoteTrackedApplications() {
 
 // Fire-and-forget upsert of one application's complete current record --
 // callers pass the full post-update {stage, addedAt, stageHistory,
-// prepLoggedHours, timelineShiftDays, outcome} for that one job_id,
-// computed locally right before/alongside the setState call that updates
-// the UI, so this never has to read state back out of React to know what
-// to send. outcome (migration 20260902130000) is null/undefined until a
-// member records what actually happened on a Closed application via
-// components/modals/RecordOutcomeModal.jsx -- `?? null` here matches the
-// column's own default rather than sending `undefined`, which the
-// Supabase client would otherwise omit from the upsert entirely and never
-// clear a previously-set value back to null.
+// prepLoggedHours, timelineShiftDays, outcome, rejectionStage} for that
+// one job_id, computed locally right before/alongside the setState call
+// that updates the UI, so this never has to read state back out of React
+// to know what to send. outcome (migration 20260902130000) and
+// rejectionStage (migration 20260908120000) are both null/undefined
+// until a member records a real outcome via components/modals/
+// RecordOutcomeModal.jsx -- `?? null` on each matches its column's own
+// default rather than sending `undefined`, which the Supabase client
+// would otherwise omit from the upsert entirely and never clear a
+// previously-set value back to null.
+//
+// rejectionStage was local-only for a real while (see data/store.jsx's
+// setApplicationOutcome, whose own comment documented this) -- the
+// migration exists but hadn't been confirmed live yet when this was
+// first built. Found genuinely still local-only during a much later
+// documentation-catchup pass, migration confirmed live by then; wired in
+// here rather than left as flagged-but-unfixed.
 export async function syncTrackedApplicationToRemote(jobId, record) {
   const {
     data: { session },
@@ -70,6 +84,7 @@ export async function syncTrackedApplicationToRemote(jobId, record) {
       prep_logged_hours: record.prepLoggedHours ?? 0,
       timeline_shift_days: record.timelineShiftDays ?? 0,
       outcome: record.outcome ?? null,
+      rejection_stage: record.rejectionStage ?? null,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "member_id,job_id" }

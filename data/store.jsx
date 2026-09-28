@@ -446,14 +446,13 @@ export function AppStateProvider({ children }) {
   // rejectionStage (data/trackerUtils.js's REJECTION_STAGES) is only ever
   // meaningful alongside outcome === "rejected" -- forced to null
   // otherwise so switching an outcome away from "rejected" can't leave a
-  // stale stage behind. Local-only for now: the real
-  // tracked_applications.rejection_stage column (migration
-  // 20260908120000_tracked_application_rejection_stage.sql) exists as a
-  // migration file but hasn't been applied to the live Supabase project
-  // from this session (no DB-privileged credential available here) --
-  // syncTrackedApplicationToRemote() deliberately doesn't send it yet, so
-  // an unapplied migration can't break the already-working outcome/stage
-  // sync. Flagged as a real follow-up, not an oversight.
+  // stale stage behind. Synced to the real tracked_applications.
+  // rejection_stage column (migration
+  // 20260908120000_tracked_application_rejection_stage.sql) via
+  // syncTrackedApplicationToRemote() -- this was local-only for a real
+  // while (the migration existed but hadn't been confirmed live when
+  // this was first built), found and closed during a later
+  // documentation-catchup pass.
   function setApplicationOutcome(jobId, outcome, rejectionStage = null) {
     let syncPayload = null;
     setState((prev) => {

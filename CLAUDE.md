@@ -3909,6 +3909,38 @@ longer breaks down to phone width either.
   zero residue confirmed via a self-cleaning diagnostic
   (`residue_auth=0 residue_roster=0 residue_tracked=0`).
 
+- **Closed the rejection-stage local-only sync gap the entry above
+  flagged** — direct follow-up, same day: `data/trackerSync.js`'s
+  `syncTrackedApplicationToRemote()` never sent `rejectionStage` in its
+  upsert (and `rowsToLocalMaps()` never read `rejection_stage` back on
+  fetch), even though the real `tracked_applications.rejection_stage`
+  column had been live for weeks and the local state already carried
+  the value correctly end-to-end (`data/store.jsx`'s
+  `setApplicationOutcome()` already builds and passes it in
+  `syncPayload` — the gap was entirely inside `trackerSync.js` itself).
+  Fixed both directions: the upsert now sends `rejection_stage:
+  record.rejectionStage ?? null` (same `?? null` convention `outcome`
+  already used, so switching away from "rejected" correctly clears a
+  stale stage remotely too, not just locally), and
+  `fetchRemoteTrackedApplications()` now reads it back into
+  `trackedJobs[jobId].rejectionStage` on hydration.
+
+  Verified live, both directions, with a throwaway account: recorded a
+  real rejection on a real tracked job, deliberately choosing "After a
+  final round" (not the auto-suggested default, so the verification
+  proves the *chosen* value round-trips, not just a coincidental
+  match) — confirmed directly against the live database that
+  `tracked_applications.rejection_stage = 'final_round'` for that real
+  row. Then cleared just the local `uc-portal-state` cache (same
+  "different device" simulation this project has used before) and
+  reloaded while staying signed in — the Table view correctly showed
+  "final round" again, confirming the read-direction fix pulls it back
+  from Supabase on a fresh hydration, not just displaying a stale local
+  value. `vite build`: clean. `npm run test:server`: 145/145 unchanged
+  (no server-mirrored logic — `trackerSync.js` has no server-side
+  counterpart). Cleaned up the throwaway account and its tracked
+  application completely afterward; zero residue confirmed.
+
 Run locally:
 ```bash
 npm install
