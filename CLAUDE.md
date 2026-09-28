@@ -3682,6 +3682,233 @@ longer breaks down to phone width either.
   `npm run test:server`: 145/145 (unchanged by today's real code fix --
   `MyProfile.jsx` has no server-mirrored logic).
 
+- **2026-09-08 ("MVP day"), rediscovered and re-verified in full: ~39
+  real commits, previously undocumented** — a much larger version of
+  the same gap the two entries above closed. 2026-09-08 had 50 commits
+  total; this file's own "Phone UX pass" entry only ever accounted for
+  the 11 explicitly prefixed "Phone UX pass:" — the other 39, spanning
+  My Profile's foundational field-saving/propagation machinery, several
+  real-data corrections, a large batch of real Jobs-board fixes
+  (including the fix that first made a real job trackable at all), and
+  a broad pre-demo hardening/polish pass, had zero CLAUDE.md coverage
+  until today. Found by systematically grepping this file for a sample
+  of distinctive phrases pulled from each commit's own subject line
+  rather than assuming the Phone UX correction was the whole story.
+
+  Re-verified live with one throwaway account rather than transcribed
+  from five-week-old commit messages — grouped by area below, each
+  confirmed either working exactly as originally built, silently
+  superseded by later real work (noted where that's the case), or, in
+  one instance, still genuinely incomplete in a way worth flagging
+  precisely.
+
+  **My Profile: the foundational field-saving/propagation fixes
+  (`displayName()`/`resolvedClassYear()`/etc. didn't exist before
+  this day).** Five real bugs, all in the same area, fixed the same
+  day: the Full name input rebuilt its own value from firstName/
+  lastName on every keystroke (a classic controlled-input antipattern
+  causing stray spaces mid-edit) — consolidated to one real string;
+  LinkedIn now auto-normalizes a bare handle or partial/full URL to a
+  canonical form on blur; a saved name change previously never
+  propagated anywhere else in the app (TopBar/Home/Feed avatars all
+  read the static mock identity directly) — this is the day
+  `profileOverrides.fullName` and the shared `displayName()`/
+  `initialsFromName()` helpers were introduced; grad year/major/UC
+  role were staged in local form state but **never actually
+  persisted** — editing and saving looked like it worked, then
+  reverted on the next reload; and once persisted, those three still
+  only updated My Profile's own display until `resolvedClassYear()`/
+  `resolvedMajors()`/`resolvedUcCommittee()` were added and threaded
+  through real job matching's grad-year constraint, CompanyPage's
+  "your year" tag, Member profile's shared-context check, Home/Feed's
+  greeting/post metadata, and Onboarding's confirm-your-info step.
+  ("Change photo" showing an honest "not supported yet" message,
+  also from this day, was fully superseded weeks later by the real
+  avatar-upload feature — nothing to verify there now, it's a real
+  upload.) Re-verified live today: saved a real name ("Catchup Test"),
+  grad year (2028), and a bare LinkedIn handle — confirmed the
+  LinkedIn field normalized to `https://www.linkedin.com/in/
+  catchuptest0908/` on blur, the TopBar avatar updated to "CT", and
+  both Home's welcome line ("Welcome to UC Portal, Catchup") and its
+  subtitle ("Class of 2028") picked up the saved values without a
+  reload — the exact propagation chain this day's fixes built.
+
+  **My Profile: UX polish on top of the above.** Ranked-industry empty
+  slots now render one placeholder per actually-remaining slot instead
+  of always exactly one (confusing at 0 or 1 picked), numbered 1/2/3
+  like a real entry, in both Onboarding and My Profile's Career
+  Preferences tab. Industries/Roles/Locations all gained the same live
+  search filter Skills already had (already-selected chips always stay
+  visible regardless of the query). Skills and Target locations
+  collapse to one real visual line (`.chip-row--collapsed`, a real
+  max-height/overflow rule, not a sliced array) with a Show more/fewer
+  toggle. Compensation range ceiling raised $60→$75/hr (also fixing
+  `NEUTRAL_FILTERS`, which had silently excluded any real job priced
+  above $60 even with zero filters active), and the slider now shows
+  a real annual-salary equivalent next to the hourly rate. Plus a
+  redundant rail card removed and two tab labels capitalized. Re-
+  verified today: `INDUSTRIES` has exactly 29 entries (28 real + the
+  "Still figuring it out" catch-all, matching the described expansion
+  exactly), the $75 ceiling and the real `* 2080` annual-equivalent
+  calculation are both still present verbatim in `MyProfile.jsx`, and
+  `.chip-row--collapsed` still exists and is wired into the same two
+  pickers.
+
+  **Real-data corrections.** The nav rail's "142 members · 380 alumni
+  · invite only" (unmodified wireframe placeholder numbers since the
+  very first build) were replaced with the club's real approximate
+  figures, then a real hand-count (52 exact members, 3 active class
+  years since 2026 had just graduated) replaced the approximation, with
+  Admin Dashboard's whole illustrative KPI/class-year/most-targeted-
+  companies block rescaled to stay internally consistent with the real
+  52 (still labeled illustrative — this is proportional rescaling of
+  mock figures, not new real computation). A parallel data-integrity
+  fix: the ranked-industry picker always showed exactly one "Open slot"
+  regardless of how many were actually free (see UX polish above), and
+  the onboarding completion screen's greeting still read the static
+  mock `currentUser.firstName` directly (never wired through
+  `displayName()` like the rest of the app by this point) alongside a
+  broken onboarding-only logo (a third, never-updated copy of the old
+  CSS-text brand mark, missed when TopBar/SignIn were switched to the
+  real bear-mark image). **Not independently re-verified live today**
+  — the onboarding completion screen is only reachable after all 5
+  steps, skipped for time in favor of the higher-traffic areas above;
+  confirmed only that `clubStats.members` is still exactly `52` and
+  `INDUSTRIES` still totals 29 by direct code read.
+
+  **Jobs board: a large batch of real fixes, including the one that
+  first made a real job trackable at all.** Deduped two overlapping
+  search boxes into one (the NL search box already covered the plain
+  keyword box's entire behavior as a fallback); promoted "Match my
+  profile" from a small sidebar link to a real header button, visible
+  on every tab; removed the redundant "Recommended for me" filter
+  checkbox and the "Scroll feed" tab entirely (`ContinuousJobFeed.jsx`
+  deleted outright). Separately: `defaultFiltersFromPreferences()` was
+  built to seed Jobs' initial filters from a member's real preferences,
+  then **reversed the same day** per direct feedback ("no filters by
+  default") back to `NEUTRAL_FILTERS` as the real initial state — the
+  function itself still exists and still powers "Match my profile" on
+  demand, it's just no longer automatic. The Recommended tab's count
+  badge used to be computed from the *unfiltered* board while the tab
+  itself showed the *filtered* result (a real "says 10, shows 1" bug);
+  fixed to share one `filteredForCount` set with the tab. The Saved
+  tab had an even worse version of the identical bug — it ran every
+  saved job through the *same active filters* as every other tab
+  before checking `savedJobIds`, so a genuinely-saved job outside the
+  active filter silently vanished from its own bookmark list; fixed to
+  read straight off the full job list, bypassing filters entirely (a
+  personal bookmark list shouldn't be narrowed by an unrelated active
+  search). The Save button (JobCard) gained real `.is-saved` styling
+  (the existing accent border/tint/bold treatment plus a checkmark,
+  not just a text change) — `RealJobDetail.jsx`, the page a real job's
+  UUID actually routes to, had **no Save button at all** until this
+  day. A real per-page selector (10/25/50, replacing a flat 5) and a
+  real windowed pager (`pageWindow()`, collapsing hundreds of page
+  buttons into first/last/current-neighbors + "…") both shipped too.
+
+  The largest functional gap of the day: **a real job could be browsed
+  and saved but had no path into the Applications tracker at all**
+  until three same-day commits fixed it — a real "Add to tracker"
+  button on `RealJobDetail.jsx`, `searchRealJobs()` added to
+  `AddApplicationModal.jsx`'s "From a UC posting" search (previously
+  scoped to the 8 mock jobs only), and every page that resolves a
+  `trackedJobs` entry (Home, Applications, then a follow-up commit
+  catching 5 more call sites — Career Resources' interview retitling,
+  a Learning Track's tied-applications rail, Resource Detail's "Used
+  for," the generic Log Prep picker, Notifications) switched to
+  checking real jobs first, falling back to mock only for the
+  legitimately-mock seeded demo entries. `TrackerTable.jsx`'s
+  UC-connections column, which rendered the literal word "undefined"
+  for any real job (a field mock jobs always have and real ones
+  legitimately don't), now shows "—" instead. Re-verified today, live,
+  end to end: saved a real job (confirmed `.is-saved` styling on both
+  JobCard and `RealJobDetail.jsx`, and the Saved tab correctly showing
+  exactly that 1 job), added it to the tracker from `RealJobDetail.jsx`
+  ("In tracker ✓"), confirmed it rendered on the real Applications
+  Board with zero "undefined" text anywhere on the page, and dragged it
+  to Closed.
+
+  **A same-day feature that's still genuinely half-finished, caught
+  while re-verifying it today**: dropping a card into Closed prompts a
+  real rejection-stage picker (`REJECTION_STAGES`, a second chip row
+  that appears only when "Rejected" is chosen, pre-selected via
+  `suggestRejectionStage()` reading the application's own real
+  `stageHistory`) — confirmed live today, both the chip row's exact
+  labels and the pre-selection logic (a job that never advanced past
+  "Interested" correctly suggested "Resume / application screen") work
+  exactly as built, and the value persists and displays correctly on
+  the Table view too. But the commit that built this explicitly flagged
+  `rejectionStage` as deliberately left out of `trackerSync.js`'s
+  remote sync payload "until the migration is confirmed live and a
+  follow-up pass adds it to the sync payload" — the migration **is**
+  live (confirmed today, `supabase db push --dry-run` reports nothing
+  pending), but `trackerSync.js` still has zero mentions of
+  `rejectionStage` five weeks later. The follow-up pass never happened.
+  Real, practical effect: a member's real rejection-stage answer is
+  captured and displayed correctly in this browser session, but is
+  **not saved to Supabase** — it's silently lost on a different device
+  or if localStorage is ever cleared, unlike every other real field on
+  a tracked application. Worth a real fix, not done today (found while
+  re-verifying older work, not something to silently expand scope
+  into).
+
+  **Branding, accessibility, and cross-cutting fixes.** The nav
+  brandmark got its permanent shape this day (bear mark + "UC Portal"
+  wordmark, box removed) alongside `components/RequireAuth.jsx` — the
+  route-level auth gate that still protects every authenticated screen
+  today, added the same commit after root-causing a real 401 bug
+  (nothing had ever checked for a real session before rendering a
+  protected route). "Careers Committee" (a club body that no longer
+  exists) was swept to "Exec" across the app in two passes the same
+  day, including default/fallback values and a mock person's own role
+  history. The wordmark's "U" got its real accent-blue reproduction
+  treatment, a real favicon replaced the default gray globe, and two
+  small layout bugs (bear-mark off-center, Home's edit-preferences row
+  crowding the chips above it) were fixed alongside. Every native
+  `<select>` app-wide had its dropdown arrow sitting outside its own
+  drawn box (a missing `appearance: none` + real drawn chevron,
+  composed correctly against 5 already-more-specific page rules) —
+  this is the same fix this session's own dark-mode sweep repeatedly
+  leaned on today's `background-color`-not-shorthand convention for,
+  five weeks later, without knowing it traced back to this day.
+  Low-contrast grays and thin body text were darkened/weighted against
+  the real WCAG formula (this is the fix CLAUDE.md's own Palette/Type
+  notes already describe — those were correctly updated same-day, only
+  this narrative Progress-log account of it was ever missing). A sweep
+  removed meta/AI-sounding copy app-wide, including a real bug where
+  `pages/AdminDashboard.jsx` literally rendered the string "Per
+  CLAUDE.md's standing privacy rule" to real users. Career Resources'
+  left nav gained real card contrast + sticky positioning, chip text
+  centering was fixed for any chip stretched taller by a flex sibling,
+  and "— vetted by Exec" was dropped from Free certifications (direct
+  instruction: don't add copy whose only job is asserting legitimacy).
+  A final pre-demo sweep (`2915020`) audited every button/link in the
+  app for a missing real destination and either wired each to
+  something genuinely real (existing infra, not new features — e.g.
+  Network's `?company=` param, coffee-chat's real topic default) or
+  made it honestly `disabled` with an explanation, matching the
+  precedent SignIn's Google button already set — that sweep's own
+  verification was explicitly constrained (no test-credential sign-in
+  available in that session), so today's live pass over the same
+  surface (Career Resources, Jobs, Applications, My Profile, Home,
+  Feed) doubles as its real live confirmation.
+
+  Also from this day, lower-risk infra not independently re-verified
+  today beyond confirming the files/values are still present: a real
+  `posted_date` fix (was hardcoded to ingestion time, now prefers the
+  source's genuine posted/updated date), `vercel.json` for SPA
+  client-side routing (still present), and a cron-schedule fix for the
+  newly-provisioned paid Supabase project (indirectly reconfirmed
+  throughout this session by every real ingestion job's own success
+  observed live on Admin Dashboard).
+
+  `vite build`: clean throughout. `npm run test:server`: 145/145
+  unchanged (no server-mirrored logic touched by anything re-verified
+  today). Cleaned up the one throwaway account, its real tracked
+  application, and its rejection-stage outcome completely afterward;
+  zero residue confirmed via a self-cleaning diagnostic
+  (`residue_auth=0 residue_roster=0 residue_tracked=0`).
+
 Run locally:
 ```bash
 npm install
