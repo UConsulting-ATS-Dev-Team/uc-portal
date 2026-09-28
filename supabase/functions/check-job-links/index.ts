@@ -147,10 +147,29 @@ function redirectedToGenericPage(originalUrl: string, finalUrl: string): boolean
   return isGenericPathSegment(finalUrl);
 }
 
+// True for the "custom company domain wrapping a Greenhouse job by query
+// string" pattern (?gh_jid=12345 on the company's own careers page) --
+// AlphaSights, Tower Research, GSA all use this shape, as opposed to the
+// standard boards.greenhouse.io/<company>/jobs/12345 path-segment pattern
+// this whole heuristic was originally built and validated against (see the
+// header comment's Figma example, and (3) below). Distinguishing these
+// matters -- see redirectedToGenericPage's 2026-09-28 comment and
+// checkOne's 2026-09-28 comment for why a query-string id's redirect
+// target can't be trusted as evidence the same way a path-segment id's
+// can.
+function isQueryStringJobId(url: string): boolean {
+  try {
+    return new URL(url).searchParams.has("gh_jid");
+  } catch {
+    return false;
+  }
+}
+
 interface Attempt {
   ok: boolean;
   status?: number;
   networkError?: string;
+  genericRedirectOnQueryId?: boolean;
 }
 
 async function attempt(method: "HEAD" | "GET", url: string): Promise<Attempt> {
@@ -158,7 +177,12 @@ async function attempt(method: "HEAD" | "GET", url: string): Promise<Attempt> {
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(url, { method, redirect: "follow", headers: { "User-Agent": UA }, signal: controller.signal });
-    return { ok: res.ok && !redirectedToGenericPage(url, res.url), status: res.status };
+    const genericRedirect = redirectedToGenericPage(url, res.url);
+    return {
+      ok: res.ok && !genericRedirect,
+      status: res.status,
+      genericRedirectOnQueryId: res.ok && genericRedirect && isQueryStringJobId(url),
+    };
   } catch (err) {
     return { ok: false, networkError: err instanceof Error ? err.message : String(err) };
   } finally {
@@ -203,6 +227,20 @@ async function checkOne(url: string): Promise<CheckResult> {
   if (get.ok) return "ok";
   if (get.status === 403 || head.status === 403) return "inconclusive";
   if (isTransientServerStatus(get.status) || isTransientServerStatus(head.status)) return "inconclusive";
+  // 2026-09-28 -- Tower Research (a real, confirmed case): a genuinely
+  // open posting's ?gh_jid= URL redirects to the exact same bare
+  // /open-positions/ page regardless of which real job id was requested
+  // (the query string is dropped entirely, not preserved in any form) --
+  // confirmed live across 3 different real job ids all landing on the
+  // identical final URL. Unlike Figma's original path-segment case (a
+  // fabricated id demonstrably lands somewhere a real id doesn't), this
+  // redirect target carries zero information about which job -- or
+  // whether any job -- was requested, so it can never be trusted as
+  // evidence either way. Same epistemic gap as the persistent-403 case
+  // above (header comment (2)): genuinely can't tell "gone" from "just
+  // this company's redirect behavior," so this gets the same inconclusive
+  // treatment rather than a guess in either direction.
+  if (get.genericRedirectOnQueryId || head.genericRedirectOnQueryId) return "inconclusive";
   return "broken";
 }
 

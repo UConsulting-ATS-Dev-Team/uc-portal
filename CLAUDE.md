@@ -4069,6 +4069,75 @@ longer breaks down to phone width either.
   unconfirmed) — worth a closer look if the count doesn't drop enough
   after this fix's first live run.
 
+- **Ryan Kleczynski's real access request approved; Tower Research's
+  distinct broken-link false positive root-caused and fixed** — direct
+  follow-up the next session. First, direct instruction: approved the
+  pending access request the entry above flagged
+  (`rykleczynski@ucla.edu`, requested 2026-09-21) — replicated exactly
+  the two writes `AdminDashboard.jsx`'s own Approve button performs (a
+  `roster` upsert plus marking the request `approved`, both attributed
+  to the real admin's id), then verified directly: on roster, request
+  status `approved`, `roster_total` 52 → 53.
+
+  Second, checked whether the check-job-links deploy from the entry
+  above had actually been exercised by a live cron run yet — it hadn't;
+  the logged run predated that deploy by several hours, so AlphaSights
+  was still showing under the old code there (64 → 66, if anything).
+  That's expected, not a failure — the real first test is the *next*
+  scheduled run, not an immediate one this agent should force (same
+  rate-limit caution as before).
+
+  With that ruled out as "not yet tested" rather than "still broken,"
+  went back to Tower Research and GSA, which the entry above left as an
+  open "worth a closer look" with a bot-blocking guess that turned out
+  to be wrong. **GSA's really are dead**: both HEAD and GET on a fresh
+  sample return a genuine 404 — `check-job-links` is correctly flagging
+  these, no bug, nothing to fix. **Tower Research is a real, different
+  false-positive class**, confirmed by testing 3 different real job ids'
+  `?gh_jid=` URLs with the checker's exact UA: every single one redirects
+  to the identical bare `https://tower-research.com/open-positions/`,
+  query string dropped entirely — unlike AlphaSights' fix (a
+  job-specific slug survives), Tower's redirect target carries *zero*
+  information about which job, or whether any job, was requested. No
+  code fix can distinguish "this real job's real redirect just looks
+  like this" from "this job is genuinely gone" from the HTTP response
+  alone — the exact same epistemic gap this function already accepts
+  for Carvana's persistent-403 bot-challenge, just via a different
+  mechanism (a company's own redirect behavior, not bot-blocking).
+
+  Fixed by extending, not weakening, the existing heuristic:
+  `isQueryStringJobId()` recognizes the `?gh_jid=` custom-domain-wrapper
+  pattern specifically (AlphaSights/Tower/GSA's shared shape, as opposed
+  to the standard `boards.greenhouse.io/<company>/jobs/<id>` path-segment
+  pattern this whole detector was originally validated against, per its
+  own Figma example) — when a redirect lands on a generic page *and* the
+  original id was in the query string rather than the path, the result
+  is now `inconclusive` (link_health left untouched, same as persistent-
+  403) rather than `broken`. Figma's original real detection (path-
+  segment ids) is completely unaffected — it never sets this flag.
+  Deployed via `npx supabase functions deploy check-job-links`.
+
+  Unlike AlphaSights (which will self-recover via the normal `ok` ->
+  `recovered` path on its next real check), Tower's 18 already-broken
+  jobs would **not** have self-corrected under the new code alone —
+  `inconclusive` deliberately never touches `link_health` either way, so
+  a job already flagged broken before this fix would have stayed broken
+  forever without a manual reset. Following the exact precedent
+  `20260825180000_reset_link_health_after_false_positive_burst.sql`
+  already set for this situation, ran one targeted reset scoped
+  specifically to `company = 'Tower Research Capital'` (not a blanket
+  reset, which would have wrongly cleared GSA's genuine 404s in the same
+  batch) — verified directly: `tower_broken=0 tower_unchecked=134
+  gsa_broken_untouched=13`, real active-job total broken 179 → 164.
+
+  `vite build`: clean. Not independently re-verified via a fresh manual
+  function invocation, same rate-limit caution as the entry above —
+  Tower's fix is grounded in the direct multi-sample `curl` reproduction
+  above, not just plausible reasoning; worth confirming Tower stays
+  clean (no new broken flags reappearing) after its first live check
+  under the new code, alongside the AlphaSights confirmation already
+  queued from the prior entry.
+
 Run locally:
 ```bash
 npm install
