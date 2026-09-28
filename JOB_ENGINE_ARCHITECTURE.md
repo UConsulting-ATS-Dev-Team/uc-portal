@@ -1,8 +1,24 @@
 # UC Job Discovery Engine — Architecture Recommendation
 
-Pre-implementation architecture proposal for the job discovery/aggregation
-system behind UC Portal. **This is a planning document, not implemented
-code.** Nothing here has been built yet — it's for review before we start.
+Originally a pre-implementation architecture proposal for the job
+discovery/aggregation system behind UC Portal. **Correction, 2026-09-28**:
+the opening framing below ("nothing here has been built yet") describes
+this doc's very first version only — it's stale and has been for a long
+time. This system has been fully built and has run live in production
+for weeks: real daily ingestion from 177+ company sources (Greenhouse/
+Lever/Deloitte), dedup, normalization, tiered company caps, the odds
+model's real UC-track-record backing, and more — see Part 7's own
+"Stage 2 is now fully complete" note onward and the dated entries filling
+the rest of this document for the real, evidence-based build history.
+This file still functions as a living log (new dated entries keep
+getting appended below, most recently 2026-09-24's company-source
+addition), just never had its own opening paragraph revisited once real
+building started. Original framing, kept for history:
+
+> Pre-implementation architecture proposal for the job discovery/
+> aggregation system behind UC Portal. **This is a planning document,
+> not implemented code.** Nothing here has been built yet — it's for
+> review before we start.
 
 Optimization order, as directed: **legal safety > reliability >
 maintainability > simplicity > scalability > sophistication.**
