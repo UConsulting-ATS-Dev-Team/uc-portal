@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
 import { INDUSTRIES, ROLES, SKILLS, LOCATIONS, COMPANIES, RECRUITING_CYCLES } from "../data/careerOptions.js";
-import { computeProfileStrength, displayName } from "../data/profileUtils.js";
+import { computeProfileStrength } from "../data/profileUtils.js";
 import { uploadAvatar, removeAvatar } from "../data/avatarSync.js";
 import { uploadResume, removeResume, getResumeSignedUrl } from "../data/resumeSync.js";
 import {
@@ -117,19 +116,23 @@ export default function MyProfile() {
   const [showAllLocations, setShowAllLocations] = useState(false);
   const fileInput = useRef(null);
 
-  // classYear/majors/ucCommittee read profileOverrides directly, never
-  // falling back to currentUser (mockUser.js's fake "Test Account"
-  // defaults -- Class of 2027, "Business Economics, Data Science",
-  // "Recruitment Committee") -- found live while testing the resume-
-  // suggestions feature: a real member with these genuinely unset would
-  // see fabricated info pre-filled into their own editable form, and
-  // clicking "Save changes" for an unrelated edit would silently persist
-  // that fake data as if they'd entered it themselves. Same fix already
-  // applied to Home/Feed/MemberProfile/Onboarding's own display-only
-  // spots (see their "not on file" comments) -- this form was missed in
-  // that pass since it's an editable field, not a display string.
+  // fullName/classYear/majors/ucCommittee all read profileOverrides
+  // directly, never falling back to currentUser (mockUser.js's fake
+  // "Test Account" defaults -- Class of 2027, "Business Economics, Data
+  // Science", "Recruitment Committee") -- found live while testing the
+  // resume-suggestions feature: a real member with these genuinely unset
+  // would see fabricated info pre-filled into their own editable form,
+  // and clicking "Save changes" for an unrelated edit would silently
+  // persist that fake data as if they'd entered it themselves. Same fix
+  // already applied to Home/Feed/MemberProfile/Onboarding's own
+  // display-only spots (see their "not on file" comments) -- this form
+  // was missed in that pass since it's an editable field, not a display
+  // string. fullName itself was still missed in the first pass at this
+  // exact form (it used displayName(), the right helper for a read-only
+  // byline -- a feed post, a submitted_by_name -- but wrong here for the
+  // same editable-field reason as the other three: found live, 2026-09-28).
   const [form, setForm] = useState({
-    fullName: displayName(currentUser, profileOverrides),
+    fullName: profileOverrides.fullName ?? "",
     classYear: profileOverrides.classYear ?? "",
     majors: profileOverrides.majors ?? "",
     ucCommittee: profileOverrides.ucCommittee ?? "",

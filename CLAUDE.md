@@ -3509,6 +3509,179 @@ longer breaks down to phone width either.
   live via Admin Dashboard's own "0 real accounts" / "admin access
   required" state once the deleted admin's session no longer resolved.
 
+- **A whole day's worth of real 2026-09-23 work, rediscovered and
+  re-verified** — the pre-provisioning entry above turned out to be one
+  of six real, substantial commits from the same day with no CLAUDE.md
+  entry, found by systematically diffing `git log` against this file's
+  own Progress section rather than assuming one gap was the only one.
+  One of the six (18th-through-21st "addition" job-source commits) is
+  correctly out of scope here -- that work belongs to, and is already
+  covered by, `JOB_ENGINE_ARCHITECTURE.md`'s own dated entries, per this
+  file's existing "real backend/job-engine work is tracked there, not
+  here" note. The remaining five are genuinely this file's scope and are
+  caught up below, each re-verified today rather than transcribed from
+  five-day-old commit messages.
+
+  **Pre-demo hardening: password reset, error boundary, self-hosted
+  error reporting, signup privacy disclosure** -- closed three real gaps
+  found before opening the portal to the whole club. `pages/
+  ResetPassword.jsx` + `SignIn.jsx`'s "Forgot your password?" give a
+  real self-serve recovery path where none existed before (every
+  forgotten password would've become a manual support request). A
+  top-level `components/ErrorBoundary.jsx` (wired into `App.jsx`/
+  `main.jsx`) now catches render crashes instead of white-screening the
+  app, reporting to a new, self-hosted `client_error_reports` table (no
+  third-party account needed) via `data/errorReporting.js`, which also
+  catches window errors and unhandled promise rejections and wires up
+  the previously-inert "Report to Exec" button on empty states. Sign-up
+  now shows a short, honest disclosure of what other members/admins
+  can and can't see. Re-verified today: confirmed live that the
+  password-reset request correctly reaches Supabase Auth's real
+  validator (a `.invalid`-domain test correctly surfaced Auth's own
+  real rejection message, not a crash or a silent no-op); the full
+  claim-a-real-email flow wasn't re-run (same real-inbox constraint
+  noted elsewhere), but `ResetPassword.jsx`'s post-claim routing logic
+  was independently confirmed intact via direct code read as part of
+  re-verifying the pre-provisioning feature above.
+
+  **Trimmed mock content down to a couple of clearly-labeled things;
+  hairline borders softened further; admin error viewer added** --
+  direct instruction to reduce scattered demo/illustrative content
+  rather than scatter it everywhere, and to stop using realistic-
+  sounding fictional names (a coincidental match with a real future
+  member was a real, if so-far-uncollided, risk). Removed the 7 seeded
+  Applications tracker cards, the 2 seeded Network coffee chats, and
+  Admin Dashboard's KPI strip/industry-interest/class-year-breakdown/
+  most-targeted-companies sections entirely -- all now rely on the
+  app's real empty states instead of fabricated activity.
+  **Correction to two entries earlier in this file that this makes
+  stale**: the "Real 'open to coffee chats' signal; mock-data labeling
+  everywhere it remains" entry's `DemoDataBadge`/`SEED_TRACKED_JOB_IDS`
+  labeling describes content that no longer exists -- confirmed live
+  today, `data/store.jsx`'s `SEED_TRACKED_JOBS` is now `{}` and
+  `data/mockAdmin.js`'s KPI/breakdown/targeted-companies exports are
+  gone. And `--color-border`/`--color-border-inner` were softened a
+  second time after a further member report ("the border lines seem a
+  little too forced/bold") -- a real, deliberate step back *below* the
+  3:1 WCAG bar the "Both flagged color-contrast gaps fixed" entry set
+  them to, documented as a real trade-off in `tokens.css`'s own comment,
+  not a silent regression; confirmed live today, `--color-border` is
+  `#a3a3a3`, not that entry's `#848484`. Also renamed all 13
+  `mockPeople.js` entries to obvious placeholders ("Demo Alum A", etc.,
+  including the same names reused in `jobUtils.js`'s interview
+  write-ups and `mockResources.js`'s resource authors). Admin Dashboard
+  gained a "Client errors" section (reading the error-reporting table
+  from the entry above).
+
+  **`matchJob()` redesigned to differentiate real match percentages** --
+  direct report: every real job showed the same flat 75% match. Root
+  cause, confirmed by reading `data/jobMatch.js`'s formula directly
+  today (not just trusting the commit message): industry/role/location
+  were all binary pass/fail, and the job board is already pre-filtered
+  toward UC-relevant companies, so a member whose onboarding answers
+  were broad enough to satisfy those three checks landed on the exact
+  same 30+25+20=75 for nearly every job. Two real fixes: industry/role
+  are now graduated (a member's #1-ranked industry counts more than
+  their #3; role scores by what fraction of selected chips a job
+  satisfies), and every factor is now genuinely "applicable" or excluded
+  based on whether there's real data to check, rather than a missing
+  preference silently contributing a 0 and dragging every sparse
+  profile toward the same floor -- a fully blank profile now falls back
+  to a neutral 50, never a false 0 or 100. Live verification against
+  real data found a second, deeper cause the formula fix alone couldn't
+  solve: ~76% of real active jobs have empty `relevant_industries`/
+  `relevant_roles` (the ingestion taxonomy is a small, curated stub), so
+  a title-text fallback signal (`INDUSTRY_TITLE_PATTERNS`, a small
+  purpose-built keyword map) was added -- a preference now counts as
+  matched if either the structured tag or the job's own title confirms
+  it. Ported to `server/src/match.ts` with 8 new tests (142 -> now part
+  of this session's confirmed 145/145). Re-verified today by reading
+  the current formula directly against a real, live test case: a
+  throwaway account with exactly one preference set (industry only,
+  no role/location/comp/skills) correctly showed exactly two match
+  values across the real board -- 100% for a job whose title/tag hits
+  that one industry, 0% for one that doesn't -- which is the
+  mathematically correct output of this formula with only one
+  applicable factor (a single binary hit/miss has no intermediate
+  value to land on), not the flat-75%-style bug this fix closed; the
+  5-distinct-levels (27/43/63/83/100) behavior the original commit
+  described needs multiple applicable factors to average across, which
+  a one-preference test account can't exercise.
+
+  **UC Projects tracking + resume quality suggestions** -- two direct
+  asks from the original MVP notes follow-up. UC Projects: a new
+  "Projects" tab on My Profile (`data/ucProjectsSync.js`, `uc_projects`
+  table) for members to record UC-affiliated work (case competitions,
+  pro-bono consulting, committee/client projects) for the club's own
+  long-term institutional record -- same self-reported, authenticated-
+  read/own-row-write shape as Work History, with a real constrained
+  `category` vocabulary rather than free text. Resume quality
+  suggestions: `data/resumeParser.js#analyzeResumeText()` (same
+  no-LLM heuristic discipline as the rest of that file) flags missing
+  contact info, bullets that don't quantify impact, weak-verb-starting
+  bullets, and multi-page length. Required fixing `extractPdfText()`
+  first -- it used to space-join every text item with no real line
+  breaks, which had also been silently limiting the existing
+  `parseClassYear()`/`parseMajor()` extraction; now reconstructs real
+  lines from each item's y-position. Re-verified today: the Projects tab
+  renders its real empty state correctly, and a real project entry
+  (`+ Add project` -> fill in title/category -> Save) was added, saved,
+  and displayed correctly with working Edit/Remove actions, confirmed
+  against the real `uc_projects` table (including confirming its
+  `on delete cascade` actually fires, via the cleanup below). The
+  resume-analysis path itself wasn't re-exercised today (would need
+  generating a real test PDF again) -- confirmed only that
+  `analyzeResumeText()` and the fixed `extractPdfText()` are still
+  present and unmodified; the original commit's own live verification
+  (real `reportlab`-generated PDFs, a "weak" resume correctly flagging
+  all four checks) is the operative verification for that specific
+  path.
+
+  **Fixed real submissions attributed to the fake "Test Account"
+  name** -- a same-day, self-directed follow-up audit (grepping for
+  every remaining `currentUser.firstName/lastName` usage after fixing
+  My Profile's own form). `RequestFeatureModal`/`ContributeModal` both
+  built `submitted_by_name` directly from `currentUser.firstName/
+  lastName` instead of the established `displayName()` helper (which
+  prefers the member's real `profileOverrides.fullName`) -- meaning a
+  real feature request or a real, non-anonymous interview write-up from
+  any member who hadn't yet set their name on My Profile got
+  permanently attributed to "Test Account" in the database. Feature
+  requests are explicitly not anonymized by design, so this directly
+  undermined that. Re-confirmed live today via direct code read: both
+  modals still correctly import and call `displayName()`.
+
+  **A real bug this same fix missed, found and fixed today (2026-09-28)
+  while re-verifying it**: `MyProfile.jsx`'s own "Full name" field --
+  the most consequential of the four Personal-tab fields this whole bug
+  class already covered elsewhere (class year/major/committee were
+  fixed in the original `5721502` commit; this one field was missed) --
+  was still seeding its editable form value from `displayName()`,
+  the *display*-fallback helper correctly used by the two modals above,
+  but wrong here for the exact same reason the other three fields were
+  fixed: a real member with no `fullName` set yet would see "Test
+  Account" pre-filled into their own editable name field, and saving
+  any unrelated edit (e.g. a LinkedIn URL) would silently commit "Test
+  Account" as their real, permanent name. Found live: a fresh
+  throwaway account's Personal tab showed "Test Account" as a real
+  input *value*, not a placeholder (confirmed via
+  `input.value !== input.placeholder`). Fixed to read
+  `profileOverrides.fullName ?? ""` directly, matching the other three
+  fields; `Avatar.jsx` already degrades a blank name to a plain "?"
+  circle (`name || "?"`), so no separate fallback was needed there.
+  `displayName`/`currentUser` both became fully dead imports in this
+  file once fixed (verified via grep -- no other real usage of either
+  remained) and were removed. Verified live: the Personal tab now shows
+  a genuinely empty Full name field and a "?" avatar for an unset real
+  account, instead of a fabricated identity. `vite build`: clean.
+
+  All five re-verified live where practical with one throwaway account,
+  cleaned up completely afterward (including confirming `uc_projects`'
+  own cascade-delete fired); zero residue confirmed via a self-cleaning
+  diagnostic (`residue_auth=0 residue_roster=0 residue_projects=0`).
+  `npm run test:server`: 145/145 (unchanged by today's real code fix --
+  `MyProfile.jsx` has no server-mirrored logic).
+
 Run locally:
 ```bash
 npm install
