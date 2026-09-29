@@ -4138,6 +4138,76 @@ longer breaks down to phone width either.
   under the new code, alongside the AlphaSights confirmation already
   queued from the prior entry.
 
+- **Security pass while waiting on the cron confirmation: one real fix
+  applied, one larger real gap found and deliberately left open pending
+  a decision** — asked directly for security issues/bugs/optimizations
+  to work on while the check-job-links fixes wait for their first live
+  cron run. Checked XSS surface (zero `dangerouslySetInnerHTML` anywhere
+  in the codebase) and re-verified the admin-auth pattern on every
+  privileged Edge Function (`approve-submission`, `resolve-duplicate-
+  candidate`, `pre-provision-accounts` all correctly use the shared
+  `requireAdmin()` helper, which re-derives the caller's role
+  server-side rather than trusting the client;
+  `score-submission-duplicate` correctly uses `requireAuthenticated()`
+  plus its own `submitted_by = auth.uid()` re-derivation;
+  `submit-access-request` has real IP-based rate limiting) — all clean,
+  no gaps.
+
+  **Fixed**: `client_error_reports` (anonymous-insertable by design — a
+  crash can happen before any session exists) had zero server-side size
+  enforcement. `data/errorReporting.js` already truncates `message` to
+  2000 chars and `stack` to 8000 before sending, but that's a
+  client-side courtesy only — the anon key it uses is necessarily public
+  (shipped in the frontend bundle), so a direct API call bypassing the
+  frontend entirely could insert arbitrarily large payloads, the real
+  gate being just "message is non-empty." Added DB-level CHECK
+  constraints mirroring the frontend's own limits (2000/8000) plus
+  reasonable caps on `page_path`/`user_agent`/`context` — deliberately
+  not a full IP-rate-limited fronting function like `submit-access-
+  request`'s, since error reports carry none of that table's real
+  club-membership stakes; a size cap is the proportionate fix for a
+  low-stakes, low-realistic-volume table. Verified live: an oversized
+  insert correctly rejected, a normal one correctly accepted, cleaned up
+  with zero residue.
+
+  **Found, not fixed — a real, evidenced gap, explicitly left for a
+  scoped session rather than fixed live**: all 6 HTTP-invoked scheduled
+  Edge Functions (`fetch-greenhouse-companies`, `fetch-deloitte-jobs`,
+  `check-job-links`, `fetch-lever-companies`, `snapshot-job-board`,
+  `weekly-digest`) are gated only by `verify_jwt: true` — which merely
+  requires *some* validly-signed Supabase JWT, and the public anon key
+  (shipped in every page load, trivially extractable) satisfies that.
+  Confirmed directly: every cron schedule's `net.http_post` call
+  authenticates with `role: anon` (visible in the migration SQL itself),
+  and none of the six function bodies do any further identity check —
+  so anyone holding the anon key can invoke any of them directly, at any
+  frequency, with nothing distinguishing them from the real cron job.
+  Not theoretical: `check-job-links`' own header comment already
+  documents a real false-positive burst from ~15 manual invocations in
+  10 minutes during its original build (transient Stripe rate-limiting,
+  mass-flagging real active postings broken) — this gap means anyone
+  could reproduce that deliberately, at will, right now. The `fetch-*`
+  functions carry a second risk: repeated external triggering could
+  burn through Greenhouse/Lever/Deloitte's own rate limits and get this
+  app's real daily ingestion blocked by those sources.
+  `expire-past-deadline-jobs` is unaffected — it's a plain SQL function
+  pg_cron calls directly, with `revoke all... from public, anon,
+  authenticated`, never exposed over HTTP at all.
+
+  Proposed fix (not yet built): a dedicated cron secret — not the
+  service-role key itself, which would be strictly worse to put in a
+  committed migration — stored via Supabase Vault (referenced by name in
+  the cron SQL, never the plaintext value, so safe to commit) and as an
+  Edge Function secret, plus a shared `requireCronSecret()` check added
+  to all 6 functions and the cron schedules updated to send it. Not
+  built this pass: asked the user whether to proceed given it touches
+  live production cron schedules and requires creating a new secret — a
+  materially bigger blast radius than anything else fixed unprompted
+  this session — and the user asked to pause rather than answer either
+  way. Genuinely open, worth picking up in a session where the cron
+  reschedule can be watched land rather than fired off right before a
+  stop.
+
 Run locally:
 ```bash
 npm install
