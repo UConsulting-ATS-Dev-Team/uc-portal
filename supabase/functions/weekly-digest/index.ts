@@ -14,9 +14,23 @@
 // Upserts on (profile_id, week_of) so re-running this manually for testing
 // (or a retry after a transient failure) doesn't create duplicate rows for
 // the same week.
+//
+// Logs its own outcome to source_fetch_log (same insert shape every other
+// scheduled adapter already uses -- check-job-links/fetch-*-companies/
+// snapshot-job-board) against a new, purpose-only "Weekly Digest" sources
+// row (seeded by this feature's own migration, not a real job-ingestion
+// source) -- this is what lets the real cron-health check
+// (check_cron_health(), admin-only) see this job's last-run status/time
+// the same uniform way it sees the other 5, instead of needing a special
+// case for the one job with no natural per-row completion signal
+// otherwise (weekly_digests itself can legitimately have zero new rows on
+// a quiet week -- "no rows written" and "the run never happened" are not
+// the same thing, and only this log tells them apart).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireCronSecret } from "../_shared/requireCronSecret.ts";
+
+const SOURCE_NAME = "Weekly Digest";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -43,6 +57,22 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  const startedAt = new Date().toISOString();
+
+  const { data: source, error: sourceError } = await adminClient.from("sources").select("*").eq("name", SOURCE_NAME).single();
+  if (sourceError || !source) {
+    return jsonResponse({ error: `Source "${SOURCE_NAME}" not found -- has the seed migration been applied?` }, 500);
+  }
+
+  async function logOutcome(status: "success" | "failed", summary: unknown) {
+    await adminClient.from("source_fetch_log").insert({
+      source_id: source.id,
+      started_at: startedAt,
+      completed_at: new Date().toISOString(),
+      status,
+      summary,
+    });
+  }
 
   const weekOf = mondayOfThisWeek();
   const sevenDaysAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -54,13 +84,19 @@ Deno.serve(async (req) => {
     .from("feed_posts")
     .select("id", { count: "exact", head: true })
     .gte("created_at", sevenDaysAgoIso);
-  if (feedCountError) return jsonResponse({ error: feedCountError.message }, 500);
+  if (feedCountError) {
+    await logOutcome("failed", { error: feedCountError.message });
+    return jsonResponse({ error: feedCountError.message }, 500);
+  }
 
   const { data: members, error: membersError } = await adminClient
     .from("profiles")
     .select("id, member_status")
     .in("member_status", ["current_member", "alumni"]);
-  if (membersError) return jsonResponse({ error: membersError.message }, 500);
+  if (membersError) {
+    await logOutcome("failed", { error: membersError.message });
+    return jsonResponse({ error: membersError.message }, 500);
+  }
 
   const results: { profileId: string; skipped: boolean; reason?: string }[] = [];
 
@@ -162,5 +198,7 @@ Deno.serve(async (req) => {
   }
 
   const written = results.filter((r) => !r.skipped).length;
-  return jsonResponse({ weekOf, totalMembers: (members ?? []).length, written, results });
+  const summaryBody = { weekOf, totalMembers: (members ?? []).length, written, skipped: results.length - written };
+  await logOutcome("success", summaryBody);
+  return jsonResponse({ ...summaryBody, results });
 });

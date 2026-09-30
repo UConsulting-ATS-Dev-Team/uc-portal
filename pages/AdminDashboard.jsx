@@ -6,6 +6,7 @@ import { fetchAllRows } from "../data/fetchAllRows.js";
 import { capForCompanyTier } from "../data/companyTiers.js";
 import { fetchRecentSignups } from "../data/adminNotificationsSync.js";
 import { fetchWeeklyDigestLog } from "../data/digestSync.js";
+import { fetchCronHealth } from "../data/cronHealthSync.js";
 import { ACCESS_CONTROL, FLAGGED_FEED_POSTS } from "../data/mockAdmin.js";
 import DemoDataBadge from "../components/DemoDataBadge.jsx";
 import "../styles/jobs.css";
@@ -72,6 +73,9 @@ export default function AdminDashboard() {
   const [weeklyDigests, setWeeklyDigests] = useState([]);
   const [weeklyDigestsLoading, setWeeklyDigestsLoading] = useState(true);
   const [weeklyDigestsError, setWeeklyDigestsError] = useState(null);
+  const [cronHealth, setCronHealth] = useState([]);
+  const [cronHealthLoading, setCronHealthLoading] = useState(true);
+  const [cronHealthError, setCronHealthError] = useState(null);
 
   // US-09 -- duplicate_tier/duplicate_best_job_id are written by
   // score-submission-duplicate right after a member submits (see that
@@ -331,6 +335,22 @@ export default function AdminDashboard() {
     setWeeklyDigestsLoading(false);
   }
 
+  // check_cron_health() -- real per-adapter last-run/staleness signal
+  // across all 6 scheduled Edge Functions, computed from source_fetch_log
+  // (see that migration for why this reads source_fetch_log rather than
+  // cron.job_run_details). Most useful section on this page for actually
+  // catching a real silent failure before a member notices stale data.
+  async function loadCronHealth() {
+    setCronHealthLoading(true);
+    try {
+      setCronHealth(await fetchCronHealth());
+      setCronHealthError(null);
+    } catch (err) {
+      setCronHealthError(err.message);
+    }
+    setCronHealthLoading(false);
+  }
+
   useEffect(() => {
     loadQueue();
     loadDuplicates();
@@ -343,6 +363,7 @@ export default function AdminDashboard() {
     loadRecentSignups();
     loadClientErrors();
     loadWeeklyDigests();
+    loadCronHealth();
   }, []);
 
   const disengagedCount = engagement.filter((m) => m.is_disengaged).length;
@@ -540,6 +561,71 @@ export default function AdminDashboard() {
 
       <div className="detail-layout">
         <div className="detail-main">
+          <div className="detail-section">
+            <h2 className="detail-section__title">Pipeline health</h2>
+            <p className="meta" style={{ marginTop: 0 }}>
+              Real last-run status for all 6 scheduled jobs (5 daily ingestion/maintenance adapters + the
+              weekly digest), computed from each function's own logged outcome -- not just whether pg_cron
+              fired, but whether the run itself actually succeeded. A row flagged "Stale" hasn't completed
+              successfully within its expected cadence and is worth checking directly.
+            </p>
+            {cronHealthError && <p className="meta" style={{ color: "var(--color-danger)" }}>{cronHealthError}</p>}
+            <div className="queue-table__scroll">
+            <table className="queue-table">
+              <thead>
+                <tr>
+                  <th>Job</th>
+                  <th>Cadence</th>
+                  <th>Last ran</th>
+                  <th>Result</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cronHealth.map((j) => (
+                  <tr key={j.job_key}>
+                    <td style={{ fontWeight: 700 }}>{j.label}</td>
+                    <td className="meta">{j.cadence}</td>
+                    <td className="meta">
+                      {j.last_run_at
+                        ? new Date(j.last_run_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+                        : "Never"}
+                    </td>
+                    <td className="meta">
+                      {j.last_run_total > 0
+                        ? j.last_run_failed > 0
+                          ? `${j.last_run_failed}/${j.last_run_total} failed`
+                          : `${j.last_run_total} succeeded`
+                        : "—"}
+                    </td>
+                    <td>
+                      {j.is_stale ? (
+                        <span className="chip" style={{ color: "var(--color-danger)", borderColor: "var(--color-danger)" }}>Stale</span>
+                      ) : (
+                        <span className="chip chip-accent">OK</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {!cronHealthLoading && cronHealth.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="meta">
+                      No cron health data yet.
+                    </td>
+                  </tr>
+                )}
+                {cronHealthLoading && (
+                  <tr>
+                    <td colSpan={5} className="meta">
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            </div>
+          </div>
+
           <div className="detail-section" data-tour="admin-opportunity-queue">
             <h2 className="detail-section__title">Opportunity queue</h2>
             {queueError && <p className="meta" style={{ color: "var(--color-danger)" }}>{queueError}</p>}

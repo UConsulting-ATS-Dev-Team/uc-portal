@@ -4425,6 +4425,91 @@ longer breaks down to phone width either.
   `npm run test:server`: unaffected (no server-mirrored logic for this
   feature).
 
+- **Real cron-failure alerting** — closes the third and final item from the
+  same "what's next" round as the cron-secret fix and self-service account
+  deletion above: this club runs entirely on 6 unattended pg_cron jobs (5
+  daily ingestion/maintenance adapters + the weekly digest), and a silent
+  failure in any of them would otherwise be invisible until someone
+  happened to notice stale data -- exactly the risk `source_fetch_log`'s
+  own original migration (20260823100000) already named for a single
+  adapter, now generalized across all 6.
+
+  Investigated two alternative signals before settling on the real one:
+  `cron.job_run_details.status` only ever reflects whether the SQL
+  statement itself (`net.http_post`, which just *queues* an async
+  request) ran without error -- confirmed live it reads "succeeded" even
+  though the underlying HTTP call could still return a 401/500, so it
+  can't detect a real functional failure. `net._http_response` does carry
+  the real HTTP status code, but pg_cron's own `return_message` never
+  surfaces the request id needed to join back to a specific run
+  (confirmed live: always the generic "1 row", never the scalar value) --
+  correlating by timestamp proximity alone would've been fragile.
+  `source_fetch_log`, which 5 of the 6 functions already write their own
+  real per-run outcome to, is the more meaningful signal and needed no
+  new correlation -- it reflects the function's actual internal logic
+  result, not just whether pg_net got a response.
+
+  `weekly-digest` was the one function with no `source_fetch_log` entry
+  at all. Fixed by giving it a purpose-only "Weekly Digest" `sources` row
+  (same convention already used for the two other non-job-ingestion
+  adapters, Link Health Checker and Job Board Snapshot) and real logging
+  on both its error and success paths -- deliberately not inferred from
+  `weekly_digests` row presence, since a real quiet week correctly writes
+  zero rows ("nothing to report" and "the run never happened" are not the
+  same thing, and only a real log entry tells them apart).
+
+  New `check_cron_health()` (admin-gated, same `is_admin()`/security-
+  definer shape as `list_recent_signups()`/`member_engagement_report()`)
+  tags every `source_fetch_log` row back to one of the 6 real adapters --
+  Greenhouse/Lever by the same `type='employer_api' and
+  config->>'platform'` discriminator `fetch-greenhouse-companies`/
+  `fetch-lever-companies` already use to find "their own" sources (each
+  real run logs one row per company, ~150+ rows, so this groups them back
+  into one adapter-level signal), the other four by the exact source name
+  their own function already looks itself up by. For each adapter:
+  `last_run_at` (most recent `completed_at`, any status -- "when did we
+  last hear from this adapter at all"), a failed/total count from the
+  batch of rows within 15 minutes of that timestamp (wide enough to cover
+  a real multi-company Greenhouse/Lever run, narrow enough not to blend
+  two different days together), and `is_stale` (no successful-or-not
+  activity within 26 hours for the 5 daily jobs, 192 hours/8 days for the
+  weekly one -- both a real buffer past the actual cadence, not a bare
+  24h/7d cliff that would false-positive on ordinary scheduling jitter).
+  New Admin Dashboard "Pipeline health" section (`data/cronHealthSync.js`)
+  -- deliberately the first section in the main column, ahead of the
+  opportunity queue, since a real invisible pipeline failure is a bigger
+  problem than anything else on this page.
+
+  Verified the real aggregation SQL directly (not just trusted the
+  design): fired a real test invocation of the newly-redeployed
+  `weekly-digest` (safe to invoke manually, unlike `check-job-links` --
+  no documented rate-limit-sensitivity precedent for this one, and it was
+  already manually invoked during its original build) via the same
+  fire-then-separately-check two-step pattern the cron-secret fix's own
+  verification established (a `RAISE EXCEPTION`-wrapped read would lose
+  the still-queued async request), and confirmed a real new
+  `source_fetch_log` row landed (`status=success`, real content:
+  `{"weekOf": "2026-09-28", "written": 0, "skipped": 1, "totalMembers":
+  1}` -- correctly "nothing to report" for the one real signed-up
+  account). Re-ran the health-check's own tagging/aggregation query
+  directly against live data (bypassing only `check_cron_health()`'s
+  `is_admin()` gate, which needs a real `auth.uid()` a plain migration
+  session doesn't have -- not the underlying logic) and got real, sane
+  results for all 6 adapters, including two genuinely informative ones
+  the feature was built to surface: Greenhouse's most recent run had 2/5
+  companies fail, Lever's had 5/24 -- both `is_stale=false` (correctly
+  not alarming, since the adapter itself ran fine; a future look at
+  *why* those specific companies failed is a separate, smaller
+  investigation, not blocking this feature). Then verified the full
+  stack live in the actual browser with a throwaway admin account (same
+  pgcrypto-bcrypt technique proven throughout this project): the real
+  `check_cron_health()` RPC call succeeded through a real authenticated
+  admin session (no `cronHealthError`) and rendered all 6 real rows
+  correctly formatted, matching the direct-SQL numbers exactly. `vite
+  build`: clean throughout. Cleaned up the throwaway account (and its
+  roster entry) completely afterward; verified zero residue
+  (`residue_auth=0 residue_roster=0 roster_total=53`).
+
 Run locally:
 ```bash
 npm install
