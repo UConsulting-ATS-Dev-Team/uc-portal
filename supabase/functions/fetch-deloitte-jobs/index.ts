@@ -52,6 +52,7 @@ import { isLikelySeniorRole, isLikelyNonCorporateRole } from "../_shared/pipelin
 import type { RawJob } from "../_shared/pipeline/types.ts";
 import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows, enforceCompanyCap } from "../_shared/dedupeHelpers.ts";
 import { capForCompanyTier } from "../_shared/pipeline/companyCap.ts";
+import { requireCronSecret } from "../_shared/requireCronSecret.ts";
 
 const SOURCE_NAME = "Deloitte (Careers RSS Feed)";
 const KEYWORDS = ["consultant", "strategy", "analyst"];
@@ -401,7 +402,10 @@ async function runFetch(adminClient: SupabaseClient, source: any): Promise<Fetch
   return { httpStatus: 200, body: summary, logStatus: "success", logSummary: summary };
 }
 
-Deno.serve(async (_req) => {
+Deno.serve(async (req) => {
+  const authError = requireCronSecret(req);
+  if (authError) return authError;
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const adminClient = createClient(supabaseUrl, serviceRoleKey);

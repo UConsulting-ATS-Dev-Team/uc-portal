@@ -16,6 +16,7 @@
 // the same week.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { requireCronSecret } from "../_shared/requireCronSecret.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -35,7 +36,10 @@ function mondayOfThisWeek(): string {
   return monday.toISOString().slice(0, 10);
 }
 
-Deno.serve(async (_req) => {
+Deno.serve(async (req) => {
+  const authError = requireCronSecret(req);
+  if (authError) return authError;
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const adminClient = createClient(supabaseUrl, serviceRoleKey);

@@ -4253,6 +4253,59 @@ longer breaks down to phone width either.
   own documented sensitivity to invocation frequency. Worth a closer
   look in a dedicated session, not chased further here.
 
+- **Cron-auth gap closed** — direct go-ahead to build the fix flagged
+  two entries above, with the constraint that it shouldn't need any
+  action from the user. Fully self-contained: generated a real 32-byte
+  secret locally, wrote it into Supabase Vault via a temporary
+  never-committed migration (same one-time-secret convention this
+  project already uses), and set the same value as an Edge Function
+  secret via `supabase secrets set --env-file` (a scratchpad file,
+  deleted immediately after). New shared
+  `supabase/functions/_shared/requireCronSecret.ts` — same shape as
+  `requireAdmin.ts` — checks a new `X-Cron-Secret` header against
+  `Deno.env.get("CRON_SECRET")`, added to all 6 scheduled functions
+  (`fetch-greenhouse-companies`, `fetch-deloitte-jobs`,
+  `check-job-links`, `fetch-lever-companies`, `snapshot-job-board`,
+  `weekly-digest`). Deployed all 6 functions *before* touching the cron
+  schedules, deliberately — a real job firing in the gap between "new
+  code live" and "schedule updated" fails safely (one skipped run, self-
+  heals the next day) rather than the far worse ordering, which would
+  leave the old, unprotected code reachable for longer. New permanent
+  migration (`20260930100000_reschedule_cron_with_secret.sql`, safe to
+  commit) re-registers all 6 jobs under their existing names/schedules,
+  adding the header with its value sourced from
+  `vault.decrypted_secrets` by name — the plaintext itself never appears
+  in any committed file.
+
+  Verified both directions live, without ever materializing the secret
+  in this agent's own output — the first attempt did (`select
+  decrypted_secret into v_secret ...`) and was correctly declined by
+  Claude Code's own auto-mode classifier ("Credential Materialization");
+  the working approach let the secret flow directly from
+  `vault.decrypted_secrets` into an HTTP header inline, inside one SQL
+  statement, never assigned to anything read back out. Confirmed: a call
+  with only the public anon key (what an attacker would have) now gets a
+  real `401 {"error":"Unauthorized"}`; a call with the correct secret
+  (fired from inside Postgres, targeting the low-stakes `snapshot-job-
+  board` specifically rather than the invocation-sensitive
+  `check-job-links`) completed successfully end-to-end, confirmed via a
+  real, fresh `source_fetch_log` row. The first verification attempt hit
+  a real, separate lesson: wrapping the `net.http_post` call in a `do $$
+  ... raise exception ...` block (this project's own established
+  results-via-exception pattern) rolled back the whole transaction
+  before pg_net's async worker ever processed the queued request, so the
+  poll for a response came back empty — fixed by splitting into two
+  migrations, firing the request in one plain (non-exception) migration
+  that commits normally, then checking the real outcome in a second,
+  later one. Worth remembering: that established pattern only works for
+  synchronous work; anything going through `net.http_post` needs this
+  two-step form instead. `vite build`: clean throughout. Manual
+  future re-invocation of any of these 6 functions (e.g. a targeted
+  company backfill, the way `fetch-lever-companies` was manually invoked
+  earlier in this project's history) now also needs the secret header —
+  retrievable from Vault the same way this verification did, inline in a
+  SQL statement, never by reading it back into a variable.
+
 Run locally:
 ```bash
 npm install

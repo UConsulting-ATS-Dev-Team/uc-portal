@@ -16,6 +16,7 @@
 // established, reused here rather than inventing a fourth log shape.
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { requireCronSecret } from "../_shared/requireCronSecret.ts";
 
 const SOURCE_NAME = "Job Board Snapshot";
 
@@ -98,7 +99,10 @@ async function runSnapshot(adminClient: SupabaseClient, source: any): Promise<Fe
   return { httpStatus: 200, body: summary, logStatus: "success", logSummary: summary };
 }
 
-Deno.serve(async (_req) => {
+Deno.serve(async (req) => {
+  const authError = requireCronSecret(req);
+  if (authError) return authError;
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const adminClient = createClient(supabaseUrl, serviceRoleKey);

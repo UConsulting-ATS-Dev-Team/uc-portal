@@ -46,6 +46,7 @@ import { isLikelySeniorRole, isLikelyNonCorporateRole } from "../_shared/pipelin
 import type { RawJob } from "../_shared/pipeline/types.ts";
 import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows, updateInBatches, enforceCompanyCap } from "../_shared/dedupeHelpers.ts";
 import { capForCompanyTier, indexCompanyTiers } from "../_shared/pipeline/companyCap.ts";
+import { requireCronSecret } from "../_shared/requireCronSecret.ts";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -365,6 +366,9 @@ async function runFetchForCompany(
 }
 
 Deno.serve(async (req) => {
+  const authError = requireCronSecret(req);
+  if (authError) return authError;
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
