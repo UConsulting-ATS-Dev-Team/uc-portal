@@ -4208,6 +4208,51 @@ longer breaks down to phone width either.
   reschedule can be watched land rather than fired off right before a
   stop.
 
+- **check-job-links fixes confirmed live; a second, unrelated
+  AlphaSights issue found and reset; a real double-invocation oddity
+  found and documented** — the next day's real cron run (twice, in
+  fact — see below) gave the first live test of both fixes above.
+  **Tower Research: fully confirmed** — 0 broken across two real runs
+  on 09-29, holding clean after the targeted reset. **GSA: unchanged at
+  13**, still correctly flagged (genuine 404s, not a bug). **AlphaSights:
+  did NOT recover** — stuck at 66 broken, `recovered: 0` on both real
+  runs. Investigated rather than assumed the fix failed: re-tested with
+  `curl` using the checker's exact UA against multiple job ids never
+  tested before (ruling out per-URL staleness) and with a plain default
+  UA (ruling out UA-specific blocking) — every request got a flat 403,
+  including on totally fresh URLs. AlphaSights' site has independently
+  started bot-blocking automated requests sometime after the original
+  fix was diagnosed and deployed — a new, separate development, not a
+  flaw in that fix (the original diagnosis, a 301 redirect landing on a
+  real specific job page, was and remains correct; the site just added a
+  second, unrelated obstacle since). The existing 403-handling logic
+  (already in the code, the same path Carvana's persistent-403 already
+  uses) correctly classifies this as `inconclusive` going forward — but
+  exactly like Tower, `inconclusive` never heals an *already*-broken
+  flag, so AlphaSights' 66 jobs (broken under the old, now-fixed bug)
+  would have stayed stuck forever without a reset. Applied the same
+  targeted reset as Tower's (`company = 'AlphaSights'` only) — verified
+  directly: `alphasights_broken=0`, real active-job total broken 181 →
+  115.
+
+  **A real, separate oddity found while checking this, not chased to
+  full root cause**: `check-job-links` ran *twice*, at the exact same
+  second (15:17:01), on both 09-28 and 09-29 — but only once on 09-27.
+  Checked `cron.job` directly: only one registration exists
+  (`check-job-links-daily`, jobid 9, `17 15 * * *`) — not a duplicate
+  schedule. Landing at the identical second on two different days rules
+  out an external caller coincidentally firing near the real cron time;
+  the leading theory is `pg_net`'s own retry-on-slow-response behavior
+  (both runs completed successfully and did real, non-overlapping work,
+  not one failed + one retried) rather than anything related to the
+  unauthenticated-cron gap flagged above — but not confirmed, since this
+  agent doesn't have visibility into `pg_net`'s internal retry/timeout
+  behavior. Not actively harmful (no data corruption, both runs did
+  correct work), but it does mean this function is effectively running
+  ~2x its intended daily frequency right now, which matters given its
+  own documented sensitivity to invocation frequency. Worth a closer
+  look in a dedicated session, not chased further here.
+
 Run locally:
 ```bash
 npm install
