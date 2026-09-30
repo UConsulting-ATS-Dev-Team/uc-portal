@@ -4306,6 +4306,125 @@ longer breaks down to phone width either.
   retrievable from Vault the same way this verification did, inline in a
   SQL statement, never by reading it back into a variable.
 
+- **Real self-service account deletion built** — direct ask ("let's add
+  the self-delete option, i like that idea"), following the same
+  security-optimization conversation as the cron-auth fix above.
+  Investigated every real FK referencing `auth.users`/`profiles` before
+  writing a line of code, rather than assuming a naive "just call
+  `auth.admin.deleteUser()`" would work — and it wouldn't have: three
+  tables (`feature_requests`, `opportunity_submissions`,
+  `interview_writeups`) have `submitted_by uuid not null` with no
+  cascade behavior at all, so deleting the account of anyone who'd ever
+  posted a job, requested a feature, or shared a write-up would have
+  thrown a raw foreign-key-violation error the first time a real member
+  tried it. A separate, more consequential finding: `messages.sender_id`/
+  `recipient_id` already `on delete cascade` — a naive delete would have
+  silently deleted the *other* member's copy of every conversation too,
+  the exact problem this app already solved once for message archiving.
+
+  New migration (`20260930150000_account_deletion_fk_cleanup.sql`)
+  fixes both, deliberately differently per table:
+  - `feature_requests`/`opportunity_submissions`/`interview_writeups`:
+    made `submitted_by` nullable, FK changed to `on delete set null`.
+    Real club content (a feature idea, an interview experience) outlives
+    the member who shared it — only the identity *link* clears, not the
+    content. Confirmed before touching anything that both
+    `feature_requests` and `interview_writeups` already display from a
+    denormalized `submitted_by_name` snapshot captured at submission
+    time (not a live join), so their real name stays visible regardless
+    — this only affects a since-departed member's ability to edit their
+    own old submission, which no longer applies once they're gone
+    anyway. `opportunity_submissions`' admin queue never displays
+    submitter identity at all (confirmed directly in
+    `pages/AdminDashboard.jsx`) — zero display impact there either.
+  - `messages.sender_id`/`recipient_id`: the FK constraints are dropped
+    *entirely* instead of `SET NULL` — `data/messagesSync.js#fetch
+    Conversations()` already groups messages by the raw sender/recipient
+    id *before* ever trying to resolve a display name, so nulling the id
+    itself would have broken that grouping outright. The columns stay
+    `not null uuid`, just no longer FK-enforced against `auth.users`, so
+    a departed member's old messages keep their real (now-dangling) id.
+    Display already had a real, pre-existing fallback for this —
+    `nameById.get(counterpartId) ?? "Former member"` — not built new for
+    this feature, just finally exercised for real.
+  - Every admin-attribution column (`reviewed_by`, `graded_by`,
+    `created_by`, `uploaded_by`, `added_by`, `terms_reviewed_by`,
+    `client_error_reports.account_id`): already nullable, FK switched
+    from the default `NO ACTION` (which would have blocked deletion) to
+    `SET NULL` — covers an admin, or anyone who once held admin
+    privileges, deleting their own account.
+  - Everything else (`profiles`, `member_preferences`,
+    `tracked_applications`, `saved_jobs`, `network_connections`,
+    `work_history`, `uc_projects`, `accelerator_submissions`,
+    `weekly_digests`, `case_partner_pool`/`requests`, `feed_posts`) was
+    already correctly `on delete cascade` — genuinely own-only data,
+    confirmed nothing needed to change there.
+
+  New Edge Function (`delete-own-account`) — service role only (
+  `auth.admin.deleteUser()` has no client-safe equivalent), authenticated
+  via the shared `requireAuthenticated()` helper with **no account-id
+  parameter in the request at all, by design** — it can only ever delete
+  the account making the call, never one an admin specifies for someone
+  else (a different, unbuilt feature and a meaningfully different trust
+  decision). Explicitly clears the three Storage buckets with own-folder
+  content (`avatars`, `resumes`, `accelerator-submissions`) before the
+  delete, since no SQL FK covers Storage objects at all — listed and
+  removed per bucket rather than reconstructing an exact filename, since
+  the real extension varies. A lightweight `{confirm: true}` body check
+  guards against a stray/accidental call; the real confirmation UX (typed
+  "DELETE") lives client-side.
+
+  New `components/modals/DeleteAccountModal.jsx`, wired into a new
+  "Delete account" section on My Profile's Privacy tab — requires typing
+  "DELETE" before the button enables, same bar this app already holds
+  genuinely irreversible actions to. Copy is deliberately precise about
+  what actually happens (checked against the real behavior above, not
+  written first and hoped true): explicitly says feature requests/
+  opportunities/write-ups keep the name attached at posting time, and
+  messages show "Former member" — written to match reality, not to
+  sound reassuring (this file's own standing "no reassurance copy" rule).
+
+  Verified live, fully end-to-end, with two real throwaway accounts (A =
+  deleted, B = message counterpart) — not just the schema/code review
+  above. Seeded real content first: a message from A to B, a real
+  feature request from A. Signed in as A through the actual browser UI,
+  opened the modal, confirmed the button is genuinely disabled before
+  typing "DELETE" and enabled after (`btn.disabled` checked directly,
+  not assumed from the UI), triggered the real delete, watched it
+  navigate to `/sign-in` on success. Confirmed directly against the
+  database: A's `auth.users` row is gone; the feature request survived
+  with `submitted_by_name` intact and `submitted_by` null; the message
+  row survived with its original `sender_id` value unchanged (not
+  nulled, not deleted). Then signed in as B and confirmed the *display*
+  side live: both the conversation list and the full thread view
+  correctly show "Former member" (with an "FM" avatar) and the real,
+  unmodified message text — the pre-existing fallback worked exactly as
+  designed, on the first real try. Cleaned up completely afterward
+  (both accounts, the test message, the test feature request, both
+  roster entries); confirmed zero residue via a diagnostic:
+  `any_test_auth_users=f roster_residue=0 feature_residue=0
+  message_residue=0`.
+
+  **A real environment lesson from this verification, worth remembering**:
+  the built-in browser pane's coordinate-based clicking requires a
+  successful `screenshot` call first to establish a coordinate frame —
+  when `screenshot` is timing out (a known intermittent issue this
+  project has hit before), a coordinate click either silently fails or
+  uses a stale frame from an earlier successful screenshot. Cost real
+  time here: an early click landed on a *different, same-labeled*
+  "Delete my account" button (the Privacy tab's own trigger button,
+  still present in the DOM behind the modal backdrop) rather than the
+  modal's actual confirm button, because a stale/ambiguous `ref` matched
+  the wrong element once two same-text buttons existed in the DOM at
+  once. Fixed by re-`find`-ing fresh refs after the modal opened (which
+  correctly disambiguated the two) and clicking by `ref` rather than
+  `coordinate` throughout, which doesn't depend on the screenshot frame
+  at all — worth defaulting to `ref`-based clicks over coordinates
+  whenever two elements might share an accessible name, not just when
+  `screenshot` happens to be failing. `vite build`: clean.
+  `npm run test:server`: unaffected (no server-mirrored logic for this
+  feature).
+
 Run locally:
 ```bash
 npm install

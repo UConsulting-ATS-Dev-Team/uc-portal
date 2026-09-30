@@ -14,6 +14,7 @@ import {
 } from "../data/workHistorySync.js";
 import { fetchOwnProjects, addProjectEntry, updateProjectEntry, removeProjectEntry, UC_PROJECT_CATEGORIES } from "../data/ucProjectsSync.js";
 import Avatar from "../components/Avatar.jsx";
+import DeleteAccountModal from "../components/modals/DeleteAccountModal.jsx";
 import "../styles/jobDetail.css";
 import "../styles/onboarding.css";
 import "../styles/tracker.css";
@@ -80,6 +81,7 @@ export default function MyProfile() {
   const [saved, setSaved] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const avatarInput = useRef(null);
   const [resumeUploading, setResumeUploading] = useState(false);
   const [resumeError, setResumeError] = useState(null);
@@ -1076,9 +1078,25 @@ export default function MyProfile() {
                   application outcomes with UC anonymized" is on, and are never tied to your name.
                 </li>
               </ul>
+
+              <h2 className="detail-section__title" style={{ marginTop: "var(--space-6)" }}>
+                Delete account
+              </h2>
+              <p className="meta">
+                Permanently delete your account and the data tied to it. This can't be undone.
+              </p>
+              <button
+                className="btn btn-secondary"
+                style={{ color: "var(--color-danger)", borderColor: "var(--color-danger)" }}
+                onClick={() => setShowDeleteModal(true)}
+              >
+                Delete my account
+              </button>
             </div>
           )}
         </div>
+
+        {showDeleteModal && <DeleteAccountModal onClose={() => setShowDeleteModal(false)} />}
 
         <div className="detail-rail">
           <div className="avatar-card">
