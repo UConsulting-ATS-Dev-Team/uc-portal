@@ -5,6 +5,7 @@ import { INDUSTRIES, ROLES, SKILLS, LOCATIONS, COMPANIES, RECRUITING_CYCLES } fr
 import { computeProfileStrength } from "../data/profileUtils.js";
 import { uploadAvatar, removeAvatar } from "../data/avatarSync.js";
 import { uploadResume, removeResume, getResumeSignedUrl } from "../data/resumeSync.js";
+import { changePassword } from "../data/passwordSync.js";
 import {
   fetchOwnWorkHistory,
   addWorkHistoryEntry,
@@ -82,6 +83,11 @@ export default function MyProfile() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState(null);
+  const [passwordChanged, setPasswordChanged] = useState(false);
   const avatarInput = useRef(null);
   const [resumeUploading, setResumeUploading] = useState(false);
   const [resumeError, setResumeError] = useState(null);
@@ -377,6 +383,25 @@ export default function MyProfile() {
     } catch (err) {
       setProjectsError(err.message);
     }
+  }
+
+  async function handleChangePassword() {
+    setPasswordError(null);
+    setPasswordChanged(false);
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords don't match.");
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await changePassword(newPassword);
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordChanged(true);
+    } catch (err) {
+      setPasswordError(err.message);
+    }
+    setChangingPassword(false);
   }
 
   function toggleIndustry(name) {
@@ -1078,6 +1103,43 @@ export default function MyProfile() {
                   application outcomes with UC anonymized" is on, and are never tied to your name.
                 </li>
               </ul>
+
+              <h2 className="detail-section__title" style={{ marginTop: "var(--space-6)" }}>
+                Change password
+              </h2>
+              <div className="field" style={{ maxWidth: 360 }}>
+                <label htmlFor="new-password">New password</label>
+                <input
+                  id="new-password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+              <div className="field" style={{ maxWidth: 360 }}>
+                <label htmlFor="confirm-password">Confirm new password</label>
+                <input
+                  id="confirm-password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
+              {passwordError && (
+                <p className="meta" style={{ color: "var(--color-danger)" }}>
+                  {passwordError}
+                </p>
+              )}
+              {passwordChanged && <p className="meta" style={{ color: "var(--color-accent-deep)" }}>Password updated ✓</p>}
+              <button
+                className="btn btn-secondary"
+                disabled={!newPassword || !confirmPassword || changingPassword}
+                onClick={handleChangePassword}
+              >
+                {changingPassword ? "Updating…" : "Update password"}
+              </button>
 
               <h2 className="detail-section__title" style={{ marginTop: "var(--space-6)" }}>
                 Delete account

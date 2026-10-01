@@ -4577,6 +4577,23 @@ longer breaks down to phone width either.
   actually producing "Ready" deployments going forward, not just
   trusting this one fix silently held.
 
+- **Real "change password" on My Profile** — closes a real gap surfaced
+  while setting up pre-provisioned exec accounts for the final
+  presentation: "Forgot your password?" (`SignIn.jsx` →
+  `ResetPassword.jsx`) was the *only* path to ever set a password, for
+  anyone, ever -- no way to change one while already signed in. New
+  `data/passwordSync.js#changePassword()` wraps
+  `supabase.auth.updateUser({password})`, which needs no re-entry of the
+  current password (the live session already proves identity, same as
+  every other Supabase-managed auth action in this app). New section on
+  My Profile's Privacy tab, above "Delete account" -- two fields (new/
+  confirm), client-side match check, real success/error state. Verified
+  live end-to-end with a throwaway account: set a new password, saw
+  "Password updated ✓," signed out, and signed back in with *only* the
+  new password (the old one no longer worked, confirming the Supabase
+  call genuinely took effect, not just a client-side success message).
+  Cleaned up completely afterward. `vite build`: clean.
+
 Run locally:
 ```bash
 npm install
