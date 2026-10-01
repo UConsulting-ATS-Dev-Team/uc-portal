@@ -4510,6 +4510,73 @@ longer breaks down to phone width either.
   roster entry) completely afterward; verified zero residue
   (`residue_auth=0 residue_roster=0 roster_total=53`).
 
+- **Fixed a real, systemic pg_net duplicate-delivery bug** — closes the
+  "cron double-invocation oddity" flagged two entries above. Investigated
+  properly before assuming it was the two-day blip it first looked like:
+  direct `source_fetch_log` queries showed check-job-links AND
+  snapshot-job-board (a 25-30s function and a sub-1s one) both invoked
+  **twice**, every single day, for at least 10 straight days -- ruling
+  out a slow-function-timeout theory. `cron.job_run_details` showed only
+  ONE `net.http_post()` call per day, and `cron.job` had no duplicate
+  registration (7 jobs, 7 distinct ids) -- so the duplication happens
+  inside pg_net's own worker, not this app's cron SQL or Edge Function
+  code, and can't be fixed at the cause.
+
+  Mitigated the real, evidenced harm instead (2x daily external API load
+  on Greenhouse/Lever/Deloitte, 2x HTTP-checking traffic against every
+  employer's own career site): new `cron_run_locks` table (unique
+  constraint on `(job_key, run_window)`, window = now rounded to the
+  minute) + `_shared/dedupeRun.ts#claimRunOrSkip()`, called at the top of
+  all 6 scheduled functions before any real work begins. A genuine race
+  between two near-simultaneous inserts resolves atomically via the
+  unique index -- no read-then-write TOCTOU gap. Fails open on any
+  non-unique-violation error (a missed real day's run is worse than an
+  occasional unsuppressed duplicate). Greenhouse/Lever key on
+  `job:slug` so a deliberate manual single-company backfill is never
+  blocked by an unrelated daily full run.
+
+  Verified live: fired two real near-simultaneous invocations of
+  snapshot-job-board, confirmed exactly one `source_fetch_log` row
+  landed and one `cron_run_locks` row was claimed, and confirmed both
+  real HTTP responses were clean 200s -- one did the real work, the
+  other returned `{"skipped":true,"reason":"duplicate invocation
+  suppressed"}`.
+
+- **Real modal focus-trap + focus-return** — closes the second known
+  gap: `components/Modal.jsx`'s own comment had flagged skipping this as
+  a deliberate simplification. Since all 9 action-modal components plus
+  Messages' "New conversation" picker funnel through this one shared
+  shell, fixing it here covers all of them. Tab now cycles only among
+  the modal's own focusable elements (manually wrapped at the first/last
+  boundary, since no native `<dialog>` element is used here), the first
+  focusable element gets focus on open, and closing restores focus to
+  whatever element triggered it (tracked via `document.activeElement` at
+  mount, restored in the cleanup effect). Verified via a clean `vite
+  build`; not live click-tested this session (time-constrained ahead of
+  a presentation) -- worth a real Tab-key pass later, though the change
+  is isolated to focus management only, touches no modal's own business
+  logic, and no existing modal sets its own conflicting `autoFocus` or
+  keydown handler (checked directly).
+
+- **Fixed a critical Vercel deployment misconfiguration found while
+  prepping for the final presentation** — the live production URL
+  (`uc-portal-uc-onsulting.vercel.app`) was serving a build from
+  **2026-09-15**, 16 days stale, despite dozens of real commits since.
+  Every deployment attempt in that window showed status "Canceled."
+  Root cause, found via the Vercel API (not visible in the dashboard's
+  normal project-settings view by casual inspection): the project's
+  "Ignored Build Step" command was set to the literal string `exit 0` --
+  Vercel's own convention treats exit code 0 from that command as "skip
+  this build," so every single push, no matter what changed, was being
+  silently discarded. Cleared via a direct `PATCH
+  /v9/projects/{id}` API call (`commandForIgnoringBuildStep: null`),
+  restoring the default "always build" behavior. Origin of the bad value
+  unknown -- possibly copied from a monorepo-style setup on a sibling
+  project and never adjusted for this single-app repo. Worth keeping an
+  eye on Vercel's dashboard after this fix to confirm new pushes are
+  actually producing "Ready" deployments going forward, not just
+  trusting this one fix silently held.
+
 Run locally:
 ```bash
 npm install

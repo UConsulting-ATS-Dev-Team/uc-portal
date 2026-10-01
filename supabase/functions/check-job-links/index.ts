@@ -57,6 +57,7 @@
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { requireCronSecret } from "../_shared/requireCronSecret.ts";
+import { claimRunOrSkip } from "../_shared/dedupeRun.ts";
 
 const SOURCE_NAME = "Link Health Checker";
 
@@ -389,6 +390,14 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+  // Real, confirmed-live pg_net duplicate-delivery mitigation -- see
+  // cron_run_locks' migration header. Particularly important here given
+  // this function's own documented sensitivity to over-invocation.
+  if (!(await claimRunOrSkip(adminClient, "link_health"))) {
+    return jsonResponse({ skipped: true, reason: "duplicate invocation suppressed" }, 200);
+  }
+
   const startedAt = new Date().toISOString();
 
   const { data: source, error: sourceError } = await adminClient.from("sources").select("*").eq("name", SOURCE_NAME).single();

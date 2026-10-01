@@ -53,6 +53,7 @@ import type { RawJob } from "../_shared/pipeline/types.ts";
 import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows, enforceCompanyCap } from "../_shared/dedupeHelpers.ts";
 import { capForCompanyTier } from "../_shared/pipeline/companyCap.ts";
 import { requireCronSecret } from "../_shared/requireCronSecret.ts";
+import { claimRunOrSkip } from "../_shared/dedupeRun.ts";
 
 const SOURCE_NAME = "Deloitte (Careers RSS Feed)";
 const KEYWORDS = ["consultant", "strategy", "analyst"];
@@ -409,6 +410,13 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+  // Real, confirmed-live pg_net duplicate-delivery mitigation -- see
+  // cron_run_locks' migration header.
+  if (!(await claimRunOrSkip(adminClient, "deloitte"))) {
+    return jsonResponse({ skipped: true, reason: "duplicate invocation suppressed" }, 200);
+  }
+
   const startedAt = new Date().toISOString();
 
   const { data: source, error: sourceError } = await adminClient.from("sources").select("*").eq("name", SOURCE_NAME).single();

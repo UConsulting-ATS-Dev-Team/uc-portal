@@ -47,6 +47,7 @@ import type { RawJob } from "../_shared/pipeline/types.ts";
 import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows, updateInBatches, enforceCompanyCap } from "../_shared/dedupeHelpers.ts";
 import { capForCompanyTier, indexCompanyTiers } from "../_shared/pipeline/companyCap.ts";
 import { requireCronSecret } from "../_shared/requireCronSecret.ts";
+import { claimRunOrSkip } from "../_shared/dedupeRun.ts";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -382,6 +383,14 @@ Deno.serve(async (req) => {
     onlySlug = body?.slug;
   } catch {
     // no body / not JSON -- fine, means "run every configured company"
+  }
+
+  // Real, confirmed-live pg_net duplicate-delivery mitigation -- see
+  // cron_run_locks' migration header. Keyed by slug too (not just
+  // "lever"), so a deliberate manual single-company backfill never
+  // collides with, or gets suppressed by, the unrelated daily full run.
+  if (!(await claimRunOrSkip(adminClient, `lever:${onlySlug ?? "*"}`))) {
+    return jsonResponse({ skipped: true, reason: "duplicate invocation suppressed" }, 200);
   }
 
   const sourcesQuery = adminClient
