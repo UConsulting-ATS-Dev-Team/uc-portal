@@ -103,12 +103,21 @@ export const RESOURCES = [
   },
 ];
 
+// Real certifications, real providers, real URLs -- verified live
+// before adding (titles/providers corrected to match the actual real
+// course, not guessed): direct ask ("find real certifications... and
+// clicking should actually take the user to the said certification").
+// The CFI entry's original title ("Financial Modeling Fundamentals")
+// didn't match any real CFI course -- CFI's actual free-preview course
+// in this space is "Introduction to 3-Statement Financial Modeling,"
+// used here instead. The UC-internal "AI Tools for Case Prep" entry
+// (not a real third-party certification, no real external URL to send
+// anyone to) was dropped rather than faked.
 export const CERTIFICATIONS = [
-  { id: "coursera-excel", title: "Excel Skills for Business", provider: "Coursera (audit)", cost: "Free", hours: 20, countsFor: ["Excel, SQL & AI Tools"], skillCategory: "Excel & modeling" },
-  { id: "google-data", title: "Google Data Analytics Certificate", provider: "Google", cost: "Free via UC", hours: 40, countsFor: ["Excel, SQL & AI Tools"], skillCategory: "SQL & data" },
-  { id: "cfi-modeling", title: "Financial Modeling Fundamentals", provider: "CFI (free tier)", cost: "Free", hours: 15, countsFor: ["Case Interview Track"], skillCategory: "Excel & modeling" },
-  { id: "mode-sql", title: "SQL Tutorial", provider: "Mode Analytics", cost: "Free", hours: 8, countsFor: ["Excel, SQL & AI Tools"], skillCategory: "SQL & data" },
-  { id: "uc-ai-course", title: "AI Tools for Case Prep", provider: "UConsulting", cost: "Free via UC", hours: 5, countsFor: ["Case Interview Track", "Excel, SQL & AI Tools"], skillCategory: "AI & automation" },
+  { id: "coursera-excel", title: "Excel Skills for Business", provider: "Coursera (Macquarie University, audit free)", cost: "Free", hours: 20, countsFor: ["Excel, SQL & AI Tools"], skillCategory: "Excel & modeling", url: "https://www.coursera.org/specializations/excel" },
+  { id: "google-data", title: "Google Data Analytics Professional Certificate", provider: "Google (via Coursera)", cost: "Free 7-day trial, then paid", hours: 40, countsFor: ["Excel, SQL & AI Tools"], skillCategory: "SQL & data", url: "https://www.coursera.org/professional-certificates/google-data-analytics" },
+  { id: "cfi-modeling", title: "Introduction to 3-Statement Financial Modeling", provider: "Corporate Finance Institute (free preview)", cost: "Free", hours: 15, countsFor: ["Case Interview Track"], skillCategory: "Excel & modeling", url: "https://corporatefinanceinstitute.com/course/intro-3-statement-modeling/" },
+  { id: "mode-sql", title: "SQL Tutorial", provider: "Mode Analytics", cost: "Free", hours: 8, countsFor: ["Excel, SQL & AI Tools"], skillCategory: "SQL & data", url: "https://mode.com/sql-tutorial/" },
 ];
 
 export const LEARNING_TRACKS = [

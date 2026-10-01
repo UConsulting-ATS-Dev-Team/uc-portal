@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { RESOURCES, CERTIFICATIONS, LEARNING_TRACKS } from "../data/mockResources.js";
 import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
@@ -6,6 +6,7 @@ import { useAppState } from "../data/store.jsx";
 import { useRealJobs } from "../data/useRealJobs.js";
 import { currentUser } from "../data/mockUser.js";
 import { resolvedClassYear } from "../data/profileUtils.js";
+import { fetchContributions } from "../data/contributionsSync.js";
 import ContributeModal from "../components/modals/ContributeModal.jsx";
 import CasePartnerFinder from "../components/CasePartnerFinder.jsx";
 import "../styles/jobDetail.css";
@@ -29,6 +30,10 @@ export default function CareerResources() {
   // full lists (13 category rows total) plus the progress card before
   // reaching a single resource.
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [contributions, setContributions] = useState([]);
+  useEffect(() => {
+    fetchContributions().then(setContributions).catch(() => {});
+  }, [showContributeModal]); // refetch after the modal closes so a fresh contribution shows up
 
   // Same real-first/mock-fallback lookup as Home/Applications/Jobs -- a
   // real tracked job's interview-stage retitle used to only ever check
@@ -204,12 +209,9 @@ export default function CareerResources() {
                       <td>{c.hours} hrs</td>
                       <td>{c.countsFor.join(", ")}</td>
                       <td>
-                        {/* Deliberately inert -- no real document/external
-                            content behind any certification in this
-                            prototype. title, not a silent dead click. */}
-                        <button className="btn btn-secondary" disabled title="Not wired up yet -- no real certification content behind this in a prototype">
-                          Start
-                        </button>
+                        <a href={c.url} target="_blank" rel="noreferrer" className="btn btn-secondary">
+                          Start ↗
+                        </a>
                       </td>
                     </tr>
                   ))}
@@ -236,6 +238,30 @@ export default function CareerResources() {
                 </span>
               </div>
             ))}
+
+            {/* Real member-submitted content -- library_contributions,
+                written by ContributeModal.jsx for every type except
+                Interview write-up (which has its own real display on
+                RealJobDetail.jsx already). Hidden entirely while empty,
+                same "nothing to apologize for by omission" convention
+                this app uses for other thin real data elsewhere. */}
+            {contributions.length > 0 && (
+              <>
+                <h2>Member contributions</h2>
+                {contributions.map((c) => (
+                  <div className="recent-row" key={c.id}>
+                    <span className="chip">{c.type}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700 }}>{c.title}</div>
+                      <div className="meta">{c.body.slice(0, 120)}{c.body.length > 120 ? "…" : ""}</div>
+                    </div>
+                    <span className="meta">
+                      {c.is_anonymous ? "Anonymous" : c.submitted_by_name || "A member"} · {daysAgo(c.created_at)}d ago
+                    </span>
+                  </div>
+                ))}
+              </>
+            )}
           </>
         )}
       </div>

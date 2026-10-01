@@ -14,7 +14,9 @@ import {
   HELP_OPTIONS,
   computeMatches,
 } from "../data/careerOptions.js";
-import bearMark from "../assets/uc-bear-mark-navy.png";
+import { useTheme } from "../components/theme/ThemeContext.jsx";
+import bearMarkNavy from "../assets/uc-bear-mark-navy.png";
+import bearMarkWhite from "../assets/uc-bear-mark-white.png";
 import "../styles/onboarding.css";
 
 const STEPS = ["You", "Industries", "Roles & locations", "Companies", "Timeline"];
@@ -34,6 +36,8 @@ function move(list, index, direction) {
 // re-styled for an <img> (dropping the old navy-box treatment), this
 // text version rendered broken -- no box, no accent color, no image.
 function Brand() {
+  const { resolvedTheme } = useTheme();
+  const bearMark = resolvedTheme === "dark" ? bearMarkWhite : bearMarkNavy;
   return (
     <div className="auth__brand" style={{ marginBottom: "var(--space-2)" }}>
       <img className="auth__mark" src={bearMark} alt="" />

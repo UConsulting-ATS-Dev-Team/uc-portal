@@ -4,6 +4,7 @@ import { JOBS as MOCK_JOBS } from "../../data/mockJobs.js";
 import { searchRealJobs } from "../../data/realJobAdapter.js";
 import { STAGES } from "../../data/trackerUtils.js";
 import { useAppState } from "../../data/store.jsx";
+import { MANUAL_JOB_ID_PREFIX } from "../../data/manualApplications.js";
 
 const TABS = ["From a UC posting", "Paste a link", "Enter manually"];
 
@@ -15,7 +16,9 @@ export default function AddApplicationModal({ onClose, onAdded }) {
   const [search, setSearch] = useState("");
   const [selectedJobId, setSelectedJobId] = useState(null);
   const [stage, setStage] = useState("Interested");
-  const [externalNote, setExternalNote] = useState(false);
+  const [manualUrl, setManualUrl] = useState("");
+  const [manualCompany, setManualCompany] = useState("");
+  const [manualRole, setManualRole] = useState("");
   const [realMatches, setRealMatches] = useState([]);
   const [realSearchLoading, setRealSearchLoading] = useState(false);
 
@@ -59,9 +62,23 @@ export default function AddApplicationModal({ onClose, onAdded }) {
 
   const matches = [...realMatches, ...mockMatches];
 
+  const manualReady = tab === TABS[2] && manualCompany.trim() && manualRole.trim();
+  const linkReady = tab === TABS[1] && manualUrl.trim() && manualCompany.trim() && manualRole.trim();
+
   function handleAdd() {
     if (tab === TABS[0] && selectedJobId) {
       addToTracker(selectedJobId, stage);
+      onAdded?.();
+      onClose();
+      return;
+    }
+    if (manualReady || linkReady) {
+      const jobId = `${MANUAL_JOB_ID_PREFIX}${crypto.randomUUID()}`;
+      addToTracker(jobId, stage, {
+        company: manualCompany.trim(),
+        role: manualRole.trim(),
+        url: tab === TABS[1] ? manualUrl.trim() : null,
+      });
       onAdded?.();
       onClose();
     }
@@ -75,7 +92,11 @@ export default function AddApplicationModal({ onClose, onAdded }) {
         <>
           <span className="modal__footer-note">Stage: {stage}</span>
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" disabled={tab === TABS[0] && !selectedJobId} onClick={handleAdd}>
+          <button
+            className="btn btn-primary"
+            disabled={(tab === TABS[0] && !selectedJobId) || (tab !== TABS[0] && !manualReady && !linkReady)}
+            onClick={handleAdd}
+          >
             Add to tracker
           </button>
         </>
@@ -131,13 +152,21 @@ export default function AddApplicationModal({ onClose, onAdded }) {
       {tab === TABS[1] && (
         <>
           <label className="field-label">Job posting URL</label>
-          <input type="url" placeholder="https://" value="" onChange={() => setExternalNote(true)} />
-          {externalNote && (
-            <p className="meta">
-              We can't pull details from an outside link yet — use "Enter manually" instead, or ask Exec to
-              add the posting via "Post a job."
-            </p>
-          )}
+          <input type="url" placeholder="https://" value={manualUrl} onChange={(e) => setManualUrl(e.target.value)} />
+          <div className="field-row">
+            <div>
+              <label className="field-label">Company</label>
+              <input type="text" placeholder="Company name" value={manualCompany} onChange={(e) => setManualCompany(e.target.value)} />
+            </div>
+            <div>
+              <label className="field-label">Role</label>
+              <input type="text" placeholder="Role title" value={manualRole} onChange={(e) => setManualRole(e.target.value)} />
+            </div>
+          </div>
+          <p className="meta">
+            We can't pull details from an outside link automatically — fill in company and role too, and
+            we'll keep your link handy for a quick jump back to the real posting.
+          </p>
         </>
       )}
 
@@ -146,16 +175,16 @@ export default function AddApplicationModal({ onClose, onAdded }) {
           <div className="field-row">
             <div>
               <label className="field-label">Company</label>
-              <input type="text" placeholder="Company name" />
+              <input type="text" placeholder="Company name" value={manualCompany} onChange={(e) => setManualCompany(e.target.value)} />
             </div>
             <div>
               <label className="field-label">Role</label>
-              <input type="text" placeholder="Role title" />
+              <input type="text" placeholder="Role title" value={manualRole} onChange={(e) => setManualRole(e.target.value)} />
             </div>
           </div>
           <p className="meta">
-            Manually entered roles won't have an odds model or UC intelligence attached — this isn't wired up
-            yet, so nothing will actually be saved.
+            Manually entered roles won't have an odds model or UC recruiting intelligence attached — there's
+            no real posting on our board to compute it from.
           </p>
         </>
       )}

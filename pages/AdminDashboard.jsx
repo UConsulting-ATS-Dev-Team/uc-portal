@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import PostOpportunityModal from "../components/modals/PostOpportunityModal.jsx";
+import PostAnnouncementModal from "../components/modals/PostAnnouncementModal.jsx";
 import { supabase } from "../data/supabaseClient.js";
 import { fetchAllRows } from "../data/fetchAllRows.js";
 import { capForCompanyTier } from "../data/companyTiers.js";
@@ -30,6 +31,7 @@ const FEATURE_REQUEST_STATUS_LABEL = {
 // queue has a real backend behind it so far.
 export default function AdminDashboard() {
   const [showPostModal, setShowPostModal] = useState(false);
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [queue, setQueue] = useState([]);
   const [queueLoading, setQueueLoading] = useState(true);
   const [queueError, setQueueError] = useState(null);
@@ -547,14 +549,6 @@ export default function AdminDashboard() {
             <option>Fall 2026</option>
             <option>Spring 2026</option>
           </select>
-          {/* No export exists -- and this page mixes real data (queue,
-              feature requests, engagement) with illustrative mock KPIs
-              (data/mockAdmin.js), so a real export would need to be
-              honest about which numbers are real vs illustrative, not
-              a quick CSV dump. Real feature work, left honestly inert. */}
-          <button className="btn btn-secondary" disabled title="Not built yet -- no export exists in this prototype">
-            Export report
-          </button>
           <button className="btn btn-primary" onClick={() => setShowPostModal(true)}>+ Post opportunity</button>
         </div>
       </div>
@@ -1336,18 +1330,11 @@ export default function AdminDashboard() {
               <span className="chip chip-accent">{FLAGGED_FEED_POSTS} flagged</span>
               <DemoDataBadge label="Illustrative" />
             </Link>
-            {/* No announcement-posting flow exists anywhere in the app --
-                was an href="#" link indistinguishable from its working
-                siblings above/below, so clicking it looked broken rather
-                than "not built yet." A real button, disabled, with a
-                title explaining why -- same "visually present, honestly
-                inert" pattern SignIn.jsx's Google sign-in button uses. */}
             <button
               type="button"
               className="content-mgmt-link"
-              disabled
-              title="Not built yet -- no announcement flow exists in this prototype"
-              style={{ opacity: 0.5, background: "none", border: "none", borderBottom: "var(--border-hairline)", width: "100%", textAlign: "left", cursor: "default" }}
+              onClick={() => setShowAnnouncementModal(true)}
+              style={{ background: "none", border: "none", borderBottom: "var(--border-hairline)", width: "100%", textAlign: "left", cursor: "pointer" }}
             >
               <span>Post announcement</span>
             </button>
@@ -1368,6 +1355,7 @@ export default function AdminDashboard() {
       </div>
 
       {showPostModal && <PostOpportunityModal onClose={() => setShowPostModal(false)} />}
+      {showAnnouncementModal && <PostAnnouncementModal onClose={() => setShowAnnouncementModal(false)} />}
     </div>
   );
 }

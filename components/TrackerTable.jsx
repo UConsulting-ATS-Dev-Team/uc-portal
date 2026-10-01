@@ -4,6 +4,7 @@ import { deadlineLabel } from "../data/jobUtils.js";
 import { SEED_TRACKED_JOB_IDS } from "../data/store.jsx";
 import CompanyLogo from "./CompanyLogo.jsx";
 import DemoDataBadge from "./DemoDataBadge.jsx";
+import ComingSoonButton from "./ComingSoonButton.jsx";
 
 const COLUMNS = [
   { key: "company", label: "Company" },
@@ -51,10 +52,24 @@ export default function TrackerTable({ applications, sortColumn, sortDirection, 
             {applications.map(({ jobId, job, stage, addedAt, outcome, rejectionStage }) => (
               <tr key={jobId} className={stage === "Closed" ? "is-closed" : ""}>
                 <td>
-                  <Link to={`/jobs/${jobId}`} className="tracker-table__company" style={{ textDecoration: "none" }}>
-                    <CompanyLogo name={job.company} initials={job.logoInitials} className="board-card__logo" />
-                    {job.company}
-                  </Link>
+                  {job.isManual ? (
+                    job.applicationUrl ? (
+                      <a href={job.applicationUrl} target="_blank" rel="noreferrer" className="tracker-table__company" style={{ textDecoration: "none" }}>
+                        <CompanyLogo name={job.company} initials={job.logoInitials} className="board-card__logo" />
+                        {job.company}
+                      </a>
+                    ) : (
+                      <span className="tracker-table__company">
+                        <CompanyLogo name={job.company} initials={job.logoInitials} className="board-card__logo" />
+                        {job.company}
+                      </span>
+                    )
+                  ) : (
+                    <Link to={`/jobs/${jobId}`} className="tracker-table__company" style={{ textDecoration: "none" }}>
+                      <CompanyLogo name={job.company} initials={job.logoInitials} className="board-card__logo" />
+                      {job.company}
+                    </Link>
+                  )}
                   {SEED_TRACKED_JOB_IDS.includes(jobId) && (
                     <div style={{ marginTop: "var(--space-1)" }}>
                       <DemoDataBadge label="Seeded demo" title="One of the 7 illustrative applications seeded so the tracker isn't empty on first load -- not a real application" />
@@ -118,12 +133,9 @@ export default function TrackerTable({ applications, sortColumn, sortDirection, 
           <button className="btn-link" onClick={onExportCsv}>
             Export CSV
           </button>
-          {/* Documented limitation: no calendar integration planned for
-              this prototype. Sat next to a real working "Export CSV"
-              with no visual distinction before this. */}
-          <button className="btn-link" disabled title="Not built yet -- no calendar integration exists in this prototype">
+          <ComingSoonButton className="btn-link" message="Calendar sync is coming soon">
             Sync deadlines to calendar
-          </button>
+          </ComingSoonButton>
         </div>
       </div>
     </div>

@@ -10,7 +10,9 @@ import Avatar from "./Avatar.jsx";
 import RequestFeatureModal from "./modals/RequestFeatureModal.jsx";
 import { useTour } from "./tour/TourContext.jsx";
 import ThemeToggle from "./theme/ThemeToggle.jsx";
-import bearMark from "../assets/uc-bear-mark-navy.png";
+import { useTheme } from "./theme/ThemeContext.jsx";
+import bearMarkNavy from "../assets/uc-bear-mark-navy.png";
+import bearMarkWhite from "../assets/uc-bear-mark-white.png";
 
 const SIGNUPS_LAST_SEEN_KEY = "uc-portal-admin-signups-last-seen";
 
@@ -19,6 +21,13 @@ export default function TopBar() {
   const [showRequestFeature, setShowRequestFeature] = useState(false);
   const { profileOverrides, needsActionCount, isAdmin, isIntern } = useAppState();
   const { availableTours, start: startTour } = useTour();
+  // Real ask: the navy mark gets mostly masked out against a dark
+  // background -- swaps to the same real artwork's white export
+  // (already processed, same source as the navy one -- see that
+  // asset's own CLAUDE.md history) whenever dark mode is resolved,
+  // "system" included.
+  const { resolvedTheme } = useTheme();
+  const bearMark = resolvedTheme === "dark" ? bearMarkWhite : bearMarkNavy;
   // Was CONVERSATIONS.filter(c => c.unread).length -- a fixed mock count
   // shown to every signed-in user regardless of their real inbox, same
   // bug class as the notification bell's old navCounts.notificationsUnread.

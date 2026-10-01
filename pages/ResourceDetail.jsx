@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { RESOURCES, findResource } from "../data/mockResources.js";
 import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
@@ -6,6 +6,7 @@ import { useAppState } from "../data/store.jsx";
 import { useRealJobs } from "../data/useRealJobs.js";
 import { currentUser } from "../data/mockUser.js";
 import { resolvedClassYear } from "../data/profileUtils.js";
+import { fetchGuideFileFor, uploadGuideFile } from "../data/resourceGuideSync.js";
 import Placeholder from "./Placeholder.jsx";
 import "../styles/jobDetail.css";
 import "../styles/resources.css";
@@ -13,8 +14,35 @@ import "../styles/resources.css";
 export default function ResourceDetail() {
   const { resourceId } = useParams();
   const resource = findResource(resourceId);
-  const { savedResourceIds, toggleSavedResource, resourceProgress, toggleResourceSection, trackedJobs, preferences, profileOverrides } = useAppState();
+  const { savedResourceIds, toggleSavedResource, resourceProgress, toggleResourceSection, trackedJobs, preferences, profileOverrides, isAdmin } =
+    useAppState();
   const [hoursLogged, setHoursLogged] = useState(0);
+  const [guideFile, setGuideFile] = useState(undefined); // undefined = loading, null = none
+  const [uploadingGuide, setUploadingGuide] = useState(false);
+
+  useEffect(() => {
+    if (!resource) return;
+    let cancelled = false;
+    fetchGuideFileFor(resource.id).then((result) => {
+      if (!cancelled) setGuideFile(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [resource?.id]);
+
+  async function handleGuideUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file || !resource) return;
+    setUploadingGuide(true);
+    try {
+      await uploadGuideFile(resource.id, file);
+      setGuideFile(await fetchGuideFileFor(resource.id));
+    } finally {
+      setUploadingGuide(false);
+      e.target.value = "";
+    }
+  }
 
   // Hook called unconditionally, before the "resource not found" early
   // return, per Rules of Hooks -- same real-first/mock-fallback pattern
@@ -74,19 +102,21 @@ export default function ResourceDetail() {
                 {resource.views} views · {resource.completions} completed
               </span>
             </div>
-            <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap" }}>
-              {/* No real document exists behind any resource in this
-                  prototype (same limitation as Career Resources'
-                  certification "Start" buttons) -- these sat right next
-                  to two real working buttons (Save/Mark completed) with
-                  no visual distinction, so clicking either looked
-                  broken rather than "not built yet." */}
-              <button className="btn btn-primary" disabled title="Not wired up yet -- no real guide content behind this in a prototype">
-                Open guide
-              </button>
-              <button className="btn btn-secondary" disabled title="Not wired up yet -- no real file behind this in a prototype">
-                Download PDF
-              </button>
+            <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "center" }}>
+              {guideFile ? (
+                <>
+                  <a href={guideFile.url} target="_blank" rel="noreferrer" className="btn btn-primary">
+                    Open guide
+                  </a>
+                  <a href={guideFile.url} download={guideFile.fileName} className="btn btn-secondary">
+                    Download PDF
+                  </a>
+                </>
+              ) : (
+                <button className="btn btn-primary" disabled title="Loading guide content…">
+                  Open guide
+                </button>
+              )}
               <button className="btn btn-secondary" onClick={() => toggleSavedResource(resource.id)}>
                 {isSaved ? "Saved ★" : "Save ★"}
               </button>
@@ -94,6 +124,18 @@ export default function ResourceDetail() {
                 {pctComplete === 100 ? "Completed ✓" : "Mark as completed"}
               </button>
             </div>
+            {isAdmin && (
+              <div style={{ marginTop: "var(--space-3)" }}>
+                <label className="btn-link" style={{ cursor: "pointer" }}>
+                  {uploadingGuide
+                    ? "Uploading…"
+                    : guideFile?.isSpecific
+                      ? `Admin: replace guide file (currently "${guideFile.fileName}")`
+                      : "Admin: upload a guide file for this resource"}
+                  <input type="file" accept=".pdf,.ppt,.pptx" onChange={handleGuideUpload} disabled={uploadingGuide} style={{ display: "none" }} />
+                </label>
+              </div>
+            )}
           </div>
 
           <div className="detail-section">

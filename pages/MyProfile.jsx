@@ -6,6 +6,7 @@ import { computeProfileStrength } from "../data/profileUtils.js";
 import { uploadAvatar, removeAvatar } from "../data/avatarSync.js";
 import { uploadResume, removeResume, getResumeSignedUrl } from "../data/resumeSync.js";
 import { changePassword } from "../data/passwordSync.js";
+import { fetchDirectoryPrefill } from "../data/directoryPrefillSync.js";
 import {
   fetchOwnWorkHistory,
   addWorkHistoryEntry,
@@ -88,6 +89,8 @@ export default function MyProfile() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState(null);
   const [passwordChanged, setPasswordChanged] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState(null);
   const avatarInput = useRef(null);
   const [resumeUploading, setResumeUploading] = useState(false);
   const [resumeError, setResumeError] = useState(null);
@@ -385,6 +388,28 @@ export default function MyProfile() {
     }
   }
 
+  // RealMemberProfile.jsx (what other members actually see) is keyed by
+  // a real people.id, not this account's own auth.users id -- resolves
+  // the signed-in member's own Directory row by email, same real lookup
+  // Directory auto-fill already uses, then routes to the exact same
+  // /network/:personId real members land on. A real account with no
+  // matching Directory row (e.g. an admin test account) honestly has no
+  // public profile to preview -- shown as a message, not a silent no-op.
+  async function handleViewAsOthersSeeIt() {
+    setPreviewError(null);
+    setPreviewLoading(true);
+    try {
+      const own = await fetchDirectoryPrefill();
+      if (own?.id) {
+        navigate(`/network/${own.id}`);
+      } else {
+        setPreviewError("You're not yet matched to a real Directory entry, so there's no public profile to preview.");
+      }
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
   async function handleChangePassword() {
     setPasswordError(null);
     setPasswordChanged(false);
@@ -451,19 +476,20 @@ export default function MyProfile() {
           </p>
         </div>
         <div className="profile-page-header__actions">
-          {/* No self-view preview mode exists -- pages/MemberProfile.jsx
-              only ever renders *other* members (route is /network/:id,
-              no route for viewing your own record through that lens).
-              Real feature work, not a quick wire-up, so honestly inert
-              for now rather than faked. */}
-          <button className="btn btn-secondary" disabled title="Not built yet -- there's no self-view preview mode in this prototype">
-            View as others see it
+          <button className="btn btn-secondary" disabled={previewLoading} onClick={handleViewAsOthersSeeIt}>
+            {previewLoading ? "Loading…" : "View as others see it"}
           </button>
           <button className="btn btn-primary" onClick={handleSaveChanges}>
             {saved ? "Saved ✓" : "Save changes"}
           </button>
         </div>
       </div>
+
+      {previewError && (
+        <p className="meta" style={{ color: "var(--color-danger)", marginTop: "calc(-1 * var(--space-4))", marginBottom: "var(--space-4)" }}>
+          {previewError}
+        </p>
+      )}
 
       <div className="quarterly-banner">
         <span>Your interests were last confirmed in spring. Takes 90 seconds and improves every recommendation you see.</span>

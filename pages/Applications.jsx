@@ -9,6 +9,7 @@ import { matchJob } from "../data/jobMatch.js";
 import { realJobToCardShape, JOB_LIST_COLUMNS } from "../data/realJobAdapter.js";
 import { currentUser } from "../data/mockUser.js";
 import { resolvedClassYear } from "../data/profileUtils.js";
+import { isManualJobId, jobForManualEntry } from "../data/manualApplications.js";
 import TrackerBoard from "../components/TrackerBoard.jsx";
 import TrackerTable from "../components/TrackerTable.jsx";
 import TrackerTimeline from "../components/TrackerTimeline.jsx";
@@ -79,7 +80,10 @@ export default function Applications() {
   const applications = useMemo(() => {
     return Object.entries(trackedJobs)
       .map(([jobId, info]) => {
-        const job = realJobs.find((j) => j.id === jobId) || MOCK_JOBS.find((j) => j.id === jobId);
+        const job =
+          realJobs.find((j) => j.id === jobId) ||
+          MOCK_JOBS.find((j) => j.id === jobId) ||
+          (isManualJobId(jobId) ? jobForManualEntry(jobId, info) : null);
         if (!job) return null;
         return { jobId, job, ...info };
       })
@@ -202,7 +206,11 @@ export default function Applications() {
       {outcomeModalJobId && (
         <RecordOutcomeModal
           jobId={outcomeModalJobId}
-          job={realJobs.find((j) => j.id === outcomeModalJobId) || MOCK_JOBS.find((j) => j.id === outcomeModalJobId)}
+          job={
+            realJobs.find((j) => j.id === outcomeModalJobId) ||
+            MOCK_JOBS.find((j) => j.id === outcomeModalJobId) ||
+            (isManualJobId(outcomeModalJobId) ? jobForManualEntry(outcomeModalJobId, trackedJobs[outcomeModalJobId]) : null)
+          }
           currentOutcome={trackedJobs[outcomeModalJobId]?.outcome}
           currentRejectionStage={trackedJobs[outcomeModalJobId]?.rejectionStage}
           stageHistory={trackedJobs[outcomeModalJobId]?.stageHistory}

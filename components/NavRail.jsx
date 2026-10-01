@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { clubStats } from "../data/mockUser.js";
-import { MAIN_ITEMS, INTERN_ITEMS, LEADERSHIP_ITEMS } from "../data/navItems.js";
+import { LEADERSHIP_ITEMS, mainItemsFor } from "../data/navItems.js";
 import { useAppState } from "../data/store.jsx";
 
 // Lucide, stroke-width 1.5, per CLAUDE.md's icon spec ("wireframes use text
@@ -34,7 +34,7 @@ export default function NavRail() {
   // currentUser.role every session used to see the exact same hardcoded
   // "member" for regardless of who was actually signed in.
   const { isAdmin, isAlumni, isIntern, trackedJobs } = useAppState();
-  const items = isIntern ? INTERN_ITEMS : isAlumni ? MAIN_ITEMS.filter((item) => !item.currentMemberOnly) : MAIN_ITEMS;
+  const items = mainItemsFor({ isIntern, isAlumni, isAdmin });
 
   return (
     <nav className="rail">

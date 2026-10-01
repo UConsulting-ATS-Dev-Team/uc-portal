@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { MoreHorizontal, X } from "lucide-react";
-import { MAIN_ITEMS, INTERN_ITEMS, LEADERSHIP_ITEMS, BOTTOM_BAR_PRIMARY_KEYS } from "../data/navItems.js";
+import { LEADERSHIP_ITEMS, BOTTOM_BAR_PRIMARY_KEYS, mainItemsFor } from "../data/navItems.js";
 import { useAppState } from "../data/store.jsx";
 
 // Phone-UX pass: below 640px (styles/shell.css's phone tier), this
@@ -27,7 +27,7 @@ export default function BottomTabBar() {
   // currentUser.role -- same fix as NavRail.jsx's identical check.
   const { isAdmin, isAlumni, isIntern, trackedJobs } = useAppState();
 
-  const availableItems = isIntern ? INTERN_ITEMS : isAlumni ? MAIN_ITEMS.filter((item) => !item.currentMemberOnly) : MAIN_ITEMS;
+  const availableItems = mainItemsFor({ isIntern, isAlumni, isAdmin });
   // BOTTOM_BAR_PRIMARY_KEYS was picked around current-member priorities
   // (Jobs/Applications are two of its four slots) -- meaningless for
   // alumni/interns, who don't have those routes at all. Alumni's whole

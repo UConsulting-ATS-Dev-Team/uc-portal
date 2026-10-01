@@ -151,13 +151,41 @@ export default function TrackerBoard({ applications, onMoveStage, onRequestOutco
                     {SEED_TRACKED_JOB_IDS.includes(jobId) && (
                       <DemoDataBadge label="Seeded demo" title="One of the 7 illustrative applications seeded so the tracker isn't empty on first load -- not a real application" />
                     )}
-                    <Link to={`/jobs/${jobId}`} style={{ color: "inherit", textDecoration: "none" }} onClick={handleCardLinkClick}>
-                      <div className="board-card__company">
-                        <CompanyLogo name={job.company} initials={job.logoInitials} className="board-card__logo" />
-                        {job.company}
-                      </div>
-                      <div className="board-card__role">{job.role}</div>
-                    </Link>
+                    {job.isManual ? (
+                      // No real jobs row to link to -- opens the member's own
+                      // pasted/entered external URL instead, if they gave one.
+                      job.applicationUrl ? (
+                        <a
+                          href={job.applicationUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: "inherit", textDecoration: "none" }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="board-card__company">
+                            <CompanyLogo name={job.company} initials={job.logoInitials} className="board-card__logo" />
+                            {job.company}
+                          </div>
+                          <div className="board-card__role">{job.role}</div>
+                        </a>
+                      ) : (
+                        <div onPointerDown={(e) => e.stopPropagation()}>
+                          <div className="board-card__company">
+                            <CompanyLogo name={job.company} initials={job.logoInitials} className="board-card__logo" />
+                            {job.company}
+                          </div>
+                          <div className="board-card__role">{job.role}</div>
+                        </div>
+                      )
+                    ) : (
+                      <Link to={`/jobs/${jobId}`} style={{ color: "inherit", textDecoration: "none" }} onClick={handleCardLinkClick}>
+                        <div className="board-card__company">
+                          <CompanyLogo name={job.company} initials={job.logoInitials} className="board-card__logo" />
+                          {job.company}
+                        </div>
+                        <div className="board-card__role">{job.role}</div>
+                      </Link>
+                    )}
                     <div className={`board-card__detail${urgent ? " is-urgent" : ""}`}>
                       {stage === "Closed"
                         ? outcome
@@ -188,10 +216,21 @@ export default function TrackerBoard({ applications, onMoveStage, onRequestOutco
                         UC-connections/write-ups a member would actually
                         use to follow up live there), rather than a dead
                         click on every Applied-stage card. */}
-                    {stage === "Applied" && (
+                    {stage === "Applied" && !job.isManual && (
                       <Link to={`/jobs/${jobId}`} className="btn btn-secondary board-card__followup" onClick={(e) => e.stopPropagation()}>
                         Follow up
                       </Link>
+                    )}
+                    {stage === "Applied" && job.isManual && job.applicationUrl && (
+                      <a
+                        href={job.applicationUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn-secondary board-card__followup"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Follow up
+                      </a>
                     )}
                     {stage === "Closed" && !outcome && (
                       <button

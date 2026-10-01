@@ -45,13 +45,12 @@ const AdminAccelerator = lazy(() => import("./pages/AdminAccelerator.jsx"));
 // Unlike Jobs/Applications/Network/Feed/Companies/Career Resources/My
 // Profile/Home/Notifications/Messages (every-session nav-rail
 // destinations, deliberately kept eager -- see this file's own reasoning
-// above), these are the actual heaviest single pages in the app: JobDetail
-// eagerly imports RealJobDetail.jsx (the odds model, interview write-ups,
-// work-history rail) regardless of which one a real UUID job ends up
-// rendering, and MemberProfile eagerly imports RealMemberProfile.jsx the
-// same way -- so lazy-loading the route name also defers its real-data
-// sibling, not just the thin dispatcher.
-const JobDetail = lazy(() => import("./pages/JobDetail.jsx"));
+// above), these are the actual heaviest single pages in the app:
+// RealJobDetail (the odds model, interview write-ups, work-history rail)
+// and MemberProfile eagerly import RealMemberProfile.jsx the same way --
+// so lazy-loading the route name also defers its real-data sibling, not
+// just a thin dispatcher.
+const RealJobDetail = lazy(() => import("./pages/RealJobDetail.jsx"));
 const MemberProfile = lazy(() => import("./pages/MemberProfile.jsx"));
 const CompanyPage = lazy(() => import("./pages/CompanyPage.jsx"));
 const ResourceDetail = lazy(() => import("./pages/ResourceDetail.jsx"));
@@ -129,7 +128,7 @@ function AppRoutes() {
         path="/jobs/:jobId"
         element={
           <NavShell>
-            <LazyPage Component={JobDetail} />
+            <LazyPage Component={RealJobDetail} />
           </NavShell>
         }
       />

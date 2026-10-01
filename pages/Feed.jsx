@@ -14,6 +14,7 @@ import { useSwipeTabs } from "../data/useSwipeTabs.js";
 import Avatar from "../components/Avatar.jsx";
 import PullToRefresh from "../components/PullToRefresh.jsx";
 import JobCard from "../components/JobCard.jsx";
+import ComingSoonButton from "../components/ComingSoonButton.jsx";
 import "../styles/jobDetail.css";
 import "../styles/feed.css";
 
@@ -133,14 +134,16 @@ export default function Feed() {
   }
 
   const filtered = useMemo(() => {
-    return posts.filter((p) => {
-      if (tab === "Alumni") return p.roleChip === "Alumna" || p.roleChip === "Alumnus";
-      if (tab === "Opportunities") return p.postType === "UC-posted job";
-      if (tab === "Advice") return p.postType === "Advice";
-      if (tab === "Events") return p.postType === "Event";
-      if (tab === "Saved") return savedPosts.includes(p.id);
-      return true;
-    });
+    return posts
+      .filter((p) => {
+        if (tab === "Alumni") return p.roleChip === "Alumna" || p.roleChip === "Alumnus";
+        if (tab === "Opportunities") return p.postType === "UC-posted job";
+        if (tab === "Advice") return p.postType === "Advice";
+        if (tab === "Events") return p.postType === "Event";
+        if (tab === "Saved") return savedPosts.includes(p.id);
+        return true;
+      })
+      .sort((a, b) => (b.postType === "Announcement") - (a.postType === "Announcement")); // pinned to the top, real posts otherwise already in created_at desc order
   }, [posts, tab, savedPosts]);
 
   // Real members who've opted in via MyProfile.jsx's "Open to coffee
@@ -244,15 +247,20 @@ export default function Feed() {
           const isRsvped = rsvpedPosts.includes(post.id);
           const rsvpCount = (post.rsvpCount || 0) + (isRsvped ? 1 : 0);
 
+          const isAnnouncement = post.postType === "Announcement";
           return (
-            <div className="post-card" key={post.id}>
+            <div
+              className="post-card"
+              key={post.id}
+              style={isAnnouncement ? { borderLeft: "3px solid var(--color-accent)", background: "var(--color-surface)" } : undefined}
+            >
               <div className="post-card__header">
                 <div className="post-card__avatar">
                   <Avatar name={post.author} url={avatarsById.get(post.authorId)} />
                 </div>
                 <span className="post-card__name">{post.author}</span>
                 <span className="chip">{post.roleChip}</span>
-                <span className="chip chip-accent">{post.postType}</span>
+                <span className="chip chip-accent">{isAnnouncement ? "📌 Announcement" : post.postType}</span>
               </div>
               <p className="post-card__role-line">
                 {post.roleLine ? `${post.roleLine} · ` : ""}
@@ -291,13 +299,9 @@ export default function Feed() {
                   <button className={`btn btn-secondary${isRsvped ? " is-saved" : ""}`} onClick={() => toggleRsvp(post.id)}>
                     {isRsvped ? "✓ Going" : "RSVP"}
                   </button>
-                  <button
-                    className="btn-link"
-                    disabled
-                    title="Not built yet -- no calendar integration exists in this prototype"
-                  >
+                  <ComingSoonButton className="btn-link" message="Calendar sync is coming soon">
                     Add to calendar
-                  </button>
+                  </ComingSoonButton>
                   <span className="post-card__proof">{rsvpCount} attending</span>
                   {post.authorId === currentAccountId && (
                     <>

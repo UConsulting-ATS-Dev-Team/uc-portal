@@ -396,12 +396,25 @@ export function AppStateProvider({ children }) {
   // the updater itself (that would run the fire-and-forget upsert twice in
   // dev, once for each StrictMode invocation of an impure updater).
 
-  function addToTracker(jobId, stage = "Interested") {
+  // manualDetails ({company, role, url}) is for an application with no
+  // real jobs row at all -- Add Application's "Paste a link"/"Enter
+  // manually" tabs. See the manual_company/manual_role/manual_url
+  // migration's own comment for why these live directly on the
+  // tracked_applications record instead of inventing a fake jobs row.
+  function addToTracker(jobId, stage = "Interested", manualDetails = null) {
     let syncPayload = null;
     setState((prev) => {
       if (prev.trackedJobs[jobId]) return prev; // don't downgrade an existing stage
       const now = new Date().toISOString();
-      const record = { stage, addedAt: now, stageHistory: [{ stage, date: now }], outcome: null };
+      const record = {
+        stage,
+        addedAt: now,
+        stageHistory: [{ stage, date: now }],
+        outcome: null,
+        manualCompany: manualDetails?.company ?? null,
+        manualRole: manualDetails?.role ?? null,
+        manualUrl: manualDetails?.url ?? null,
+      };
       syncPayload = { ...record, prepLoggedHours: 0, timelineShiftDays: 0 };
       return { ...prev, trackedJobs: { ...prev.trackedJobs, [jobId]: record } };
     });

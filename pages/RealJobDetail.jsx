@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { supabase } from "../data/supabaseClient.js";
 import { matchJob } from "../data/jobMatch.js";
 import { fetchRealOddsInputs, computeRealOdds } from "../data/realOddsModel.js";
@@ -51,24 +51,30 @@ const CLASSIFICATION_METHOD_LABEL = {
   llm: "our estimate (AI-assisted)",
 };
 
-// Detail view for a real job (a UUID id, see JobDetail.jsx's dispatch at the
-// top of its component). Still simpler than the mock JobDetail -- no
-// past-cycle stage timeline, since that needs a lot more historical stage
-// data than any real job has yet. What IS real here: the job's actual
-// fields from the jobs table, a genuine match explanation via
-// data/jobMatch.js against the member's real local preferences, real UC
-// members at this company (since the real people import -- see
-// JOB_ENGINE_ARCHITECTURE.md's Stage 5 entry), matched the same way
-// CompanyPage.jsx does (the directory's company text doesn't match this
-// app's canonical names, so it's a starts-with match on the first token,
-// not an exact one) -- the odds model too (data/realOddsModel.js) -- and
-// now real interview write-ups (data/realWriteups.js, backed by the
-// interview_writeups table), the last piece of the mock JobDetail this
-// page didn't have a real-data equivalent for. See realOddsModel.js's own
-// header for how each odds factor is sourced from real data and why "UC
-// track record" measures interview-stage progress rather than offers
-// (tracked_applications has no offer outcome to read).
-export default function RealJobDetail({ jobId }) {
+// Detail view for a real job. Routed directly from /jobs/:jobId (App.jsx) --
+// this used to be dispatched to from a wrapping JobDetail.jsx that also
+// rendered 8 hand-authored mock demo jobs; that mock path is gone
+// entirely now (direct ask: "no more of the mock jobs," this being the
+// final product), so this is the only job-detail experience in the app.
+// Reads jobId from its own route param when not given one as a prop
+// (nothing passes the prop anymore, kept only so this still works if
+// ever embedded elsewhere later).
+//
+// What's real here: the job's actual fields from the jobs table, a
+// genuine match explanation via data/jobMatch.js against the member's
+// real local preferences, real UC members at this company (since the
+// real people import -- see JOB_ENGINE_ARCHITECTURE.md's Stage 5 entry),
+// matched the same way CompanyPage.jsx does (the directory's company
+// text doesn't match this app's canonical names, so it's a starts-with
+// match on the first token, not an exact one) -- the odds model too
+// (data/realOddsModel.js) -- and real interview write-ups
+// (data/realWriteups.js, backed by the interview_writeups table). See
+// realOddsModel.js's own header for how each odds factor is sourced from
+// real data and why "UC track record" measures interview-stage progress
+// rather than offers (tracked_applications has no offer outcome to read).
+export default function RealJobDetail({ jobId: jobIdProp }) {
+  const { jobId: jobIdParam } = useParams();
+  const jobId = jobIdProp ?? jobIdParam;
   const [job, setJob] = useState(undefined); // undefined = loading, null = not found
   const { preferences, savedConnections, coffeeChatStatus, prepLogged, profileOverrides, savedJobIds, toggleSavedJob, trackedJobs, addToTracker } =
     useAppState();

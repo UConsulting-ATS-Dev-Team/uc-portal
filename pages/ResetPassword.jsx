@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../data/supabaseClient.js";
 import ThemeToggle from "../components/theme/ThemeToggle.jsx";
-import bearMark from "../assets/uc-bear-mark-navy.png";
+import { useTheme } from "../components/theme/ThemeContext.jsx";
+import bearMarkNavy from "../assets/uc-bear-mark-navy.png";
+import bearMarkWhite from "../assets/uc-bear-mark-white.png";
 import "../styles/auth.css";
 
 // Landing page for the link in a "reset your password" email --
@@ -21,6 +23,8 @@ export default function ResetPassword() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  const { resolvedTheme } = useTheme();
+  const bearMark = resolvedTheme === "dark" ? bearMarkWhite : bearMarkNavy;
 
   useEffect(() => {
     let active = true;

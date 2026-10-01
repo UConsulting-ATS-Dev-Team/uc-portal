@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Modal from "../Modal.jsx";
 import { submitInterviewWriteup } from "../../data/realWriteups.js";
+import { submitContribution } from "../../data/contributionsSync.js";
 import { currentUser } from "../../data/mockUser.js";
 import { useAppState } from "../../data/store.jsx";
 import { displayName } from "../../data/profileUtils.js";
@@ -11,13 +12,13 @@ const CATEGORIES = ["Resume", "Cover letter", "Consulting cases", "Behavioral", 
 const OUTCOMES = ["Offer", "Rejected", "Withdrew", "Still in process"];
 const NOTE_LIMIT = 1500;
 
-// Every type except "Interview write-up" is still exactly what CLAUDE.md's
-// Progress entry describes: RESOURCES is a static reference list, not
-// stored state, so those paths just validate and show the in-modal
-// "Published" state honestly rather than pretending a static list gained a
-// permanent new entry. "Interview write-up" is now the real exception --
-// it writes a real row to interview_writeups (see that migration), tied to
-// a real job when opened from one.
+// Every type now really persists. "Interview write-up" writes to the
+// existing real interview_writeups table (tied to a real job when opened
+// from one, see that migration) -- every other type (Company guide,
+// Resource/guide, Question, Event, Job posting) writes to
+// library_contributions, a new generic table (see its own migration)
+// since RESOURCES itself is still a static reference list, not a real
+// backing store for user-submitted content.
 //
 // `job` (optional) is the real job {id, company} this was opened from
 // (RealJobDetail.jsx's "Share your experience" button) -- when present the
@@ -49,23 +50,31 @@ export default function ContributeModal({ onClose, job }) {
   const canPublish = title.trim() && body.trim() && (!isWriteup || effectiveCompany.trim()) && !submitting;
 
   async function handlePublish() {
-    if (!isWriteup) {
-      setPublished(true);
-      return;
-    }
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await submitInterviewWriteup({
-        jobId: job?.id ?? null,
-        company: effectiveCompany,
-        title,
-        round,
-        outcome,
-        body,
-        isAnonymous: anonymous,
-        submitterName: displayName(currentUser, profileOverrides),
-      });
+      if (isWriteup) {
+        await submitInterviewWriteup({
+          jobId: job?.id ?? null,
+          company: effectiveCompany,
+          title,
+          round,
+          outcome,
+          body,
+          isAnonymous: anonymous,
+          submitterName: displayName(currentUser, profileOverrides),
+        });
+      } else {
+        await submitContribution({
+          type,
+          title,
+          body,
+          company: effectiveCompany,
+          categories,
+          isAnonymous: anonymous,
+          submitterName: displayName(currentUser, profileOverrides),
+        });
+      }
       setPublished(true);
     } catch (err) {
       setSubmitError(err.message);
@@ -86,7 +95,7 @@ export default function ContributeModal({ onClose, job }) {
           <p className="meta" style={{ fontWeight: 400, marginTop: "var(--space-3)" }}>
             {isWriteup
               ? `${anonymous ? "Posted anonymously." : "Posted under your name."} Visible now on ${effectiveCompany}'s real job listings.`
-              : `${anonymous ? "Posted anonymously." : "Posted under your name."} It'll be visible to Exec for the library shortly.`}
+              : `${anonymous ? "Posted anonymously." : "Posted under your name."} Now part of the real library on Career Resources.`}
           </p>
         </div>
       </Modal>

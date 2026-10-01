@@ -26,6 +26,9 @@ function rowsToLocalMaps(rows) {
       stageHistory: row.stage_history,
       outcome: row.outcome ?? null,
       rejectionStage: row.rejection_stage ?? null,
+      manualCompany: row.manual_company ?? null,
+      manualRole: row.manual_role ?? null,
+      manualUrl: row.manual_url ?? null,
     };
     if (row.prep_logged_hours) prepLogged[row.job_id] = row.prep_logged_hours;
     if (row.timeline_shift_days) timelineShiftDays[row.job_id] = row.timeline_shift_days;
@@ -85,6 +88,9 @@ export async function syncTrackedApplicationToRemote(jobId, record) {
       timeline_shift_days: record.timelineShiftDays ?? 0,
       outcome: record.outcome ?? null,
       rejection_stage: record.rejectionStage ?? null,
+      manual_company: record.manualCompany ?? null,
+      manual_role: record.manualRole ?? null,
+      manual_url: record.manualUrl ?? null,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "member_id,job_id" }

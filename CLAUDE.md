@@ -4594,6 +4594,122 @@ longer breaks down to phone width either.
   call genuinely took effect, not just a client-side success message).
   Cleaned up completely afterward. `vite build`: clean.
 
+- **Final-product push before the presentation: all remaining known-inert
+  buttons closed out, real jobs only** — direct, time-boxed ask ("this is
+  supposed to be the final product today"), 12 items:
+
+  1. **Google OAuth button removed** (`SignIn.jsx`) -- direct instruction,
+     not pursuing it.
+  2. **Mock jobs eliminated from the live app entirely** -- the real,
+     biggest architectural change here. `/jobs/:jobId` used to dispatch
+     to `JobDetail.jsx` (8 hand-authored demo jobs) with a UUID-shape
+     check that delegated to `RealJobDetail.jsx` only for a real job;
+     `JobDetail.jsx` is now deleted outright and the route points
+     directly at `RealJobDetail.jsx` (which now reads its own `useParams()`
+     when not given a `jobId` prop). A member can no longer reach a mock
+     job detail page through any real navigation path. `data/mockJobs.js`
+     itself and the ~13 files that still import it as a defensive
+     tracked-job-lookup fallback (now unreachable in practice, since
+     `SEED_TRACKED_JOBS` is already `{}`) were deliberately left alone --
+     out of scope, zero user-facing effect once the route itself can
+     never render one.
+  3. **"Export report" removed** from Admin Dashboard (was already
+     honestly disabled -- direct instruction to drop it rather than build
+     it).
+  4. **Admin's duplicate "Accelerator" nav tab fixed** -- admins used to
+     see two: the main section's student-facing one (`/accelerator`) and
+     Leadership's real admin one (`/admin/accelerator`). New
+     `mainItemsFor()` (`data/navItems.js`, shared by `NavRail.jsx` and
+     `BottomTabBar.jsx` so the "which items does this account see" logic
+     lives in exactly one place) drops the main-section entry for admins
+     specifically.
+  5. **Email-alert/calendar-sync buttons give real feedback on click** --
+     new `components/ComingSoonButton.jsx` (toggles its own label to a
+     real message for a few seconds, same pattern `MyProfile.jsx`'s "Save
+     changes" -> "Saved ✓" already uses) replaces three previously-silent
+     `disabled` buttons (Jobs' "Save as an alert", the tracker's "Sync
+     deadlines to calendar", Feed's "Add to calendar") -- a click is never
+     silently ignored now, without pretending the feature exists.
+  6. **Add Application's "Paste a link"/"Enter manually" now really
+     work** -- new `manual_company`/`manual_role`/`manual_url` columns on
+     `tracked_applications` (still just a loosely-typed `job_id text`,
+     no FK -- a manual entry is a natural third kind alongside real/mock,
+     not a new concept) + `data/manualApplications.js`'s
+     `jobForManualEntry()`, a shared resolver wired into every place that
+     already did real-job-then-mock-job fallback lookups (`Applications.jsx`
+     -- the one choke point all 3 tracker views read from -- and
+     `Home.jsx`). `TrackerBoard.jsx`/`TrackerTable.jsx` link out to the
+     member's own pasted URL instead of `/jobs/:id` for a manual entry
+     (there's no real jobs row to link to). Verified live: added "Acme
+     Testing Co / Summer Analyst" via Enter Manually, confirmed it
+     rendered correctly on both Board and Table with real company/role
+     and no "undefined" anywhere.
+  7. **Career Resources certifications are real** -- direct ask ("find
+     real certifications... clicking should actually take the user to the
+     said certification"). Verified each of the 4 kept entries live via
+     web search before linking (titles/providers corrected to match the
+     real course, not guessed -- the CFI entry's original title didn't
+     match any real CFI course, fixed to "Introduction to 3-Statement
+     Financial Modeling," CFI's actual free-preview course). The 5th mock
+     entry ("AI Tools for Case Prep," a UC-internal workshop with no real
+     external site) was dropped rather than faked with a fake link.
+  8. **Resource guide content is real and admin-editable** -- new
+     `resource-guides` Storage bucket + `resource_guide_files` table
+     (same admin-upload-content pattern `accelerator-materials` already
+     proved), seeded with one real generated 1-page placeholder PDF
+     (reportlab, UC-branded) as the shared default every resource falls
+     back to until an admin uploads something specific. "Open guide"/
+     "Download PDF" are real links now; a new admin-only inline upload
+     control on `ResourceDetail.jsx` lets an admin replace the file per
+     resource -- exactly the mechanism needed to drop in the real
+     slideshows before members see this for real.
+  9. **Contribute-to-the-library: every type now really persists** --
+     new `library_contributions` table (same member-submitted/
+     authenticated-read/own-row-write shape as `feed_posts`) for the 5
+     types that weren't "Interview write-up" (which already had its own
+     real table). New "Member contributions" section on Career Resources
+     displays them for real -- hidden while empty, not a bare "no data."
+  10. **Real self-view preview mode** -- `MyProfile.jsx`'s "View as
+      others see it" resolves the signed-in member's own real Directory
+      row by email (`fetchDirectoryPrefill()`, the same real lookup
+      Directory auto-fill already uses) and routes to the exact
+      `/network/:personId` real members land on. An account with no
+      Directory match (e.g. an admin test account) gets an honest
+      message, not a silent no-op.
+  11. **Real "Post announcement"** -- reuses the real `feed_posts`
+      pipeline with a new `post_type` value rather than a parallel table.
+      Real DB-level guard (`prevent_non_admin_announcement()` trigger),
+      not just a UI that hides the option -- same "defense in depth"
+      precedent `prevent_role_self_escalation()` already set, since
+      `feed_posts_insert_own`'s own RLS has no restriction on which
+      `post_type` an author can use. New
+      `components/modals/PostAnnouncementModal.jsx`; Feed.jsx pins
+      Announcement posts to the top (stable sort, real posts otherwise
+      stay in their real `created_at desc` order) with distinct styling
+      (accent left border, "📌 Announcement" chip). Verified live: posted
+      a real announcement as admin, confirmed it landed pinned at the top
+      of the real Feed with the right styling.
+  12. **Dark-mode logo fix** -- the navy bear mark was nearly invisible
+      against a dark background. Pulled the real `UCBearLogoAlt.jpg` from
+      the club's Drive (same Club Branding folder CLAUDE.md's own style-
+      guide provenance already names) to confirm it's the exact same
+      source artwork (same pose, same stray baked-in "U" glyph) already
+      processed into `assets/uc-bear-mark-white.png` months ago -- so
+      reused that existing asset rather than reprocessing, no new image
+      work needed. All 4 places the mark renders (`TopBar.jsx`,
+      `SignIn.jsx`, `Onboarding.jsx`, `ResetPassword.jsx`) now read
+      `useTheme().resolvedTheme` and swap to the white mark whenever dark
+      mode is resolved (including via "system"). Verified live via
+      `getComputedStyle`/DOM inspection: toggling dark mode correctly
+      swapped the real `<img>` src to the white asset.
+
+  All 12 verified live end-to-end with one throwaway admin account
+  (manual tracker entry, real job routing, nav tab count, dark-mode logo
+  swap, real announcement posting and display) rather than just a clean
+  build, then fully cleaned up -- zero residue confirmed
+  (`residue_auth=0 residue_roster=0 residue_feed=0 roster_total=53`).
+  `vite build`: clean throughout every step.
+
 Run locally:
 ```bash
 npm install

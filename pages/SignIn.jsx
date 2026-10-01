@@ -4,7 +4,9 @@ import Skeleton from "../components/Skeleton.jsx";
 import { useAppState } from "../data/store.jsx";
 import { supabase } from "../data/supabaseClient.js";
 import ThemeToggle from "../components/theme/ThemeToggle.jsx";
-import bearMark from "../assets/uc-bear-mark-navy.png";
+import { useTheme } from "../components/theme/ThemeContext.jsx";
+import bearMarkNavy from "../assets/uc-bear-mark-navy.png";
+import bearMarkWhite from "../assets/uc-bear-mark-white.png";
 import "../styles/auth.css";
 
 // Wireframe 3a — four states: sign-in, not-on-roster, access-pending,
@@ -26,8 +28,8 @@ import "../styles/auth.css";
 // access_requests (admin-reviewable on Admin Dashboard) instead of just a
 // local state transition -- now genuinely a fallback for someone not
 // found in the real Directory at all, since a real alumnus who *is* in it
-// can just sign up directly and succeed. Google sign-in is still
-// genuinely out of scope (button stays honestly disabled below).
+// can just sign up directly and succeed. Google sign-in was explored and
+// dropped -- direct instruction -- so this is email/password only now.
 const STATE = {
   SIGN_IN: "sign-in",
   LOADING: "loading",
@@ -36,6 +38,8 @@ const STATE = {
 };
 
 function Brand() {
+  const { resolvedTheme } = useTheme();
+  const bearMark = resolvedTheme === "dark" ? bearMarkWhite : bearMarkNavy;
   return (
     <>
       {/* Fixed to the viewport corner, not the (centered, variable-width)
@@ -396,12 +400,6 @@ export default function SignIn() {
         <div className="auth__card">
           <h1 className="auth__title">{mode === "sign-in" ? "Sign in" : "Create your account"}</h1>
           <p className="auth__subtitle">UC Portal is private to UConsulting members and alumni.</p>
-
-          <button className="btn btn-primary" style={{ width: "100%" }} disabled title="Google sign-in isn't set up yet">
-            Continue with your university Google account
-          </button>
-
-          <div className="auth__divider">or</div>
 
           {confirmNotice && (
             <p className="auth__note" style={{ color: "var(--color-accent)" }}>

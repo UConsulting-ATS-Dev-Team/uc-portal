@@ -60,6 +60,19 @@ export const INTERN_ITEMS = [
   { label: "My Profile", to: "/profile", icon: CircleUserRound },
 ];
 
+// Shared by NavRail.jsx and BottomTabBar.jsx so the "which main items does
+// this account see" logic lives in exactly one place. Admins drop the main
+// section's student-facing Accelerator entry (/accelerator) -- they
+// already get the real admin-facing one in LEADERSHIP_ITEMS
+// (/admin/accelerator), and showing both looked like two different,
+// confusing "Accelerator" tabs pointing at two different pages.
+export function mainItemsFor({ isIntern, isAlumni, isAdmin }) {
+  if (isIntern) return INTERN_ITEMS;
+  if (isAlumni) return MAIN_ITEMS.filter((item) => !item.currentMemberOnly);
+  if (isAdmin) return MAIN_ITEMS.filter((item) => item.to !== "/accelerator");
+  return MAIN_ITEMS;
+}
+
 export const LEADERSHIP_ITEMS = [
   { label: "Admin Dashboard", to: "/admin", icon: LayoutDashboard },
   { label: "Job sources", to: "/admin/opportunities", icon: Database },

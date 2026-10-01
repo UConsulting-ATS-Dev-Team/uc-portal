@@ -4,6 +4,7 @@ import { MapPin } from "lucide-react";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
 import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
+import { isManualJobId, jobForManualEntry } from "../data/manualApplications.js";
 import { fetchFeedPosts, feedRowToPost } from "../data/feedSync.js";
 import { listOpenToCoffeeChatMembers } from "../data/messagesSync.js";
 import { computeProfileStrength, displayName, resolvedClassYear } from "../data/profileUtils.js";
@@ -91,7 +92,14 @@ export default function Home() {
   // ids, meant to keep the tracker non-empty on first load) -- checks
   // real jobs first, falls back to mock, so either kind resolves.
   const trackedEntries = Object.entries(trackedJobs)
-    .map(([jobId, info]) => ({ jobId, job: realJobs.find((j) => j.id === jobId) || MOCK_JOBS.find((j) => j.id === jobId), ...info }))
+    .map(([jobId, info]) => ({
+      jobId,
+      job:
+        realJobs.find((j) => j.id === jobId) ||
+        MOCK_JOBS.find((j) => j.id === jobId) ||
+        (isManualJobId(jobId) ? jobForManualEntry(jobId, info) : null),
+      ...info,
+    }))
     .filter((e) => e.job);
 
   // First login / nothing tracked yet -- empty state per wireframe 3e.

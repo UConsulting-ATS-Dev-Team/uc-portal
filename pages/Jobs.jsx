@@ -14,6 +14,7 @@ import { currentUser } from "../data/mockUser.js";
 import { resolvedClassYear } from "../data/profileUtils.js";
 import { parseJobQuery } from "../data/nlSearchParser.js";
 import { useSwipeTabs } from "../data/useSwipeTabs.js";
+import ComingSoonButton from "../components/ComingSoonButton.jsx";
 import "../styles/jobs.css";
 import "../styles/search.css";
 import "../styles/home.css";
@@ -715,12 +716,9 @@ export default function Jobs() {
                   <button className="btn btn-secondary" onClick={() => setFilters(NEUTRAL_FILTERS)}>
                     Clear all filters
                   </button>
-                  {/* No email/alert infrastructure exists in this
-                      prototype -- the line below used to promise
-                      something clicking this button can't actually do. */}
-                  <button className="btn btn-secondary" disabled title="Not built yet -- no email alerts exist in this prototype">
+                  <ComingSoonButton className="btn btn-secondary" message="Email alerts are coming soon">
                     Save as an alert
-                  </button>
+                  </ComingSoonButton>
                 </div>
               </>
             ) : (
