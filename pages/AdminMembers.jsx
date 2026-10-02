@@ -4,6 +4,23 @@ import { graduateIntern } from "../data/acceleratorSync.js";
 import "../styles/jobDetail.css";
 import "../styles/admin.css";
 
+// Real ask: showing role (Admin/Member) and member_status (Current member/
+// Alumni/Intern) as two separate chips read as overcomplicated, since in
+// practice they're not independent -- every real admin is a current
+// member (no alumni or intern is ever promoted to admin), so "Admin" +
+// "Current member" is redundant, and every alumni/intern account is
+// already known not to be an admin, so showing "Member" alongside
+// "Alumni"/"Intern" adds nothing. One label per account, in the order
+// that actually matters: Admin overrides everything (an admin's
+// member_status is always current_member in real usage); otherwise the
+// real member_status speaks for itself.
+function roleStatusLabel(member) {
+  if (member.role === "admin") return "Admin";
+  if (member.member_status === "alumni") return "Alumni";
+  if (member.member_status === "intern") return "Intern";
+  return "Current member";
+}
+
 // Real member list + promote/demote, closing the gap flagged directly:
 // "make it so admins can promote other accounts to admin." Reads via
 // list_members() (a security definer function, same pattern as this
@@ -97,13 +114,8 @@ export default function AdminMembers() {
                     <td className="meta">
                       {new Date(m.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
                     </td>
-                    <td style={{ display: "flex", gap: "var(--space-2)" }}>
-                      <span className={`chip${m.role === "admin" ? " chip-accent" : ""}`}>
-                        {m.role === "admin" ? "Admin" : "Member"}
-                      </span>
-                      <span className="chip">
-                        {m.member_status === "current_member" ? "Current member" : m.member_status === "alumni" ? "Alumni" : "Intern"}
-                      </span>
+                    <td>
+                      <span className={`chip${m.role === "admin" ? " chip-accent" : ""}`}>{roleStatusLabel(m)}</span>
                     </td>
                     <td style={{ display: "flex", gap: "var(--space-2)" }}>
                       <button

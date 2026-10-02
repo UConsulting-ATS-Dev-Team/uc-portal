@@ -4991,6 +4991,30 @@ longer breaks down to phone width either.
   the throwaway account completely afterward; confirmed zero residue:
   `residue_auth=0 residue_roster=0 roster_total=53`.
 
+- **Members' Role & status column collapsed to one real label; a visible
+  dropdown indicator added to View As** — direct follow-up after seeing
+  the merged column still showed two chips (e.g. "Admin" + "Current
+  member", or "Member" + "Intern") and a report that the View As chip
+  didn't read as clickable. Role and member_status aren't actually
+  independent in real usage -- every admin is a current member (no
+  alumni or intern is ever promoted to admin), and every alumni/intern
+  account is already known not to be an admin -- so showing both was
+  redundant, not just visually busy. `pages/AdminMembers.jsx`'s new
+  `roleStatusLabel()` picks exactly one: "Admin" overrides everything
+  real admin accounts actually show today, otherwise the real
+  member_status speaks for itself ("Current member"/"Alumni"/"Intern").
+  `ViewAsMenu.jsx` gained a real `lucide-react` `ChevronDown` next to the
+  chip's label, rotating 180° while the menu is open -- a plain chip
+  with no visual affordance genuinely didn't read as clickable.
+
+  Verified live with a throwaway admin account: every real admin row
+  (5 of them) now shows exactly "Admin," the real intern account
+  (jflowenberg@icloud.com) shows exactly "Intern," and the chevron
+  renders and rotates on click (confirmed via a live computed-style
+  check mid-transition, not just that the class toggled). `vite build`:
+  clean. Cleaned up the throwaway account completely afterward; confirmed
+  zero residue (`residue_auth=0 residue_roster=0 roster_total=53`).
+
 Run locally:
 ```bash
 npm install

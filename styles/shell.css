@@ -150,6 +150,17 @@
 .view-as-menu > button {
   border: var(--border-hairline);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.view-as-menu__chevron {
+  transition: transform 0.15s ease;
+}
+
+.view-as-menu__chevron.is-open {
+  transform: rotate(180deg);
 }
 
 .view-as-menu__panel {

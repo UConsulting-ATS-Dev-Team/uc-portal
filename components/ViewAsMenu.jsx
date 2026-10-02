@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useAppState } from "../data/store.jsx";
 
 const OPTIONS = [
@@ -35,6 +36,10 @@ export default function ViewAsMenu() {
         title={viewAsOverride ? "Simulated view -- your real account is still an admin" : "Click to preview another member type's view"}
       >
         {viewAsOverride ? `Viewing as: ${current.label}` : "Admin"}
+        {/* Real ask: nothing about a plain chip read as clickable --
+            a visible chevron is the standard "this opens a menu" signal,
+            rotating 180° while open so it also confirms the state. */}
+        <ChevronDown size={14} strokeWidth={2} className={`view-as-menu__chevron${open ? " is-open" : ""}`} aria-hidden="true" />
       </button>
       {open && (
         <div className="view-as-menu__panel" role="menu" onMouseLeave={() => setOpen(false)}>
