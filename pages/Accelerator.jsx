@@ -3,12 +3,16 @@ import {
   fetchLessons,
   fetchMaterials,
   fetchOwnSubmissions,
-  materialUrl,
+  materialHref,
   submitAssignment,
   uploadSubmissionFile,
 } from "../data/acceleratorSync.js";
 import "../styles/jobDetail.css";
 import "../styles/resources.css";
+
+function formatLessonDate(dateStr) {
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
 
 // Real accelerator program timeline -- see the intern_accelerator
 // migration's own header comment. Sequential unlock (a lesson is locked
@@ -23,14 +27,15 @@ function LessonMaterials({ lessonId }) {
   useEffect(() => {
     fetchMaterials(lessonId).then(setMaterials).catch(() => {});
   }, [lessonId]);
-  if (materials.length === 0) return <p className="meta">No prep material uploaded yet.</p>;
+  if (materials.length === 0) return <p className="meta">No prep material added yet.</p>;
   return (
     <ul style={{ margin: 0, paddingLeft: "var(--space-6)" }}>
       {materials.map((m) => (
         <li key={m.id}>
-          <a href={materialUrl(m.file_path)} target="_blank" rel="noreferrer">
+          <a href={materialHref(m)} target="_blank" rel="noreferrer">
             {m.file_name}
           </a>
+          {m.link_url && <span className="meta"> (link)</span>}
         </li>
       ))}
     </ul>
@@ -116,6 +121,17 @@ export default function Accelerator() {
   const submissionByLesson = new Map(submissions.map((s) => [s.lesson_id, s]));
   const submittedCount = lessons.filter((l) => submissionByLesson.has(l.id)).length;
 
+  // Real "due soon" notification -- the one surface an intern has for this,
+  // since the dedicated Notifications page is route-guarded away from them
+  // (components/RequireNotIntern.jsx). Same unlocked-and-not-yet-submitted
+  // gate as the lesson list itself, and the same <=7-day window
+  // jobUtils.js's isUrgent() already uses elsewhere in this app.
+  const dueSoon = lessons
+    .map((lesson, i) => ({ lesson, i, prevSubmitted: i === 0 || submissionByLesson.has(lessons[i - 1]?.id) }))
+    .filter(({ lesson, prevSubmitted }) => prevSubmitted && !submissionByLesson.has(lesson.id))
+    .map(({ lesson, i }) => ({ lesson, i, days: Math.ceil((new Date(`${lesson.lesson_date}T00:00:00`) - new Date()) / 86400000) }))
+    .filter(({ days }) => days <= 7);
+
   return (
     <div>
       <div className="detail-header" style={{ display: "block" }}>
@@ -128,6 +144,21 @@ export default function Accelerator() {
           {submittedCount} / {lessons.length} lessons submitted
         </p>
       </div>
+
+      {dueSoon.map(({ lesson, i, days }) => (
+        <div key={lesson.id} className="rail-card is-accent" style={{ marginBottom: "var(--space-4)" }}>
+          <div className="rail-card__title">
+            {days < 0
+              ? `Week ${i + 1} — "${lesson.title}" is overdue`
+              : days === 0
+                ? `Week ${i + 1} — "${lesson.title}" is due today`
+                : `Week ${i + 1} — "${lesson.title}" is due in ${days} day${days === 1 ? "" : "s"}`}
+          </div>
+          <p style={{ margin: 0 }} className="meta">
+            Due {formatLessonDate(lesson.lesson_date)} — scroll down and submit below.
+          </p>
+        </div>
+      ))}
 
       <div className="detail-section">
         {loading && <p className="meta">Loading…</p>}
@@ -143,9 +174,10 @@ export default function Accelerator() {
             <div className={`step-row${isExpanded ? " is-current" : ""}`} key={lesson.id} style={{ display: "block" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
                 <span>{isDone ? "✓" : "○"}</span>
-                <span className="step-row__number">Week {lesson.week_number}</span>
+                <span className="step-row__number">Week {i + 1}</span>
                 <div className="step-row__body">
                   <div className="step-row__title">{lesson.title}</div>
+                  <div className="step-row__detail meta">Due {formatLessonDate(lesson.lesson_date)}</div>
                   {lesson.topic_overview && <div className="step-row__detail">{lesson.topic_overview}</div>}
                 </div>
                 <div className="step-row__state">

@@ -86,7 +86,7 @@ export default function BottomTabBar() {
             <ul className="bottom-tab-bar__more-list">
               {moreItems.map(({ label, to, icon: Icon, badge }) => (
                 <li key={to}>
-                  <NavLink to={to} role="menuitem" onClick={() => setMoreOpen(false)} className={({ isActive }) => (isActive ? "is-active" : "")}>
+                  <NavLink to={to} end={to === "/"} role="menuitem" onClick={() => setMoreOpen(false)} className={({ isActive }) => (isActive ? "is-active" : "")}>
                     <Icon size={18} strokeWidth={1.5} aria-hidden="true" />
                     <span>{label}</span>
                     {badge && badge(trackedJobs) > 0 && <span className="bottom-tab-bar__badge">{badge(trackedJobs)}</span>}
@@ -101,7 +101,11 @@ export default function BottomTabBar() {
                 <ul className="bottom-tab-bar__more-list">
                   {LEADERSHIP_ITEMS.map(({ label, to, icon: Icon }) => (
                     <li key={to}>
-                      <NavLink to={to} role="menuitem" onClick={() => setMoreOpen(false)} className={({ isActive }) => (isActive ? "is-active" : "")}>
+                      {/* "/admin" is a real path-prefix of every other
+                          Leadership route -- without "end" it stayed
+                          highlighted on all of them, same bug as
+                          NavRail.jsx's identical fix. */}
+                      <NavLink to={to} end={to === "/admin"} role="menuitem" onClick={() => setMoreOpen(false)} className={({ isActive }) => (isActive ? "is-active" : "")}>
                         <Icon size={18} strokeWidth={1.5} aria-hidden="true" />
                         <span>{label}</span>
                       </NavLink>

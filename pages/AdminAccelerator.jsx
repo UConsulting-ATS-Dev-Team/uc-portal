@@ -6,8 +6,9 @@ import {
   updateLesson,
   deleteLesson,
   fetchMaterials,
-  materialUrl,
+  materialHref,
   uploadMaterial,
+  addMaterialLink,
   deleteMaterial,
   fetchSubmissionsForLesson,
   getSubmissionFileSignedUrl,
@@ -21,7 +22,7 @@ import {
 import "../styles/jobDetail.css";
 import "../styles/admin.css";
 
-const EMPTY_FORM = { weekNumber: "", title: "", topicOverview: "" };
+const EMPTY_FORM = { lessonDate: "", title: "", topicOverview: "" };
 
 function InternRoster() {
   const [entries, setEntries] = useState([]);
@@ -254,6 +255,9 @@ function InternProgress() {
 function LessonManager({ lesson, onChanged }) {
   const [materials, setMaterials] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [linkLabel, setLinkLabel] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [addingLink, setAddingLink] = useState(false);
   const [submissions, setSubmissions] = useState([]);
   const [namesById, setNamesById] = useState(new Map());
   const [error, setError] = useState(null);
@@ -294,26 +298,57 @@ function LessonManager({ lesson, onChanged }) {
     loadMaterials();
   }
 
+  async function handleAddLink() {
+    if (!linkUrl.trim()) return;
+    setAddingLink(true);
+    setError(null);
+    try {
+      await addMaterialLink(lesson.id, linkLabel, linkUrl.trim());
+      setLinkLabel("");
+      setLinkUrl("");
+      loadMaterials();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setAddingLink(false);
+    }
+  }
+
   return (
     <div className="detail-section" style={{ marginTop: "var(--space-6)" }}>
       <h2>{lesson.title}</h2>
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
 
-      <p style={{ fontWeight: 700 }}>Prep material</p>
+      <p style={{ fontWeight: 700 }}>Prep material (slideshows, PDFs, links)</p>
       <ul>
         {materials.map((m) => (
           <li key={m.id}>
-            <a href={materialUrl(m.file_path)} target="_blank" rel="noreferrer">
+            <a href={materialHref(m)} target="_blank" rel="noreferrer">
               {m.file_name}
             </a>{" "}
+            {m.link_url && <span className="meta">(link)</span>}{" "}
             <button className="btn-link" onClick={() => handleDeleteMaterial(m)}>
               Remove
             </button>
           </li>
         ))}
-        {materials.length === 0 && <li className="meta">Nothing uploaded yet.</li>}
+        {materials.length === 0 && <li className="meta">Nothing added yet.</li>}
       </ul>
       <input type="file" onChange={handleUpload} disabled={uploading} accept=".pdf,.ppt,.pptx,.xls,.xlsx" />
+
+      <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "flex-end", marginTop: "var(--space-4)" }}>
+        <div className="field" style={{ flex: "1 1 180px" }}>
+          <label>Link label (optional)</label>
+          <input type="text" value={linkLabel} onChange={(e) => setLinkLabel(e.target.value)} placeholder="e.g. Slide deck" />
+        </div>
+        <div className="field" style={{ flex: "1 1 260px" }}>
+          <label>Link URL</label>
+          <input type="url" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://…" />
+        </div>
+        <button className="btn btn-secondary" onClick={handleAddLink} disabled={addingLink || !linkUrl.trim()}>
+          {addingLink ? "Adding…" : "Add link"}
+        </button>
+      </div>
 
       <p style={{ fontWeight: 700, marginTop: "var(--space-6)" }}>Submissions ({submissions.length})</p>
       <div className="queue-table__scroll">
@@ -369,7 +404,7 @@ export default function AdminAccelerator() {
 
   function startEdit(lesson) {
     setEditingId(lesson.id);
-    setForm({ weekNumber: lesson.week_number, title: lesson.title, topicOverview: lesson.topic_overview || "" });
+    setForm({ lessonDate: lesson.lesson_date, title: lesson.title, topicOverview: lesson.topic_overview || "" });
   }
 
   function cancelEdit() {
@@ -380,17 +415,23 @@ export default function AdminAccelerator() {
   async function saveLesson() {
     setError(null);
     try {
-      if (!form.weekNumber || !form.title.trim()) {
-        setError("Week number and title are required.");
+      if (!form.lessonDate || !form.title.trim()) {
+        setError("Date and title are required.");
         return;
       }
       if (editingId) {
-        await updateLesson(editingId, { weekNumber: Number(form.weekNumber), title: form.title.trim(), topicOverview: form.topicOverview.trim() });
+        await updateLesson(editingId, { lessonDate: form.lessonDate, title: form.title.trim(), topicOverview: form.topicOverview.trim() });
+        cancelEdit();
+        load();
       } else {
-        await createLesson({ weekNumber: Number(form.weekNumber), title: form.title.trim(), topicOverview: form.topicOverview.trim() });
+        // Jump straight into that lesson's own Manage panel once created --
+        // real ask: attaching files/links should feel like one continuous
+        // flow right after title/topic, not a separate click to find it.
+        const created = await createLesson({ lessonDate: form.lessonDate, title: form.title.trim(), topicOverview: form.topicOverview.trim() });
+        cancelEdit();
+        load();
+        setSelectedId(created.id);
       }
-      cancelEdit();
-      load();
     } catch (err) {
       setError(err.message);
     }
@@ -421,9 +462,9 @@ export default function AdminAccelerator() {
       <div className="detail-section">
         <p style={{ fontWeight: 700 }}>{editingId ? "Edit lesson" : "Add a lesson"}</p>
         <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "flex-end" }}>
-          <div className="field" style={{ width: 100 }}>
-            <label>Week #</label>
-            <input type="number" value={form.weekNumber} onChange={(e) => setForm({ ...form, weekNumber: e.target.value })} />
+          <div className="field" style={{ width: 160 }}>
+            <label>Date</label>
+            <input type="date" value={form.lessonDate} onChange={(e) => setForm({ ...form, lessonDate: e.target.value })} />
           </div>
           <div className="field" style={{ flex: "1 1 240px" }}>
             <label>Title</label>
@@ -447,11 +488,12 @@ export default function AdminAccelerator() {
       <div className="detail-section">
         {loading && <p className="meta">Loading…</p>}
         {!loading && lessons.length === 0 && <p className="meta">No lessons yet — add the first one above.</p>}
-        {lessons.map((lesson) => (
+        {lessons.map((lesson, i) => (
           <div className="step-row" key={lesson.id}>
-            <span className="step-row__number">Week {lesson.week_number}</span>
+            <span className="step-row__number">Week {i + 1}</span>
             <div className="step-row__body">
               <div className="step-row__title">{lesson.title}</div>
+              <div className="step-row__detail meta">{new Date(`${lesson.lesson_date}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</div>
               {lesson.topic_overview && <div className="step-row__detail">{lesson.topic_overview}</div>}
             </div>
             <div className="step-row__state" style={{ display: "flex", gap: "var(--space-2)" }}>

@@ -4710,6 +4710,85 @@ longer breaks down to phone width either.
   (`residue_auth=0 residue_roster=0 residue_feed=0 roster_total=53`).
   `vite build`: clean throughout every step.
 
+- **Accelerator: real calendar dates, link attachments, and due-soon
+  notifications; two real nav/chrome bugs fixed** — direct follow-up after
+  the "final product" push, prompted by a real scheduling mismatch: the
+  accelerator's real week 1 lands in the club's own quarter week 3, and a
+  lesson entered as "Week 1" read as simply wrong next to that. Lessons are
+  now scheduled by a real calendar date (`lesson_date`, a native
+  `<input type="date">` -- already this app's own established pattern,
+  e.g. `PostOpportunityModal.jsx`'s deadline field -- rather than a new
+  date-picker dependency) instead of a hand-entered week number, with
+  "Accelerator Week N" now *computed* from chronological order (position
+  in the lesson list, already sorted by `lesson_date`) wherever it's shown,
+  so it can never again disagree with the real calendar the way a manually-
+  typed number could. Migration backfills any existing rows from their old
+  `week_number` before dropping the column, safe whether the table had 0
+  or N rows.
+
+  **Prep material now supports a real link, not just an uploaded file** --
+  `accelerator_materials` gained a nullable `link_url` (with `file_path`
+  now also nullable, and a check constraint enforcing exactly one of the
+  two) -- some real prep material (a Slides deck, an article) isn't a file
+  to upload at all. `file_name` doubles as the shared display label for
+  either kind. New `addMaterialLink()`, and `materialHref()` resolves the
+  right URL for either kind in one place rather than branching at every
+  call site. Also closes a real UX gap: creating a lesson used to leave
+  attaching material a separate "Manage" click away -- `saveLesson()` now
+  auto-opens the new lesson's own Manage panel the moment it's created, so
+  attaching files/links reads as one continuous flow from the admin's side,
+  not two.
+
+  **Real "due soon" notifications for interns** -- the actual gap flagged
+  when auditing the accelerator against a Google-Classroom checklist: there
+  was no due-date concept in the schema at all, so there was nothing to
+  notify about. Since interns are route-guarded away from the dedicated
+  Notifications page entirely (`components/RequireNotIntern.jsx`),
+  `/accelerator` -- their one real destination -- is where this has to
+  live: a real inline banner for any unlocked, not-yet-submitted lesson due
+  within 7 days (same window `jobUtils.js#isUrgent()` already uses
+  elsewhere in this app), plus a real 🔔 badge in TopBar (interns
+  previously got no notification icon there at all) with a live count from
+  `fetchUpcomingDeadlineCount()`, linking straight to `/accelerator`.
+
+  **Two real, unrelated chrome bugs found and fixed while building this**:
+  (1) the nav rail's "Admin Dashboard" item stayed visually active on
+  every other Leadership route (`/admin/opportunities`, `/admin/members`,
+  etc.) -- `NavLink`'s default matching is a path-prefix match, and
+  `/admin` is a real prefix of all of them; only `to === "/"` ever got
+  `end` before this. Fixed in both `NavRail.jsx` and `BottomTabBar.jsx`'s
+  "more" sheet. (2) The "Admin mode" chip sat next to the brandmark on the
+  left, visible only on `/admin/*` routes -- it read as "a page you're on,"
+  not a fact about the signed-in account, and it only ever covered admins.
+  Replaced with a real account-status chip in the top-right (next to the
+  avatar, where the user specifically asked for it) showing the real
+  status for every account type -- Admin / Intern / Alumni / Member --
+  derived from the same `isAdmin`/`isIntern`/`isAlumni` flags everything
+  else in the nav already uses, not route-based.
+
+  Verified live end-to-end with two throwaway accounts (admin + intern,
+  same pgcrypto-bcrypt technique used throughout this project): created a
+  real lesson with a real date, confirmed the panel auto-opened into
+  Manage, added a real link as prep material and confirmed it round-tripped
+  with the real URL; confirmed via `getComputedStyle`-equivalent DOM
+  inspection that "Admin Dashboard" never carries `is-active` while on
+  `/admin/accelerator` (and "Accelerator" correctly does); signed in as the
+  intern and confirmed "Week 1" / the real date rendered correctly and no
+  banner/badge fired while the lesson was 19 days out; edited the lesson to
+  3 days out and confirmed, this time as the intern, both the real due-soon
+  banner ("Week 1 — \"Intro to Consulting\" is due in 3 days") and the
+  TopBar bell's real badge count (1) fired correctly; confirmed the
+  top-right chip read "Intern" for that account. Cleaned up both throwaway
+  accounts and the test lesson/material afterward -- caught a real mistake
+  in the cleanup itself along the way: a trailing `raise exception`
+  verification block in the *same* migration as the deletes rolled back
+  the deletes too (the same two-migration lesson this project's own
+  cron-secret verification already learned once) -- fixed by splitting
+  into a plain delete migration (committed for real) and a separate
+  read-only verify-only migration, confirming genuine zero residue:
+  `residue_auth=0 residue_roster=0 residue_intern_roster=0
+  residue_lessons=0 roster_total=53`. `vite build`: clean throughout.
+
 Run locally:
 ```bash
 npm install

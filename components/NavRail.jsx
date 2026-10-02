@@ -13,11 +13,16 @@ import { useAppState } from "../data/store.jsx";
 // badges instead of a second hand-maintained copy.
 
 function RailLink({ label, to, icon: Icon, badge }) {
+  // NavLink's default (non-"end") matching is a path-prefix match -- fine
+  // for every item here except "/admin" itself, which is a real prefix of
+  // every other Leadership route (/admin/opportunities, /admin/members,
+  // etc.), so without "end" it stayed highlighted on every one of them
+  // even when you weren't actually on the dashboard.
   return (
     <li data-tour-nav={to}>
       <NavLink
         to={to}
-        end={to === "/"}
+        end={to === "/" || to === "/admin"}
         className={({ isActive }) => `rail__link${isActive ? " is-active" : ""}`}
         title={label}
       >

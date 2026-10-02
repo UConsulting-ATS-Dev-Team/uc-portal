@@ -10,7 +10,7 @@ import { fetchAllRows } from "./fetchAllRows.js";
 // why a required submission (not a timer) is the anti-skip mechanism.
 
 export async function fetchLessons() {
-  const { data, error } = await supabase.from("accelerator_lessons").select("*").order("week_number", { ascending: true });
+  const { data, error } = await supabase.from("accelerator_lessons").select("*").order("lesson_date", { ascending: true });
   if (error) throw new Error(error.message);
   return data ?? [];
 }
@@ -30,6 +30,13 @@ export async function fetchMaterials(lessonId) {
 // URL is enough (no signed-URL machinery needed).
 export function materialUrl(filePath) {
   return supabase.storage.from("accelerator-materials").getPublicUrl(filePath).data.publicUrl;
+}
+
+// Real href for a material row regardless of kind (uploaded file vs. a
+// plain link) -- exactly one of file_path/link_url is ever set (DB check
+// constraint), so this is the one place UI code needs to branch on it.
+export function materialHref(material) {
+  return material.link_url ?? materialUrl(material.file_path);
 }
 
 export async function fetchOwnSubmissions() {
@@ -85,20 +92,20 @@ export async function getSubmissionFileSignedUrl(path) {
 // ---- Admin-only below (RLS backs every one of these regardless of what
 // the UI shows) ----
 
-export async function createLesson({ weekNumber, title, topicOverview }) {
+export async function createLesson({ lessonDate, title, topicOverview }) {
   const { data, error } = await supabase
     .from("accelerator_lessons")
-    .insert({ week_number: weekNumber, title, topic_overview: topicOverview || null })
+    .insert({ lesson_date: lessonDate, title, topic_overview: topicOverview || null })
     .select()
     .single();
   if (error) throw new Error(error.message);
   return data;
 }
 
-export async function updateLesson(id, { weekNumber, title, topicOverview }) {
+export async function updateLesson(id, { lessonDate, title, topicOverview }) {
   const { error } = await supabase
     .from("accelerator_lessons")
-    .update({ week_number: weekNumber, title, topic_overview: topicOverview || null, updated_at: new Date().toISOString() })
+    .update({ lesson_date: lessonDate, title, topic_overview: topicOverview || null, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw new Error(error.message);
 }
@@ -124,8 +131,26 @@ export async function uploadMaterial(lessonId, file) {
   return data;
 }
 
+// Real link attachment (a Slides deck, an article) alongside an uploaded
+// file -- not every real piece of prep material is a file to upload.
+// file_name doubles as the shared display label for either kind.
+export async function addMaterialLink(lessonId, label, url) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from("accelerator_materials")
+    .insert({ lesson_id: lessonId, link_url: url, file_name: label?.trim() || url, uploaded_by: user.id })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 export async function deleteMaterial(material) {
-  await supabase.storage.from("accelerator-materials").remove([material.file_path]);
+  if (material.file_path) {
+    await supabase.storage.from("accelerator-materials").remove([material.file_path]);
+  }
   const { error } = await supabase.from("accelerator_materials").delete().eq("id", material.id);
   if (error) throw new Error(error.message);
 }
@@ -152,7 +177,11 @@ export async function fetchInternProgress() {
   if (membersError) throw new Error(membersError.message);
 
   const interns = (members ?? []).filter((m) => m.member_status === "intern");
-  const lessonByWeek = new Map(lessons.map((l) => [l.id, l.week_number]));
+  // "Accelerator week" is now a computed position in the real,
+  // chronologically-ordered curriculum (fetchLessons() already sorts by
+  // lesson_date) rather than a stored, hand-entered number -- see the
+  // lesson_date migration's own comment for why.
+  const lessonByWeek = new Map(lessons.map((l, i) => [l.id, i + 1]));
 
   return interns.map((intern) => {
     const own = allSubmissions.filter((s) => s.profile_id === intern.member_id);
@@ -229,6 +258,26 @@ export async function bulkAddInternRoster(text) {
   const { error } = await supabase.from("intern_roster").upsert(rows, { onConflict: "email" });
   if (error) throw new Error(error.message);
   return rows.length;
+}
+
+// Real deadline-notification count for an intern -- the one "notification"
+// surface they have, since the dedicated Notifications page is route-
+// guarded away from them (components/RequireNotIntern.jsx). "Actionable"
+// means unlocked (the previous lesson is already submitted, so this one is
+// actually workable) and not yet submitted, with its real lesson_date
+// within 7 days -- same due-soon window as jobUtils.js's isUrgent().
+export async function fetchUpcomingDeadlineCount() {
+  const [lessons, submissions] = await Promise.all([fetchLessons(), fetchOwnSubmissions()]);
+  const submittedIds = new Set(submissions.map((s) => s.lesson_id));
+  let count = 0;
+  lessons.forEach((lesson, i) => {
+    if (submittedIds.has(lesson.id)) return;
+    const prevSubmitted = i === 0 || submittedIds.has(lessons[i - 1].id);
+    if (!prevSubmitted) return;
+    const days = Math.ceil((new Date(lesson.lesson_date) - new Date()) / 86400000);
+    if (days <= 7) count++;
+  });
+  return count;
 }
 
 // Real "graduate to current member" action -- a plain update against
