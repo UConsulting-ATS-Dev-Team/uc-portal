@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { findPerson as findMockPerson } from "../data/mockPeople.js";
 import { fetchRealPeople } from "../data/realPeople.js";
-import { capabilitiesFor } from "../data/peopleUtils.js";
 import { useAppState, SEED_COFFEE_CHAT_IDS } from "../data/store.jsx";
 import { fetchMemberAvatars } from "../data/avatarSync.js";
 import RequestCoffeeChatModal from "../components/modals/RequestCoffeeChatModal.jsx";
@@ -99,11 +97,8 @@ export default function Network() {
   const [browseAnyway, setBrowseAnyway] = useState(false);
   const [chatModalPerson, setChatModalPerson] = useState(null);
 
-  // Real UConsulting Directory data (150 active members + alumni) replaces
-  // the 13 fictional mock people as of this integration -- see
-  // JOB_ENGINE_ARCHITECTURE.md's Stage 5 entry. findPerson still checks the
-  // mock roster too (below) since a few other still-mock screens link to
-  // those ids and shouldn't 404.
+  // Real UConsulting Directory data (current members + alumni) -- see
+  // JOB_ENGINE_ARCHITECTURE.md's Stage 5 entry.
   const [PEOPLE, setPeople] = useState([]);
   const [peopleLoading, setPeopleLoading] = useState(true);
   const [avatarsByEmail, setAvatarsByEmail] = useState(new Map());
@@ -116,7 +111,7 @@ export default function Network() {
   }, []);
 
   function findPerson(id) {
-    return PEOPLE.find((p) => p.id === id) ?? findMockPerson(id);
+    return PEOPLE.find((p) => p.id === id);
   }
 
   const alumniCount = PEOPLE.filter((p) => p.status !== "Current member").length;
@@ -257,19 +252,6 @@ export default function Network() {
                   {statusLine && <div className="person-card__status">{statusLine}</div>}
                   {roleLine && <div className="person-card__role">{roleLine}</div>}
                   {metaLine && <div className="person-card__meta">{metaLine}</div>}
-                  {/* capabilitiesFor() is generated/seeded, not a real claim
-                      about this person -- fine for the remaining fictional
-                      mock people, not appropriate to show as fact on a real,
-                      named member or alum. */}
-                  {!p.isReal && (
-                    <div className="chip-row" style={{ marginBottom: "var(--space-3)" }}>
-                      {capabilitiesFor(p).map((c) => (
-                        <span className="chip" key={c}>
-                          {c}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                   <div className="person-card__actions">
                     {isMember ? (
                       // Messages.jsx's own ?personId= handling now resolves
