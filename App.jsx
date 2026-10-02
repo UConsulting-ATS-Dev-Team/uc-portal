@@ -38,6 +38,7 @@ const AdminMembers = lazy(() => import("./pages/AdminMembers.jsx"));
 const SourceManagement = lazy(() => import("./pages/SourceManagement.jsx"));
 const AdminAccelerator = lazy(() => import("./pages/AdminAccelerator.jsx"));
 const AdminContent = lazy(() => import("./pages/AdminContent.jsx"));
+const AdminLibrary = lazy(() => import("./pages/AdminLibrary.jsx"));
 
 // Lazy-loaded for a different reason than the block above (2026-09-25,
 // bundle-size pass): not one-time/Leadership-only, but "one click deeper"
@@ -279,6 +280,14 @@ function AppRoutes() {
         element={
           <NavShell>
             <LazyPage Component={AdminContent} />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/admin/library"
+        element={
+          <NavShell>
+            <LazyPage Component={AdminLibrary} />
           </NavShell>
         }
       />

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { RESOURCES, findResource } from "../data/mockResources.js";
+import { useLibrary } from "../data/useLibrary.js";
+import LogPrepModal from "../components/modals/LogPrepModal.jsx";
 import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { useAppState } from "../data/store.jsx";
 import { useRealJobs } from "../data/useRealJobs.js";
@@ -13,10 +14,11 @@ import "../styles/resources.css";
 
 export default function ResourceDetail() {
   const { resourceId } = useParams();
-  const resource = findResource(resourceId);
+  const { resources: RESOURCES, loading: libraryLoading } = useLibrary();
+  const resource = RESOURCES.find((r) => r.id === resourceId);
   const { savedResourceIds, toggleSavedResource, resourceProgress, toggleResourceSection, trackedJobs, preferences, profileOverrides, isAdmin } =
     useAppState();
-  const [hoursLogged, setHoursLogged] = useState(0);
+  const [showLogPrepModal, setShowLogPrepModal] = useState(false);
   const [guideFile, setGuideFile] = useState(undefined); // undefined = loading, null = none
   const [uploadingGuide, setUploadingGuide] = useState(false);
 
@@ -52,13 +54,17 @@ export default function ResourceDetail() {
   const { realJobs } = useRealJobs(preferences, classYear, gradMonth);
 
   if (!resource) {
-    return <Placeholder title="Resource not found" />;
+    return <Placeholder title={libraryLoading ? "Loading…" : "Resource not found"} />;
   }
+
+  // A resource with no checklist entries still gets one implicit item, so
+  // "Mark as completed" and the progress bar work the same way for every
+  // resource.
+  const sections = resource.sections.length ? resource.sections : ["Read this resource"];
 
   const isSaved = savedResourceIds.includes(resource.id);
   const done = resourceProgress[resource.id] || [];
-  const pctComplete = Math.round((done.length / resource.sections.length) * 100);
-  const pagesPerSection = Math.max(1, Math.round(resource.pages / resource.sections.length));
+  const pctComplete = Math.round((done.length / sections.length) * 100);
 
   const activeStages = ["Preparing", "Applied", "Assessment", "First round", "Final round"];
   const usedFor = Object.entries(trackedJobs)
@@ -76,7 +82,7 @@ export default function ResourceDetail() {
   const related = RESOURCES.filter((r) => r.category === resource.category && r.id !== resource.id).slice(0, 3);
 
   function markCompleted() {
-    resource.sections.forEach((_, i) => {
+    sections.forEach((_, i) => {
       if (!done.includes(i)) toggleResourceSection(resource.id, i);
     });
   }
@@ -88,35 +94,31 @@ export default function ResourceDetail() {
           <div className="detail-section">
             <div className="chip-row">
               <span className="chip">{resource.category}</span>
-              {resource.isInternal && <span className="chip chip-accent">Internal</span>}
-              <span className="chip">{resource.pages} pages</span>
+              <span className="chip">{resource.format}</span>
               <span className="chip">Updated {resource.updated}</span>
             </div>
             <h1>{resource.title}</h1>
             <p>{resource.description}</p>
-            <div className="maintainer-row">
-              <span>
-                Maintained by {resource.author} and {resource.contributors} contributors
-              </span>
-              <span>·</span>
-              <span>
-                {resource.views} views · {resource.completions} completed
-              </span>
-            </div>
+            {resource.author && (
+              <div className="maintainer-row">
+                <span>Added by {resource.author}</span>
+              </div>
+            )}
             <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "center" }}>
-              {guideFile ? (
+              {guideFile && (
                 <>
                   <a href={guideFile.url} target="_blank" rel="noreferrer" className="btn btn-primary">
                     Open guide
                   </a>
                   <a href={guideFile.url} download={guideFile.fileName} className="btn btn-secondary">
-                    Download PDF
+                    Download
                   </a>
                 </>
-              ) : (
-                <button className="btn btn-primary" disabled title="Loading guide content…">
-                  Open guide
-                </button>
+              )}
+              {resource.linkUrl && (
+                <a href={resource.linkUrl} target="_blank" rel="noreferrer" className={guideFile ? "btn btn-secondary" : "btn btn-primary"}>
+                  Open link ↗
+                </a>
               )}
               <button className="btn btn-secondary" onClick={() => toggleSavedResource(resource.id)}>
                 {isSaved ? "Saved ★" : "Save ★"}
@@ -125,6 +127,9 @@ export default function ResourceDetail() {
                 {pctComplete === 100 ? "Completed ✓" : "Mark as completed"}
               </button>
             </div>
+            {guideFile === null && !resource.linkUrl && !isAdmin && (
+              <p className="meta" style={{ marginBottom: 0 }}>No file has been attached to this resource yet.</p>
+            )}
             {isAdmin && (
               <div style={{ marginTop: "var(--space-3)" }}>
                 <label className="btn-link" style={{ cursor: "pointer" }}>
@@ -133,7 +138,7 @@ export default function ResourceDetail() {
                     : guideFile?.isSpecific
                       ? `Admin: replace guide file (currently "${guideFile.fileName}")`
                       : "Admin: upload a guide file for this resource"}
-                  <input type="file" accept=".pdf,.ppt,.pptx" onChange={handleGuideUpload} disabled={uploadingGuide} style={{ display: "none" }} />
+                  <input type="file" accept=".pdf,.ppt,.pptx,.xls,.xlsx" onChange={handleGuideUpload} disabled={uploadingGuide} style={{ display: "none" }} />
                 </label>
               </div>
             )}
@@ -141,7 +146,7 @@ export default function ResourceDetail() {
 
           <div className="detail-section">
             <h2 className="detail-section__title">Contents</h2>
-            {resource.sections.map((s, i) => (
+            {sections.map((s, i) => (
               <button
                 type="button"
                 className="checklist-section-row"
@@ -151,34 +156,28 @@ export default function ResourceDetail() {
               >
                 <span>{done.includes(i) ? "✓" : "○"}</span>
                 <span style={{ flex: 1 }}>{s}</span>
-                <span className="meta">{pagesPerSection} pages</span>
               </button>
             ))}
           </div>
 
-          <div className="detail-section" style={{ borderLeft: "var(--border-accent-emphasis)", background: "var(--color-accent-tint)" }}>
-            <h2 className="detail-section__title">UC-specific notes</h2>
-            <ul style={{ margin: 0, paddingLeft: "var(--space-6)" }}>
-              {resource.ucNotes.map((n) => (
-                <li key={n} style={{ marginBottom: "var(--space-2)" }}>
-                  {n}
-                </li>
-              ))}
-            </ul>
-          </div>
+          {resource.notes && (
+            <div className="detail-section" style={{ borderLeft: "var(--border-accent-emphasis)", background: "var(--color-accent-tint)" }}>
+              <h2 className="detail-section__title">UC-specific notes</h2>
+              <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{resource.notes}</p>
+            </div>
+          )}
         </div>
 
         <div className="detail-rail">
           <div className="rail-card">
             <div className="rail-card__title">Your progress</div>
             <div>
-              {done.length} of {resource.sections.length} sections · {pctComplete}%
+              {done.length} of {sections.length} sections · {pctComplete}%
             </div>
             <div className="progress-bar-track">
               <div className="progress-bar-fill" style={{ width: `${pctComplete}%` }} />
             </div>
-            <p className="meta">{hoursLogged} hrs logged</p>
-            <button className="btn btn-secondary" onClick={() => setHoursLogged((h) => h + 1)}>
+            <button className="btn btn-secondary" onClick={() => setShowLogPrepModal(true)}>
               Log prep time
             </button>
           </div>
@@ -202,12 +201,9 @@ export default function ResourceDetail() {
             ))}
           </div>
 
-          <div className="rail-card">
-            <div className="rail-card__title">Members who completed this</div>
-            <p style={{ margin: 0 }}>{resource.completions} UC members</p>
-          </div>
         </div>
       </div>
+      {showLogPrepModal && <LogPrepModal onClose={() => setShowLogPrepModal(false)} />}
     </div>
   );
 }

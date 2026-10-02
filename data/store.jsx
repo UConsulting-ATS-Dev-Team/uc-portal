@@ -46,8 +46,8 @@ const DEFAULT_STATE = {
   coffeeChatStatus: SEED_COFFEE_CHATS, // { [personId]: status label } -- Network (1h) "Your coffee chats"
   savedConnections: [], // personIds saved via Member profile's "Save to my network"
   savedResourceIds: [], // Career Resources (2d) "My saved"
-  resourceProgress: { "case-guide-1": [0, 1] }, // { [resourceId]: completed section indexes } -- seeded so the library isn't empty on first load
-  trackProgress: { "case-interview-track": 3 }, // { [trackId]: completed step count } -- matches the wireframe's own "3 of 12" example
+  resourceProgress: {}, // { [resourceId]: completed section indexes }
+  trackProgress: {}, // { [trackId]: completed step count }
   preferences: {
     industries: [], // ranked array of industry names, max 3
     roles: [], // max 5
