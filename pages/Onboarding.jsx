@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAppState } from "../data/store.jsx";
 import { currentUser } from "../data/mockUser.js";
-import { displayName } from "../data/profileUtils.js";
+import { displayName, resolvedClassYear, resolvedGradMonth } from "../data/profileUtils.js";
+import { useRealJobs } from "../data/useRealJobs.js";
+import { useLibrary } from "../data/useLibrary.js";
+import { fetchRealPeople } from "../data/realPeople.js";
+import { matchedJobs, upcomingDeadlineCount, matchingAlumni, alumniAtCompany, openRolesAtCompany } from "../data/onboardingStats.js";
 import { uploadResume } from "../data/resumeSync.js";
 import ThemeToggle from "../components/theme/ThemeToggle.jsx";
 import {
@@ -12,7 +16,6 @@ import {
   COMPANIES,
   RECRUITING_CYCLES,
   HELP_OPTIONS,
-  computeMatches,
 } from "../data/careerOptions.js";
 import { useTheme } from "../components/theme/ThemeContext.jsx";
 import bearMarkNavy from "../assets/uc-bear-mark-navy.png";
@@ -127,17 +130,11 @@ function StepIndustries({ industries, onToggle, onReorder }) {
 
       <ul className="ranked-list">
         {industries.map((name, i) => {
-          const info = INDUSTRIES.find((ind) => ind.name === name);
           return (
             <li className="ranked-list__item" key={name}>
               <span className="ranked-list__rank">{i + 1}</span>
               <div className="ranked-list__body">
                 <div className="ranked-list__name">{name}</div>
-                {info && info.members > 0 && (
-                  <div className="ranked-list__meta">
-                    {info.members} members · {info.alumni} alumni
-                  </div>
-                )}
               </div>
               <div className="ranked-list__controls">
                 <button type="button" onClick={() => onReorder(i, -1)} aria-label="Move up">
@@ -181,8 +178,7 @@ function StepIndustries({ industries, onToggle, onReorder }) {
   );
 }
 
-function StepRoles({ preferences, onToggleRole, onToggleLocation, onToggleFlag }) {
-  const matches = computeMatches(preferences);
+function StepRoles({ preferences, stats, onToggleRole, onToggleLocation, onToggleFlag }) {
   return (
     <>
       <div className="onboarding__kicker">Step 3 of 5</div>
@@ -239,14 +235,20 @@ function StepRoles({ preferences, onToggleRole, onToggleLocation, onToggleFlag }
       </div>
 
       <div className="payoff-card">
-        Your answers already match <span className="payoff-card__numbers">{matches.roles}</span> open roles
-        and <span className="payoff-card__numbers">{matches.alumni}</span> UC alumni.
+        {stats.loading ? (
+          "Counting what matches your answers…"
+        ) : (
+          <>
+            Your answers already match <span className="payoff-card__numbers">{stats.roles}</span> open roles
+            and <span className="payoff-card__numbers">{stats.alumni}</span> UC alumni.
+          </>
+        )}
       </div>
     </>
   );
 }
 
-function StepCompanies({ followed, onToggleFollow }) {
+function StepCompanies({ followed, onToggleFollow, people, realJobs }) {
   const [query, setQuery] = useState("");
   const filtered = COMPANIES.filter((c) => c.name.toLowerCase().includes(query.toLowerCase()));
   const exactMatch = filtered.some((c) => c.name.toLowerCase() === query.trim().toLowerCase());
@@ -273,7 +275,7 @@ function StepCompanies({ followed, onToggleFollow }) {
             <div>
               <div className="ranked-list__name">{c.name}</div>
               <div className="company-row__meta">
-                {c.alumni} UC alumni · {c.openRoles} open roles
+                {alumniAtCompany(people, c.name)} UC alumni · {openRolesAtCompany(realJobs, c.name)} open roles
               </div>
             </div>
             <button
@@ -345,12 +347,8 @@ function StepTimeline({ preferences, onSetCycle, onToggleHelp, onToggleFlag }) {
   );
 }
 
-function Completion({ preferences, profileOverrides, onFinish }) {
-  const matches = computeMatches(preferences);
-  const tracksQueued = Math.max(1, preferences.helpNeeded.length);
-  const featuredCompany = preferences.followedCompanies[0] || COMPANIES[0].name;
+function Completion({ preferences, profileOverrides, stats, firstTrackTitle, onFinish }) {
   const featuredIndustry = preferences.industries[0] || "your target industry";
-  const featuredHelp = preferences.helpNeeded[0] || "Case Interview Track";
   // First name only, for a greeting -- displayName() gives the full name
   // (real override or the mock currentUser fallback), same as every other
   // avatar in the app reads through, but "You're set up, Test Account"
@@ -364,27 +362,27 @@ function Completion({ preferences, profileOverrides, onFinish }) {
 
       <div className="completion__stats">
         <div className="completion__stat">
-          <div className="completion__stat-number">{matches.roles}</div>
+          <div className="completion__stat-number">{stats.roles}</div>
           <div className="completion__stat-label">matched roles</div>
         </div>
         <div className="completion__stat">
-          <div className="completion__stat-number">{matches.alumni}</div>
+          <div className="completion__stat-number">{stats.alumni}</div>
           <div className="completion__stat-label">alumni to meet</div>
         </div>
         <div className="completion__stat">
-          <div className="completion__stat-number">{tracksQueued}</div>
-          <div className="completion__stat-label">learning tracks queued</div>
+          <div className="completion__stat-number">{stats.tracks}</div>
+          <div className="completion__stat-label">learning tracks available</div>
         </div>
         <div className="completion__stat">
-          <div className="completion__stat-number">5</div>
-          <div className="completion__stat-label">deadlines this month</div>
+          <div className="completion__stat-number">{stats.deadlines}</div>
+          <div className="completion__stat-label">matched deadlines in the next 30 days</div>
         </div>
       </div>
 
       <ul className="completion__actions">
-        <li>Your earliest matched deadline is at {featuredCompany} — worth a look this week.</li>
-        <li>Meet a UC alum in {featuredIndustry} — {matches.alumni} are one message away.</li>
-        <li>Start the {featuredHelp} track in Career Resources.</li>
+        {stats.deadlines > 0 && <li>You have {stats.deadlines} matched deadlines coming up — worth a look this week.</li>}
+        {stats.alumni > 0 && <li>Meet a UC alum in {featuredIndustry} — {stats.alumni} are one message away.</li>}
+        <li>{firstTrackTitle ? `Start the ${firstTrackTitle} track in Career Resources.` : "Browse the guides and tracks in Career Resources."}</li>
       </ul>
 
       <p className="field-note" style={{ marginTop: 0 }}>
@@ -416,6 +414,34 @@ export default function Onboarding() {
   // lightweight one, since the store's own fetch hadn't resolved yet at
   // that exact moment).
   const isAlumni = location.state?.isAlumni ?? isAlumniFromStore;
+
+  // Real numbers for the payoff card and completion screen (see
+  // data/onboardingStats.js). Skipped entirely for alumni, whose
+  // lightweight flow shows none of them.
+  const { realJobs, jobsLoading } = useRealJobs(
+    preferences,
+    resolvedClassYear(currentUser, profileOverrides),
+    resolvedGradMonth(currentUser, profileOverrides),
+    !isAlumni
+  );
+  const { tracks } = useLibrary();
+  const [people, setPeople] = useState([]);
+  const [peopleLoading, setPeopleLoading] = useState(!isAlumni);
+  useEffect(() => {
+    if (isAlumni) return;
+    fetchRealPeople()
+      .then(setPeople)
+      .catch(() => {})
+      .finally(() => setPeopleLoading(false));
+  }, [isAlumni]);
+  const matched = matchedJobs(realJobs);
+  const stats = {
+    loading: jobsLoading || peopleLoading,
+    roles: matched.length,
+    alumni: matchingAlumni(people, preferences).length,
+    deadlines: upcomingDeadlineCount(matched),
+    tracks: tracks.length,
+  };
 
   function toggleIndustry(name) {
     const already = preferences.industries.includes(name);
@@ -507,7 +533,7 @@ export default function Onboarding() {
         </div>
         <div className="onboarding__content" style={{ marginTop: "var(--space-8)" }}>
           <Brand />
-          <Completion preferences={preferences} profileOverrides={profileOverrides} onFinish={handleFinish} />
+          <Completion preferences={preferences} profileOverrides={profileOverrides} stats={stats} firstTrackTitle={tracks[0]?.title} onFinish={handleFinish} />
         </div>
       </div>
     );
@@ -592,12 +618,13 @@ export default function Onboarding() {
         {step === 2 && (
           <StepRoles
             preferences={preferences}
+            stats={stats}
             onToggleRole={toggleRole}
             onToggleLocation={toggleLocation}
             onToggleFlag={toggleFlag}
           />
         )}
-        {step === 3 && <StepCompanies followed={preferences.followedCompanies} onToggleFollow={toggleFollow} />}
+        {step === 3 && <StepCompanies followed={preferences.followedCompanies} onToggleFollow={toggleFollow} people={people} realJobs={realJobs} />}
         {step === 4 && (
           <StepTimeline
             preferences={preferences}
