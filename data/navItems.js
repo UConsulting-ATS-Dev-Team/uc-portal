@@ -12,6 +12,7 @@ import {
   UserCog,
   FileText,
   Rocket,
+  BookOpen,
 } from "lucide-react";
 
 // Extracted out of components/NavRail.jsx so components/BottomTabBar.jsx
@@ -89,6 +90,7 @@ export const LEADERSHIP_ITEMS = [
   { label: "Job sources", to: "/admin/opportunities", icon: Database },
   { label: "Members", to: "/admin/members", icon: UserCog },
   { label: "Content", to: "/admin/content", icon: FileText },
+  { label: "Library", to: "/admin/library", icon: BookOpen },
   { label: "Accelerator", to: "/admin/accelerator", icon: Rocket },
 ];
 

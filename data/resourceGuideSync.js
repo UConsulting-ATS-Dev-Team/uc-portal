@@ -2,19 +2,15 @@ import { supabase } from "./supabaseClient.js";
 
 // Real content behind Career Resources' "Open guide"/"Download PDF" --
 // see the resource_guide_files migration's own header for the full
-// rationale. Falls back to the shared '*' default row/file when a
-// specific resource has no admin-uploaded guide of its own yet.
+// rationale.
 export async function fetchGuideFileFor(resourceId) {
-  const { data } = await supabase
-    .from("resource_guide_files")
-    .select("*")
-    .in("resource_id", [resourceId, "*"])
-    .order("resource_id", { ascending: false }) // exact match sorts before '*'
-    .limit(1)
-    .maybeSingle();
+  // Only a file an admin actually uploaded for this resource -- the old
+  // shared '*' placeholder PDF would read as real content on a real
+  // resource, so it's no longer a fallback.
+  const { data } = await supabase.from("resource_guide_files").select("*").eq("resource_id", resourceId).maybeSingle();
   if (!data) return null;
   const { data: urlData } = supabase.storage.from("resource-guides").getPublicUrl(data.file_path);
-  return { url: urlData.publicUrl, fileName: data.file_name, isSpecific: data.resource_id === resourceId };
+  return { url: urlData.publicUrl, fileName: data.file_name, isSpecific: true };
 }
 
 export async function uploadGuideFile(resourceId, file) {

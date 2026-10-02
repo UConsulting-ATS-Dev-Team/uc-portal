@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { searchAll } from "../data/searchUtils.js";
+import { useLibrary } from "../data/useLibrary.js";
 import { searchJobs } from "../data/jobSearch.js";
 import { searchRealPeople } from "../data/realPeople.js";
 import { searchRealCompanies } from "../data/realCompanies.js";
@@ -28,9 +29,8 @@ export default function GlobalSearch() {
   // Jobs come from the real jobs table (Stage 2, data/jobSearch.js) and
   // people from the real UConsulting Directory import (Stage 5, data/
   // realPeople.js), feed posts from the real feed_posts table (data/
-  // feedSync.js) -- resources still reads the mock-data layer via
-  // searchAll() (a static content library, not fabricated activity, same
-  // reasoning CLAUDE.md gives for leaving it as-is). Real jobs link to
+  // feedSync.js), resources from the real library_resources table
+  // (data/useLibrary.js). Real jobs link to
   // /jobs/:id same as mock jobs --
   // JobDetail.jsx dispatches to pages/RealJobDetail.jsx for a UUID id vs.
   // the existing mock-job render for a slug id (see that file's header
@@ -109,7 +109,14 @@ export default function GlobalSearch() {
     };
   }, [query]);
 
-  const raw = useMemo(() => searchAll(query), [query]);
+  const { resources: libraryResources } = useLibrary();
+  const raw = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const resources = q
+      ? libraryResources.filter((r) => [r.title, r.category, r.description].some((t) => t && t.toLowerCase().includes(q)))
+      : [];
+    return { ...searchAll(query), resources };
+  }, [query, libraryResources]);
 
   const results = useMemo(() => {
     let { resources } = raw;

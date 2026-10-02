@@ -10,6 +10,7 @@ import { deadlineLabel } from "../data/jobUtils.js";
 import { supabase } from "../data/supabaseClient.js";
 import { fetchFeedPosts } from "../data/feedSync.js";
 import { fetchConversations } from "../data/messagesSync.js";
+import { fetchRealPeople } from "../data/realPeople.js";
 import PullToRefresh from "../components/PullToRefresh.jsx";
 import "../styles/jobs.css";
 import "../styles/jobDetail.css";
@@ -63,6 +64,8 @@ export default function Notifications() {
   const [feedPosts, setFeedPosts] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [currentAccountId, setCurrentAccountId] = useState(null);
+  // Real directory people, so a pending coffee chat can show who it is with.
+  const [people, setPeople] = useState([]);
   // Shared by the mount fetch and pull-to-refresh. trackedJobs/prepLogged/
   // coffeeChatStatus/savedJobIds are already live from the store, and
   // realJobs has its own fetch-on-mount -- feed posts and conversations
@@ -80,12 +83,13 @@ export default function Notifications() {
 
   useEffect(() => {
     refreshNotificationSources();
+    fetchRealPeople().then(setPeople).catch(() => {});
     supabase.auth.getUser().then(({ data }) => setCurrentAccountId(data?.user?.id ?? null));
   }, []);
 
   const { needsAction, earlierThisWeek } = useMemo(
-    () => buildNotifications({ trackedJobs, prepLogged, coffeeChatStatus, realJobs, savedJobIds, feedPosts, conversations, currentAccountId }),
-    [trackedJobs, prepLogged, coffeeChatStatus, realJobs, savedJobIds, feedPosts, conversations, currentAccountId]
+    () => buildNotifications({ trackedJobs, prepLogged, coffeeChatStatus, realJobs, savedJobIds, feedPosts, conversations, currentAccountId, people }),
+    [trackedJobs, prepLogged, coffeeChatStatus, realJobs, savedJobIds, feedPosts, conversations, currentAccountId, people]
   );
 
   const category = TAB_TO_CATEGORY[tab] || tab;

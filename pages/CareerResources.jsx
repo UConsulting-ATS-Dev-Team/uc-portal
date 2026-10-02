@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { RESOURCES, CERTIFICATIONS, LEARNING_TRACKS } from "../data/mockResources.js";
+import { CERTIFICATIONS } from "../data/certifications.js";
+import { CATEGORIES, SKILL_CATEGORIES } from "../data/libraryCategories.js";
+import { useLibrary } from "../data/useLibrary.js";
 import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { useAppState } from "../data/store.jsx";
 import { useRealJobs } from "../data/useRealJobs.js";
@@ -13,15 +15,13 @@ import "../styles/jobDetail.css";
 import "../styles/resources.css";
 import "../styles/network.css";
 
-const CATEGORIES = ["Resume", "Cover letter", "Consulting cases", "Behavioral", "Networking", "Recruiting timelines", "Industry guides", "Company guides"];
-const SKILL_CATEGORIES = ["Excel & modeling", "SQL & data", "AI & automation", "Slide & comms craft", "Accounting & finance"];
-
 function daysAgo(dateStr) {
   return Math.max(0, Math.round((new Date() - new Date(dateStr)) / (1000 * 60 * 60 * 24)));
 }
 
 export default function CareerResources() {
-  const { trackedJobs, savedResourceIds, resourceProgress, trackProgress, preferences, profileOverrides } = useAppState();
+  const { trackedJobs, savedResourceIds, resourceProgress, trackProgress, preferences, profileOverrides, isAdmin } = useAppState();
+  const { resources: RESOURCES, tracks: LEARNING_TRACKS, loading: libraryLoading, error: libraryError } = useLibrary();
   const [search, setSearch] = useState("");
   const [showContributeModal, setShowContributeModal] = useState(false);
   // Same collapsible-nav pattern as Jobs.jsx/Companies.jsx's filter
@@ -52,16 +52,20 @@ export default function CareerResources() {
   const recommended = useMemo(() => {
     const companyGuide = interviewJob ? RESOURCES.find((r) => r.title.includes(interviewJob.job.company.split(" ")[0])) : null;
     const base = RESOURCES.filter((r) => r.category === "Consulting cases" || r.category === "Behavioral");
-    const picks = companyGuide ? [companyGuide, ...base] : base;
+    const picks = companyGuide ? [companyGuide, ...base.filter((r) => r.id !== companyGuide.id)] : base;
     return picks.slice(0, 3);
-  }, [interviewJob]);
+  }, [interviewJob, RESOURCES]);
 
-  const mostUsed = [...RESOURCES].sort((a, b) => b.views - a.views).slice(0, 4);
   const recentlyAdded = [...RESOURCES].sort((a, b) => new Date(b.updated) - new Date(a.updated)).slice(0, 5);
   const filtered = search ? RESOURCES.filter((r) => r.title.toLowerCase().includes(search.toLowerCase())) : null;
 
-  const totalSections = RESOURCES.reduce((sum, r) => sum + r.sections.length, 0);
-  const completedSections = Object.values(resourceProgress).reduce((sum, arr) => sum + arr.length, 0);
+  // Progress only counts resources that still exist (a deleted resource's
+  // old checkmarks shouldn't inflate the total) and uses the same
+  // "no sections = one implicit section" rule ResourceDetail applies.
+  const sectionCount = (r) => Math.max(1, r.sections.length);
+  const totalSections = RESOURCES.reduce((sum, r) => sum + sectionCount(r), 0);
+  const completedSections = RESOURCES.reduce((sum, r) => sum + (resourceProgress[r.id]?.length || 0), 0);
+  const startedTrack = LEARNING_TRACKS.find((t) => (trackProgress[t.id] || 0) > 0) ?? LEARNING_TRACKS[0];
 
   return (
     <div className="resources-layout">
@@ -116,11 +120,13 @@ export default function CareerResources() {
             {completedSections} of {totalSections} sections
           </div>
           <div className="progress-bar-track">
-            <div className="progress-bar-fill" style={{ width: `${(completedSections / totalSections) * 100}%` }} />
+            <div className="progress-bar-fill" style={{ width: `${totalSections ? (completedSections / totalSections) * 100 : 0}%` }} />
           </div>
-          <p className="meta" style={{ margin: 0 }}>
-            {trackProgress["case-interview-track"] || 0} of {LEARNING_TRACKS[0].steps.length} · Case Interview Track
-          </p>
+          {startedTrack && (
+            <p className="meta" style={{ margin: 0 }}>
+              {trackProgress[startedTrack.id] || 0} of {startedTrack.steps.length} · {startedTrack.title}
+            </p>
+          )}
         </div>
         </div>
       </aside>
@@ -147,6 +153,21 @@ export default function CareerResources() {
           </div>
         ) : (
           <>
+            {libraryError && (
+              <p className="meta" style={{ color: "var(--color-danger)" }}>
+                Couldn't load the resource library ({libraryError}).
+              </p>
+            )}
+            {!libraryLoading && !libraryError && RESOURCES.length === 0 && (
+              <div className="rail-card">
+                <div className="rail-card__title">The library is empty so far</div>
+                <p style={{ margin: 0 }}>
+                  Guides, templates and slide decks the Exec team adds will show up here.
+                  {isAdmin ? " Add the first one from Library in the Leadership menu." : " Have something that helped you? Use + Contribute."}
+                </p>
+              </div>
+            )}
+            {recommended.length > 0 && (
             <div className="rail-card is-accent">
               <div className="rail-card__title">
                 {interviewJob ? `Recommended for your ${interviewJob.job.company} first round` : "Recommended for you"}
@@ -156,19 +177,20 @@ export default function CareerResources() {
                 {recommended.map((r) => (
                   <Link to={`/resources/${r.id}`} className="resource-tile" key={r.id} style={{ color: "inherit", textDecoration: "none" }}>
                     <div className="resource-tile__title">{r.title}</div>
-                    <div className="meta">{r.format} · {r.pages} pages</div>
+                    <div className="meta">{r.format}</div>
                   </Link>
                 ))}
               </div>
             </div>
+            )}
 
             <CasePartnerFinder />
 
-            <h2>Learning tracks — structured, start to finish</h2>
+            {LEARNING_TRACKS.length > 0 && <h2>Learning tracks — structured, start to finish</h2>}
             <div className="track-card-grid">
               {LEARNING_TRACKS.map((t) => {
                 const completed = trackProgress[t.id] || 0;
-                const pct = (completed / t.steps.length) * 100;
+                const pct = t.steps.length ? (completed / t.steps.length) * 100 : 0;
                 return (
                   <Link to={`/resources/tracks/${t.id}`} className="track-card" key={t.id} style={{ color: "inherit", textDecoration: "none" }}>
                     <span className="chip">{t.category}</span>
@@ -178,7 +200,7 @@ export default function CareerResources() {
                       <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
                     </div>
                     <div className="track-card__status">
-                      {completed > 0 ? `${completed} of ${t.steps.length} · continue` : "Not started"}
+                      {t.steps.length === 0 ? "No steps yet" : completed > 0 ? `${completed} of ${t.steps.length} · continue` : "Not started"}
                     </div>
                   </Link>
                 );
@@ -208,7 +230,7 @@ export default function CareerResources() {
                         <span className="chip chip-accent">{c.cost}</span>
                       </td>
                       <td>{c.hours} hrs</td>
-                      <td>{c.countsFor.join(", ")}</td>
+                      <td>{c.countsFor.length ? c.countsFor.join(", ") : "—"}</td>
                       <td>
                         <a href={c.url} target="_blank" rel="noreferrer" className="btn btn-secondary">
                           Start ↗
@@ -220,14 +242,7 @@ export default function CareerResources() {
               </table>
             </div>
 
-            <h2>Most used in UC</h2>
-            <div className="resource-card-grid">
-              {mostUsed.map((r) => (
-                <ResourceTile key={r.id} resource={r} saved={savedResourceIds.includes(r.id)} expanded />
-              ))}
-            </div>
-
-            <h2>Recently added</h2>
+            {recentlyAdded.length > 0 && <h2>Recently added</h2>}
             {recentlyAdded.map((r) => (
               <div className="recent-row" key={r.id}>
                 <span className="chip">{r.category}</span>
@@ -235,7 +250,7 @@ export default function CareerResources() {
                   {r.title}
                 </Link>
                 <span className="meta">
-                  {r.author} · {daysAgo(r.updated)}d ago
+                  {r.author ? `${r.author} · ` : ""}{daysAgo(r.updated)}d ago
                 </span>
               </div>
             ))}
@@ -272,7 +287,7 @@ export default function CareerResources() {
   );
 }
 
-function ResourceTile({ resource, saved, expanded }) {
+function ResourceTile({ resource, saved }) {
   return (
     <Link to={`/resources/${resource.id}`} className="resource-card" style={{ color: "inherit", textDecoration: "none" }}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -281,12 +296,10 @@ function ResourceTile({ resource, saved, expanded }) {
       </div>
       <div className="resource-card__title">{resource.title}</div>
       <div className="resource-card__meta">
-        {resource.format} · {resource.pages} pages · updated {resource.updated}
+        {resource.format} · updated {resource.updated}
       </div>
-      {expanded && <p style={{ margin: 0 }}>{resource.description}</p>}
-      <div className="resource-card__author">
-        {resource.author} · {resource.views} views · {resource.completions} completed
-      </div>
+      {resource.description && <p style={{ margin: 0 }}>{resource.description}</p>}
+      {resource.author && <div className="resource-card__author">{resource.author}</div>}
     </Link>
   );
 }

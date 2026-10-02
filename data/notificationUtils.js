@@ -1,6 +1,5 @@
 import { JOBS as MOCK_JOBS } from "./mockJobs.js";
 import { daysUntil, isUrgent } from "./jobUtils.js";
-import { findPerson } from "./mockPeople.js";
 import { relativeTime } from "./feedSync.js";
 
 function truncate(text, max) {
@@ -36,6 +35,7 @@ export function buildNotifications({
   feedPosts = [],
   conversations = [],
   currentAccountId = null,
+  people = [],
 }) {
   const needsAction = [];
 
@@ -92,7 +92,7 @@ export function buildNotifications({
 
   Object.entries(coffeeChatStatus).forEach(([personId, status]) => {
     if (status === "Confirmed" || status.startsWith("Confirmed")) return; // already resolved
-    const person = findPerson(personId);
+    const person = people.find((p) => p.id === personId);
     if (!person) return;
     needsAction.push({
       id: `chat-${personId}`,

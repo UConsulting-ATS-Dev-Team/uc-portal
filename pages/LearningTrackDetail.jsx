@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { LEARNING_TRACKS, findTrack } from "../data/mockResources.js";
+import { useLibrary } from "../data/useLibrary.js";
 import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { useAppState } from "../data/store.jsx";
 import { useRealJobs } from "../data/useRealJobs.js";
 import { currentUser } from "../data/mockUser.js";
 import { resolvedClassYear, resolvedGradMonth } from "../data/profileUtils.js";
-import { hashString } from "../data/hash.js";
 import LogPrepModal from "../components/modals/LogPrepModal.jsx";
 import Placeholder from "./Placeholder.jsx";
 import "../styles/jobDetail.css";
@@ -14,7 +13,8 @@ import "../styles/resources.css";
 
 export default function LearningTrackDetail() {
   const { trackId } = useParams();
-  const track = findTrack(trackId);
+  const { tracks: LEARNING_TRACKS, loading: libraryLoading } = useLibrary();
+  const track = LEARNING_TRACKS.find((t) => t.id === trackId);
   const { trackProgress, advanceTrackStep, trackedJobs, preferences, profileOverrides } = useAppState();
   // Declared before the early return below (Rules of Hooks) even though
   // it's only meaningful when a track actually exists.
@@ -27,14 +27,12 @@ export default function LearningTrackDetail() {
   const { realJobs } = useRealJobs(preferences, classYear, gradMonth);
 
   if (!track) {
-    return <Placeholder title="Learning track not found" />;
+    return <Placeholder title={libraryLoading ? "Loading…" : "Learning track not found"} />;
   }
 
   const completed = trackProgress[track.id] || 0;
-  const pct = Math.round((completed / track.steps.length) * 100);
+  const pct = track.steps.length ? Math.round((completed / track.steps.length) * 100) : 0;
   const currentStep = track.steps[completed];
-  const membersActive = 6 + (hashString(track.id) % 10);
-  const membersFinished = 3 + (hashString(track.id + "f") % 8);
 
   const tiedApplications = Object.entries(trackedJobs)
     .map(([jobId, info]) => ({ job: realJobs.find((j) => j.id === jobId) || MOCK_JOBS.find((j) => j.id === jobId), stage: info.stage }))
@@ -49,7 +47,7 @@ export default function LearningTrackDetail() {
         <div className="chip-row">
           <span className="chip">{track.category}</span>
           <span className="chip">{track.steps.length} steps</span>
-          <span className="chip">{track.totalHours} hrs</span>
+          {track.totalHours > 0 && <span className="chip">{track.totalHours} hrs</span>}
           <span className="chip">Self-paced</span>
         </div>
         <h1>{track.title}</h1>
@@ -92,15 +90,22 @@ export default function LearningTrackDetail() {
                   <div className="step-row__body">
                     <div className="step-row__title">{step.title}</div>
                     <div className="step-row__detail">
-                      {step.type} · {step.detail}
+                      {[step.type, step.detail, step.hours ? `${step.hours} hrs` : null].filter(Boolean).join(" · ")}
                     </div>
                   </div>
                   <div className="step-row__state">
                     {isDone && "Done"}
                     {isCurrent && (
-                      <button className="btn btn-secondary" onClick={() => advanceTrackStep(track.id, track.steps.length)}>
-                        {step.type === "Live event" ? "RSVP" : "Start"}
-                      </button>
+                      <>
+                        {step.url && (
+                          <a href={step.url} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ marginRight: "var(--space-2)" }}>
+                            Open ↗
+                          </a>
+                        )}
+                        <button className="btn btn-secondary" onClick={() => advanceTrackStep(track.id, track.steps.length)}>
+                          Mark done
+                        </button>
+                      </>
                     )}
                     {isLocked && `Locked until ${i}`}
                   </div>
@@ -111,12 +116,6 @@ export default function LearningTrackDetail() {
         </div>
 
         <div className="detail-rail">
-          <div className="rail-card is-accent">
-            <div className="rail-card__title">Why finish this</div>
-            <p style={{ margin: 0 }}>{track.outcomeStat}</p>
-            <p className="meta">n={track.outcomeSampleSize} members</p>
-          </div>
-
           <div className="rail-card">
             <div className="rail-card__title">Tied to your applications</div>
             {tiedApplications.length === 0 && <p className="meta" style={{ margin: 0 }}>Not tied to a tracked application yet.</p>}
@@ -131,17 +130,8 @@ export default function LearningTrackDetail() {
           </div>
 
           <div className="rail-card">
-            <div className="rail-card__title">Members on this track</div>
-            <p style={{ margin: 0 }}>
-              {membersActive} active · {membersFinished} finished
-            </p>
-            <Link to="/resources" className="btn-link" style={{ display: "inline-block", marginTop: "var(--space-3)" }}>
-              Find a case partner
-            </Link>
-          </div>
-
-          <div className="rail-card">
             <div className="rail-card__title">Other tracks</div>
+            {otherTracks.length === 0 && <p className="meta" style={{ margin: 0 }}>No other tracks yet.</p>}
             {otherTracks.map((t) => (
               <div className="resource-row" key={t.id}>
                 <Link to={`/resources/tracks/${t.id}`}>{t.title}</Link>
