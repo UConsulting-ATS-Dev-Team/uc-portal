@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
-import { JOBS } from "../data/mockJobs.js";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
 import { displayName } from "../data/profileUtils.js";
@@ -13,7 +12,6 @@ import { fetchOwnWorkHistory } from "../data/workHistorySync.js";
 import { useSwipeTabs } from "../data/useSwipeTabs.js";
 import Avatar from "../components/Avatar.jsx";
 import PullToRefresh from "../components/PullToRefresh.jsx";
-import JobCard from "../components/JobCard.jsx";
 import ComingSoonButton from "../components/ComingSoonButton.jsx";
 import "../styles/jobDetail.css";
 import "../styles/feed.css";
@@ -27,7 +25,7 @@ const POST_TYPES = [
 ];
 
 export default function Feed() {
-  const { savedJobIds, toggleSavedJob, profileOverrides, isAlumni } = useAppState();
+  const { profileOverrides, isAlumni } = useAppState();
   const location = useLocation();
   const [tab, setTab] = useState("All");
   // "Ask the network" from Global search's no-results state hands off a
@@ -240,7 +238,6 @@ export default function Feed() {
         )}
 
         {filtered.map((post) => {
-          const job = post.embeddedJobId ? JOBS.find((j) => j.id === post.embeddedJobId) : null;
           const isHelpful = helpfulPosts.includes(post.id);
           const helpfulCount = post.helpfulCount + (isHelpful ? 1 : 0);
           const isSaved = savedPosts.includes(post.id);
@@ -285,12 +282,6 @@ export default function Feed() {
                 </div>
               ) : (
                 <p className="post-card__body">{post.body}</p>
-              )}
-
-              {job && (
-                <div className="post-card__embed">
-                  <JobCard job={job} saved={savedJobIds.includes(job.id)} onToggleSave={toggleSavedJob} />
-                </div>
               )}
 
               {post.isEvent ? (

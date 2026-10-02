@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { CERTIFICATIONS } from "../data/certifications.js";
 import { CATEGORIES, SKILL_CATEGORIES } from "../data/libraryCategories.js";
 import { useLibrary } from "../data/useLibrary.js";
-import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { useAppState } from "../data/store.jsx";
 import { useRealJobs } from "../data/useRealJobs.js";
 import { currentUser } from "../data/mockUser.js";
@@ -44,7 +43,7 @@ export default function CareerResources() {
 
   const interviewJob = Object.entries(trackedJobs)
     .map(([jobId, info]) => ({
-      job: realJobs.find((j) => j.id === jobId) || MOCK_JOBS.find((j) => j.id === jobId),
+      job: realJobs.find((j) => j.id === jobId),
       stage: info.stage,
     }))
     .find((e) => e.job && ["First round", "Final round"].includes(e.stage));

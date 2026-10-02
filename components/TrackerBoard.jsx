@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { STAGES, INTERVIEW_STAGES, outcomeLabel, rejectionStageLabel } from "../data/trackerUtils.js";
 import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
-import { SEED_TRACKED_JOB_IDS } from "../data/store.jsx";
 import CompanyLogo from "./CompanyLogo.jsx";
 import DemoDataBadge from "./DemoDataBadge.jsx";
 
@@ -148,9 +147,6 @@ export default function TrackerBoard({ applications, onMoveStage, onRequestOutco
                     onPointerUp={(e) => endDrag(e, true)}
                     onPointerCancel={(e) => endDrag(e, false)}
                   >
-                    {SEED_TRACKED_JOB_IDS.includes(jobId) && (
-                      <DemoDataBadge label="Seeded demo" title="One of the 7 illustrative applications seeded so the tracker isn't empty on first load -- not a real application" />
-                    )}
                     {job.isManual ? (
                       // No real jobs row to link to -- opens the member's own
                       // pasted/entered external URL instead, if they gave one.

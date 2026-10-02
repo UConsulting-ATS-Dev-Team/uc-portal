@@ -23,17 +23,11 @@ const VIEW_AS_STORAGE_KEY = "uc-portal-view-as";
 // this honestly, so a fabricated tracker history isn't needed -- and a
 // new real member seeing stage progress on companies they never applied
 // to was exactly the kind of "is this real?" confusion worth removing.
-// SEED_TRACKED_JOB_IDS/SEED_COFFEE_CHAT_IDS stay exported as empty arrays
-// so the existing DemoDataBadge checks across the tracker views/Network
-// keep working (they just never match anything now) without touching
-// every call site.
 const SEED_TRACKED_JOBS = {};
-export const SEED_TRACKED_JOB_IDS = Object.keys(SEED_TRACKED_JOBS);
 
 // Same reasoning -- Network's "Your coffee chats" now shows its own real
 // "No coffee chats yet" empty state instead of 2 fabricated ones.
 const SEED_COFFEE_CHATS = {};
-export const SEED_COFFEE_CHAT_IDS = Object.keys(SEED_COFFEE_CHATS);
 
 const DEFAULT_STATE = {
   onboardingComplete: false,

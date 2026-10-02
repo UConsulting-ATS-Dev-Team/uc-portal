@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { fetchRealPeople } from "../data/realPeople.js";
-import { useAppState, SEED_COFFEE_CHAT_IDS } from "../data/store.jsx";
+import { useAppState } from "../data/store.jsx";
 import { fetchMemberAvatars } from "../data/avatarSync.js";
 import RequestCoffeeChatModal from "../components/modals/RequestCoffeeChatModal.jsx";
 import DemoDataBadge from "../components/DemoDataBadge.jsx";
@@ -322,11 +322,6 @@ export default function Network() {
                 <div className="chat-status-row" key={personId}>
                   <span>
                     {person.name}
-                    {SEED_COFFEE_CHAT_IDS.includes(personId) && (
-                      <span style={{ marginLeft: "var(--space-2)" }}>
-                        <DemoDataBadge label="Seeded demo" title="Seeded so this panel isn't empty on first load -- not a real coffee chat" />
-                      </span>
-                    )}
                   </span>
                   <span className="chat-status-row__status">{status}</span>
                 </div>

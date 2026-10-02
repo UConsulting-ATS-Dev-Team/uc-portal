@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { MapPin } from "lucide-react";
 import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
-import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { isManualJobId, jobForManualEntry } from "../data/manualApplications.js";
 import { fetchFeedPosts, feedRowToPost } from "../data/feedSync.js";
 import { listOpenToCoffeeChatMembers } from "../data/messagesSync.js";
@@ -97,7 +96,6 @@ export default function Home() {
       jobId,
       job:
         realJobs.find((j) => j.id === jobId) ||
-        MOCK_JOBS.find((j) => j.id === jobId) ||
         (isManualJobId(jobId) ? jobForManualEntry(jobId, info) : null),
       ...info,
     }))

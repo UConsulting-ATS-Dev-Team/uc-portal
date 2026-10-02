@@ -1,37 +1,21 @@
 import { useMemo, useState } from "react";
 import Modal from "../Modal.jsx";
-import { JOBS as MOCK_JOBS } from "../../data/mockJobs.js";
-import { computeOdds } from "../../data/oddsModel.js";
 import { useAppState } from "../../data/store.jsx";
 import { useRealJobs } from "../../data/useRealJobs.js";
-import { isRealJobId } from "../../data/realJobAdapter.js";
 import { currentUser } from "../../data/mockUser.js";
 import { resolvedClassYear, resolvedGradMonth } from "../../data/profileUtils.js";
 
 const ACTIVITIES = ["Case practice", "Behavioral prep", "Technical / skills drill", "Mock interview with a peer", "Resource reading"];
 
 // job: optional -- when opened from Job detail, pre-selects that job and
-// hides the picker. onClose: () => void. computeOddsFn: optional, defaults
-// to the mock data/oddsModel.js's computeOdds -- pages/RealJobDetail.jsx
-// passes a real-odds-backed function instead (bound to that job's already-
-// fetched data/realOddsModel.js inputs) so this same modal/effect-preview
-// works for a real job without duplicating the before/after UI.
-//
-// The generic picker below (no job prop -- opened from e.g. Career
-// Resources / a learning track's "Log prep time") used to only ever list
-// data/mockJobs.js's 8 demo jobs, so a real tracked job silently couldn't
-// be selected here at all -- same bug class as the Home/Applications/
-// Saved-tab fixes. It's fixed on the list side (real-first, mock-fallback,
-// via useRealJobs), but the *odds* side still can't be fixed the same way:
-// unlike RealJobDetail.jsx, this modal has no already-fetched
-// data/realOddsModel.js inputs for a job selected generically here, and
-// computing those needs an async fetch this synchronous effect-preview
-// isn't set up to await. Rather than run the real job through the mock
-// computeOdds (which would read its missing pastCycleApplicants/
-// ucConnections fields as falsy and produce a plausible-looking but
-// unearned number), a real job selected via this generic picker still logs
-// the hours for real, it just skips the effect-preview card with an honest
-// note instead of guessing.
+// hides the picker. onClose: () => void. computeOddsFn: optional -- only
+// pages/RealJobDetail.jsx passes one (bound to that job's already-fetched
+// data/realOddsModel.js inputs), which is what powers the before/after
+// effect preview. The generic picker (opened from Career Resources / a
+// learning track) has no such inputs for a job selected there and computing
+// them needs an async fetch this synchronous preview can't await, so it
+// still logs the hours for real but skips the preview card with an honest
+// note rather than guessing a number.
 export default function LogPrepModal({ job, onClose, computeOddsFn }) {
   const { trackedJobs, prepLogged, logPrep, preferences, profileOverrides } = useAppState();
   const classYear = resolvedClassYear(currentUser, profileOverrides);
@@ -40,7 +24,7 @@ export default function LogPrepModal({ job, onClose, computeOddsFn }) {
   const trackedList = useMemo(
     () =>
       Object.keys(trackedJobs)
-        .map((id) => realJobs.find((j) => j.id === id) || MOCK_JOBS.find((j) => j.id === id))
+        .map((id) => realJobs.find((j) => j.id === id))
         .filter(Boolean),
     [trackedJobs, realJobs]
   );
@@ -55,7 +39,7 @@ export default function LogPrepModal({ job, onClose, computeOddsFn }) {
   // picked via the generic picker (no explicit computeOddsFn from a caller
   // that already has real odds inputs, like RealJobDetail.jsx) has no odds
   // function it's safe to use here -- see the class comment above.
-  const activeComputeOddsFn = computeOddsFn || (selectedJob && !isRealJobId(selectedJob.id) ? computeOdds : null);
+  const activeComputeOddsFn = computeOddsFn || null;
 
   // before = odds at currently-logged hours; after = odds with this
   // session's hours added on top -- mirrors how JobDetail/OddsModel pass

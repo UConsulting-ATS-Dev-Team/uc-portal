@@ -10,7 +10,6 @@ import {
   buildRow,
 } from "../data/timelineUtils.js";
 import { matchesDeadlineBucket } from "../data/jobUtils.js";
-import { SEED_TRACKED_JOB_IDS } from "../data/store.jsx";
 import { useTheme } from "./theme/ThemeContext.jsx";
 import CompanyLogo from "./CompanyLogo.jsx";
 import DemoDataBadge from "./DemoDataBadge.jsx";
@@ -109,9 +108,6 @@ export default function TrackerTimeline({ applications, timelineShiftDays, onShi
                       <div>
                         <div style={{ fontWeight: 700, fontSize: "var(--text-secondary)" }}>{job.company}</div>
                         <div className="meta">{job.role}</div>
-                        {SEED_TRACKED_JOB_IDS.includes(jobId) && (
-                          <DemoDataBadge label="Seeded demo" title="One of the 7 illustrative applications seeded so the tracker isn't empty on first load -- not a real application" />
-                        )}
                       </div>
                     </div>
                     <div
