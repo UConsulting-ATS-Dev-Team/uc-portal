@@ -15,7 +15,34 @@ import "../styles/home.css";
 const AUDIENCES = ["All", "Alumni", "Current members"];
 
 function uniqueValues(people, key) {
-  return ["All", ...new Set(people.map((p) => p[key]).filter(Boolean))];
+  return [...new Set(people.map((p) => p[key]).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+// Default is alphabetical by name; grad year sorts put people with no
+// known class year last either way, then fall back to name so ties (and
+// the unknowns) stay in a stable alphabetical order.
+const SORTS = [
+  { value: "name", label: "Sort: Name (A–Z)" },
+  { value: "gradNewest", label: "Sort: Grad year (newest)" },
+  { value: "gradOldest", label: "Sort: Grad year (oldest)" },
+];
+
+function compareByName(a, b) {
+  return (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+}
+
+function sortPeople(people, sort) {
+  const sorted = [...people];
+  if (sort === "name") return sorted.sort(compareByName);
+  const dir = sort === "gradNewest" ? -1 : 1;
+  return sorted.sort((a, b) => {
+    const ay = Number(a.classYear) || null;
+    const by = Number(b.classYear) || null;
+    if (ay == null && by == null) return compareByName(a, b);
+    if (ay == null) return 1;
+    if (by == null) return -1;
+    return ay !== by ? (ay - by) * dir : compareByName(a, b);
+  });
 }
 
 // Real network/coffee-chat export -- direct ask, same client-side Blob
@@ -68,6 +95,7 @@ export default function Network() {
   const [location, setLocation] = useState("All");
   const [gradYear, setGradYear] = useState("All");
   const [audience, setAudience] = useState("All");
+  const [sort, setSort] = useState("name");
   const [browseAnyway, setBrowseAnyway] = useState(false);
   const [chatModalPerson, setChatModalPerson] = useState(null);
 
@@ -96,7 +124,7 @@ export default function Network() {
   const pendingRequests = Object.values(coffeeChatStatus).filter((s) => s === "Request sent").length;
 
   const filtered = useMemo(() => {
-    return PEOPLE.filter((p) => {
+    const matches = PEOPLE.filter((p) => {
       if (audience === "Alumni" && p.status === "Current member") return false;
       if (audience === "Current members" && p.status !== "Current member") return false;
       if (industry !== "All" && p.industry !== industry) return false;
@@ -109,7 +137,8 @@ export default function Network() {
       }
       return true;
     });
-  }, [PEOPLE, search, industry, company, location, gradYear, audience]);
+    return sortPeople(matches, sort);
+  }, [PEOPLE, search, industry, company, location, gradYear, audience, sort]);
 
   const suggested = useMemo(() => {
     return PEOPLE.filter((p) => !savedConnections.includes(p.id))
@@ -151,25 +180,33 @@ export default function Network() {
 
       <div className="network-filters">
         <input type="text" placeholder="Search name or company" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <select value={industry} onChange={(e) => setIndustry(e.target.value)}>
+        <select aria-label="Industry" value={industry} onChange={(e) => setIndustry(e.target.value)}>
+          <option value="All">Industry</option>
           {uniqueValues(PEOPLE, "industry").map((v) => (
-            <option key={v}>{v}</option>
+            <option key={v} value={v}>{v}</option>
           ))}
         </select>
-        <select value={company} onChange={(e) => setCompany(e.target.value)}>
+        <select aria-label="Company" value={company} onChange={(e) => setCompany(e.target.value)}>
+          <option value="All">Company</option>
           {uniqueValues(PEOPLE, "company").map((v) => (
-            <option key={v}>{v}</option>
+            <option key={v} value={v}>{v}</option>
           ))}
         </select>
-        <select value={location} onChange={(e) => setLocation(e.target.value)}>
+        <select aria-label="Location" value={location} onChange={(e) => setLocation(e.target.value)}>
+          <option value="All">Location</option>
           {uniqueValues(PEOPLE, "location").map((v) => (
-            <option key={v}>{v}</option>
+            <option key={v} value={v}>{v}</option>
           ))}
         </select>
-        <select value={gradYear} onChange={(e) => setGradYear(e.target.value)}>
-          <option>All</option>
+        <select aria-label="Grad year" value={gradYear} onChange={(e) => setGradYear(e.target.value)}>
+          <option value="All">Grad year</option>
           {[...new Set(PEOPLE.map((p) => p.classYear).filter(Boolean))].sort().map((y) => (
-            <option key={y}>{y}</option>
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+        <select aria-label="Sort order" value={sort} onChange={(e) => setSort(e.target.value)}>
+          {SORTS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
         <div className="network-audience-toggle">
@@ -205,22 +242,21 @@ export default function Network() {
             {filtered.map((p) => {
               const isMember = p.status === "Current member";
               const chatStatus = coffeeChatStatus[p.id];
+              // Only render lines that have real content -- real people
+              // often lack role/company/location/industry, which used to
+              // leave an empty row or a stray " · " dot on the card.
+              const statusLine = isMember ? "Current member" : [p.status, p.classYear ? `Class of ${p.classYear}` : null].filter(Boolean).join(" · ");
+              const roleLine = [p.role, p.company].filter(Boolean).join(" · ");
+              const metaLine = [p.location, p.industry].filter(Boolean).join(" · ");
               return (
                 <div className="person-card" key={p.id}>
                   <div className="person-card__avatar">
                     <Avatar name={p.name} url={(p.email && avatarsByEmail.get(p.email.toLowerCase())) || p.avatarUrl} />
                   </div>
                   <div className="person-card__name">{p.name}</div>
-                  <div className="person-card__status">
-                    {isMember ? "Current member" : `${p.status} · Class of ${p.classYear}`}
-                  </div>
-                  <div className="person-card__role">
-                    {p.role}
-                    {p.company ? ` · ${p.company}` : ""}
-                  </div>
-                  <div className="person-card__meta">
-                    {p.location} · {p.industry}
-                  </div>
+                  {statusLine && <div className="person-card__status">{statusLine}</div>}
+                  {roleLine && <div className="person-card__role">{roleLine}</div>}
+                  {metaLine && <div className="person-card__meta">{metaLine}</div>}
                   {/* capabilitiesFor() is generated/seeded, not a real claim
                       about this person -- fine for the remaining fictional
                       mock people, not appropriate to show as fact on a real,
