@@ -5047,6 +5047,16 @@ longer breaks down to phone width either.
   throwaway accounts completely afterward; confirmed zero residue
   (`residue_auth=0 residue_roster=0 roster_total=53`).
 
+- **2026-10-02/03 pass: Network, Feed, tour, accelerator attachments, mock people/resources removed, real library, real onboarding numbers, pending messages** --
+  - **Network** (`pages/Network.jsx`): default sort is name A-Z with a sort dropdown (grad year newest/oldest, unknown last); filter dropdowns read Industry/Company/Location/Grad year instead of "All"; card lines with no data are skipped (no blank row, no stray " · " dot, no "Class of null").
+  - **Feed** main column fills wide screens (the fixed 660px cap is gone). **Guided tour** tooltip is positioned from its measured height with no CSS transform and capped to the viewport, so it stays on-screen on very narrow phones.
+  - **Accelerator** "Add a lesson" form takes slides/PDFs/spreadsheets and links up front (attached on create); the Manage panel opens under its own lesson.
+  - **Mock people removed**: `data/mockPeople.js` and `data/peopleUtils.js` are deleted; every profile is a real directory person (`MemberProfile.jsx` is now a thin UUID dispatcher). Coffee-chat notifications look people up from the real directory.
+  - **Real Career Resources library**: `data/mockResources.js` is deleted. `library_resources` / `learning_tracks` tables (migration `20261003100000`), read by `data/useLibrary.js`, managed on the new admin page `/admin/library` (`pages/AdminLibrary.jsx`). All fabricated stats (views, completions, outcome claims, fake workshop dates, seeded progress) are gone; one starter track is built from real free courses. Certifications live in `data/certifications.js`. A resource's uploaded file (`resource_guide_files`) no longer falls back to the shared placeholder PDF.
+  - **Onboarding numbers are real** (`data/onboardingStats.js`): matched roles, alumni, and 30-day deadlines come from live jobs and the real directory; the invented `computeMatches` formula and made-up member/alumni/open-role counts in `data/careerOptions.js` are removed.
+  - **Pending messages** (migration `20261003200000`): a "Message" to a directory person with no account is stored in `pending_messages` (visible only to the sender, max 5 per recipient) and delivered into `messages`, with its original timestamp, by `handle_new_user()` when an account is created for that person's email. Messages.jsx shows these as "Waiting for them to join" with a Cancel link. A person with no email on file can't be messaged.
+  - Not click-tested in a live browser this pass (no authenticated test account available in the cloud session); verified with clean `vite build`s. Both new migrations must be applied with `supabase db push`.
+
 Run locally:
 ```bash
 npm install

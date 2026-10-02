@@ -151,3 +151,55 @@ export async function fetchUnreadCount() {
   if (error) throw new Error(error.message);
   return count ?? 0;
 }
+
+// ---- Pending messages (directory people with no account yet) ----
+// See the pending_messages migration: addressed to a people row, delivered
+// into the real messages table the moment an account exists for that
+// person's email.
+
+export async function fetchPendingForPerson(personId) {
+  const { data, error } = await supabase
+    .from("pending_messages")
+    .select("*")
+    .eq("recipient_person_id", personId)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function sendPendingMessage(personId, body) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from("pending_messages")
+    .insert({ sender_id: user.id, recipient_person_id: personId, body })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function cancelPendingMessage(id) {
+  const { error } = await supabase.from("pending_messages").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+// One row per directory person I have undelivered messages waiting for, so
+// they can sit in the conversation list instead of vanishing the moment the
+// member navigates away from the thread.
+export async function fetchPendingConversations() {
+  const { data: rows, error } = await supabase.from("pending_messages").select("*").order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  if (!rows?.length) return [];
+  const ids = [...new Set(rows.map((r) => r.recipient_person_id))];
+  const { data: people, error: peopleError } = await supabase.from("people").select("id, name").in("id", ids);
+  if (peopleError) throw new Error(peopleError.message);
+  const nameById = new Map((people ?? []).map((p) => [p.id, p.name]));
+  return ids
+    .map((personId) => {
+      const mine = rows.filter((r) => r.recipient_person_id === personId);
+      return { personId, name: nameById.get(personId) ?? "Directory member", count: mine.length, lastMessage: mine[mine.length - 1] };
+    })
+    .sort((a, b) => new Date(b.lastMessage.created_at) - new Date(a.lastMessage.created_at));
+}
