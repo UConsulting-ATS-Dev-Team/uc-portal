@@ -21,10 +21,14 @@ import { realJobToCardShape, JOB_LIST_COLUMNS } from "./realJobAdapter.js";
 // matching, not a real match score, can omit preferences/classYear
 // entirely; matchJob(job, undefined, undefined) still returns a shape
 // realJobToCardShape can read (score defaults to 0 via its own `?? 0`).
-export function useRealJobs(preferences, classYear, gradMonth) {
+export function useRealJobs(preferences, classYear, gradMonth, enabled = true) {
   const [rawJobs, setRawJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(true);
   useEffect(() => {
+    if (!enabled) {
+      setJobsLoading(false);
+      return;
+    }
     // JOB_LIST_COLUMNS, not "*" -- same ~58% payload cut as pages/Jobs.jsx's
     // identical fetch (see data/realJobAdapter.js's own comment), which
     // this shared hook's callers all read through the same
@@ -33,7 +37,7 @@ export function useRealJobs(preferences, classYear, gradMonth) {
       .then(setRawJobs)
       .catch(() => {}) // callers degrade to "0 real jobs" (mock fallback still works) rather than crashing
       .finally(() => setJobsLoading(false));
-  }, []);
+  }, [enabled]);
   const realJobs = useMemo(
     () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth))),
     [rawJobs, preferences, classYear, gradMonth]

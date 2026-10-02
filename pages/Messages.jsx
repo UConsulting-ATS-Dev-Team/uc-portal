@@ -10,6 +10,10 @@ import {
   markThreadRead,
   archiveConversation,
   unarchiveConversation,
+  fetchPendingForPerson,
+  sendPendingMessage,
+  cancelPendingMessage,
+  fetchPendingConversations,
 } from "../data/messagesSync.js";
 import { fetchMemberAvatars } from "../data/avatarSync.js";
 import Modal from "../components/Modal.jsx";
@@ -112,7 +116,11 @@ export default function Messages() {
   const [error, setError] = useState(null);
   const [activeId, setActiveId] = useState(null);
   const [activeName, setActiveName] = useState(null);
-  const [notOnPortalName, setNotOnPortalName] = useState(null);
+  // A directory person with no account yet -- messages to them wait in
+  // pending_messages and are delivered when they sign up. { id, name, hasEmail }
+  const [pendingPerson, setPendingPerson] = useState(null);
+  const [pendingThread, setPendingThread] = useState([]);
+  const [pendingConversations, setPendingConversations] = useState([]);
   const [thread, setThread] = useState([]);
   const [threadLoading, setThreadLoading] = useState(false);
   const [tab, setTab] = useState("All");
@@ -166,6 +174,8 @@ export default function Messages() {
       .then(setConversations)
       .catch((err) => setError(err.message))
       .finally(() => setConversationsLoading(false));
+    // Degrades to "none" if the pending_messages table isn't there yet.
+    fetchPendingConversations().then(setPendingConversations).catch(() => setPendingConversations([]));
   }
 
   // Archiving the thread you're currently looking at closes it back to
@@ -208,15 +218,20 @@ export default function Messages() {
   useEffect(() => {
     if (!requestedPersonId) return;
     fetchRealPersonById(requestedPersonId).then((person) => {
-      if (!person?.email) return;
+      if (!person) return;
+      if (!person.email) {
+        // Nothing to deliver to later -- no email on file to match a future account against.
+        openPending({ id: person.id, name: person.name, hasEmail: false });
+        return;
+      }
       findMemberByEmail(person.email).then((memberId) => {
         if (memberId) {
           setActiveId(memberId);
           setActiveName(person.name);
+          setPendingPerson(null);
           setMobileView("thread");
         } else {
-          setNotOnPortalName(person.name);
-          setMobileView("thread");
+          openPending({ id: person.id, name: person.name, hasEmail: true });
         }
       });
     });
@@ -233,10 +248,18 @@ export default function Messages() {
       .finally(() => setThreadLoading(false));
   }, [activeId]);
 
+  function openPending(person) {
+    setActiveId(null);
+    setPendingPerson(person);
+    setPendingThread([]);
+    setMobileView("thread");
+    fetchPendingForPerson(person.id).then(setPendingThread).catch(() => {});
+  }
+
   function openConversation(c) {
     setActiveId(c.counterpartId);
     setActiveName(c.counterpartName);
-    setNotOnPortalName(null);
+    setPendingPerson(null);
     setMobileView("thread");
   }
 
@@ -250,7 +273,7 @@ export default function Messages() {
     setShowNewPicker(false);
     setActiveId(member.member_id);
     setActiveName(member.display_name);
-    setNotOnPortalName(null);
+    setPendingPerson(null);
     setMobileView("thread");
   }
 
@@ -270,6 +293,38 @@ export default function Messages() {
       setSending(false);
     }
   }
+
+  async function handleSendPending() {
+    if (!draft.trim() || sending || !pendingPerson) return;
+    setSending(true);
+    setError(null);
+    try {
+      await sendPendingMessage(pendingPerson.id, draft.trim());
+      setDraft("");
+      setPendingThread(await fetchPendingForPerson(pendingPerson.id));
+      loadConversations();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function handleCancelPending(id) {
+    setError(null);
+    try {
+      await cancelPendingMessage(id);
+      setPendingThread(await fetchPendingForPerson(pendingPerson.id));
+      loadConversations();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  const showPendingRows = tab === "All";
+  const visiblePending = showPendingRows
+    ? pendingConversations.filter((c) => !search || c.name.toLowerCase().includes(search.toLowerCase()))
+    : [];
 
   const filtered = conversations.filter((c) => {
     if (tab === "Archived") return c.archived;
@@ -313,6 +368,20 @@ export default function Messages() {
               {conversations.length === 0 ? "No conversations yet — start one with \"New.\"" : "Nothing here."}
             </p>
           )}
+          {visiblePending.map((c) => (
+            <div className="conversation-row-wrap" key={`pending-${c.personId}`}>
+              <button
+                className={`conversation-row${pendingPerson?.id === c.personId && !activeId ? " is-active" : ""}`}
+                onClick={() => openPending({ id: c.personId, name: c.name, hasEmail: true })}
+              >
+                <div className="conversation-row__top">
+                  <span>{c.name}</span>
+                  <span className="conversation-row__time">{relativeTime(c.lastMessage.created_at)}</span>
+                </div>
+                <div className="conversation-row__preview">Waiting for them to join · You: {c.lastMessage.body}</div>
+              </button>
+            </div>
+          ))}
           {filtered.map((c) => (
             <ConversationRow
               key={c.counterpartId}
@@ -326,7 +395,7 @@ export default function Messages() {
         </div>
       </div>
 
-      {notOnPortalName && !activeId && (
+      {pendingPerson && !activeId && (
         <div
           className="thread-pane"
           onPointerDown={handleThreadPointerDown}
@@ -338,12 +407,55 @@ export default function Messages() {
             <button className="thread-pane__back" onClick={() => setMobileView("list")} aria-label="Back to conversations">
               ← Back
             </button>
-            <div style={{ fontWeight: 700 }}>{notOnPortalName}</div>
+            <div style={{ fontWeight: 700 }}>{pendingPerson.name}</div>
           </div>
-          <p className="meta" style={{ padding: "var(--space-6)" }}>
-            {notOnPortalName} hasn't joined UC Portal yet, so there's no real account to message. You'll be able to
-            message them here once they sign up.
-          </p>
+
+          <div className="thread-pane__messages">
+            <p className="meta">
+              {pendingPerson.hasEmail
+                ? `${pendingPerson.name} hasn't joined UC Portal yet. Write a message now and it will be delivered to them the moment they sign up. Only you can see it until then.`
+                : `${pendingPerson.name} doesn't have an email on file in the directory, so there's no way to deliver a message to them when they join.`}
+            </p>
+            {pendingThread.map((m) => (
+              <div className="message-bubble-row is-outgoing" key={m.id}>
+                <div className="message-bubble">
+                  <p style={{ margin: 0 }}>{m.body}</p>
+                  <div className="message-bubble__meta">
+                    You · {relativeTime(m.created_at)} · Waiting to be delivered{" "}
+                    <button className="btn-link" onClick={() => handleCancelPending(m.id)}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {error && (
+            <p className="meta" style={{ color: "var(--color-danger)", padding: "0 var(--space-4)" }}>
+              {error}
+            </p>
+          )}
+
+          {pendingPerson.hasEmail && (
+            <div className="composer-row">
+              <textarea
+                rows={1}
+                placeholder="Write a message to deliver when they join…"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendPending();
+                  }
+                }}
+              />
+              <button className="btn btn-primary" onClick={handleSendPending} disabled={sending || !draft.trim()}>
+                {sending ? "Sending…" : "Send"}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
