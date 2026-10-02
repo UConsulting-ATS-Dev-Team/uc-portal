@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import Modal from "../Modal.jsx";
-import { JOBS as MOCK_JOBS } from "../../data/mockJobs.js";
 import { searchRealJobs } from "../../data/realJobAdapter.js";
 import { STAGES } from "../../data/trackerUtils.js";
 import { useAppState } from "../../data/store.jsx";
@@ -24,17 +23,10 @@ export default function AddApplicationModal({ onClose, onAdded }) {
 
   const trackedJobIds = useMemo(() => Object.keys(trackedJobs), [trackedJobs]);
 
-  const mockMatches = useMemo(() => {
-    if (!search.trim()) return [];
-    const q = search.toLowerCase();
-    return MOCK_JOBS.filter((j) => !trackedJobs[j.id] && (j.company.toLowerCase().includes(q) || j.role.toLowerCase().includes(q))).slice(0, 6);
-  }, [search, trackedJobs]);
-
   // Debounced (250ms) real-job search -- this fires a real Supabase query
   // per distinct search term (searchRealJobs, a bounded .limit() query, not
   // fetchAllRows), so it shouldn't fire on every keystroke. Real matches
-  // shown first below (mock jobs are legacy demo content at this point);
-  // the mock search above stays synchronous/instant, no debounce needed.
+  // shown below.
   useEffect(() => {
     if (!search.trim()) {
       setRealMatches([]);
@@ -60,7 +52,7 @@ export default function AddApplicationModal({ onClose, onAdded }) {
     };
   }, [search, trackedJobIds]);
 
-  const matches = [...realMatches, ...mockMatches];
+  const matches = realMatches;
 
   const manualReady = tab === TABS[2] && manualCompany.trim() && manualRole.trim();
   const linkReady = tab === TABS[1] && manualUrl.trim() && manualCompany.trim() && manualRole.trim();

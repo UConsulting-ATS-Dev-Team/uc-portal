@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAppState } from "../data/store.jsx";
 import { buildNotifications } from "../data/notificationUtils.js";
-import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { useRealJobs } from "../data/useRealJobs.js";
 import { currentUser } from "../data/mockUser.js";
 import { resolvedClassYear, resolvedGradMonth } from "../data/profileUtils.js";
@@ -98,7 +97,7 @@ export default function Notifications() {
   const visibleEarlier = tab === "Needs action" ? [] : tab === "All" ? earlierThisWeek : earlierThisWeek.filter((n) => n.category === category);
 
   const upcoming = Object.entries(trackedJobs)
-    .map(([jobId, info]) => ({ job: realJobs.find((j) => j.id === jobId) || MOCK_JOBS.find((j) => j.id === jobId), ...info }))
+    .map(([jobId, info]) => ({ job: realJobs.find((j) => j.id === jobId), ...info }))
     .filter((e) => e.job && e.stage !== "Closed" && !e.job.rolling)
     .sort((a, b) => new Date(a.job.deadlineDate) - new Date(b.job.deadlineDate))
     .slice(0, 4);

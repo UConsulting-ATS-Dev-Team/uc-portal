@@ -1,4 +1,3 @@
-import { JOBS as MOCK_JOBS } from "./mockJobs.js";
 import { daysUntil, isUrgent } from "./jobUtils.js";
 import { relativeTime } from "./feedSync.js";
 
@@ -40,7 +39,7 @@ export function buildNotifications({
   const needsAction = [];
 
   Object.entries(trackedJobs).forEach(([jobId, info]) => {
-    const job = realJobs.find((j) => j.id === jobId) || MOCK_JOBS.find((j) => j.id === jobId);
+    const job = realJobs.find((j) => j.id === jobId);
     if (!job || info.stage === "Closed") return;
 
     if (isUrgent(job)) {
@@ -77,7 +76,7 @@ export function buildNotifications({
   // (trackedJobs), so this can never double up on the same job.
   savedJobIds.forEach((jobId) => {
     if (trackedJobs[jobId]) return;
-    const job = realJobs.find((j) => j.id === jobId) || MOCK_JOBS.find((j) => j.id === jobId);
+    const job = realJobs.find((j) => j.id === jobId);
     if (!job || !isUrgent(job)) return;
     const days = daysUntil(job.deadlineDate);
     needsAction.push({

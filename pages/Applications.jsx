@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { daysUntil } from "../data/jobUtils.js";
 import { STAGES, outcomeLabel, rejectionStageLabel } from "../data/trackerUtils.js";
 import { useAppState } from "../data/store.jsx";
@@ -83,7 +82,6 @@ export default function Applications() {
       .map(([jobId, info]) => {
         const job =
           realJobs.find((j) => j.id === jobId) ||
-          MOCK_JOBS.find((j) => j.id === jobId) ||
           (isManualJobId(jobId) ? jobForManualEntry(jobId, info) : null);
         if (!job) return null;
         return { jobId, job, ...info };
@@ -209,7 +207,6 @@ export default function Applications() {
           jobId={outcomeModalJobId}
           job={
             realJobs.find((j) => j.id === outcomeModalJobId) ||
-            MOCK_JOBS.find((j) => j.id === outcomeModalJobId) ||
             (isManualJobId(outcomeModalJobId) ? jobForManualEntry(outcomeModalJobId, trackedJobs[outcomeModalJobId]) : null)
           }
           currentOutcome={trackedJobs[outcomeModalJobId]?.outcome}

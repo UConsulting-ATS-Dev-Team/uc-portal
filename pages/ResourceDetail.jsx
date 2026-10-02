@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useLibrary } from "../data/useLibrary.js";
 import LogPrepModal from "../components/modals/LogPrepModal.jsx";
-import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { useAppState } from "../data/store.jsx";
 import { useRealJobs } from "../data/useRealJobs.js";
 import { currentUser } from "../data/mockUser.js";
@@ -68,7 +67,7 @@ export default function ResourceDetail() {
 
   const activeStages = ["Preparing", "Applied", "Assessment", "First round", "Final round"];
   const usedFor = Object.entries(trackedJobs)
-    .map(([jobId, info]) => ({ job: realJobs.find((j) => j.id === jobId) || MOCK_JOBS.find((j) => j.id === jobId), stage: info.stage }))
+    .map(([jobId, info]) => ({ job: realJobs.find((j) => j.id === jobId), stage: info.stage }))
     .filter(
       (e) =>
         e.job &&
