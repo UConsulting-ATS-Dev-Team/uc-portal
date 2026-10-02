@@ -18,6 +18,7 @@
 
 import { canonicalIndustry } from "./careerOptions.js";
 import { DEFAULT_COMPANY_TIER } from "./companyTiers.js";
+import { monthsUntilGraduation } from "./profileUtils.js";
 
 // --- Hard constraints (US-33): filter out entirely, never just down-rank ---
 function isEligible(job, preferences, classYear) {
@@ -35,7 +36,7 @@ function isEligible(job, preferences, classYear) {
 // Each soft-preference factor's max weight -- unchanged from the original
 // flat version, kept as a named map now that scoring is graduated/
 // applicability-gated rather than "matched ? weight : 0" per factor.
-const FACTOR_WEIGHTS = { industry: 30, role: 25, location: 20, compensation: 10, skills: 15 };
+const FACTOR_WEIGHTS = { industry: 30, role: 25, location: 20, compensation: 10, skills: 15, timing: 10 };
 
 // 2026-09-23 follow-up to the graduated-scoring redesign above: live
 // verification found the redesign was correct but couldn't fully solve
@@ -136,7 +137,7 @@ function industryTitleHit(industryPref, title) {
 // a job with no classified data at all), the score is a neutral 50 --
 // not a false 0 (which would read as "bad fit" with zero evidence
 // either way) and not the old false-100-style inflation.
-export function matchJob(job, preferences, classYear) {
+export function matchJob(job, preferences, classYear, gradMonth) {
   const factors = [];
   const eligible = isEligible(job, preferences, classYear);
 
@@ -227,12 +228,38 @@ export function matchJob(job, preferences, classYear) {
     label: matchedSkills.length > 0 ? `${matchedSkills.length} relevant skill${matchedSkills.length === 1 ? "" : "s"}: ${matchedSkills.join(", ")}` : "No relevant skills listed on your profile",
   });
 
+  // Real ask: not everyone graduates in June, and how far a member
+  // actually is from graduating can affect which roles make sense to
+  // recommend -- a soft fit signal, not a hard gate (real postings only
+  // ever state eligible graduation YEARS, never a month, so there's
+  // nothing on the job side to hard-match a month against). Only
+  // applicable once the member has set a real grad month (most haven't
+  // yet, same as every other optional profile field here) AND the job
+  // states a real employment_type to compare against. 12 months is the
+  // rough real boundary between "about to graduate, wants a full-time
+  // role" and "a year+ out, wants an internship" -- soft partial credit
+  // (0.3) on the wrong side rather than a hard 0, since plenty of real
+  // exceptions exist (return offers, bridge internships, early full-time
+  // recruiting).
+  const monthsOut = monthsUntilGraduation(classYear, gradMonth);
+  let timingFrac = null;
+  if (monthsOut !== null && job.employment_type) {
+    if (job.employment_type === "full_time") timingFrac = monthsOut <= 12 ? 1 : 0.3;
+    else if (job.employment_type === "internship") timingFrac = monthsOut > 12 ? 1 : 0.3;
+  }
+  factors.push({
+    key: "timing",
+    match: (timingFrac ?? 0) > 0.3,
+    label: monthsOut !== null ? `${monthsOut} month${monthsOut === 1 ? "" : "s"} until graduation` : "Graduation month not set",
+  });
+
   const applicable = [
     ["industry", industryFrac],
     ["role", roleFrac],
     ["location", locationFrac],
     ["compensation", compFrac],
     ["skills", skillsFrac],
+    ["timing", timingFrac],
   ].filter(([, frac]) => frac !== null);
 
   let score;

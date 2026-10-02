@@ -23,6 +23,35 @@ export function resolvedClassYear(currentUser, profileOverrides) {
   return profileOverrides?.classYear ?? currentUser.classYear;
 }
 
+export const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+// Real ask: not everyone graduates in June, and how far a member actually
+// is from graduating can affect which roles make sense to recommend.
+// Unlike resolvedClassYear, there's no mock currentUser.gradMonth fallback
+// -- class_year already had an established (if fake) mock default;
+// gradMonth is new, so "not set yet" is the honest, correct default for
+// every real member until they fill it in on My Profile, not an invented
+// one.
+export function resolvedGradMonth(currentUser, profileOverrides) {
+  return profileOverrides?.gradMonth ?? null;
+}
+
+// How many whole calendar months from `now` until the 1st of gradMonth in
+// classYear -- null (meaning "unknown, don't apply this as a scoring
+// factor") whenever either half is missing, rather than guessing June.
+// Used by data/jobMatch.js's matchJob() as a soft timing signal between
+// internship vs. full-time listings; real job postings never state a
+// graduation MONTH requirement (only graduation_years), so this can only
+// ever inform a soft preference, not a hard eligibility gate.
+export function monthsUntilGraduation(classYear, gradMonth, now = new Date()) {
+  if (!classYear || !gradMonth) return null;
+  const gradDate = new Date(classYear, gradMonth - 1, 1);
+  return (gradDate.getFullYear() - now.getFullYear()) * 12 + (gradDate.getMonth() - now.getMonth());
+}
+
 export function resolvedMajors(currentUser, profileOverrides) {
   return profileOverrides?.majors || currentUser.majors;
 }

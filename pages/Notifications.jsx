@@ -5,7 +5,7 @@ import { buildNotifications } from "../data/notificationUtils.js";
 import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { useRealJobs } from "../data/useRealJobs.js";
 import { currentUser } from "../data/mockUser.js";
-import { resolvedClassYear } from "../data/profileUtils.js";
+import { resolvedClassYear, resolvedGradMonth } from "../data/profileUtils.js";
 import { deadlineLabel } from "../data/jobUtils.js";
 import { supabase } from "../data/supabaseClient.js";
 import { fetchFeedPosts } from "../data/feedSync.js";
@@ -51,7 +51,8 @@ export default function Notifications() {
   // silently never fire, since buildNotifications() only ever checked
   // data/mockJobs.js internally.
   const classYear = resolvedClassYear(currentUser, profileOverrides);
-  const { realJobs } = useRealJobs(preferences, classYear);
+  const gradMonth = resolvedGradMonth(currentUser, profileOverrides);
+  const { realJobs } = useRealJobs(preferences, classYear, gradMonth);
 
   // Real feed posts + real conversations, fetched once on mount -- closes
   // the "Expand general notifications" quick win by replacing the old

@@ -253,3 +253,53 @@ describe("matchJob — title-text signal differentiates unclassified jobs", () =
     expect(industryFactor.match).toBe(true);
   });
 });
+
+// Real ask: not everyone graduates in June, and how far a member actually
+// is from graduating can affect which roles make sense to recommend --
+// see matchJob()'s own comment on why this is a soft timing signal, not a
+// hard eligibility gate (real postings never state a graduation month).
+describe("matchJob — timing (graduation month)", () => {
+  it("is not applicable at all when the profile has no graduationMonth set", () => {
+    const job = normalizedJob({ employmentType: "full_time", graduationYears: null });
+    const result = matchJob(job, profile({ opportunityType: "Both", graduationMonth: undefined }));
+    const timingFactor = result.factors.find((f) => f.key === "timing")!;
+    expect(timingFactor.detail).toBe("Graduation month not set");
+  });
+
+  it("favors a full-time job for a member graduating soon", () => {
+    const now = new Date();
+    const soonMonth = ((now.getMonth() + 3) % 12) + 1; // ~3 months out, always in-range 1-12
+    const soonYear = now.getFullYear() + (now.getMonth() + 3 >= 12 ? 1 : 0);
+    // opportunityType "Both" -- otherwise the hard eligibility gate would
+    // exclude one of the two jobs outright before timing ever gets a say.
+    const fullTimeProfile = profile({
+      opportunityType: "Both",
+      industries: [],
+      roles: [],
+      locations: [],
+      skills: [],
+      graduationYear: soonYear,
+      graduationMonth: soonMonth,
+    });
+    const fullTimeJob = normalizedJob({ employmentType: "full_time", graduationYears: null });
+    const internshipJob = normalizedJob({ employmentType: "internship", graduationYears: null });
+    expect(matchJob(fullTimeJob, fullTimeProfile).score).toBeGreaterThan(matchJob(internshipJob, fullTimeProfile).score);
+  });
+
+  it("favors an internship for a member more than a year from graduating", () => {
+    const now = new Date();
+    const farYear = now.getFullYear() + 2;
+    const farProfile = profile({
+      opportunityType: "Both",
+      industries: [],
+      roles: [],
+      locations: [],
+      skills: [],
+      graduationYear: farYear,
+      graduationMonth: now.getMonth() + 1,
+    });
+    const fullTimeJob = normalizedJob({ employmentType: "full_time", graduationYears: null });
+    const internshipJob = normalizedJob({ employmentType: "internship", graduationYears: null });
+    expect(matchJob(internshipJob, farProfile).score).toBeGreaterThan(matchJob(fullTimeJob, farProfile).score);
+  });
+});

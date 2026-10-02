@@ -11,7 +11,7 @@ import { fetchAllRows } from "../data/fetchAllRows.js";
 import { matchJob, finalScore } from "../data/jobMatch.js";
 import { realJobToCardShape, JOB_LIST_COLUMNS } from "../data/realJobAdapter.js";
 import { currentUser } from "../data/mockUser.js";
-import { resolvedClassYear } from "../data/profileUtils.js";
+import { resolvedClassYear, resolvedGradMonth } from "../data/profileUtils.js";
 import { parseJobQuery } from "../data/nlSearchParser.js";
 import { useSwipeTabs } from "../data/useSwipeTabs.js";
 import ComingSoonButton from "../components/ComingSoonButton.jsx";
@@ -237,6 +237,7 @@ export default function Jobs() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { savedJobIds, toggleSavedJob, preferences, savedSearches, saveSearch, removeSavedSearch, profileOverrides } = useAppState();
   const classYear = resolvedClassYear(currentUser, profileOverrides);
+  const gradMonth = resolvedGradMonth(currentUser, profileOverrides);
   // Starts fully neutral (no filters at all) -- was previously seeded
   // from the member's own preferences at mount, but that's a step
   // further than asked and had its own real cost (e.g. it's exactly why
@@ -298,8 +299,8 @@ export default function Jobs() {
   }, []);
 
   const JOBS = useMemo(
-    () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear))),
-    [rawJobs, preferences, classYear]
+    () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth))),
+    [rawJobs, preferences, classYear, gradMonth]
   );
 
   useEffect(() => {

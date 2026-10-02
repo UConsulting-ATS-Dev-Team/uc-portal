@@ -82,8 +82,7 @@ export default function AdminMembers() {
                 <th>Member</th>
                 <th>Email</th>
                 <th>Joined</th>
-                <th>Role</th>
-                <th>Status</th>
+                <th>Role &amp; status</th>
                 <th></th>
               </tr>
             </thead>
@@ -98,13 +97,11 @@ export default function AdminMembers() {
                     <td className="meta">
                       {new Date(m.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
                     </td>
-                    <td>
+                    <td style={{ display: "flex", gap: "var(--space-2)" }}>
                       <span className={`chip${m.role === "admin" ? " chip-accent" : ""}`}>
                         {m.role === "admin" ? "Admin" : "Member"}
                       </span>
-                    </td>
-                    <td>
-                      <span className={`chip${m.member_status === "intern" ? " chip-accent" : ""}`}>
+                      <span className="chip">
                         {m.member_status === "current_member" ? "Current member" : m.member_status === "alumni" ? "Alumni" : "Intern"}
                       </span>
                     </td>
@@ -128,14 +125,14 @@ export default function AdminMembers() {
               })}
               {!loading && members.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="meta">
+                  <td colSpan={5} className="meta">
                     No real signed-up accounts yet.
                   </td>
                 </tr>
               )}
               {loading && (
                 <tr>
-                  <td colSpan={6} className="meta">
+                  <td colSpan={5} className="meta">
                     Loading…
                   </td>
                 </tr>

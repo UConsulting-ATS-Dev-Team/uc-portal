@@ -13,6 +13,7 @@ import { supabase } from "./supabaseClient.js";
 // localStorage since there's no backend. This is what lets onboarding
 // answers actually show up later on My Profile / Jobs.
 const STORAGE_KEY = "uc-portal-state";
+const VIEW_AS_STORAGE_KEY = "uc-portal-view-as";
 
 // Removed (2026-09-23, direct instruction to trim mock content down to a
 // couple of clearly-labeled things rather than scattered fake activity):
@@ -73,6 +74,7 @@ const DEFAULT_STATE = {
   profileOverrides: {
     fullName: "",
     classYear: null,
+    gradMonth: null,
     majors: "",
     ucCommittee: "",
     linkedIn: "",
@@ -142,6 +144,39 @@ export function AppStateProvider({ children }) {
   // null until resolved, treated as "not alumni" by default (same
   // fail-safe direction realRole/isAdmin already uses).
   const [realMemberStatus, setRealMemberStatus] = useState(null);
+
+  // Real admin "view as" simulation -- direct ask: instead of creating a
+  // separate throwaway account for every member type, a real admin can
+  // click a control and see the app exactly as a Current member/Alumni/
+  // Intern would, without actually changing their own real role or
+  // member_status in the database. This is purely a client-side,
+  // per-tab presentation override: it only ever changes what isAdmin/
+  // isAlumni/isIntern resolve to below (which every nav/route-guard/page
+  // already reads), never anything sent to Supabase -- every real RLS
+  // policy and is_admin()-gated RPC keeps checking the real signed-in
+  // session's actual role server-side regardless of this value, so
+  // simulating "Member" can never actually weaken what the account could
+  // do if it wanted to break the illusion. sessionStorage, not
+  // localStorage -- deliberately forgotten on tab close rather than
+  // silently persisting a simulation an admin might forget they're in.
+  const [viewAsOverride, setViewAsOverrideState] = useState(() => {
+    try {
+      return sessionStorage.getItem(VIEW_AS_STORAGE_KEY) || null;
+    } catch {
+      return null;
+    }
+  });
+  function setViewAs(value) {
+    setViewAsOverrideState(value);
+    try {
+      if (value) sessionStorage.setItem(VIEW_AS_STORAGE_KEY, value);
+      else sessionStorage.removeItem(VIEW_AS_STORAGE_KEY);
+    } catch {
+      // Private browsing / storage disabled -- the in-memory state above
+      // still works for this tab's current lifetime, just won't survive
+      // a reload. Not worth surfacing an error for a QA convenience.
+    }
+  }
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -559,16 +594,32 @@ export function AppStateProvider({ children }) {
     return prepCount + chatCount;
   }, [state.trackedJobs, state.prepLogged, state.coffeeChatStatus]);
 
+  // realIsAdmin is the TRUE fact (never overridden) -- the View As control
+  // itself gates on this, not the simulatable isAdmin below, so simulating
+  // "Member" can never hide the one control that exits the simulation.
+  // viewAsOverride only ever applies for a real admin -- a non-admin
+  // account somehow having a stale value in its own sessionStorage (it
+  // never could through the UI, since the control is admin-only, but
+  // defensively) has zero effect.
+  const realIsAdmin = realRole === "admin";
+  const simulatingView = realIsAdmin && viewAsOverride != null;
+  const isAdmin = simulatingView ? false : realIsAdmin;
+  const isAlumni = simulatingView ? viewAsOverride === "alumni" : realMemberStatus === "alumni";
+  const isIntern = simulatingView ? viewAsOverride === "intern" : realMemberStatus === "intern";
+
   return (
     <AppStateContext.Provider
       value={{
         ...state,
         needsActionCount,
         realRole,
-        isAdmin: realRole === "admin",
+        realIsAdmin,
+        isAdmin,
         realMemberStatus,
-        isAlumni: realMemberStatus === "alumni",
-        isIntern: realMemberStatus === "intern",
+        isAlumni,
+        isIntern,
+        viewAsOverride: simulatingView ? viewAsOverride : null,
+        setViewAs,
         updatePreferences,
         updateRecruitingSetting,
         updateProfileOverrides,

@@ -8,7 +8,7 @@ import { fetchAllRows } from "../data/fetchAllRows.js";
 import { matchJob } from "../data/jobMatch.js";
 import { realJobToCardShape, JOB_LIST_COLUMNS } from "../data/realJobAdapter.js";
 import { currentUser } from "../data/mockUser.js";
-import { resolvedClassYear } from "../data/profileUtils.js";
+import { resolvedClassYear, resolvedGradMonth } from "../data/profileUtils.js";
 import { isManualJobId, jobForManualEntry } from "../data/manualApplications.js";
 import TrackerBoard from "../components/TrackerBoard.jsx";
 import TrackerTable from "../components/TrackerTable.jsx";
@@ -62,6 +62,7 @@ export default function Applications() {
   // "+ Add application" modal now searching real postings too). Same
   // real-jobs fetch pages/Home.jsx and pages/Jobs.jsx already use.
   const classYear = resolvedClassYear(currentUser, profileOverrides);
+  const gradMonth = resolvedGradMonth(currentUser, profileOverrides);
   const [rawJobs, setRawJobs] = useState([]);
   useEffect(() => {
     // JOB_LIST_COLUMNS, not "*" -- same ~58% payload cut as pages/Jobs.jsx's
@@ -73,8 +74,8 @@ export default function Applications() {
       .catch(() => {});
   }, []);
   const realJobs = useMemo(
-    () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear))),
-    [rawJobs, preferences, classYear]
+    () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth))),
+    [rawJobs, preferences, classYear, gradMonth]
   );
 
   const applications = useMemo(() => {

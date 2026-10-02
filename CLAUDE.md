@@ -4866,6 +4866,131 @@ longer breaks down to phone width either.
   residue_intern_roster=0 residue_lessons=0 residue_comments=0
   roster_total=53`. `vite build`: clean throughout.
 
+- **Three more direct asks: merged Role/Status on Members, real graduation
+  month + timing-aware matching, and a real admin "view as" simulation —
+  plus a genuine pre-existing nav bug the simulation caught immediately**
+
+  **Members page: Role and Status merged into one column** — direct
+  report that two separate columns was "overcomplicated." `pages/
+  AdminMembers.jsx`'s table now has one "Role & status" column showing
+  both chips together (Admin/Member + Current member/Alumni/Intern) --
+  purely a display change, the underlying `role`/`member_status` columns
+  stay the two genuinely separate axes CLAUDE.md's own alumni-accounts
+  entry already explains the reasoning for (access level vs. membership
+  status).
+
+  **Real graduation month, feeding a new soft timing-fit factor** — direct
+  ask: not everyone graduates in June, and how far a member actually is
+  from graduating can affect which roles make sense to recommend. New
+  nullable `profiles.grad_month` (1-12), edited on My Profile's Personal
+  tab next to the existing Graduation year field (`data/profileUtils.js`'s
+  new `MONTH_NAMES`/`resolvedGradMonth()`/`monthsUntilGraduation()`),
+  synced the same way every other Personal-tab field already is. Real
+  job postings only ever state eligible graduation *years*
+  (`jobs.graduation_years`), never a month -- so this can only ever be a
+  soft scoring signal, never a hard eligibility gate. `data/jobMatch.js`'s
+  `matchJob()` gained a new "timing" factor (weight 10, same applicability-
+  gated pattern every other factor already uses): a full-time listing
+  scores well when the member is within 12 months of graduating, an
+  internship scores well beyond that, with soft partial credit (not a hard
+  0) on the wrong side of that line since real exceptions exist (return
+  offers, bridge internships, early full-time recruiting). Only applicable
+  once a member has actually set a grad month -- every member without one
+  (the overwhelming majority today) sees zero change in their match
+  scores. Ported to `server/src/match.ts` (new `MemberProfile
+  .graduationMonth`, same weight/logic) with 3 new tests (145 -> 148).
+  Threaded `gradMonth` through all 11 real call sites of `matchJob()`/
+  `useRealJobs()` across the app (Jobs/Home/Applications/RealJobDetail
+  direct calls, plus CareerResources/LearningTrackDetail/Notifications/
+  ResourceDetail/LogPrepModal's shared hook).
+
+  Verified live: set a real grad month (December) and year (2026, ~2
+  months out) on a throwaway account, confirmed it persisted across a
+  full page reload (real Supabase round-trip, not just local state), then
+  confirmed on two real job postings in the same browser session that an
+  **internship** correctly showed "✕ 2 months until graduation" (a poor
+  fit -- about to graduate, not a year+ out) while a **full-time** role at
+  the same company showed "✓ 2 months until graduation" (a good fit) --
+  the exact differentiation this factor exists to produce, seen on real
+  postings with real computed values, not a synthetic test.
+
+  **Real admin "view as" simulation** — direct ask: instead of creating a
+  separate throwaway account for every member type, an admin should be
+  able to click a button and preview each one directly. New
+  `components/ViewAsMenu.jsx` (replaces the plain account-status chip in
+  TopBar for real admins only) with 4 options: Admin (real)/Current
+  member/Alumni/Intern. Deliberately a pure client-side, per-tab
+  presentation override (`data/store.jsx`'s `viewAsOverride`,
+  sessionStorage-backed, not localStorage -- forgotten on tab close rather
+  than silently persisting a simulation an admin might forget they're in):
+  it only ever changes what `isAdmin`/`isAlumni`/`isIntern` resolve to for
+  that tab, never this admin's real `profiles.role`/`member_status`. Every
+  real RLS policy and `is_admin()`-gated RPC keeps checking the TRUE
+  signed-in session server-side regardless, so simulating "Member" can
+  never actually weaken what the account could do -- it only changes what
+  the UI shows and which routes redirect where, exactly like a real member
+  would experience. The control itself gates on a new `realIsAdmin` (the
+  true, never-overridden fact), not the simulatable `isAdmin`, so the one
+  control that exits a simulation can never be hidden by that same
+  simulation.
+
+  Every nav item, route guard, and page-level branch already read
+  `isAdmin`/`isAlumni`/`isIntern` from `useAppState()` rather than
+  `realRole`/`realMemberStatus` directly, so the simulation works
+  correctly everywhere with zero other code changes -- `NavRail.jsx`/
+  `BottomTabBar.jsx` show the right restricted item set, and
+  `RequireCurrentMember.jsx`/`RequireNotIntern.jsx` redirect exactly like
+  they would for a real alumni/intern account.
+
+  **New `components/RequireAdmin.jsx`, closing a real pre-existing gap
+  the simulation's own design surfaced** -- `/admin/*` had no route-level
+  guard at all before this, only `NavRail.jsx` hiding the Leadership
+  links (a non-admin member typing `/admin` directly landed on the page
+  and just saw each admin RPC fail/empty out against its own
+  `is_admin()` check, rather than being redirected). Needed for the
+  simulation to behave consistently -- without it, "viewing as Alumni"
+  while sitting on `/admin` would've left real admin content on screen
+  underneath a supposedly-simulated non-admin view. Same "guard the
+  route, don't just hide the link" principle `RequireCurrentMember`/
+  `RequireNotIntern` already established. One real subtlety this guard
+  needed that its siblings don't: `isAdmin`'s fail-safe default (`false`
+  while `realRole` is still resolving) is the *wrong* direction for an
+  admin-only guard -- naively redirecting on `!isAdmin` would bounce a
+  genuine admin away from `/admin` on every fresh load, before the role
+  fetch even completes. Fixed by rendering nothing during that specific
+  `realRole === null` window rather than either assuming admin or
+  redirecting.
+
+  **A genuine, pre-existing nav bug found immediately on first real use of
+  the simulation, not a simulation artifact** -- clicking "View as:
+  Alumni" and landing on Feed showed "Accelerator" in the alumni nav
+  rail, which shouldn't be there (CLAUDE.md's own nav-shell spec never
+  lists Accelerator as a current-member/alumni destination at all -- it's
+  the freshman onboarding curriculum). Root cause: `data/navItems.js`'s
+  `MAIN_ITEMS` entry for Accelerator had no `currentMemberOnly` flag, so
+  `mainItemsFor`'s alumni branch (`!item.currentMemberOnly`) never
+  filtered it out -- a REAL alumni account has been seeing this the whole
+  time, just never caught because no real alumni account had been
+  click-tested since Accelerator was added to the nav. Fixed by tagging
+  it `currentMemberOnly: true` -- this only ever changes what alumni see;
+  the plain current-member fallback doesn't filter on that flag at all,
+  so real current members (and interns, via their own separate
+  `INTERN_ITEMS` list) are completely unaffected. Re-verified live after
+  the fix: alumni simulation now shows exactly Network/Feed/Companies/My
+  Profile (4 items, matching the original documented intent), current-
+  member simulation still correctly shows all 9 including Accelerator.
+
+  Verified live end-to-end with one throwaway admin account: clicked
+  through all 4 View As options, confirming the real redirect (Alumni ->
+  `/feed`, Intern -> `/accelerator`, Current member -> stays put since
+  it's already an allowed route) and the real nav-item set at each; real
+  alumni-only Feed nudge cards (Add work history/Add photo) correctly
+  appeared during the Alumni simulation; exiting back to "Admin (real)"
+  correctly restored full `/admin` access with no redirect. `vite build`:
+  clean throughout. `npm run test:server`: 148/148 (3 new). Cleaned up
+  the throwaway account completely afterward; confirmed zero residue:
+  `residue_auth=0 residue_roster=0 roster_total=53`.
+
 Run locally:
 ```bash
 npm install

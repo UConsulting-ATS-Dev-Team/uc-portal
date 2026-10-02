@@ -6,7 +6,7 @@ import { useAppState } from "../../data/store.jsx";
 import { useRealJobs } from "../../data/useRealJobs.js";
 import { isRealJobId } from "../../data/realJobAdapter.js";
 import { currentUser } from "../../data/mockUser.js";
-import { resolvedClassYear } from "../../data/profileUtils.js";
+import { resolvedClassYear, resolvedGradMonth } from "../../data/profileUtils.js";
 
 const ACTIVITIES = ["Case practice", "Behavioral prep", "Technical / skills drill", "Mock interview with a peer", "Resource reading"];
 
@@ -35,7 +35,8 @@ const ACTIVITIES = ["Case practice", "Behavioral prep", "Technical / skills dril
 export default function LogPrepModal({ job, onClose, computeOddsFn }) {
   const { trackedJobs, prepLogged, logPrep, preferences, profileOverrides } = useAppState();
   const classYear = resolvedClassYear(currentUser, profileOverrides);
-  const { realJobs } = useRealJobs(preferences, classYear);
+  const gradMonth = resolvedGradMonth(currentUser, profileOverrides);
+  const { realJobs } = useRealJobs(preferences, classYear, gradMonth);
   const trackedList = useMemo(
     () =>
       Object.keys(trackedJobs)

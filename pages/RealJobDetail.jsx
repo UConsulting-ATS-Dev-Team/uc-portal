@@ -5,7 +5,7 @@ import { matchJob } from "../data/jobMatch.js";
 import { fetchRealOddsInputs, computeRealOdds } from "../data/realOddsModel.js";
 import { useAppState } from "../data/store.jsx";
 import { currentUser } from "../data/mockUser.js";
-import { resolvedClassYear } from "../data/profileUtils.js";
+import { resolvedClassYear, resolvedGradMonth } from "../data/profileUtils.js";
 import { fetchRealPeopleAtCompany } from "../data/realPeople.js";
 import { fetchWorkHistoryAtCompany } from "../data/workHistorySync.js";
 import { fetchRealWriteupsForJob, deleteInterviewWriteup } from "../data/realWriteups.js";
@@ -79,6 +79,7 @@ export default function RealJobDetail({ jobId: jobIdProp }) {
   const { preferences, savedConnections, coffeeChatStatus, prepLogged, profileOverrides, savedJobIds, toggleSavedJob, trackedJobs, addToTracker } =
     useAppState();
   const classYear = resolvedClassYear(currentUser, profileOverrides);
+  const gradMonth = resolvedGradMonth(currentUser, profileOverrides);
   const [showLogPrepModal, setShowLogPrepModal] = useState(false);
 
   // Real UConsulting Directory people at this company (see JOB_ENGINE_
@@ -185,7 +186,7 @@ export default function RealJobDetail({ jobId: jobIdProp }) {
     if (!job || people === undefined) return;
     let cancelled = false;
     setOddsInputs(undefined);
-    const matchScore = matchJob(job, preferences, classYear).score;
+    const matchScore = matchJob(job, preferences, classYear, gradMonth).score;
     fetchRealOddsInputs(job, { matchScore, people, savedConnections, coffeeChatStatus })
       .then((inputs) => {
         if (!cancelled) setOddsInputs(inputs);
@@ -204,7 +205,7 @@ export default function RealJobDetail({ jobId: jobIdProp }) {
 
   const companyPage = COMPANIES.find((c) => c.name === job.company);
 
-  const match = matchJob(job, preferences, classYear);
+  const match = matchJob(job, preferences, classYear, gradMonth);
   const extraPrepHours = prepLogged[job.id] || 0;
   const odds = oddsInputs ? computeRealOdds(oddsInputs, { extraPrepHours }) : null;
   const oddsComputeFn = (_j, opts) => computeRealOdds(oddsInputs, opts);

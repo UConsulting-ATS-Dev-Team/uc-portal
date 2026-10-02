@@ -21,7 +21,7 @@ import { realJobToCardShape, JOB_LIST_COLUMNS } from "./realJobAdapter.js";
 // matching, not a real match score, can omit preferences/classYear
 // entirely; matchJob(job, undefined, undefined) still returns a shape
 // realJobToCardShape can read (score defaults to 0 via its own `?? 0`).
-export function useRealJobs(preferences, classYear) {
+export function useRealJobs(preferences, classYear, gradMonth) {
   const [rawJobs, setRawJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(true);
   useEffect(() => {
@@ -35,8 +35,8 @@ export function useRealJobs(preferences, classYear) {
       .finally(() => setJobsLoading(false));
   }, []);
   const realJobs = useMemo(
-    () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear))),
-    [rawJobs, preferences, classYear]
+    () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth))),
+    [rawJobs, preferences, classYear, gradMonth]
   );
   return { realJobs, jobsLoading };
 }

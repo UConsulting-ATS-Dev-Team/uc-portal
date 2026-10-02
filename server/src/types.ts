@@ -131,6 +131,10 @@ export interface NormalizedJob {
 // added per Part 10 (didn't exist in the prototype before).
 export interface MemberProfile {
   graduationYear: number; // hard constraint (US-31/US-33)
+  // Optional -- most real members haven't set this yet. Only ever a soft
+  // timing signal in matchJob() (real postings never state a graduation
+  // MONTH requirement, only graduationYears), never a hard gate.
+  graduationMonth?: number | null;
   opportunityType: "Internship" | "Full-time" | "Both";
   industries: string[]; // ranked, soft preference
   roles: string[]; // soft preference
@@ -156,7 +160,7 @@ export interface DuplicateCandidate {
 }
 
 export interface MatchFactor {
-  key: "industry" | "role" | "location" | "compensation" | "graduationYear" | "skills";
+  key: "industry" | "role" | "location" | "compensation" | "graduationYear" | "skills" | "timing";
   label: string;
   match: boolean;
   detail: string;

@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import RequireAuth from "./components/RequireAuth.jsx";
 import RequireCurrentMember from "./components/RequireCurrentMember.jsx";
 import RequireNotIntern from "./components/RequireNotIntern.jsx";
+import RequireAdmin from "./components/RequireAdmin.jsx";
 import NavShell from "./components/NavShell.jsx";
 import Skeleton from "./components/Skeleton.jsx";
 import SignIn from "./pages/SignIn.jsx";
@@ -245,7 +246,10 @@ function AppRoutes() {
         }
       />
 
-      {/* Leadership only — see components/NavRail.jsx for the visibility gate */}
+      {/* Leadership only -- see components/NavRail.jsx for the visibility
+          gate and components/RequireAdmin.jsx for the actual route-level
+          enforcement (hiding the link was never enough on its own). */}
+      <Route element={<RequireAdmin />}>
       <Route
         path="/admin"
         element={
@@ -286,6 +290,7 @@ function AppRoutes() {
           </NavShell>
         }
       />
+      </Route>
 
       </Route>
 

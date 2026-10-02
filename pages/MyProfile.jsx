@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppState } from "../data/store.jsx";
 import { INDUSTRIES, ROLES, SKILLS, LOCATIONS, COMPANIES, RECRUITING_CYCLES } from "../data/careerOptions.js";
-import { computeProfileStrength } from "../data/profileUtils.js";
+import { computeProfileStrength, MONTH_NAMES } from "../data/profileUtils.js";
 import { uploadAvatar, removeAvatar } from "../data/avatarSync.js";
 import { uploadResume, removeResume, getResumeSignedUrl } from "../data/resumeSync.js";
 import { changePassword } from "../data/passwordSync.js";
@@ -145,6 +145,7 @@ export default function MyProfile() {
   const [form, setForm] = useState({
     fullName: profileOverrides.fullName ?? "",
     classYear: profileOverrides.classYear ?? "",
+    gradMonth: profileOverrides.gradMonth ?? "",
     majors: profileOverrides.majors ?? "",
     ucCommittee: profileOverrides.ucCommittee ?? "",
     linkedIn: profileOverrides.linkedIn,
@@ -156,6 +157,7 @@ export default function MyProfile() {
     updateProfileOverrides({
       fullName: form.fullName,
       classYear: form.classYear,
+      gradMonth: form.gradMonth || null,
       majors: form.majors,
       ucCommittee: form.ucCommittee,
       linkedIn,
@@ -529,6 +531,17 @@ export default function MyProfile() {
                     value={form.classYear}
                     onChange={(e) => setForm((f) => ({ ...f, classYear: Number(e.target.value) }))}
                   />
+                </div>
+                <div className="field">
+                  <label>Graduation month</label>
+                  <select value={form.gradMonth} onChange={(e) => setForm((f) => ({ ...f, gradMonth: e.target.value ? Number(e.target.value) : "" }))}>
+                    <option value="">Not set</option>
+                    {MONTH_NAMES.map((name, i) => (
+                      <option key={name} value={i + 1}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="field">
                   <label>Major</label>

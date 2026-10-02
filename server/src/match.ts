@@ -55,6 +55,15 @@ function industryTitleHit(industryPref: string, title: string): boolean {
   return patterns?.some((p) => p.test(title)) ?? false;
 }
 
+// Mirrors data/profileUtils.js's monthsUntilGraduation() -- see that
+// file's own comment. null (meaning "unknown, don't apply this factor")
+// whenever either half is missing, never a guessed default month.
+function monthsUntilGraduation(graduationYear: number, graduationMonth: number | null | undefined, now: Date = new Date()): number | null {
+  if (!graduationYear || !graduationMonth) return null;
+  const gradDate = new Date(graduationYear, graduationMonth - 1, 1);
+  return (gradDate.getFullYear() - now.getFullYear()) * 12 + (gradDate.getMonth() - now.getMonth());
+}
+
 // US-32/33/34 -- job-member matching. Hard constraints filter out entirely
 // (§3.9); soft preferences only affect score. Every factor is returned
 // alongside the score so it's always explainable (US-34) -- mirrors the
@@ -91,7 +100,7 @@ export function matchJob(job: NormalizedJob, profile: MemberProfile): MatchResul
   // report: every job showed the same 75% match, root-caused to binary
   // pass/fail factors that flatten once a job board is already
   // pre-filtered toward relevant postings). Keep both in sync by hand.
-  const FACTOR_WEIGHTS: Record<string, number> = { industry: 30, role: 25, location: 20, compensation: 10, skills: 15 };
+  const FACTOR_WEIGHTS: Record<string, number> = { industry: 30, role: 25, location: 20, compensation: 10, skills: 15, timing: 10 };
 
   let industryFrac: number | null = null;
   if (profile.industries.length > 0) {
@@ -164,6 +173,23 @@ export function matchJob(job: NormalizedJob, profile: MemberProfile): MatchResul
     detail: matchedSkills.join(", ") || "None matched",
   });
 
+  // Same real timing signal as data/jobMatch.js's matchJob() -- see that
+  // file's own comment for the full rationale. Only applicable once the
+  // profile has a real graduationMonth AND the job states a real
+  // employmentType.
+  const monthsOut = monthsUntilGraduation(profile.graduationYear, profile.graduationMonth);
+  let timingFrac: number | null = null;
+  if (monthsOut !== null && job.employmentType) {
+    if (job.employmentType === "full_time") timingFrac = monthsOut <= 12 ? 1 : 0.3;
+    else if (job.employmentType === "internship") timingFrac = monthsOut > 12 ? 1 : 0.3;
+  }
+  factors.push({
+    key: "timing",
+    label: "Timing fit",
+    match: (timingFrac ?? 0) > 0.3,
+    detail: monthsOut !== null ? `${monthsOut} month${monthsOut === 1 ? "" : "s"} until graduation` : "Graduation month not set",
+  });
+
   const applicable = (
     [
       ["industry", industryFrac],
@@ -171,6 +197,7 @@ export function matchJob(job: NormalizedJob, profile: MemberProfile): MatchResul
       ["location", locationFrac],
       ["compensation", compFrac],
       ["skills", skillsFrac],
+      ["timing", timingFrac],
     ] as [string, number | null][]
   ).filter(([, frac]) => frac !== null) as [string, number][];
 

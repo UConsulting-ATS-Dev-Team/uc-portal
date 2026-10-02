@@ -8,6 +8,7 @@ import { countNewSignupsSince } from "../data/adminNotificationsSync.js";
 import { fetchUpcomingDeadlineCount } from "../data/acceleratorSync.js";
 import { displayName } from "../data/profileUtils.js";
 import Avatar from "./Avatar.jsx";
+import ViewAsMenu from "./ViewAsMenu.jsx";
 import RequestFeatureModal from "./modals/RequestFeatureModal.jsx";
 import { useTour } from "./tour/TourContext.jsx";
 import ThemeToggle from "./theme/ThemeToggle.jsx";
@@ -20,7 +21,7 @@ const SIGNUPS_LAST_SEEN_KEY = "uc-portal-admin-signups-last-seen";
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showRequestFeature, setShowRequestFeature] = useState(false);
-  const { profileOverrides, needsActionCount, isAdmin, isAlumni, isIntern } = useAppState();
+  const { profileOverrides, needsActionCount, isAdmin, isAlumni, isIntern, realIsAdmin } = useAppState();
   const { availableTours, start: startTour } = useTour();
   // Real ask: the navy mark gets mostly masked out against a dark
   // background -- swaps to the same real artwork's white export
@@ -143,7 +144,7 @@ export default function TopBar() {
           </Link>
         )}
 
-        <span className={`chip${isAdmin ? " chip-accent" : ""}`}>{accountStatusLabel}</span>
+        {realIsAdmin ? <ViewAsMenu /> : <span className={`chip${isAdmin ? " chip-accent" : ""}`}>{accountStatusLabel}</span>}
 
         <ThemeToggle />
 

@@ -139,6 +139,50 @@
   background: var(--color-ground);
 }
 
+/* Admin-only "view as" simulation control -- same dropdown shape as
+   .topbar__menu, but anchored to its own small wrapper (not
+   .topbar__actions) so the panel opens directly under the chip that
+   triggered it, not under the avatar on the far right. */
+.view-as-menu {
+  position: relative;
+}
+
+.view-as-menu > button {
+  border: var(--border-hairline);
+  cursor: pointer;
+}
+
+.view-as-menu__panel {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  min-width: 170px;
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  z-index: 10;
+}
+
+.view-as-menu__panel button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  background: none;
+  border: none;
+  color: var(--color-text);
+  font-size: var(--text-body);
+  cursor: pointer;
+}
+
+.view-as-menu__panel button:hover {
+  background: var(--color-ground);
+}
+
+.view-as-menu__panel button.is-active {
+  font-weight: 700;
+  color: var(--color-accent-deep);
+}
+
 /* Body: rail + content */
 .shell__body {
   flex: 1 1 auto;

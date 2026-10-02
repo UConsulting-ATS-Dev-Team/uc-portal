@@ -45,7 +45,18 @@ export const MAIN_ITEMS = [
   { label: "Feed", to: "/feed", icon: Rss },
   { label: "Companies", to: "/companies", icon: Building2 },
   { label: "Career Resources", to: "/resources", icon: GraduationCap, currentMemberOnly: true },
-  { label: "Accelerator", to: "/accelerator", icon: Rocket },
+  // currentMemberOnly -- a real, pre-existing bug this flag itself didn't
+  // cover until caught live via the admin "view as" simulation
+  // (components/ViewAsMenu.jsx): Accelerator is the freshman onboarding
+  // curriculum (see CLAUDE.md's nav shell spec, which never lists it as a
+  // current-member destination at all), but had no currentMemberOnly tag,
+  // so mainItemsFor's alumni branch (`!item.currentMemberOnly`) never
+  // filtered it out -- a real alumni account saw it in their nav the
+  // whole time. Tagging it only ever changes what alumni see; the plain
+  // current-member fallback below doesn't filter on this flag at all, so
+  // real current members and interns (via their own separate INTERN_ITEMS
+  // list) are unaffected.
+  { label: "Accelerator", to: "/accelerator", icon: Rocket, currentMemberOnly: true },
   { label: "My Profile", to: "/profile", icon: CircleUserRound },
 ];
 

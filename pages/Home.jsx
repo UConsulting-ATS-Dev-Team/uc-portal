@@ -7,7 +7,7 @@ import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { isManualJobId, jobForManualEntry } from "../data/manualApplications.js";
 import { fetchFeedPosts, feedRowToPost } from "../data/feedSync.js";
 import { listOpenToCoffeeChatMembers } from "../data/messagesSync.js";
-import { computeProfileStrength, displayName, resolvedClassYear } from "../data/profileUtils.js";
+import { computeProfileStrength, displayName, resolvedClassYear, resolvedGradMonth } from "../data/profileUtils.js";
 import Avatar from "../components/Avatar.jsx";
 import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
 import { nextActionForStage } from "../data/trackerUtils.js";
@@ -47,6 +47,7 @@ export default function Home() {
   // fetchAllRows + matchJob + realJobToCardShape pipeline) so the two
   // pages agree on what a "real job" and its match score even are.
   const classYear = resolvedClassYear(currentUser, profileOverrides);
+  const gradMonth = resolvedGradMonth(currentUser, profileOverrides);
   const [rawJobs, setRawJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(true);
   useEffect(() => {
@@ -60,8 +61,8 @@ export default function Home() {
       .finally(() => setJobsLoading(false));
   }, []);
   const realJobs = useMemo(
-    () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear))),
-    [rawJobs, preferences, classYear]
+    () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth))),
+    [rawJobs, preferences, classYear, gradMonth]
   );
 
   // Real feed posts (same pipeline pages/Feed.jsx itself uses) -- this

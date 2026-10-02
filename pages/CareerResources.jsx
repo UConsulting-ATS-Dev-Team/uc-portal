@@ -5,7 +5,7 @@ import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { useAppState } from "../data/store.jsx";
 import { useRealJobs } from "../data/useRealJobs.js";
 import { currentUser } from "../data/mockUser.js";
-import { resolvedClassYear } from "../data/profileUtils.js";
+import { resolvedClassYear, resolvedGradMonth } from "../data/profileUtils.js";
 import { fetchContributions } from "../data/contributionsSync.js";
 import ContributeModal from "../components/modals/ContributeModal.jsx";
 import CasePartnerFinder from "../components/CasePartnerFinder.jsx";
@@ -39,7 +39,8 @@ export default function CareerResources() {
   // real tracked job's interview-stage retitle used to only ever check
   // the 8 mock demo jobs, so it silently never fired for a real posting.
   const classYear = resolvedClassYear(currentUser, profileOverrides);
-  const { realJobs } = useRealJobs(preferences, classYear);
+  const gradMonth = resolvedGradMonth(currentUser, profileOverrides);
+  const { realJobs } = useRealJobs(preferences, classYear, gradMonth);
 
   const interviewJob = Object.entries(trackedJobs)
     .map(([jobId, info]) => ({
