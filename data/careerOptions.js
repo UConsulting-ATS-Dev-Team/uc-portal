@@ -1,11 +1,7 @@
-// Static reference data for onboarding, profile preferences, and (later)
-// Jobs/Companies filtering. `alumni` is illustrative mock data (nobody's
-// hand-counted alumni by industry). `members` is rescaled to stay
-// realistic against the club's real, exact headcount (52, see
-// data/mockUser.js's clubStats) -- a member ranks up to 3 industries in
-// onboarding/preferences, so no single industry's count can exceed 52,
-// and the total across every industry can't meaningfully exceed roughly
-// 3x that (156) either.
+// Static reference data for onboarding, profile preferences, and
+// Jobs/Companies filtering. These are option lists only -- any member /
+// alumni / open-role counts shown next to them come from real directory and
+// job data (data/onboardingStats.js), not from this file.
 //
 // Expanded twice, Sept 2026: first to 13 (Strategy consulting, Venture
 // capital, Data & analytics, Operations & supply chain), then to this
@@ -32,44 +28,44 @@
 // here.
 export const INDUSTRIES = [
   // --- Consulting ---
-  { name: "Management consulting", members: 24, alumni: 61 },
-  { name: "Strategy consulting", members: 8, alumni: 25 },
-  { name: "Technology consulting", members: 3, alumni: 6 },
-  { name: "Human capital consulting", members: 2, alumni: 4 },
+  { name: "Management consulting" },
+  { name: "Strategy consulting" },
+  { name: "Technology consulting" },
+  { name: "Human capital consulting" },
 
   // --- Finance ---
-  { name: "Investment banking", members: 20, alumni: 48 },
-  { name: "Private equity", members: 10, alumni: 19 },
-  { name: "Venture capital", members: 5, alumni: 8 },
-  { name: "Hedge funds / asset management", members: 3, alumni: 9 },
-  { name: "Corporate finance / FP&A", members: 3, alumni: 5 },
-  { name: "Commercial & retail banking", members: 3, alumni: 6 },
-  { name: "Fintech", members: 3, alumni: 7 },
-  { name: "Insurance & actuarial", members: 1, alumni: 3 },
+  { name: "Investment banking" },
+  { name: "Private equity" },
+  { name: "Venture capital" },
+  { name: "Hedge funds / asset management" },
+  { name: "Corporate finance / FP&A" },
+  { name: "Commercial & retail banking" },
+  { name: "Fintech" },
+  { name: "Insurance & actuarial" },
 
   // --- Business & corporate ---
-  { name: "Marketing & brand strategy", members: 7, alumni: 14 },
-  { name: "Corporate strategy & business development", members: 4, alumni: 6 },
-  { name: "Product management", members: 5, alumni: 9 },
-  { name: "Operations & supply chain", members: 3, alumni: 5 },
-  { name: "Sales & business development", members: 3, alumni: 5 },
-  { name: "Human resources / people operations", members: 2, alumni: 3 },
+  { name: "Marketing & brand strategy" },
+  { name: "Corporate strategy & business development" },
+  { name: "Product management" },
+  { name: "Operations & supply chain" },
+  { name: "Sales & business development" },
+  { name: "Human resources / people operations" },
 
   // --- Tech ---
-  { name: "Tech / product strategy", members: 12, alumni: 22 },
-  { name: "Data & analytics", members: 6, alumni: 10 },
-  { name: "Software engineering", members: 4, alumni: 8 },
-  { name: "Cybersecurity", members: 2, alumni: 4 },
+  { name: "Tech / product strategy" },
+  { name: "Data & analytics" },
+  { name: "Software engineering" },
+  { name: "Cybersecurity" },
 
   // --- Other consulting/finance/business-adjacent ---
-  { name: "Consumer goods & retail", members: 3, alumni: 7 },
-  { name: "Media & entertainment", members: 2, alumni: 5 },
-  { name: "Energy & sustainability", members: 2, alumni: 4 },
-  { name: "Healthcare", members: 4, alumni: 8 },
-  { name: "Real estate", members: 3, alumni: 6 },
-  { name: "Nonprofit / public sector", members: 3, alumni: 9 },
+  { name: "Consumer goods & retail" },
+  { name: "Media & entertainment" },
+  { name: "Energy & sustainability" },
+  { name: "Healthcare" },
+  { name: "Real estate" },
+  { name: "Nonprofit / public sector" },
 
-  { name: "Still figuring it out", members: 0, alumni: 0 },
+  { name: "Still figuring it out" },
 ];
 
 // "Strategy consulting" and "Management consulting" are the same
@@ -181,14 +177,14 @@ export const SKILLS = [
 ];
 
 export const COMPANIES = [
-  { name: "Bain & Company", alumni: 22, openRoles: 6 },
-  { name: "McKinsey & Company", alumni: 19, openRoles: 5 },
-  { name: "Deloitte", alumni: 17, openRoles: 9 },
-  { name: "Stripe", alumni: 6, openRoles: 3 },
-  { name: "Goldman Sachs", alumni: 11, openRoles: 4 },
-  { name: "BCG", alumni: 14, openRoles: 4 },
-  { name: "EY-Parthenon", alumni: 9, openRoles: 5 },
-  { name: "Accenture", alumni: 8, openRoles: 7 },
+  { name: "Bain & Company" },
+  { name: "McKinsey & Company" },
+  { name: "Deloitte" },
+  { name: "Stripe" },
+  { name: "Goldman Sachs" },
+  { name: "BCG" },
+  { name: "EY-Parthenon" },
+  { name: "Accenture" },
 ];
 
 export const RECRUITING_CYCLES = [
@@ -206,12 +202,3 @@ export const HELP_OPTIONS = [
   "Alumni intros",
   "Deciding between industries",
 ];
-
-// Rough mock "how many roles/alumni match" heuristic for the onboarding
-// live-payoff card. Not real matching logic -- just something that visibly
-// responds to selections for the prototype.
-export function computeMatches({ industries = [], roles = [], locations = [] }) {
-  const matchedRoles = 8 + industries.length * 9 + roles.length * 5 + locations.length * 4;
-  const matchedAlumni = Math.round(matchedRoles * 0.5);
-  return { roles: matchedRoles, alumni: matchedAlumni };
-}
