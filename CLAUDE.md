@@ -5015,6 +5015,38 @@ longer breaks down to phone width either.
   clean. Cleaned up the throwaway account completely afterward; confirmed
   zero residue (`residue_auth=0 residue_roster=0 roster_total=53`).
 
+- **Real "Mark as alumni" admin action** — direct ask: a button for
+  admins to manually move a real account to alumni. Closes a genuine gap
+  `data/mockAdmin.js`'s own corrected `ACCESS_CONTROL.accessMechanism`
+  copy already flagged (and `SignIn.jsx`'s footer note states plainly):
+  `member_status` only ever gets set automatically once, at signup, via
+  `can_sign_up()`'s real Directory-alumni match -- nothing re-checks or
+  auto-converts it afterward, so a real member who graduates has no way
+  to become "alumni" in the app unless an admin does it by hand, and
+  there was no button to do that by hand. New `markAlumni()` in
+  `pages/AdminMembers.jsx`, same direct `profiles.update()` shape as the
+  existing `toggleRole()`/`graduateIntern()` actions on that same page --
+  `profiles_update_admin`'s RLS policy and the existing self-escalation
+  trigger already cover this exact path (an admin changing someone
+  ELSE's `member_status`), so no new migration was needed. New "Mark as
+  alumni" button shown on every account that isn't already alumni
+  (current members and interns both -- an admin correcting a record
+  shouldn't have to first graduate an intern before marking them alumni),
+  disabled on the signed-in admin's own row for the same reason
+  `toggleRole`'s own self-guard exists -- an admin accidentally demoting
+  their own access is a real, avoidable mistake, not a case worth
+  supporting.
+
+  Verified live with two throwaway accounts (admin + a plain current
+  member): clicked "Mark as alumni" on the test member's row, confirmed
+  it updated immediately in the UI and, after a full page reload (a
+  real fresh fetch, not optimistic local state), still correctly showed
+  "Alumni" -- a genuine database write, not a client-side illusion.
+  Separately confirmed the button is disabled with an explanatory title
+  on the signed-in admin's own row. `vite build`: clean. Cleaned up both
+  throwaway accounts completely afterward; confirmed zero residue
+  (`residue_auth=0 residue_roster=0 roster_total=53`).
+
 Run locally:
 ```bash
 npm install

@@ -80,6 +80,25 @@ export default function AdminMembers() {
     setActioningId(null);
   }
 
+  // Real ask: an admin manually correcting a real member's status once
+  // they've actually graduated (can_sign_up()'s automatic Directory-alumni
+  // match only ever applies at the moment of signup -- nothing re-checks
+  // or auto-converts a status afterward, see SignIn.jsx's own footer copy
+  // on this). Same direct profiles.update() shape as toggleRole/
+  // graduateIntern -- profiles_update_admin + the self-escalation trigger
+  // already cover this exact path (an admin changing someone ELSE's
+  // member_status).
+  async function markAlumni(member) {
+    setActioningId(member.member_id);
+    const { error } = await supabase.from("profiles").update({ member_status: "alumni" }).eq("id", member.member_id);
+    if (error) {
+      setError(error.message);
+    } else {
+      setMembers((prev) => prev.map((m) => (m.member_id === member.member_id ? { ...m, member_status: "alumni" } : m)));
+    }
+    setActioningId(null);
+  }
+
   return (
     <div>
       <h1>Members</h1>
@@ -129,6 +148,16 @@ export default function AdminMembers() {
                       {m.member_status === "intern" && (
                         <button className="btn btn-secondary" disabled={isBusy} onClick={() => graduate(m)}>
                           Graduate to current member
+                        </button>
+                      )}
+                      {m.member_status !== "alumni" && (
+                        <button
+                          className="btn btn-secondary"
+                          disabled={isBusy || isSelf}
+                          title={isSelf ? "You can't mark your own account alumni — ask another admin instead" : undefined}
+                          onClick={() => markAlumni(m)}
+                        >
+                          Mark as alumni
                         </button>
                       )}
                     </td>
