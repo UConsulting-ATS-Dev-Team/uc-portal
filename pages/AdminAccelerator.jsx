@@ -397,6 +397,21 @@ export default function AdminAccelerator() {
   const [editingId, setEditingId] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [error, setError] = useState(null);
+  // Prep material queued while filling in the Add form -- uploaded/attached
+  // the moment the lesson is created, so adding a lesson and its slides/PDFs
+  // is one step instead of a separate hunt for the Manage panel.
+  const [pendingFiles, setPendingFiles] = useState([]);
+  const [pendingLinks, setPendingLinks] = useState([]);
+  const [draftLinkLabel, setDraftLinkLabel] = useState("");
+  const [draftLinkUrl, setDraftLinkUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  function queueLink() {
+    if (!draftLinkUrl.trim()) return;
+    setPendingLinks([...pendingLinks, { label: draftLinkLabel, url: draftLinkUrl.trim() }]);
+    setDraftLinkLabel("");
+    setDraftLinkUrl("");
+  }
 
   function load() {
     setLoading(true);
@@ -422,6 +437,7 @@ export default function AdminAccelerator() {
 
   async function saveLesson() {
     setError(null);
+    setSaving(true);
     try {
       if (!form.lessonDate || !form.title.trim()) {
         setError("Date and title are required.");
@@ -436,12 +452,35 @@ export default function AdminAccelerator() {
         // real ask: attaching files/links should feel like one continuous
         // flow right after title/topic, not a separate click to find it.
         const created = await createLesson({ lessonDate: form.lessonDate, title: form.title.trim(), topicOverview: form.topicOverview.trim() });
+        // A failed attachment shouldn't lose the lesson that was just
+        // created -- collect failures and surface them while still
+        // opening Manage so the admin can retry from there.
+        const failures = [];
+        for (const file of pendingFiles) {
+          try {
+            await uploadMaterial(created.id, file);
+          } catch (err) {
+            failures.push(`${file.name}: ${err.message}`);
+          }
+        }
+        for (const link of pendingLinks) {
+          try {
+            await addMaterialLink(created.id, link.label, link.url);
+          } catch (err) {
+            failures.push(`${link.url}: ${err.message}`);
+          }
+        }
+        if (failures.length) setError(`Lesson added, but some material failed to attach -- ${failures.join("; ")}`);
+        setPendingFiles([]);
+        setPendingLinks([]);
         cancelEdit();
         load();
         setSelectedId(created.id);
       }
     } catch (err) {
       setError(err.message);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -450,8 +489,6 @@ export default function AdminAccelerator() {
     if (selectedId === id) setSelectedId(null);
     load();
   }
-
-  const selectedLesson = lessons.find((l) => l.id === selectedId);
 
   return (
     <div>
@@ -482,8 +519,8 @@ export default function AdminAccelerator() {
             <label>Topic overview</label>
             <input type="text" value={form.topicOverview} onChange={(e) => setForm({ ...form, topicOverview: e.target.value })} />
           </div>
-          <button className="btn btn-primary" onClick={saveLesson}>
-            {editingId ? "Save" : "Add"}
+          <button className="btn btn-primary" onClick={saveLesson} disabled={saving}>
+            {saving ? "Saving…" : editingId ? "Save" : "Add"}
           </button>
           {editingId && (
             <button className="btn btn-secondary" onClick={cancelEdit}>
@@ -491,13 +528,66 @@ export default function AdminAccelerator() {
             </button>
           )}
         </div>
+
+        {!editingId && (
+          <div style={{ marginTop: "var(--space-5)" }}>
+            <p style={{ fontWeight: 700, marginBottom: "var(--space-2)" }}>Prep material (optional)</p>
+            <p className="meta" style={{ marginTop: 0 }}>
+              Attach slideshows, PDFs, or spreadsheets, or link to a deck. They're added when you click Add; you can
+              also add or remove more later from the lesson's Manage panel.
+            </p>
+            <input
+              type="file"
+              multiple
+              accept=".pdf,.ppt,.pptx,.xls,.xlsx"
+              onChange={(e) => {
+                setPendingFiles([...pendingFiles, ...Array.from(e.target.files ?? [])]);
+                e.target.value = "";
+              }}
+            />
+            <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "flex-end", marginTop: "var(--space-4)" }}>
+              <div className="field" style={{ flex: "1 1 180px" }}>
+                <label>Link label (optional)</label>
+                <input type="text" value={draftLinkLabel} onChange={(e) => setDraftLinkLabel(e.target.value)} placeholder="e.g. Slide deck" />
+              </div>
+              <div className="field" style={{ flex: "1 1 260px" }}>
+                <label>Link URL</label>
+                <input type="url" value={draftLinkUrl} onChange={(e) => setDraftLinkUrl(e.target.value)} placeholder="https://…" />
+              </div>
+              <button type="button" className="btn btn-secondary" onClick={queueLink} disabled={!draftLinkUrl.trim()}>
+                Add link
+              </button>
+            </div>
+            {(pendingFiles.length > 0 || pendingLinks.length > 0) && (
+              <ul style={{ marginTop: "var(--space-4)" }}>
+                {pendingFiles.map((f, i) => (
+                  <li key={`f${i}`}>
+                    {f.name}{" "}
+                    <button type="button" className="btn-link" onClick={() => setPendingFiles(pendingFiles.filter((_, j) => j !== i))}>
+                      Remove
+                    </button>
+                  </li>
+                ))}
+                {pendingLinks.map((l, i) => (
+                  <li key={`l${i}`}>
+                    {l.label || l.url} <span className="meta">(link)</span>{" "}
+                    <button type="button" className="btn-link" onClick={() => setPendingLinks(pendingLinks.filter((_, j) => j !== i))}>
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="detail-section">
         {loading && <p className="meta">Loading…</p>}
         {!loading && lessons.length === 0 && <p className="meta">No lessons yet — add the first one above.</p>}
         {lessons.map((lesson, i) => (
-          <div className="step-row" key={lesson.id}>
+          <div key={lesson.id}>
+          <div className="step-row">
             <span className="step-row__number">Week {i + 1}</span>
             <div className="step-row__body">
               <div className="step-row__title">{lesson.title}</div>
@@ -516,10 +606,10 @@ export default function AdminAccelerator() {
               </button>
             </div>
           </div>
+          {selectedId === lesson.id && <LessonManager lesson={lesson} onChanged={load} />}
+          </div>
         ))}
       </div>
-
-      {selectedLesson && <LessonManager lesson={selectedLesson} onChanged={load} />}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useTour } from "./TourContext.jsx";
 import "../../styles/tour.css";
@@ -15,30 +15,38 @@ function measure(selector) {
 // preference, not a guarantee -- always falls back to whatever actually
 // fits the viewport, clamped with a margin, same spirit as JobDetail's own
 // odds-model layout preferring real content over a fixed slot.
-function tooltipStyle(rect, hint) {
+function tooltipStyle(rect, hint, measuredHeight) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const width = Math.min(340, vw - 32);
   const margin = 16;
-  const estHeight = 240;
+  const width = Math.min(340, vw - margin * 2);
+  // Real rendered height once known (a narrow phone wraps the body text
+  // onto many more lines than a desktop does, so a fixed guess ran the
+  // card off the bottom of the screen). Capped to the viewport, matching
+  // the CSS max-height.
+  const height = Math.min(measuredHeight || 240, vh - margin * 2);
+  const centerLeft = Math.max(margin, (vw - width) / 2);
 
+  // Plain pixel math instead of a CSS translate(-50%, -50%) -- a transform
+  // can't coexist with narrow-screen CSS that pins `left`, and shoved the
+  // card half off-screen on phones.
   if (!rect) {
-    return { width, top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
+    return { width, top: Math.max(margin, (vh - height) / 2), left: centerLeft };
   }
 
   if (hint === "right" && rect.right + margin + width <= vw) {
-    const top = Math.min(Math.max(rect.top, margin), vh - estHeight - margin);
+    const top = Math.max(margin, Math.min(rect.top, vh - height - margin));
     return { width, top, left: rect.right + margin };
   }
 
-  const left = Math.min(Math.max(rect.left, margin), vw - width - margin);
-  if (rect.bottom + margin + estHeight <= vh) {
+  const left = Math.max(margin, Math.min(rect.left, vw - width - margin));
+  if (rect.bottom + margin + height <= vh) {
     return { width, top: rect.bottom + margin, left };
   }
-  if (rect.top - margin - estHeight >= 0) {
-    return { width, top: rect.top - margin - estHeight, left };
+  if (rect.top - margin - height >= 0) {
+    return { width, top: rect.top - margin - height, left };
   }
-  return { width, top: Math.max(margin, vh - estHeight - margin), left };
+  return { width, top: Math.max(margin, vh - height - margin), left };
 }
 
 export default function TourOverlay() {
@@ -47,6 +55,8 @@ export default function TourOverlay() {
   const [rect, setRect] = useState(null);
   const [ready, setReady] = useState(false);
   const timerRef = useRef(null);
+  const tooltipRef = useRef(null);
+  const [tipHeight, setTipHeight] = useState(0);
 
   const step = activeTour ? activeTour.steps[stepIndex] : null;
 
@@ -137,6 +147,13 @@ export default function TourOverlay() {
     return () => window.removeEventListener("keydown", onKey);
   }, [activeTour, stop]);
 
+  // Re-measure the card's real height whenever its content or the
+  // viewport changes, so placement never relies on a fixed guess.
+  useLayoutEffect(() => {
+    const el = tooltipRef.current;
+    if (el) setTipHeight(el.offsetHeight);
+  });
+
   if (!activeTour || !step) return null;
 
   // Dims immediately even before `ready` -- polling for a target that
@@ -165,7 +182,7 @@ export default function TourOverlay() {
     <>
       <div className="tour-catcher" onClick={stop} />
       {spotlight ? <div className="tour-spotlight" style={spotlight} /> : <div className="tour-dim" />}
-      <div className="tour-tooltip" style={tooltipStyle(rect, step.placement)} role="dialog" aria-label={step.title}>
+      <div className="tour-tooltip" ref={tooltipRef} style={tooltipStyle(rect, step.placement, tipHeight)} role="dialog" aria-label={step.title}>
         <div className="tour-tooltip__kicker">
           Step {stepIndex + 1} of {total}
         </div>

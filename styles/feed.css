@@ -4,11 +4,12 @@
   gap: var(--space-8);
 }
 
+/* Fills whatever width the content area has left of the right rail,
+   rather than a fixed 660px column that left a big empty gap on wide
+   monitors. */
 .feed-main {
-  width: 660px;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-width: 0;
-  max-width: 660px;
 }
 
 .feed-rail {

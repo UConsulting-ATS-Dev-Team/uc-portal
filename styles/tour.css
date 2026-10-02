@@ -39,6 +39,8 @@
   border: 1px solid var(--color-border);
   border-left: 3px solid var(--color-accent);
   padding: var(--space-5);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
 }
 
 .tour-tooltip__kicker {
@@ -90,10 +92,18 @@
   gap: var(--space-2);
 }
 
+/* Narrow phones: tighter padding, and let Skip / Back / Next wrap onto a
+   second line instead of pushing past the card's edge. */
 @media (max-width: 640px) {
   .tour-tooltip {
-    left: 16px !important;
-    right: 16px;
-    width: auto !important;
+    padding: var(--space-4);
+  }
+
+  .tour-tooltip__actions {
+    flex-wrap: wrap;
+  }
+
+  .tour-tooltip__nav {
+    margin-left: auto;
   }
 }
