@@ -19,5 +19,3 @@ export const ACCESS_CONTROL = {
   accessMechanism: "New accounts: roster match (current members) or a real Directory alumni match (alumni) at signup.",
   pendingRemovals: 3,
 };
-
-export const FLAGGED_FEED_POSTS = 2;

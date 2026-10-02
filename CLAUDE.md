@@ -4789,6 +4789,83 @@ longer breaks down to phone width either.
   `residue_auth=0 residue_roster=0 residue_intern_roster=0
   residue_lessons=0 roster_total=53`. `vite build`: clean throughout.
 
+- **Three flagged gaps closed: real Content management page, real
+  back-and-forth accelerator comments, and the modal focus-trap verified
+  live** — direct ask to close out all three items from a status report
+  given the prior session: `/admin/content`'s long-standing bare
+  placeholder, the accelerator's one-shot grading `feedback` field (no
+  real comment thread), and the modal focus-trap fix that shipped without
+  a live Tab-key pass.
+
+  **Real content moderation** — investigated before building: zero admin
+  delete policy existed on `feed_posts`/`interview_writeups`/
+  `library_contributions` (only ever own-row delete), so an admin
+  genuinely could not remove another member's inappropriate post,
+  write-up, or contribution at all. The Admin Dashboard's existing
+  "Content management" rail card's "Moderate feed" link also pointed at a
+  fully fake `FLAGGED_FEED_POSTS = 2` constant (`data/mockAdmin.js`) with
+  zero real backing. New admin-delete RLS policies on all three tables;
+  new `pages/AdminContent.jsx` (real `/admin/content`, lazy-loaded same as
+  every other Leadership page) lists every real row across all three with
+  a real "Remove" action, gated by a `window.confirm()` guard (an
+  irreversible, visible-to-everyone action). "Moderate feed" now points
+  there and dropped the fake count/badge; `FLAGGED_FEED_POSTS` had no
+  other callers and was removed. Verified live with a throwaway admin
+  account: posted a real feed post, confirmed it appeared on the new page
+  with real content, confirmed clicking Remove without confirming
+  correctly did nothing (the dialog guard working as intended), then
+  (browser automation can't accept a native `confirm()` dialog, so
+  `window.confirm` was overridden to `true` specifically to exercise the
+  actual delete path) confirmed the real admin-RLS delete fired and the
+  post vanished from both the admin page and, implicitly, every member's
+  feed.
+
+  **Real multi-message comments on accelerator submissions** — new
+  `accelerator_submission_comments` table (`submission_id`, `author_id`,
+  `body`), readable/writable by the submission's own intern or any admin
+  only, deliberately separate from the existing single official
+  score/feedback fields (a real grade is a different concept from a
+  clarifying back-and-forth, the same split Google Classroom itself
+  makes). New shared `components/SubmissionCommentThread.jsx`, wired into
+  both `AdminAccelerator.jsx`'s `GradeRow` (a new full-width row under
+  each grade row, resolving any author id via the existing `namesById`
+  map from `list_members()`) and `Accelerator.jsx`'s `SubmissionForm`
+  (shown once a submission exists; no `namesById` available or needed on
+  this side, since RLS already scopes a thread to just this intern +
+  admins — "not me" always means "an admin"). Verified live, both
+  directions, with a throwaway admin + intern account: the intern's real
+  question appeared on the admin's Manage panel correctly attributed by
+  real email (not "You"); the admin's real reply appeared on the intern's
+  own view correctly labeled "UC Admin" (not the admin's raw account id);
+  each side's own messages correctly labeled "You" to themselves.
+
+  **Modal focus-trap: live-verified with real keyboard events** — closes
+  the one gap its own build entry flagged ("not live click-tested this
+  session"). Opened a real modal (Post Announcement) with a real mouse
+  click and confirmed, with actual `Tab`/`Shift+Tab`/`Escape` key presses
+  (not synthetic DOM dispatch): initial focus lands on the modal's first
+  focusable element; `Shift+Tab` from the first element wraps to the
+  last; `Tab` from the last wraps back to the first; `Escape` closes the
+  modal and returns focus to the real trigger button. One real test
+  artifact caught and corrected mid-verification: opening the modal via
+  a synthetic `button.click()` (used elsewhere this session to drive the
+  UI) never actually moves real browser focus the way a native click
+  does, so the first focus-return check showed focus landing on
+  `<body>`, not the trigger -- re-tested with a real `computer` mouse
+  click instead, which correctly returned focus to the "Post
+  announcement" button. Worth remembering: `.click()` via
+  `javascript_tool` is fine for triggering app logic, but not a reliable
+  stand-in for a real click when a test specifically depends on *focus*
+  behavior.
+
+  All three verified live end-to-end with one throwaway admin + one
+  throwaway intern account (same pgcrypto-bcrypt technique used
+  throughout this project); cleaned up completely afterward (both
+  accounts, the test feed post, the test lesson/submission/comments) and
+  confirmed zero residue: `residue_auth=0 residue_roster=0
+  residue_intern_roster=0 residue_lessons=0 residue_comments=0
+  roster_total=53`. `vite build`: clean throughout.
+
 Run locally:
 ```bash
 npm install

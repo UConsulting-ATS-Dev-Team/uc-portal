@@ -26,3 +26,12 @@ export async function submitContribution({ type, title, body, company, categorie
 export async function fetchContributions() {
   return fetchAllRows("library_contributions", "*", (q) => q.order("created_at", { ascending: false }));
 }
+
+// Own-row delete already existed via RLS (library_contributions_delete_own);
+// an admin-delete policy was added alongside the content-moderation page --
+// this one function covers both callers, RLS decides what's actually
+// allowed.
+export async function deleteContribution(id) {
+  const { error } = await supabase.from("library_contributions").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}

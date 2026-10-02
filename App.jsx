@@ -5,7 +5,6 @@ import RequireCurrentMember from "./components/RequireCurrentMember.jsx";
 import RequireNotIntern from "./components/RequireNotIntern.jsx";
 import NavShell from "./components/NavShell.jsx";
 import Skeleton from "./components/Skeleton.jsx";
-import Placeholder from "./pages/Placeholder.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import Jobs from "./pages/Jobs.jsx";
@@ -37,6 +36,7 @@ const AdminDashboard = lazy(() => import("./pages/AdminDashboard.jsx"));
 const AdminMembers = lazy(() => import("./pages/AdminMembers.jsx"));
 const SourceManagement = lazy(() => import("./pages/SourceManagement.jsx"));
 const AdminAccelerator = lazy(() => import("./pages/AdminAccelerator.jsx"));
+const AdminContent = lazy(() => import("./pages/AdminContent.jsx"));
 
 // Lazy-loaded for a different reason than the block above (2026-09-25,
 // bundle-size pass): not one-time/Leadership-only, but "one click deeper"
@@ -274,7 +274,7 @@ function AppRoutes() {
         path="/admin/content"
         element={
           <NavShell>
-            <Placeholder title="Content management" screenId="2h" />
+            <LazyPage Component={AdminContent} />
           </NavShell>
         }
       />

@@ -7,6 +7,7 @@ import {
   submitAssignment,
   uploadSubmissionFile,
 } from "../data/acceleratorSync.js";
+import SubmissionCommentThread from "../components/SubmissionCommentThread.jsx";
 import "../styles/jobDetail.css";
 import "../styles/resources.css";
 
@@ -94,6 +95,11 @@ function SubmissionForm({ lesson, submission, onSubmitted }) {
       <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting || (!body.trim() && !file && !submission?.file_path)}>
         {submitting ? "Submitting…" : submission ? "Update submission" : "Submit"}
       </button>
+      {submission && (
+        <div style={{ marginTop: "var(--space-4)" }}>
+          <SubmissionCommentThread submissionId={submission.id} />
+        </div>
+      )}
     </div>
   );
 }

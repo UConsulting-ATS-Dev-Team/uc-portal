@@ -8,7 +8,7 @@ import { capForCompanyTier } from "../data/companyTiers.js";
 import { fetchRecentSignups } from "../data/adminNotificationsSync.js";
 import { fetchWeeklyDigestLog } from "../data/digestSync.js";
 import { fetchCronHealth } from "../data/cronHealthSync.js";
-import { ACCESS_CONTROL, FLAGGED_FEED_POSTS } from "../data/mockAdmin.js";
+import { ACCESS_CONTROL } from "../data/mockAdmin.js";
 import DemoDataBadge from "../components/DemoDataBadge.jsx";
 import "../styles/jobs.css";
 import "../styles/jobDetail.css";
@@ -1325,10 +1325,8 @@ export default function AdminDashboard() {
             <Link to="/companies" className="content-mgmt-link">
               <span>Manage company pages</span>
             </Link>
-            <Link to="/feed" className="content-mgmt-link">
-              <span>Moderate feed</span>
-              <span className="chip chip-accent">{FLAGGED_FEED_POSTS} flagged</span>
-              <DemoDataBadge label="Illustrative" />
+            <Link to="/admin/content" className="content-mgmt-link">
+              <span>Moderate content</span>
             </Link>
             <button
               type="button"

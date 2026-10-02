@@ -19,6 +19,7 @@ import {
   bulkAddInternRoster,
   fetchInternProgress,
 } from "../data/acceleratorSync.js";
+import SubmissionCommentThread from "../components/SubmissionCommentThread.jsx";
 import "../styles/jobDetail.css";
 import "../styles/admin.css";
 
@@ -140,7 +141,7 @@ function InternRoster() {
   );
 }
 
-function GradeRow({ submission, displayName, onGraded }) {
+function GradeRow({ submission, displayName, namesById, onGraded }) {
   const [score, setScore] = useState(submission.score ?? "");
   const [feedback, setFeedback] = useState(submission.feedback ?? "");
   const [saving, setSaving] = useState(false);
@@ -163,33 +164,40 @@ function GradeRow({ submission, displayName, onGraded }) {
   }
 
   return (
-    <tr>
-      <td>{displayName}</td>
-      <td className="meta">{new Date(submission.submitted_at).toLocaleDateString()}</td>
-      <td style={{ maxWidth: 280, whiteSpace: "pre-wrap" }}>{submission.body || <span className="meta">No written response.</span>}</td>
-      <td>
-        {fileUrl ? (
-          <a href={fileUrl} target="_blank" rel="noreferrer">
-            {submission.file_name}
-          </a>
-        ) : submission.file_path ? (
-          "Loading…"
-        ) : (
-          <span className="meta">None</span>
-        )}
-      </td>
-      <td>
-        <input type="number" style={{ width: 64 }} value={score} onChange={(e) => setScore(e.target.value)} placeholder="—" />
-      </td>
-      <td>
-        <input type="text" value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Feedback (optional)" />
-      </td>
-      <td>
-        <button className="btn btn-secondary" onClick={save} disabled={saving}>
-          {saving ? "Saving…" : submission.graded_at ? "Update" : "Grade"}
-        </button>
-      </td>
-    </tr>
+    <>
+      <tr>
+        <td>{displayName}</td>
+        <td className="meta">{new Date(submission.submitted_at).toLocaleDateString()}</td>
+        <td style={{ maxWidth: 280, whiteSpace: "pre-wrap" }}>{submission.body || <span className="meta">No written response.</span>}</td>
+        <td>
+          {fileUrl ? (
+            <a href={fileUrl} target="_blank" rel="noreferrer">
+              {submission.file_name}
+            </a>
+          ) : submission.file_path ? (
+            "Loading…"
+          ) : (
+            <span className="meta">None</span>
+          )}
+        </td>
+        <td>
+          <input type="number" style={{ width: 64 }} value={score} onChange={(e) => setScore(e.target.value)} placeholder="—" />
+        </td>
+        <td>
+          <input type="text" value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Feedback (optional)" />
+        </td>
+        <td>
+          <button className="btn btn-secondary" onClick={save} disabled={saving}>
+            {saving ? "Saving…" : submission.graded_at ? "Update" : "Grade"}
+          </button>
+        </td>
+      </tr>
+      <tr>
+        <td colSpan={7} style={{ background: "var(--color-ground)" }}>
+          <SubmissionCommentThread submissionId={submission.id} resolveAuthorName={(id) => namesById.get(id) ?? id} />
+        </td>
+      </tr>
+    </>
   );
 }
 
@@ -366,7 +374,7 @@ function LessonManager({ lesson, onChanged }) {
           </thead>
           <tbody>
             {submissions.map((s) => (
-              <GradeRow key={s.id} submission={s} displayName={namesById.get(s.profile_id) ?? s.profile_id} onGraded={loadSubmissions} />
+              <GradeRow key={s.id} submission={s} displayName={namesById.get(s.profile_id) ?? s.profile_id} namesById={namesById} onGraded={loadSubmissions} />
             ))}
             {submissions.length === 0 && (
               <tr>

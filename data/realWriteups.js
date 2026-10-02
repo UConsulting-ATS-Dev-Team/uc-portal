@@ -49,6 +49,18 @@ export async function fetchRealWriteupsForCompany(companyName) {
   return data ?? [];
 }
 
+// Every real write-up app-wide, for the admin content-moderation page --
+// the two functions above are both deliberately scoped to one job/company;
+// this is the one place that needs the full real table. Small enough at
+// this club's real scale to read directly rather than through
+// fetchAllRows.js's pagination helper (same judgment call this file's
+// other two functions already make).
+export async function fetchAllWriteups() {
+  const { data, error } = await supabase.from("interview_writeups").select("*").order("created_at", { ascending: false });
+  if (error) throw new Error(`Fetching interview_writeups failed: ${error.message}`);
+  return data ?? [];
+}
+
 // Shared by ContributeModal.jsx for both entry points: from a specific real
 // job's detail page (job_id set) and from Career Resources' generic
 // "+ Contribute" (job_id null, company typed freehand). submitted_by is

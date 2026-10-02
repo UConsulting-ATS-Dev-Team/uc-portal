@@ -260,6 +260,34 @@ export async function bulkAddInternRoster(text) {
   return rows.length;
 }
 
+// Real back-and-forth comment thread per submission -- separate from the
+// single official score/feedback fields; see the migration's own comment
+// for why. Readable/writable by the submission's own intern or any admin,
+// enforced by RLS -- these two functions don't need to know which caller
+// they're being called from.
+export async function fetchSubmissionComments(submissionId) {
+  const { data, error } = await supabase
+    .from("accelerator_submission_comments")
+    .select("*")
+    .eq("submission_id", submissionId)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function addSubmissionComment(submissionId, body) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from("accelerator_submission_comments")
+    .insert({ submission_id: submissionId, author_id: user.id, body: body.trim() })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 // Real deadline-notification count for an intern -- the one "notification"
 // surface they have, since the dedicated Notifications page is route-
 // guarded away from them (components/RequireNotIntern.jsx). "Actionable"
