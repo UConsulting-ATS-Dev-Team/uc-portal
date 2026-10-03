@@ -125,6 +125,21 @@ export default function RealJobDetail({ jobId: jobIdProp }) {
     };
   }, [jobId]);
 
+  // A fallback apply link, fetched only for a job whose own link is flagged broken (see
+  // job_apply_fallback's migration). Null for non-Greenhouse jobs, or when there's nothing to offer.
+  const [applyFallbackUrl, setApplyFallbackUrl] = useState(null);
+  useEffect(() => {
+    setApplyFallbackUrl(null);
+    if (!job || job.link_health !== "broken") return;
+    let cancelled = false;
+    supabase.rpc("job_apply_fallback", { p_job_id: job.id }).then(({ data }) => {
+      if (!cancelled) setApplyFallbackUrl(data ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [job?.id, job?.link_health]);
+
   useEffect(() => {
     if (!job) return;
     let cancelled = false;
@@ -237,6 +252,15 @@ export default function RealJobDetail({ jobId: jobIdProp }) {
                 <a href={job.application_url} target="_blank" rel="noreferrer" className="btn btn-primary">
                   Apply on {job.company}'s site
                 </a>
+                {/* Only for a link the link-health check has already flagged broken, and only
+                    when this is a Greenhouse-sourced job (job_apply_fallback). Offered as "try
+                    this", not a promise: for a job that has actually closed it lands on the
+                    company's Greenhouse board instead. */}
+                {job.link_health === "broken" && applyFallbackUrl && (
+                  <a href={applyFallbackUrl} target="_blank" rel="noreferrer" className="btn btn-secondary">
+                    Link not working? Try Greenhouse's application page
+                  </a>
+                )}
                 {/* Was missing entirely -- the mock JobDetail.jsx had this
                     (as two functionally-identical buttons, "Add to my
                     tracker" and "Mark interested," both calling the exact

@@ -211,21 +211,22 @@ Deno.serve(async (req) => {
     relevant_industries: submitterIndustries.length > 0 ? submitterIndustries : normalized.relevantIndustries,
   };
 
-  const { data: newJob, error: jobInsertError } = await adminClient
-    .from("jobs")
-    .insert(insertRow)
-    .select()
-    .single();
-  if (jobInsertError) return await fail({ error: jobInsertError.message }, 500);
-
-  const { error: jobSourceInsertError } = await adminClient.from("job_sources").insert({
-    job_id: newJob.id,
-    source_id: source.id,
-    source_job_id: submission.id,
-    source_url: payload.link,
-    is_primary: true,
+  // The job and its job_sources row go in ONE transaction (insert_jobs_with_sources) -- the same
+  // fix the ingestion fetchers got. Two separate inserts could be interrupted between them and leave
+  // a job with no source row, which the pipeline can then never see, expire or cap. The id is
+  // generated here so the source row can reference it in the same call.
+  const newJobId = crypto.randomUUID();
+  const { error: jobInsertError } = await adminClient.rpc("insert_jobs_with_sources", {
+    p_jobs: [{ id: newJobId, ...insertRow }],
+    p_sources: [{
+      job_id: newJobId,
+      source_id: source.id,
+      source_job_id: submission.id,
+      source_url: payload.link,
+      is_primary: true,
+    }],
   });
-  if (jobSourceInsertError) return await fail({ error: jobSourceInsertError.message }, 500);
+  if (jobInsertError) return await fail({ error: jobInsertError.message }, 500);
 
   // Review band (70-89): the submission still goes live -- the admin already
   // approved it -- but flagged in the same duplicate_candidates queue an
@@ -236,7 +237,7 @@ Deno.serve(async (req) => {
       (activeJobs ?? []).find((j) => j.id === bestMatch!.jobId)!
     ));
     const { error: duplicateInsertError } = await adminClient.from("duplicate_candidates").insert({
-      job_id_a: newJob.id,
+      job_id_a: newJobId,
       job_id_b: bestMatch.jobId,
       score,
       signals,
@@ -246,13 +247,13 @@ Deno.serve(async (req) => {
 
   const { error: updateSubmissionError } = await adminClient
     .from("opportunity_submissions")
-    .update({ job_id: newJob.id, status: "live", reviewed_by: user.id, reviewed_at: nowIso })
+    .update({ job_id: newJobId, status: "live", reviewed_by: user.id, reviewed_at: nowIso })
     .eq("id", submission.id);
   if (updateSubmissionError) return await fail({ error: updateSubmissionError.message }, 500);
 
   return jsonResponse({
     outcome: tier === "review" ? "live_flagged_duplicate" : "live",
-    jobId: newJob.id,
+    jobId: newJobId,
     ...(tier === "review" && bestMatch ? { duplicateOf: bestMatch.jobId, duplicateScore: bestMatch.score } : {}),
   });
 });

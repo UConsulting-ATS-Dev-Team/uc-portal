@@ -12,6 +12,7 @@ import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
 import { nextActionForStage } from "../data/trackerUtils.js";
 import { useRealJobs } from "../data/useRealJobs.js";
 import JobCard from "../components/JobCard.jsx";
+import Skeleton from "../components/Skeleton.jsx";
 import "../styles/jobs.css";
 import "../styles/jobDetail.css";
 import "../styles/feed.css";
@@ -32,6 +33,7 @@ export default function Home() {
     toggleSavedJob,
     trackedJobs,
     prepLogged,
+    memberDataLoading,
   } = useAppState();
 
   // "Recommended for you" and the tracked-job lookup below both used to
@@ -88,6 +90,19 @@ export default function Home() {
       ...info,
     }))
     .filter((e) => e.job);
+
+  // A member's tracked jobs, preferences and profile load after sign-in. Until they have, "nothing tracked
+  // yet" would be a false statement (a returning member on a new device saw the first-login screen flash up),
+  // so show a loading frame instead of the empty state.
+  // Two things must both have arrived: the member's own data, and the jobs list their tracked ids resolve against.
+  if ((memberDataLoading || jobsLoading) && trackedEntries.length === 0) {
+    return (
+      <div>
+        <h1>Home</h1>
+        <Skeleton lines={4} />
+      </div>
+    );
+  }
 
   // First login / nothing tracked yet -- empty state per wireframe 3e.
   if (trackedEntries.length === 0) {

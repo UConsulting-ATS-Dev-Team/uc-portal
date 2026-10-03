@@ -4992,3 +4992,46 @@ longer breaks down to phone width either.
   **Not done:** a returning member still sees a brief flash of Home's empty first-login state while their data loads (no
   loading flag is exposed for tracked jobs); and the React "value should not be null" warning on My Profile was not reproduced
   after the LinkedIn fix, but React logs it once per page load and the console tool may collapse repeats, so that is not proof.
+
+- **2026-10-03: eight follow-ups -- deploy check, loading state, pipeline-health coverage, apply fallback, dead-board detection, Lever test, atomic approvals, null-warning fix** --
+  **(3) Deploys:** all 12 most recent Production deployments on Vercel are `success`, including the one for the latest commit
+  (a local build's bundle hash differs from Vercel's, so the deployment status is the real check).
+  **(5) Home's empty-screen flash:** the store now exposes `memberDataLoading` (true until the five remote fetches have
+  settled, failures included), and Home shows a skeleton while it or the jobs list is loading. Took two rounds: the first
+  definition read "no user known yet" as "nothing to load" and the screen still flashed in the gap between the router
+  reaching Home and the store learning who signed in; and Home also needs the jobs list to resolve tracked ids, which loads
+  separately. Verified with a DOM observer across a real sign-in: skeleton -> tracked view, no empty first-login screen.
+  **(6) Pipeline health for batched adapters:** `check_cron_health()` now reports coverage for Greenhouse and Lever -- how many
+  enabled companies had a successful fetch in the last 26h -- counts fetches/failures over 24h, and goes stale under 90%
+  coverage (the old "last run = rows within 15 minutes" described whichever 14 companies went last since batching). Live it
+  read 49/159 Greenhouse companies refreshed, Stale (the real backlog) and Lever 12/12 OK. Return type gained three columns
+  (migration `20261008400000`, drop and recreate).
+  **(7) Apply-link fallback:** `job_apply_fallback(job_id)` (migration `20261008300000`) returns Greenhouse's own application page
+  (`job-boards.greenhouse.io/embed/job_app?for=<slug>&token=<id>`) for an active Greenhouse job; the job page offers it as
+  "Link not working? Try Greenhouse's application page" only when the link is already flagged broken. Checked against 25
+  broken-link jobs first: it reaches a real application page for 3 (AlixPartners, Consensys, Databricks -- genuinely live,
+  wrapper broken) and the company's generic board for the other 22, which are closed jobs still awaiting expiry -- so it
+  is offered as "try this", and it helps rarely. Verified as a plain member on a real flagged job.
+  **(8) Dead boards:** `list_dead_sources()` flags an enabled Greenhouse/Lever source whose last 3 fetches all failed with HTTP
+  404; `disable_dead_source()` (admin, re-checks the flag, refuses otherwise) disables it and expires only the jobs no other
+  source also tracks. Admin Dashboard shows them under Pipeline health with a confirm-then-disable button. Deliberately a
+  human action, not automatic. Verified end to end with a synthetic dead board: flagged, refused for a healthy source,
+  confirmation shown, 1 job expired and a job shared with a live source left alone.
+  **(9) Lever re-linking:** exercised for the first time in a rolled-back test with fabricated Lever orphans: matched the Lever
+  source, parsed the posting uuid, and ranked two orphans sharing one id correctly (newest keeps rn=1).
+  **(10) Submission approval is atomic:** `approve-submission` now writes the job and its `job_sources` row through
+  `insert_jobs_with_sources` (the id is generated up front). Verified by approving a synthetic submission through the real
+  Approve button: Live, job created with exactly one primary source row whose id is the submission's, 0 orphans.
+  **(11) The My Profile "value should not be null" warning:** cause found, not just the earlier LinkedIn guess --
+  `member_preferences.comp_target` has no database default, and `rowToPreferences` passed a null straight into the
+  compensation slider (and overrode the app's default of 35, which would also have rendered "$null/hr"). Every nullable
+  preference column now falls back to the store's own default. Verified with a member whose `comp_target` is null, in a fresh
+  tab: slider 35, "$35/hr", and an empty console.
+  **A real intermittent failure found while verifying (6), not explained:** the 06:17 UTC scheduled batch had 8 of its 14
+  companies fail with `duplicate key ... job_sources_source_id_source_job_id_key` from the new atomic insert. Not a race (one
+  lock row, each company logged once), not feed duplicates (checked the live feeds), not pagination (1,925 source rows paged
+  unordered x3, none missing), and not reproducible: all 8 succeeded when re-run (Oscar 6, Figure 11, Adyen 16 new jobs
+  inserted). All eight had last been fetched on 09-09. The failure message now includes the database's detail line (the exact
+  key) in all three fetchers, so a recurrence will say which row collided; those companies were refreshed manually. The same
+  error was the only failure kind in the historical log, so it may have a cause beyond the pg_net race explanation.
+  Throwaway accounts, synthetic dead board, submission and job removed (`roster_total=53 people_total=209`, 0 orphans).

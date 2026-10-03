@@ -149,6 +149,11 @@ export function AppStateProvider({ children }) {
   // member changes -- not just once when the app first mounts.
   const [sessionUserId, setSessionUserId] = useState(undefined);
   const hydratedUserRef = useRef(null); // the user id the in-memory state currently belongs to
+  // True once every one of this member's remote fetches (preferences, profile, tracker, network, saved
+  // jobs) has settled -- success or failure. Exposed as memberDataLoading so a page can show a loading
+  // state instead of briefly rendering "nothing yet" (e.g. Home's empty first-login screen) for a member
+  // whose data simply hasn't arrived. Separate from the two sync-gating flags, which only mean "safe to write".
+  const [memberDataReady, setMemberDataReady] = useState(false);
 
   // Real admin "view as" simulation -- direct ask: instead of creating a
   // separate throwaway account for every member type, a real admin can
@@ -245,6 +250,7 @@ export function AppStateProvider({ children }) {
     if (sessionUserId === undefined) return; // first session check hasn't resolved yet
     setHydratedFromRemote(false);
     setProfileOverridesHydrated(false);
+    setMemberDataReady(false);
 
     if (sessionUserId === null) {
       // Signed out. The in-memory state may still be the departing member's -- drop it, and the cache key.
@@ -262,6 +268,11 @@ export function AppStateProvider({ children }) {
     }
 
     let cancelled = false;
+    let outstanding = 5; // the five fetches below; each calls done() when it settles
+    const done = () => {
+      outstanding -= 1;
+      if (outstanding === 0 && !cancelled) setMemberDataReady(true);
+    };
     let cachedOwner = null;
     try {
       cachedOwner = localStorage.getItem(OWNER_KEY);
@@ -294,7 +305,7 @@ export function AppStateProvider({ children }) {
         }));
       }
       setHydratedFromRemote(true);
-    });
+    }).finally(done);
 
     fetchRemoteProfileOverrides()
       .then((remote) => {
@@ -308,7 +319,8 @@ export function AppStateProvider({ children }) {
       })
       .finally(() => {
         if (!cancelled) setProfileOverridesHydrated(true);
-      });
+      })
+      .finally(done);
 
     fetchRemoteTrackedApplications().then((remote) => {
       if (cancelled || !remote) return;
@@ -318,7 +330,7 @@ export function AppStateProvider({ children }) {
         prepLogged: { ...prev.prepLogged, ...remote.prepLogged },
         timelineShiftDays: { ...prev.timelineShiftDays, ...remote.timelineShiftDays },
       }));
-    });
+    }).finally(done);
 
     fetchRemoteNetworkConnections().then((remote) => {
       if (cancelled || !remote) return;
@@ -327,7 +339,7 @@ export function AppStateProvider({ children }) {
         savedConnections: [...new Set([...prev.savedConnections, ...remote.savedConnections])],
         coffeeChatStatus: { ...prev.coffeeChatStatus, ...remote.coffeeChatStatus },
       }));
-    });
+    }).finally(done);
 
     fetchRemoteSavedJobs().then((remote) => {
       if (cancelled || !remote) return;
@@ -335,7 +347,7 @@ export function AppStateProvider({ children }) {
         ...prev,
         savedJobIds: [...new Set([...prev.savedJobIds, ...remote])],
       }));
-    });
+    }).finally(done);
 
     return () => {
       cancelled = true;
@@ -653,6 +665,11 @@ export function AppStateProvider({ children }) {
         isAdmin,
         realMemberStatus,
         accountEmail,
+        // true until the signed-in member's data has finished loading. Deliberately just `!memberDataReady` rather
+        // than also checking sessionUserId: right after sign-in the router reaches Home a moment BEFORE this
+        // provider has learned who signed in, and a check that read "no user yet" as "nothing to load" let the
+        // empty first-login screen flash in that gap. Only pages behind the sign-in gate read this.
+        memberDataLoading: !memberDataReady,
         isAlumni,
         isIntern,
         viewAsOverride: simulatingView ? viewAsOverride : null,

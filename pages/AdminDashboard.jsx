@@ -7,7 +7,7 @@ import { fetchAllRows } from "../data/fetchAllRows.js";
 import { capForCompanyTier } from "../data/companyTiers.js";
 import { fetchRecentSignups } from "../data/adminNotificationsSync.js";
 import { fetchWeeklyDigestLog } from "../data/digestSync.js";
-import { fetchCronHealth } from "../data/cronHealthSync.js";
+import { fetchCronHealth, fetchDeadSources, disableDeadSource } from "../data/cronHealthSync.js";
 import { ACCESS_CONTROL } from "../data/mockAdmin.js";
 import DemoDataBadge from "../components/DemoDataBadge.jsx";
 import "../styles/jobs.css";
@@ -78,6 +78,9 @@ export default function AdminDashboard() {
   const [cronHealth, setCronHealth] = useState([]);
   const [cronHealthLoading, setCronHealthLoading] = useState(true);
   const [cronHealthError, setCronHealthError] = useState(null);
+  const [deadSources, setDeadSources] = useState([]);
+  const [deadSourceNote, setDeadSourceNote] = useState(null);
+  const [disablingSourceId, setDisablingSourceId] = useState(null);
 
   // US-09 -- duplicate_tier/duplicate_best_job_id are written by
   // score-submission-duplicate right after a member submits (see that
@@ -351,6 +354,26 @@ export default function AdminDashboard() {
       setCronHealthError(err.message);
     }
     setCronHealthLoading(false);
+    try {
+      setDeadSources(await fetchDeadSources());
+    } catch {
+      setDeadSources([]); // secondary signal -- the health table above is the primary one
+    }
+  }
+
+  async function handleDisableDeadSource(source) {
+    // Irreversible-ish and member-visible (it expires live postings), so it asks first.
+    if (!window.confirm(`Disable "${source.name}" and expire the ${source.active_jobs} job(s) only it tracks? Its board has returned HTTP 404 on its last 3 fetches.`)) return;
+    setDisablingSourceId(source.source_id);
+    setDeadSourceNote(null);
+    try {
+      const expired = await disableDeadSource(source.source_id);
+      setDeadSourceNote(`Disabled ${source.name}; expired ${expired} job${expired === 1 ? "" : "s"}.`);
+      await loadCronHealth();
+    } catch (err) {
+      setDeadSourceNote(`Could not disable ${source.name}: ${err.message}`);
+    }
+    setDisablingSourceId(null);
   }
 
   useEffect(() => {
@@ -561,7 +584,9 @@ export default function AdminDashboard() {
               Real last-run status for all 6 scheduled jobs (5 daily ingestion/maintenance adapters + the
               weekly digest), computed from each function's own logged outcome -- not just whether pg_cron
               fired, but whether the run itself actually succeeded. A row flagged "Stale" hasn't completed
-              successfully within its expected cadence and is worth checking directly.
+              successfully within its expected cadence and is worth checking directly. Greenhouse and Lever run
+              in batches, so they report coverage instead -- how many companies had a successful fetch in the
+              last 24 hours -- and go stale when that drops below 90%.
             </p>
             {cronHealthError && <p className="meta" style={{ color: "var(--color-danger)" }}>{cronHealthError}</p>}
             <div className="queue-table__scroll">
@@ -586,7 +611,9 @@ export default function AdminDashboard() {
                         : "Never"}
                     </td>
                     <td className="meta">
-                      {j.last_run_total > 0
+                      {j.coverage_total != null
+                        ? `${j.coverage_fresh}/${j.coverage_total} companies refreshed in 24h${j.last_run_failed > 0 ? ` · ${j.last_run_failed} failed fetch${j.last_run_failed === 1 ? "" : "es"}` : ""}`
+                        : j.last_run_total > 0
                         ? j.last_run_failed > 0
                           ? `${j.last_run_failed}/${j.last_run_total} failed`
                           : `${j.last_run_total} succeeded`
@@ -618,6 +645,53 @@ export default function AdminDashboard() {
               </tbody>
             </table>
             </div>
+            {deadSourceNote && <p className="meta">{deadSourceNote}</p>}
+            {deadSources.length > 0 && (
+              <div data-testid="dead-sources">
+                <p style={{ fontWeight: 700, marginBottom: "var(--space-2)" }}>Boards that look gone</p>
+                <p className="meta" style={{ marginTop: 0 }}>
+                  These companies' job boards returned HTTP 404 on each of their last 3 fetches. A removed board
+                  makes its source fail on every run, and its jobs never expire on their own. Disabling stops the
+                  failing fetches and expires the jobs only that source tracked.
+                </p>
+                <div className="queue-table__scroll">
+                  <table className="queue-table">
+                    <thead>
+                      <tr>
+                        <th>Company</th>
+                        <th>Board</th>
+                        <th>Active jobs</th>
+                        <th>Last failed</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {deadSources.map((d) => (
+                        <tr key={d.source_id}>
+                          <td style={{ fontWeight: 700 }}>{d.name}</td>
+                          <td className="meta">
+                            {d.platform}/{d.slug}
+                          </td>
+                          <td className="meta">{d.active_jobs}</td>
+                          <td className="meta">
+                            {new Date(d.last_failed_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                          </td>
+                          <td>
+                            <button
+                              className="btn btn-secondary"
+                              disabled={disablingSourceId === d.source_id}
+                              onClick={() => handleDisableDeadSource(d)}
+                            >
+                              {disablingSourceId === d.source_id ? "Disabling…" : "Disable & expire jobs"}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="detail-section" data-tour="admin-opportunity-queue">

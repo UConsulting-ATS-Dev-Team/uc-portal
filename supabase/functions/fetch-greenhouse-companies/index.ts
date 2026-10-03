@@ -260,7 +260,7 @@ async function runFetchForCompany(
     // existingJobIdBySourceJobId was wrong about this job being new, which
     // should fail loudly, not be silently swallowed.
     const { error } = await adminClient.rpc("insert_jobs_with_sources", { p_jobs: newJobRows, p_sources: allJobSources });
-    if (error) return failed(`Bulk job + job_sources insert failed: ${error.message}`);
+    if (error) return failed(`Bulk job + job_sources insert failed: ${error.message}${error.details ? ` -- ${error.details}` : ""}`);
   }
   if (newDuplicateCandidates.length > 0) {
     const { error } = await adminClient.from("duplicate_candidates").insert(newDuplicateCandidates);

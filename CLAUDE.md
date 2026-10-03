@@ -390,6 +390,15 @@ which are chronological and not rewritten when later work supersedes them.
   (`uc-portal-state-owner` records whose cache it is), both background syncs stay off until their own fetch has finished,
   and a fetch that resolves after the account changed is discarded. It used to hydrate once at mount, which left a
   same-page sign-in with empty state and let a change made before a reload overwrite the real remote row.
+- **Pipeline health reports coverage, and flags dead boards.** For the batched adapters (Greenhouse, Lever) Admin >
+  Pipeline health shows how many enabled companies had a successful fetch in the last 26h and goes Stale under 90%.
+  A source whose last 3 fetches all failed with HTTP 404 is listed under "Boards that look gone" with a
+  confirm-then-disable button (`list_dead_sources` / `disable_dead_source`); disabling is always a human action.
+- **Broken apply links:** a job flagged broken that came from Greenhouse also offers Greenhouse's own application
+  page (`job_apply_fallback`). It only reaches a real page for the few jobs that are live with a misconfigured
+  employer wrapper; for closed jobs it lands on the company's board.
+- **Loading state:** the store exposes `memberDataLoading` (true until the member's remote data has settled); use it
+  instead of rendering an empty state for something that simply hasn't arrived yet.
 - **Repo & deploys:** public at github.com/UConsulting-ATS-Dev-Team/uc-portal
   (history was rewritten once to scrub real PII). The frontend deploys to
   Vercel on push to `master`. Backend changes are separate steps:
@@ -495,6 +504,11 @@ which are chronological and not rewritten when later work supersedes them.
   `fetch`/XHR/element loads from the first instant is the reliable way (remove it afterward).
 - Test member-visible access as a plain member, never an admin: admins read every row, so an admin session proves
   nothing about RLS meant for members.
+- Nullable database columns must be defaulted where rows are mapped into state (`rowToPreferences`): a null that reaches a
+  controlled input overrides the app's own default and renders as "null" or NaN.
+- An intermittent `duplicate key ... job_sources_source_id_source_job_id_key` from `insert_jobs_with_sources` has been
+  seen once (2026-10-03, 8 of 14 companies, not reproducible on re-run); the failure message now carries the database's
+  detail line naming the key -- read it before theorizing.
 - `check-job-links` is sensitive to invocation frequency (past false-positive
   bursts); don't invoke it repeatedly by hand.
 

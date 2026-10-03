@@ -293,7 +293,7 @@ async function runFetchForCompany(
     // plain insert: a (source_id, source_job_id) collision means
     // existingJobIdBySourceJobId was wrong, which should fail loudly.
     const { error } = await adminClient.rpc("insert_jobs_with_sources", { p_jobs: newJobRows, p_sources: allJobSources });
-    if (error) return failed(`Bulk job + job_sources insert failed: ${error.message}`);
+    if (error) return failed(`Bulk job + job_sources insert failed: ${error.message}${error.details ? ` -- ${error.details}` : ""}`);
   }
   if (newDuplicateCandidates.length > 0) {
     const { error } = await adminClient.from("duplicate_candidates").insert(newDuplicateCandidates);

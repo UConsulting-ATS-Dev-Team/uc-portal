@@ -11,21 +11,25 @@ import { supabase } from "./supabaseClient.js";
 // camelCase -- these two functions are the only place that translation
 // needs to happen.
 
+// Several of these columns are nullable (comp_target in particular has no database default), and a
+// null that reached local state overrode the app's own default: the compensation slider got
+// `value={null}` (a React warning, and "$null/hr" on screen) and the match logic saw no target at all.
+// So every nullable column falls back to the same default store.jsx's DEFAULT_STATE uses.
 function rowToPreferences(row) {
   return {
-    industries: row.industries,
-    roles: row.roles,
-    skills: row.skills,
-    locations: row.locations,
-    openToRelocating: row.open_to_relocating,
-    remoteOrHybridOnly: row.remote_or_hybrid_only,
-    followedCompanies: row.followed_companies,
-    recruitingCycle: row.recruiting_cycle,
-    helpNeeded: row.help_needed,
-    remindersEnabled: row.reminders_enabled,
-    resumeAttached: row.resume_attached,
-    opportunityType: row.opportunity_type,
-    compTarget: row.comp_target,
+    industries: row.industries ?? [],
+    roles: row.roles ?? [],
+    skills: row.skills ?? [],
+    locations: row.locations ?? [],
+    openToRelocating: row.open_to_relocating ?? false,
+    remoteOrHybridOnly: row.remote_or_hybrid_only ?? false,
+    followedCompanies: row.followed_companies ?? [],
+    recruitingCycle: row.recruiting_cycle ?? null,
+    helpNeeded: row.help_needed ?? [],
+    remindersEnabled: row.reminders_enabled ?? true,
+    resumeAttached: row.resume_attached ?? false,
+    opportunityType: row.opportunity_type ?? "Internship",
+    compTarget: row.comp_target ?? 35,
     recruitingSettings: row.recruiting_settings,
   };
 }
