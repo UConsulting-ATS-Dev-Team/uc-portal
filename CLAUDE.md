@@ -452,6 +452,10 @@ which are chronological and not rewritten when later work supersedes them.
   dynamic `import()`.
 - Never fall back to the mock `currentUser` identity for anything shown or stored: `displayName(profileOverrides, accountEmail)`
   uses the saved name, else the email's local part. The old fallback leaked "Test Account" into real posts.
+- Storage `remove()` deletes nothing, with no error, unless the caller can also SELECT the object (it is a
+  `DELETE ... RETURNING`). Any bucket an admin deletes from needs an admin SELECT policy, not just DELETE.
+- Fixed-position UI (tour tooltip, top bar) must size against `document.documentElement.clientWidth`, not
+  `window.innerWidth`; check phone layouts as an admin too, whose top bar carries extra items.
 - `check-job-links` is sensitive to invocation frequency (past false-positive
   bursts); don't invoke it repeatedly by hand.
 

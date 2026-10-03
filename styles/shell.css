@@ -514,3 +514,11 @@
     border-top: var(--border-hairline);
   }
 }
+
+/* Phone width: an admin has two extra top-bar items (signups badge, View as);
+   tightening the gaps keeps the whole row, avatar included, on a 360px screen. */
+@media (max-width: 479px) {
+  .topbar__actions {
+    gap: var(--space-2);
+  }
+}

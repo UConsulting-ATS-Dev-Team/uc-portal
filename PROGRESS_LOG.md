@@ -4803,3 +4803,39 @@ longer breaks down to phone width either.
   rollback diagnostic (no duplicate rows). Zero residue afterward (`roster_total=53 people_total=209`).
   Console still shows a few "Failed to load resource" lines (one connection-refused, two 403s) that no `fetch`
   call explains -- the same image-loading noise earlier sessions noted, not chased.
+
+- **2026-10-03: smoke-test follow-ups and link-health review** --
+  Closed the remaining items from the post-cloud-session checklist.
+  **Confirmed state:** `supabase db push --dry-run` reports nothing pending; `pre-provision-accounts` and
+  `weekly-digest` were deployed after their last edit.
+  **Sign-up trigger:** verified at the database level (a rollback-only diagnostic creating `auth.users` rows runs
+  `before_auth_user_created` and the replaced `handle_new_user()`: profile created, alumni classified, waiting
+  messages delivered). A literal browser `signUp()` through GoTrue was not driven -- it would send a confirmation
+  email, and Auth rejects `.invalid`/`@example.com` addresses.
+  **Tour at 360px:** all 11 steps of the member tour (crossing Home, Jobs, Applications, Network) stay inside the
+  viewport. `TourOverlay` now clamps to `documentElement.clientWidth/clientHeight` (the layout viewport that
+  `position: fixed` uses) instead of `window.innerWidth/innerHeight`, which include a desktop scrollbar and can exceed
+  the real area under zoom or emulation. Testing it exposed a separate real overflow: an admin's top bar (signups
+  badge, View as, messages, notifications, theme toggle, avatar) was ~105px wider than a 360px screen. Below 480px the
+  theme toggle now shows only the active mode (tap cycles system -> light -> dark) and the action gaps tighten; scroll
+  width is exactly 360 with nothing past the edge. Regular members' top bar already fit.
+  **Accelerator attachments:** a lesson created with an uploaded PDF and a link queued up front attached both on Add,
+  opened its Manage panel, and the file is served from Storage (200, `application/pdf`). That surfaced a real bug:
+  admins could never delete accelerator files. `accelerator-materials` had admin INSERT/UPDATE/DELETE policies but no
+  SELECT policy, and Storage's `remove()` is a `DELETE ... RETURNING` that needs the row visible, so it returned an
+  empty result with no error -- "Remove" on a material and deleting a lesson removed the database row but left the file
+  fetchable at its public URL. Migration `20261004400000_accelerator_storage_admin_cleanup.sql` adds an admin SELECT
+  policy on `accelerator-materials` and an admin DELETE policy on `accelerator-submissions`, and `deleteLesson()` now
+  clears the lesson's material and submission files from Storage before deleting the row. Re-verified end to end:
+  deleting a lesson through the UI leaves zero objects in the bucket.
+  **Link health (read-only queries):** the AlphaSights and Tower Research resets held -- no Tower job is `broken`
+  (43 ok, 124 unchecked), and all 71 AlphaSights jobs sit at `unchecked` (their site 403s the checker, so they never
+  recheck to `ok`, but they are not re-flagged `broken`). Total broken is 120, led by Datadog (31), GSA (13, genuine
+  404s), N26 (10), Asana (7); Datadog and N26 were not investigated. `check-job-links` ran twice a day on 09-28 and
+  09-29 but exactly once on 09-30, 10-01 and 10-02, and `cron_run_locks` holds one row per job per day (keys like
+  `link_health`, `greenhouse:*`, `lever:*`), so the guard is working. Every one of the 186 failed ingestion runs on
+  record (the "2 Greenhouse / 5 Lever" in the pipeline-health panel) has the same error -- a duplicate-key violation on
+  `job_sources` during bulk insert -- on nearly every day from 09-09 through 09-30, none on 10-01 or 10-02, with
+  total fetcher runs per day falling from ~34 to 16. That fits the duplicate-delivery race the lock now suppresses,
+  but it rests on only two clean days.
+  Throwaway account removed; `roster_total=53 people_total=209`, no storage residue.

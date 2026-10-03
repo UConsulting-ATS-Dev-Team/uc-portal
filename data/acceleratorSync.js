@@ -111,6 +111,20 @@ export async function updateLesson(id, { lessonDate, title, topicOverview }) {
 }
 
 export async function deleteLesson(id) {
+  // The lesson's material and submission rows cascade with it, but the files
+  // they point at live in Storage and don't -- clear them first so deleting a
+  // lesson doesn't leave orphaned uploads behind. Best effort: a storage
+  // error here (e.g. no admin delete rights on the private submissions
+  // bucket) must not block deleting the lesson itself.
+  const [{ data: materials }, { data: submissions }] = await Promise.all([
+    supabase.from("accelerator_materials").select("file_path").eq("lesson_id", id),
+    supabase.from("accelerator_submissions").select("file_path").eq("lesson_id", id),
+  ]);
+  const materialPaths = (materials ?? []).map((m) => m.file_path).filter(Boolean);
+  const submissionPaths = (submissions ?? []).map((s) => s.file_path).filter(Boolean);
+  if (materialPaths.length) await supabase.storage.from("accelerator-materials").remove(materialPaths);
+  if (submissionPaths.length) await supabase.storage.from("accelerator-submissions").remove(submissionPaths);
+
   const { error } = await supabase.from("accelerator_lessons").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }

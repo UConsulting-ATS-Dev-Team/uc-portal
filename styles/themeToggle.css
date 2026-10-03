@@ -40,3 +40,13 @@
     height: 44px;
   }
 }
+
+/* Phone width: an admin's top bar (signups badge, View as, messages,
+   notifications, avatar) plus a three-button toggle was ~105px wider than a
+   360px screen. Show just the active mode; tapping it cycles to the next
+   (components/theme/ThemeToggle.jsx). */
+@media (max-width: 479px) {
+  .theme-toggle__option:not(.is-active) {
+    display: none;
+  }
+}

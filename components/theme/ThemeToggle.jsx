@@ -19,6 +19,20 @@ export default function ThemeToggle() {
   if (!theme) return null; // defensive -- always mounted under ThemeProvider in practice
   const { mode, setMode } = theme;
 
+  // Below 480px (see themeToggle.css) only the active mode's button is
+  // shown, to keep the top bar inside a phone-width screen -- so tapping
+  // the one visible button has to step to the next mode instead of
+  // re-selecting itself. Wide layouts keep the plain three-way control.
+  function select(optionMode) {
+    const compact = window.matchMedia("(max-width: 479px)").matches;
+    if (compact && optionMode === mode) {
+      const i = OPTIONS.findIndex((o) => o.mode === mode);
+      setMode(OPTIONS[(i + 1) % OPTIONS.length].mode);
+      return;
+    }
+    setMode(optionMode);
+  }
+
   return (
     <div className="theme-toggle" role="group" aria-label="Theme mode">
       {OPTIONS.map(({ mode: optionMode, label, icon: Icon }) => (
@@ -29,7 +43,7 @@ export default function ThemeToggle() {
           aria-label={label}
           aria-pressed={mode === optionMode}
           title={label}
-          onClick={() => setMode(optionMode)}
+          onClick={() => select(optionMode)}
         >
           <Icon size={15} strokeWidth={1.5} aria-hidden="true" />
         </button>

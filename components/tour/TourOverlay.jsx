@@ -16,8 +16,12 @@ function measure(selector) {
 // fits the viewport, clamped with a margin, same spirit as JobDetail's own
 // odds-model layout preferring real content over a fixed slot.
 function tooltipStyle(rect, hint, measuredHeight) {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
+  // The layout viewport (what position: fixed is laid out against), not
+  // window.innerWidth/innerHeight -- those include a desktop scrollbar and,
+  // under zoom or device emulation, can be larger than the area the card is
+  // actually positioned in, which let it hang off the right edge.
+  const vw = document.documentElement.clientWidth;
+  const vh = document.documentElement.clientHeight;
   const margin = 16;
   const width = Math.min(340, vw - margin * 2);
   // Real rendered height once known (a narrow phone wraps the body text
