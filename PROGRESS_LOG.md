@@ -4947,3 +4947,15 @@ longer breaks down to phone width either.
   "hydration happens once at mount" root cause is already noted for onboarding routing. Proposed fix: re-run hydration on a
   SIGNED_IN auth event and hold the sync effects until it completes.
   Throwaway member removed; `roster_total=53 people_total=209`.
+
+- **2026-10-03: first scheduled Greenhouse batch confirmed; where the active-job count is heading** --
+  The scheduled `fetch-greenhouse-companies-batch` fired on its own at 04:17 UTC and succeeded: 14 companies logged, 0 failed,
+  and the stalest group (last fetched 09-09) went from 41 to 27, so the backlog is draining as designed (~125 stale sources
+  left, about 9 more runs / ~18 hours at one run per 2 hours). Active jobs fell 6,711 -> 5,574 in that single run because the
+  per-company caps are finally being applied to companies that hadn't been fetched in weeks. **Expect this to keep falling.**
+  With caps as configured (tier 0: 25, tier 1: 15, tier 2: 10, tier 3: 3 -- 7 / 27 / 80 / 56 companies today) the ceiling is
+  about **1,400 active jobs**; 107 of 170 companies are still over their cap, with ~4,170 excess jobs to trim. That is the
+  designed outcome, not a regression, but it is a much smaller board than the 11,261 active jobs two days earlier (most of
+  which were uncapped companies, orphans and dead postings). If that is smaller than wanted, the knobs are the tier caps
+  (`TIER_CAPS`, kept identical in `data/companyTiers.js`, `server/src/companyCap.ts` and
+  `supabase/functions/_shared/pipeline/companyCap.ts`) and each company's tier (Admin > Company tiers).

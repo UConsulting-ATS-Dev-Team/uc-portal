@@ -373,6 +373,10 @@ which are chronological and not rewritten when later work supersedes them.
   (about half the active board). New jobs and their sources now go in together via `insert_jobs_with_sources()`,
   and the existing orphans were cleaned up reversibly (`orphan_cleanup_backup`, `revert_orphan_cleanup()`).
   Detail in JOB_ENGINE_ARCHITECTURE.md's 2026-10-03 addendum.
+- **The active-job count is falling on purpose:** it was 11,261 on 2026-10-01 (uncapped companies, orphans, dead
+  postings) and settles near ~1,400 once every company has been re-fetched and capped (tier caps 25 / 15 / 10 / 3).
+  The batched Greenhouse schedule was confirmed working on 2026-10-03. Don't treat the shrinkage as a bug; to change
+  it, change the tier caps or a company's tier.
 - **Closed jobs a member tracked or saved stay visible.** `jobs` is otherwise readable by members only while `active`;
   the `jobs_select_own_tracked_or_saved` policy also lets a member read an inactive job that is in their OWN tracker or
   saved list. `useRealJobs` returns `realJobs` (open postings only: recommendations, new matches, deadlines) and
