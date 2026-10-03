@@ -368,9 +368,11 @@ which are chronological and not rewritten when later work supersedes them.
   all-companies run exceeds the Edge Function limit and silently stalled; anything that scales with
   company count must be batched. A scheduled call always reads as a pg_net timeout, so judge it by
   `source_fetch_log`, not `net._http_response`.
-- **Known open issue -- orphaned jobs:** ~5,300 of ~10,800 active jobs have no `job_sources` row, so they never
-  expire and bypass the company caps (details and the proposed fix in JOB_ENGINE_ARCHITECTURE.md's 2026-10-03
-  addendum). Not cleaned up yet; don't assume the active-job count is trustworthy until it is.
+- **Orphaned jobs (fixed 2026-10-03):** the fetchers used to insert a run's new jobs and their `job_sources`
+  rows as two requests, and an interrupted run left jobs with no source row that never expired or got capped
+  (about half the active board). New jobs and their sources now go in together via `insert_jobs_with_sources()`,
+  and the existing orphans were cleaned up reversibly (`orphan_cleanup_backup`, `revert_orphan_cleanup()`).
+  Detail in JOB_ENGINE_ARCHITECTURE.md's 2026-10-03 addendum.
 - **Repo & deploys:** public at github.com/UConsulting-ATS-Dev-Team/uc-portal
   (history was rewritten once to scrub real PII). The frontend deploys to
   Vercel on push to `master`. Backend changes are separate steps:
@@ -467,6 +469,8 @@ which are chronological and not rewritten when later work supersedes them.
   `db push`. In the test browser, clear localStorage after deleting a throwaway account -- its stale session
   produces 409/403 console noise that looks like an app bug. Match buttons by exact label in test scripts
   (a loose `/finish/i` also matches "Save & finish later").
+- Never write a job and its `job_sources` row as two separate requests: use `insert_jobs_with_sources()`. A run
+  interrupted between them leaves an orphan the pipeline can no longer see, expire or cap.
 - `check-job-links` is sensitive to invocation frequency (past false-positive
   bursts); don't invoke it repeatedly by hand.
 

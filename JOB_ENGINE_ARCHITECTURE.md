@@ -6266,3 +6266,26 @@ confirmed gone until a few days of scheduled batches have run.
 **Related, smaller:** GSA Capital's own wrapper URLs 404 (even in a browser) for jobs Greenhouse's API lists as live,
 so their broken flags are correct. Greenhouse's embed URL (`job-boards.greenhouse.io/embed/job_app?for=<slug>&token=<id>`)
 returns a working application page for the same jobs and could serve as a fallback apply link.
+
+**Resolution (same day, 2026-10-03) -- both steps done.**
+
+1. *Atomic inserts.* `insert_jobs_with_sources(p_jobs, p_sources)` (migration `20261005700000`) inserts a run's new jobs and
+   their job_sources rows in one transaction; it builds its column list from the union of keys in the payload, which matches
+   PostgREST's own bulk-insert behavior. `fetch-greenhouse-companies`, `fetch-lever-companies` and `fetch-deloitte-jobs`
+   now call it instead of two separate inserts, so a failed or killed run rolls back both and retries cleanly. Verified in a
+   rollback test (normal insert; a failing source insert leaves no job behind; empty input is a no-op) and with a live
+   3-company batch (101 new jobs inserted, 0 orphans created). `approve-submission` (one member-submitted job at a time) still
+   writes the two rows separately; negligible volume, not changed.
+2. *Cleanup* (migration `20261005800000`, applied once). Of 5,282 orphans at the time: 1,195 duplicates of an active tracked job
+   deactivated (`removed`), 2,480 zombies whose tracked twin was already inactive deactivated (`expired`), and 1,607 re-linked to
+   their source (all Greenhouse; the source job id parsed from `gh_jid` / `/jobs/<id>` in the URL) so refresh, expiry and caps now
+   apply to them. 0 skipped, 0 orphans left, 0 duplicate active URLs, active jobs 10,7xx -> 6,989, broken links 89 -> 63. No
+   tracked application, saved job or write-up referenced any of the deactivated rows. Nothing was deleted: every change is in
+   `orphan_cleanup_backup`, and `revert_orphan_cleanup()` re-activates the deactivated jobs with their prior status and removes
+   the links it created. A scoped Carvana fetch afterwards behaved as intended (309 existing/re-linked jobs refreshed, 105
+   genuinely new inserted, its cap of 10 applied -- it had been ~390 orphan-inflated postings).
+
+**Still open:** (a) the Lever re-adoption path (`lever.co` URLs) is written but unexercised -- no Lever orphans existed;
+(b) the app loads only `active` jobs, so a job a member has tracked or saved that later expires, is capped or is deactivated by a
+cleanup like this one would appear to vanish from their tracker/saved list rather than show as closed (not verified end to end;
+no live data was affected today); (c) Amplitude's Greenhouse board now returns 404, so that source should be disabled.

@@ -343,14 +343,13 @@ async function runFetch(adminClient: SupabaseClient, source: any): Promise<Fetch
   }
 
   // ---- Write everything in bulk ----
-  if (newJobRows.length > 0) {
-    const { error } = await adminClient.from("jobs").insert(newJobRows);
-    if (error) return failed(`Bulk job insert failed: ${error.message}`);
-  }
   const allJobSources = [...newJobSources, ...mergeAttachments];
-  if (allJobSources.length > 0) {
-    const { error } = await adminClient.from("job_sources").insert(allJobSources);
-    if (error) return failed(`Bulk job_sources insert failed: ${error.message}`);
+  if (newJobRows.length > 0 || allJobSources.length > 0) {
+    // One transaction for the new jobs and their job_sources rows -- see
+    // fetch-greenhouse-companies for why (a run stopped between two separate
+    // inserts left orphaned jobs that never expired or got capped).
+    const { error } = await adminClient.rpc("insert_jobs_with_sources", { p_jobs: newJobRows, p_sources: allJobSources });
+    if (error) return failed(`Bulk job + job_sources insert failed: ${error.message}`);
   }
   if (newDuplicateCandidates.length > 0) {
     const { error } = await adminClient.from("duplicate_candidates").insert(newDuplicateCandidates);

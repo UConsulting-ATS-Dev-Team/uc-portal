@@ -4892,3 +4892,20 @@ longer breaks down to phone width either.
   a conflict (proved in a scratch repo). No other remote branches exist.
   **Not done:** item 6 (a real browser sign-up) -- it sends a confirmation email and needs a real inbox; the first
   scheduled Greenhouse batch hadn't fired yet (first run 04:17 UTC), so the backlog check is still open.
+
+- **2026-10-03: orphaned jobs fixed at the source and cleaned up (approved)** --
+  Two steps, in this order. **(1) Atomic inserts:** new `insert_jobs_with_sources()` writes a run's new jobs and their
+  `job_sources` rows in one transaction (migration `20261005700000`); the Greenhouse, Lever and Deloitte fetchers use it
+  (deployed). Tested in a rollback diagnostic (success; a failing source insert leaves no job behind; empty input) and with a
+  live 3-company batch: 101 new jobs, 0 orphans created. **(2) Cleanup** (migration `20261005800000`): of 5,282 orphans,
+  1,195 live duplicates deactivated (`removed`), 2,480 zombies past their twin's cap/expiry deactivated (`expired`), 1,607
+  re-linked to their source from the id in their URL so refresh, expiry and caps apply to them. Dry-run first (rolled back) to
+  confirm the counts, and checked that no tracked application, saved job or write-up referenced a deactivated row. Result: 0
+  orphans, 0 duplicate active URLs, active jobs 10,7xx -> 6,989, broken links 89 -> 63. Reversible: `orphan_cleanup_backup`
+  holds every change and `revert_orphan_cleanup()` undoes it. A scoped Carvana fetch afterwards refreshed its 309 existing and
+  re-linked jobs instead of re-inserting them, inserted 105 genuinely new ones, and applied its cap of 10 (it had been ~390
+  orphan-inflated postings). Full write-up under the addendum in `JOB_ENGINE_ARCHITECTURE.md`.
+  **Noted, not changed:** the Lever re-adoption branch is unexercised (no Lever orphans existed); the app loads only
+  `active` jobs, so a tracked or saved job that later expires or is capped would seem to vanish from a member's list instead of
+  showing as closed (not verified end to end); Amplitude's Greenhouse board now 404s, so that source should be disabled.
+  Temporary diagnostics were deleted as they ran; applied temp migrations repaired with `migration repair --status reverted`.

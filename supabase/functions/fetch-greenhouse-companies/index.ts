@@ -245,22 +245,22 @@ async function runFetchForCompany(
     activeJobs.push({ id: newId, company: normalized.company, title: normalized.title, application_url: normalized.applicationUrl, remote_type: normalized.remoteType, city: normalized.city, posted_date: newJobRows[newJobRows.length - 1].posted_date, salary_min: normalized.salaryMin });
   }
 
-  if (newJobRows.length > 0) {
-    const { error } = await adminClient.from("jobs").insert(newJobRows);
-    if (error) return failed(`Bulk job insert failed: ${error.message}`);
-  }
   const allJobSources = [...newJobSources, ...mergeAttachments];
-  if (allJobSources.length > 0) {
-    // Deliberately a plain insert, not an upsert/ignoreDuplicates -- that
-    // was tried as a first fix for a real "duplicate key" failure here,
-    // but it was masking the actual bug (fetchAllRows' pagination fix
-    // above), not handling a legitimate case. A (source_id, source_job_id)
-    // collision at this point means existingJobIdBySourceJobId was wrong
-    // about this job being new, which should fail loudly -- silently
-    // swallowing it risks hiding real data-integrity problems the same
-    // way ignoreDuplicates did here.
-    const { error } = await adminClient.from("job_sources").insert(allJobSources);
-    if (error) return failed(`Bulk job_sources insert failed: ${error.message}`);
+  if (newJobRows.length > 0 || allJobSources.length > 0) {
+    // New jobs and their job_sources rows go in ONE transaction
+    // (insert_jobs_with_sources). They used to be two separate requests, and a
+    // run stopped between them (the pg_net duplicate-delivery race, or the
+    // Edge Function resource limit) left jobs with no source row: the next run
+    // found existing jobs only through job_sources, re-inserted them, and the
+    // orphans never expired or got capped (5,317 of 10,762 active jobs by
+    // 2026-10-03). Now a failure rolls back both and simply retries next run.
+    //
+    // Still a plain insert, not an upsert/ignoreDuplicates -- a
+    // (source_id, source_job_id) collision here means
+    // existingJobIdBySourceJobId was wrong about this job being new, which
+    // should fail loudly, not be silently swallowed.
+    const { error } = await adminClient.rpc("insert_jobs_with_sources", { p_jobs: newJobRows, p_sources: allJobSources });
+    if (error) return failed(`Bulk job + job_sources insert failed: ${error.message}`);
   }
   if (newDuplicateCandidates.length > 0) {
     const { error } = await adminClient.from("duplicate_candidates").insert(newDuplicateCandidates);
