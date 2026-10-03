@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchAllRows } from "./fetchAllRows.js";
+import { useYcCompanies } from "./useYcCompanies.js";
 import { matchJob } from "./jobMatch.js";
 import { realJobToCardShape, JOB_LIST_COLUMNS, fetchJobsByIds, isRealJobId } from "./realJobAdapter.js";
 
@@ -76,13 +77,18 @@ export function useRealJobs(preferences, classYear, gradMonth, enabled = true, e
     };
   }, [enabled, jobsLoading, rawJobs, idsKey]);
 
+  const ycByCompany = useYcCompanies();
   const realJobs = useMemo(
-    () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth))),
-    [rawJobs, preferences, classYear, gradMonth]
+    () =>
+      rawJobs.map((job) => ({
+        ...realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth, ycByCompany.get(job.company))),
+        yc: ycByCompany.get(job.company) ?? null,
+      })),
+    [rawJobs, preferences, classYear, gradMonth, ycByCompany]
   );
   const allKnownJobs = useMemo(
-    () => [...realJobs, ...closedRaw.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth)))],
-    [realJobs, closedRaw, preferences, classYear, gradMonth]
+    () => [...realJobs, ...closedRaw.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth, ycByCompany.get(job.company))))],
+    [realJobs, closedRaw, preferences, classYear, gradMonth, ycByCompany]
   );
   return { realJobs, allKnownJobs, jobsLoading };
 }

@@ -203,7 +203,7 @@ export default function RealJobDetail({ jobId: jobIdProp }) {
     if (!job || people === undefined) return;
     let cancelled = false;
     setOddsInputs(undefined);
-    const matchScore = matchJob(job, preferences, classYear, gradMonth).score;
+    const matchScore = matchJob(job, preferences, classYear, gradMonth, ycBatch).score;
     fetchRealOddsInputs(job, { matchScore, people, savedConnections, coffeeChatStatus })
       .then((inputs) => {
         if (!cancelled) setOddsInputs(inputs);
@@ -222,7 +222,7 @@ export default function RealJobDetail({ jobId: jobIdProp }) {
 
   const companyPage = COMPANIES.find((c) => c.name === job.company);
 
-  const match = matchJob(job, preferences, classYear, gradMonth);
+  const match = matchJob(job, preferences, classYear, gradMonth, ycBatch);
   const extraPrepHours = prepLogged[job.id] || 0;
   const odds = oddsInputs ? computeRealOdds(oddsInputs, { extraPrepHours }) : null;
   const oddsComputeFn = (_j, opts) => computeRealOdds(oddsInputs, opts);

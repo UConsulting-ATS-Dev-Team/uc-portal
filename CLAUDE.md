@@ -375,7 +375,8 @@ which are chronological and not rewritten when later work supersedes them.
   and the existing orphans were cleaned up reversibly (`orphan_cleanup_backup`, `revert_orphan_cleanup()`).
   Detail in JOB_ENGINE_ARCHITECTURE.md's 2026-10-03 addendum.
 - **The active-job count is falling on purpose:** it was 11,261 on 2026-10-01 (uncapped companies, orphans, dead
-  postings) and settles near ~1,500 once every company has been re-fetched and capped (tier caps 25 / 15 / 10 / 5;
+  postings), 2,427 after the 2026-10-03 backlog drain (every enabled company fetched once), and settles near ~1,500 once
+  every company has been re-fetched and capped (tier caps 25 / 15 / 10 / 5;
   tier 3 was 3 until 2026-10-03). A cap change needs no restore step: every fetch re-activates all tracked jobs still
   on the employer's board and then re-trims to the current cap, so it applies at each company's next fetch.
   The batched Greenhouse schedule was confirmed working on 2026-10-03. Don't treat the shrinkage as a bug; to change
@@ -395,6 +396,14 @@ which are chronological and not rewritten when later work supersedes them.
   name (exactly as `jobs.company` has it) to its YC batch; it drives the "YC W12" chip (`useYcCompanies`) and the Jobs
   "Backed by > Y Combinator" filter. Prominent YC companies with no guessable public board (Rippling, Deel, Retool, Whatnot) are
   not tracked.
+- **New roles and alerts (2026-10-03).** `jobs.created_at` is when the board first listed a job (`addedAt` on cards; the
+  employer's posted date can be backdated). `data/jobVisit.js` holds a per-account baseline in localStorage (the previous
+  visit's last activity; a visit is activity with gaps under 30 min; 14 days max look-back, 7 on a first visit). It drives the
+  Jobs "New since your last visit" tab (`?tab=new`), the "New" chip, a Home link and three derived Notifications alerts
+  (followed companies, 70%+ matches, saved searches via `?savedSearch=<id>`), which honor the "New matched jobs" setting.
+  Nothing is emailed. The Jobs filter predicate lives in `data/jobFilters.js` (shared with notifications). Saved searches are
+  still browser-local. `member_preferences.prefer_yc` (My Profile / onboarding step 4) adds a weight-10 `yc` factor to
+  `matchJob()` only for members who turned it on; `matchJob`'s 5th argument is the company's YC batch.
 - **Preference options only count if something matches them (2026-10-03).** Option lists live in `data/careerOptions.js`
   (67 industries, 46 roles, 90 locations incl. metros, 78 skills). Matching is client-side in `data/jobMatch.js`:
   industries by job TITLE (`data/industryPatterns.js`, also used by the Jobs industry filter), skills implied by title
@@ -526,9 +535,10 @@ which are chronological and not rewritten when later work supersedes them.
   nothing about RLS meant for members.
 - Nullable database columns must be defaulted where rows are mapped into state (`rowToPreferences`): a null that reaches a
   controlled input overrides the app's own default and renders as "null" or NaN.
-- An intermittent `duplicate key ... job_sources_source_id_source_job_id_key` from `insert_jobs_with_sources` has been
-  seen once (2026-10-03, 8 of 14 companies, not reproducible on re-run); the failure message now carries the database's
-  detail line naming the key -- read it before theorizing.
+- The `duplicate key ... job_sources_source_id_source_job_id_key` failure from `insert_jobs_with_sources` was caused by
+  `fetchAllRows()` paging without an `ORDER BY` (unordered LIMIT/OFFSET drops rows that move between pages; only runs reading
+  over 1000 rows hit it). Fixed 2026-10-03: it orders by a unique column (`id`, or pass the primary key as the 5th argument).
+  Any new paged read must be ordered. If it ever recurs, the message carries the key detail -- read it before theorizing.
 - `check-job-links` is sensitive to invocation frequency (past false-positive
   bursts); don't invoke it repeatedly by hand.
 

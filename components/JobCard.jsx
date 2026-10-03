@@ -27,6 +27,7 @@ export default function JobCard({ job, saved, onToggleSave }) {
               YC {ycBatch}
             </span>
           )}
+          {job.isNew && <span className="chip chip-accent">New</span>}
           {job.possiblyClosed && <span className="chip">Possibly no longer open</span>}
           {job.closed && <span className="chip">Closed — no longer accepting applications</span>}
         </div>

@@ -67,6 +67,7 @@ export const JOB_LIST_COLUMNS = [
   "preferred_skills",
   "application_deadline",
   "posted_date",
+  "created_at", // when the board first saw the posting: drives "new since your last visit"
 ].join(", ");
 
 const EMPLOYMENT_TYPE_LABEL = {
@@ -123,6 +124,8 @@ export function realJobToCardShape(job, matchResult) {
     pastCycleApplicants: undefined,
     pastCycleOffers: undefined,
     postedDaysAgo,
+    // Epoch ms the board first listed this job (not the employer's posted date, which a company can backdate).
+    addedAt: job.created_at ? new Date(job.created_at).getTime() : null,
     whyLowerMatch: null,
   };
 }

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAppState } from "../data/store.jsx";
 import { buildNotifications } from "../data/notificationUtils.js";
 import { useRealJobs } from "../data/useRealJobs.js";
+import { useJobsVisitBaseline } from "../data/jobVisit.js";
 import { currentUser } from "../data/mockUser.js";
 import { resolvedClassYear, resolvedGradMonth } from "../data/profileUtils.js";
 import { deadlineLabel } from "../data/jobUtils.js";
@@ -43,7 +44,8 @@ const SETTINGS_COPY = [
 ];
 
 export default function Notifications() {
-  const { trackedJobs, prepLogged, coffeeChatStatus, savedJobIds, notificationSettings, updateNotificationSetting, preferences, profileOverrides } = useAppState();
+  const { trackedJobs, prepLogged, coffeeChatStatus, savedJobIds, notificationSettings, updateNotificationSetting, preferences, profileOverrides, savedSearches, accountId } = useAppState();
+  const visitBaseline = useJobsVisitBaseline(accountId);
   const [tab, setTab] = useState("Needs action");
 
   // Same real-first/mock-fallback lookup as every other trackedJobs
@@ -89,8 +91,24 @@ export default function Notifications() {
   }, []);
 
   const { needsAction, earlierThisWeek } = useMemo(
-    () => buildNotifications({ trackedJobs, prepLogged, coffeeChatStatus, realJobs, knownJobs: allKnownJobs, savedJobIds, feedPosts, conversations, currentAccountId, people }),
-    [trackedJobs, prepLogged, coffeeChatStatus, realJobs, allKnownJobs, savedJobIds, feedPosts, conversations, currentAccountId, people]
+    () =>
+      buildNotifications({
+        trackedJobs,
+        prepLogged,
+        coffeeChatStatus,
+        realJobs,
+        knownJobs: allKnownJobs,
+        savedJobIds,
+        feedPosts,
+        conversations,
+        currentAccountId,
+        people,
+        visitBaseline,
+        followedCompanies: preferences.followedCompanies,
+        savedSearches,
+        jobAlertsEnabled: notificationSettings.newMatchedJobs,
+      }),
+    [trackedJobs, prepLogged, coffeeChatStatus, realJobs, allKnownJobs, savedJobIds, feedPosts, conversations, currentAccountId, people, visitBaseline, preferences.followedCompanies, savedSearches, notificationSettings.newMatchedJobs]
   );
 
   const category = TAB_TO_CATEGORY[tab] || tab;

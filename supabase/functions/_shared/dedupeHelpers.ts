@@ -21,18 +21,25 @@ const PAGE_SIZE = 1000;
 // .select() against `jobs` or `job_sources` has the same latent bug --
 // active jobs alone crossed 1000 rows once the Greenhouse expansion
 // landed, so this isn't a hypothetical for the other callers either.
+//
+// Pages are read in a fixed order (`orderBy`, a unique column). Without it Postgres may return rows in any order
+// and a different one for each page: a row updated between two pages moves, so it can appear on neither or both,
+// and an already-tracked job_sources row that falls through looks brand-new. That made insert_jobs_with_sources
+// fail with a duplicate (source_id, source_job_id) now and then (seen 2026-09-30, 10-03 twice, always on runs
+// over companies with more than 1000 rows to read). Pass the table's primary key when it is not `id`.
 export async function fetchAllRows(
   adminClient: SupabaseClient,
   table: string,
   columns: string,
   // deno-lint-ignore no-explicit-any
   applyFilters?: (query: any) => any,
+  orderBy = "id",
   // deno-lint-ignore no-explicit-any
 ): Promise<any[]> {
   const rows: Record<string, unknown>[] = [];
   let from = 0;
   while (true) {
-    let query = adminClient.from(table).select(columns).range(from, from + PAGE_SIZE - 1);
+    let query = adminClient.from(table).select(columns).order(orderBy).range(from, from + PAGE_SIZE - 1);
     if (applyFilters) query = applyFilters(query);
     const { data, error } = await query;
     if (error) throw new Error(`Fetching ${table} failed: ${error.message}`);

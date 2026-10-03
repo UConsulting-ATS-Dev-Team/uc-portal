@@ -3,10 +3,11 @@ import { useSearchParams } from "react-router-dom";
 import JobCard from "../components/JobCard.jsx";
 import ErrorState from "../components/ErrorState.jsx";
 import PostOpportunityModal from "../components/modals/PostOpportunityModal.jsx";
-import { INDUSTRIES, LOCATIONS, canonicalIndustry } from "../data/careerOptions.js";
-import { locationPrefMatches } from "../data/locationUtils.js";
+import { INDUSTRIES, LOCATIONS } from "../data/careerOptions.js";
+import { NEUTRAL_FILTERS, matchesFilters } from "../data/jobFilters.js";
 import { useYcCompanies } from "../data/useYcCompanies.js";
-import { daysUntil, matchesDeadlineBucket } from "../data/jobUtils.js";
+import { isNewSince, useJobsVisitBaseline } from "../data/jobVisit.js";
+import { daysUntil } from "../data/jobUtils.js";
 import { fetchCompanyTiers, capForCompanyTier } from "../data/companyTiers.js";
 import { useAppState } from "../data/store.jsx";
 import { fetchAllRows } from "../data/fetchAllRows.js";
@@ -48,6 +49,7 @@ const DEADLINE_BUCKETS = ["This week", "This month", "Rolling"];
 // available in git history if a future feature wants it back.
 const TABS = [
   { key: "recommended", label: "Recommended for you" },
+  { key: "new", label: "New since your last visit" },
   { key: "all", label: "All jobs" },
   { key: "saved", label: "Saved" },
 ];
@@ -101,17 +103,6 @@ function capPerCompany(jobs, getCap) {
 // A blank slate for natural-language search (and "Clear all") to build
 // on -- a described search, or an explicit reset, should start from
 // nothing and apply only what was actually asked for.
-const NEUTRAL_FILTERS = {
-  keyword: "",
-  types: [],
-  gradYears: [],
-  industries: [],
-  locations: [],
-  compMin: 15,
-  compMax: 75,
-  deadlines: [],
-  yc: false, // only companies Y Combinator backed
-};
 
 // The Jobs board's actual first-load default. Used to hardcode a generic
 // seeded demo state (gradYears: ["2027"], industries: ["Management
@@ -152,38 +143,6 @@ const LOCATION_CHIPS = [...new Set([...LOCATIONS, "Los Angeles", "San Francisco"
 );
 const INDUSTRY_OPTIONS = INDUSTRIES.filter((i) => i.name !== "Still figuring it out");
 
-function matchesFilters(job, filters) {
-  if (filters.keyword) {
-    const q = filters.keyword.toLowerCase();
-    if (!job.role.toLowerCase().includes(q) && !job.company.toLowerCase().includes(q)) return false;
-  }
-  if (filters.types.length && !filters.types.includes(job.type)) return false;
-  // A job with no graduation-year requirement listed passes every grad-year
-  // filter rather than being excluded -- "unknown" isn't "ineligible."
-  if (filters.gradYears.length && job.classYears.length && !job.classYears.some((y) => filters.gradYears.includes(String(y))))
-    return false;
-  // A job with no recognisable industry passes, same "unknown isn't excluded" rule as grad year. `industries`
-  // is the structured tag plus what the title reads as (data/industryPatterns.js), the same signal the
-  // profile's match score uses.
-  if (
-    filters.industries.length &&
-    job.industries?.length &&
-    !job.industries.some((i) => filters.industries.some((f) => canonicalIndustry(f) === canonicalIndustry(i)))
-  )
-    return false;
-  // Places the posting lists (a metro or country chip matches its cities), or the work mode chip.
-  if (
-    filters.locations.length &&
-    !filters.locations.some((l) => locationPrefMatches(l, { remote_type: job.remoteType }, job.places ?? [])) &&
-    !filters.locations.includes(job.workMode)
-  )
-    return false;
-  if (job.compHourly && job.compMin != null && (job.compMax < filters.compMin || job.compMin > filters.compMax)) return false;
-  if (filters.deadlines.length && !filters.deadlines.some((d) => matchesDeadlineBucket(job, d))) return false;
-  if (filters.yc && !job.yc) return false;
-  return true;
-}
-
 // Zero-result diagnostic (wireframe 3e): for each active filter, compute
 // how many results dropping *just that one* would unlock.
 const DROPPABLE_FILTERS = [
@@ -205,6 +164,7 @@ function diagnoseEmptyFilters(filters, jobs) {
 
 function matchesTab(job, tab, savedJobIds) {
   if (tab === "recommended") return job.matchScore >= 70;
+  if (tab === "new") return job.isNew && job.matchEligible;
   if (tab === "saved") return savedJobIds.includes(job.id);
   return true;
 }
@@ -253,7 +213,8 @@ function pageWindow(current, total) {
 
 export default function Jobs() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { savedJobIds, toggleSavedJob, preferences, savedSearches, saveSearch, removeSavedSearch, profileOverrides } = useAppState();
+  const { savedJobIds, toggleSavedJob, preferences, savedSearches, saveSearch, removeSavedSearch, profileOverrides, accountId } = useAppState();
+  const visitBaseline = useJobsVisitBaseline(accountId);
   const classYear = resolvedClassYear(currentUser, profileOverrides);
   const gradMonth = resolvedGradMonth(currentUser, profileOverrides);
   // Starts fully neutral (no filters at all) -- was previously seeded
@@ -277,7 +238,8 @@ export default function Jobs() {
   // width (styles/jobs.css), so this has zero effect above 899px -- the filters
   // column stays exactly as it always was on desktop/tablet.
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [tab, setTab] = useState("recommended");
+  // Links from Home and Notifications open straight onto a tab (?tab=new).
+  const [tab, setTab] = useState(() => (TAB_KEYS.includes(searchParams.get("tab")) ? searchParams.get("tab") : "recommended"));
   const swipeHandlers = useSwipeTabs(TAB_KEYS, tab, setTab);
   const [sortBy, setSortBy] = useState("bestMatch");
   const [page, setPage] = useState(1);
@@ -323,11 +285,11 @@ export default function Jobs() {
 
   const JOBS = useMemo(
     () =>
-      rawJobs.map((job) => ({
-        ...realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth)),
-        yc: ycByCompany.get(job.company) ?? null,
-      })),
-    [rawJobs, preferences, classYear, gradMonth, ycByCompany]
+      rawJobs.map((job) => {
+        const card = realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth, ycByCompany.get(job.company)));
+        return { ...card, yc: ycByCompany.get(job.company) ?? null, isNew: isNewSince(card, visitBaseline) };
+      }),
+    [rawJobs, preferences, classYear, gradMonth, ycByCompany, visitBaseline]
   );
 
   // Saved jobs whose posting has since closed. The board itself (JOBS) is only
@@ -361,7 +323,7 @@ export default function Jobs() {
     () => [
       ...JOBS,
       ...closedSavedRaw.map((job) => ({
-        ...realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth)),
+        ...realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth, ycByCompany.get(job.company))),
         yc: ycByCompany.get(job.company) ?? null,
       })),
     ],
@@ -412,6 +374,7 @@ export default function Jobs() {
   // from, so this number is always exactly what clicking that tab
   // reveals.
   const matchedCount = useMemo(() => filteredForCount.filter((j) => j.matchScore >= 70).length, [filteredForCount]);
+  const newCount = useMemo(() => filteredForCount.filter((j) => matchesTab(j, "new", savedJobIds)).length, [filteredForCount, savedJobIds]);
 
   const tabbed = useMemo(() => {
     // "Saved" is a personal bookmark list, not another search view -- it
@@ -490,6 +453,18 @@ export default function Jobs() {
   function handleSaveSearch() {
     saveSearch(filters, activeChips.length > 0 ? activeChips.map((c) => c.label).join(", ") : "All jobs");
   }
+
+  // A notification about new roles for a saved search links here (?savedSearch=<id>): open that search on the
+  // New tab, then drop the param so a later refresh doesn't reapply it.
+  const savedSearchParam = searchParams.get("savedSearch");
+  useEffect(() => {
+    if (!savedSearchParam) return;
+    const search = savedSearches.find((s) => s.id === savedSearchParam);
+    if (!search) return;
+    setFilters({ ...NEUTRAL_FILTERS, ...search.filters });
+    setTab("new");
+    setSearchParams({}, { replace: true });
+  }, [savedSearchParam, savedSearches, setSearchParams]);
 
   function applySavedSearch(search) {
     setFilters(search.filters);
@@ -781,7 +756,7 @@ export default function Jobs() {
                 className={`jobs-tabs__tab${tab === t.key ? " is-active" : ""}`}
                 onClick={() => setTab(t.key)}
               >
-                {t.label} ({t.key === "recommended" ? matchedCount : t.key === "saved" ? savedCount : JOBS.length})
+                {t.label} ({t.key === "recommended" ? matchedCount : t.key === "new" ? newCount : t.key === "saved" ? savedCount : JOBS.length})
               </button>
             ))}
           </div>

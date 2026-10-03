@@ -449,7 +449,7 @@ Deno.serve(async (req) => {
       ),
       fetchAllRows(adminClient, "job_functions", "id, name"),
       fetchAllRows(adminClient, "job_sources", "source_id, job_id, source_job_id", (q) => q.in("source_id", sources.map((s) => s.id))),
-      fetchAllRows(adminClient, "company_tiers", "company_name, tier, aliases"),
+      fetchAllRows(adminClient, "company_tiers", "company_name, tier, aliases", undefined, "company_name"),
     ]);
   } catch (err) {
     return jsonResponse({ error: err instanceof Error ? err.message : String(err) }, 500);

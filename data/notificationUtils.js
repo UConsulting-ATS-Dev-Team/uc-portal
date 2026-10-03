@@ -1,5 +1,7 @@
 import { daysUntil, isUrgent } from "./jobUtils.js";
 import { relativeTime } from "./feedSync.js";
+import { NEUTRAL_FILTERS, matchesFilters } from "./jobFilters.js";
+import { isNewSince } from "./jobVisit.js";
 
 function truncate(text, max) {
   if (!text) return "";
@@ -39,6 +41,12 @@ export function buildNotifications({
   conversations = [],
   currentAccountId = null,
   people = [],
+  // Roles the board first listed after this moment (epoch ms) are "new" (data/jobVisit.js); null until known.
+  visitBaseline = null,
+  followedCompanies = [],
+  savedSearches = [],
+  // The member's "New matched jobs" notification setting.
+  jobAlertsEnabled = true,
 }) {
   const needsAction = [];
 
@@ -112,19 +120,51 @@ export function buildNotifications({
 
   const earlierThisWeek = [];
 
-  // Jobs: a real count of real postings from the last 7 days that this
-  // member is eligible for and actually matches on (score > 0) -- reuses
-  // the matchScore/matchEligible/postedDaysAgo data/useRealJobs.js already
-  // computed for the Jobs board, rather than a second matching pass here.
-  const newMatches = realJobs.filter((j) => j.matchEligible && j.matchScore > 0 && j.postedDaysAgo <= 7);
-  if (newMatches.length > 0) {
-    earlierThisWeek.push({
-      id: "jobs-new-matches",
-      category: "Jobs",
-      headline: `${newMatches.length} new role${newMatches.length === 1 ? "" : "s"} matched your profile this week`,
-      source: "Job alert",
-      age: "This week",
-      href: "/jobs",
+  // Job alerts: roles the board listed since the member's last visit that they are eligible for. Three
+  // views of the same set: at a company they follow, a strong match for their profile (the Recommended
+  // tab's 70% bar), and new results for each of their saved searches. All derived from data already
+  // loaded (data/useRealJobs.js), so nothing is sent anywhere and no email goes out.
+  if (jobAlertsEnabled && visitBaseline != null) {
+    const fresh = realJobs.filter((j) => j.matchEligible && isNewSince(j, visitBaseline));
+    const plural = (n) => `role${n === 1 ? "" : "s"}`;
+
+    const atFollowed = fresh.filter((j) => followedCompanies.includes(j.company));
+    if (atFollowed.length > 0) {
+      const names = [...new Set(atFollowed.map((j) => j.company))];
+      earlierThisWeek.push({
+        id: "jobs-new-followed",
+        category: "Jobs",
+        headline: `${atFollowed.length} new ${plural(atFollowed.length)} at ${names.length === 1 ? names[0] : `${names.length} companies you follow`}`,
+        source: "Job alert",
+        age: "Since your last visit",
+        href: "/jobs?tab=new",
+      });
+    }
+
+    const matched = fresh.filter((j) => j.matchScore >= 70);
+    if (matched.length > 0) {
+      earlierThisWeek.push({
+        id: "jobs-new-matches",
+        category: "Jobs",
+        headline: `${matched.length} new ${plural(matched.length)} matched your profile`,
+        source: "Job alert",
+        age: "Since your last visit",
+        href: "/jobs?tab=new",
+      });
+    }
+
+    savedSearches.forEach((search) => {
+      const filters = { ...NEUTRAL_FILTERS, ...search.filters };
+      const hits = fresh.filter((j) => matchesFilters(j, filters)).length;
+      if (hits === 0) return;
+      earlierThisWeek.push({
+        id: `jobs-new-search-${search.id}`,
+        category: "Jobs",
+        headline: `${hits} new ${plural(hits)} for your saved search "${truncate(search.label, 50)}"`,
+        source: "Job alert",
+        age: "Since your last visit",
+        href: `/jobs?savedSearch=${encodeURIComponent(search.id)}`,
+      });
     });
   }
 

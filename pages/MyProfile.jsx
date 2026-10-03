@@ -1148,6 +1148,16 @@ export default function MyProfile() {
                   </button>
                 )}
 
+              <div className="checkbox-row" style={{ marginBottom: "var(--space-5)" }}>
+                <input
+                  type="checkbox"
+                  id="prefer-yc"
+                  checked={!!preferences.preferYc}
+                  onChange={() => updatePreferences({ preferYc: !preferences.preferYc })}
+                />
+                <label htmlFor="prefer-yc">Prefer Y Combinator-backed companies (raises their match score)</label>
+              </div>
+
               <p style={{ fontWeight: 700 }}>Recruiting timeline</p>
               <div className="chip-row" style={{ marginBottom: 0 }}>
                 {RECRUITING_CYCLES.map((cycle) => (

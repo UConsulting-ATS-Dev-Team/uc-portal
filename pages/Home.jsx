@@ -11,6 +11,7 @@ import Avatar from "../components/Avatar.jsx";
 import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
 import { nextActionForStage } from "../data/trackerUtils.js";
 import { useRealJobs } from "../data/useRealJobs.js";
+import { isNewSince, useJobsVisitBaseline } from "../data/jobVisit.js";
 import JobCard from "../components/JobCard.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 import "../styles/jobs.css";
@@ -34,7 +35,9 @@ export default function Home() {
     trackedJobs,
     prepLogged,
     memberDataLoading,
+    accountId,
   } = useAppState();
+  const visitBaseline = useJobsVisitBaseline(accountId);
 
   // "Recommended for you" and the tracked-job lookup below both used to
   // read data/mockJobs.js's 8 demo jobs, unchanged since before the real
@@ -145,6 +148,8 @@ export default function Home() {
   const { pct: strengthPct } = computeProfileStrength(preferences, profileOverrides.linkedIn, profileOverrides.resumePath);
 
   const recommended = [...realJobs].sort((a, b) => b.matchScore - a.matchScore).slice(0, 2);
+  // Roles the board listed since the member's last visit that clear the Recommended bar (data/jobVisit.js).
+  const newMatchCount = realJobs.filter((j) => j.matchEligible && j.matchScore >= 70 && isNewSince(j, visitBaseline)).length;
 
   const activeApps = trackedEntries.filter((e) => e.stage !== "Closed");
   const interviewingApps = trackedEntries.filter((e) => ["First round", "Final round"].includes(e.stage));
@@ -255,6 +260,13 @@ export default function Home() {
             <h2>Recommended for you</h2>
             <Link to="/jobs">Based on your interests · View all {realJobs.length}</Link>
           </div>
+          {!jobsLoading && newMatchCount > 0 && (
+            <p className="meta" style={{ marginTop: 0 }}>
+              <Link to="/jobs?tab=new">
+                {newMatchCount} new role{newMatchCount === 1 ? "" : "s"} matched your profile since your last visit
+              </Link>
+            </p>
+          )}
           <div className="recommended-grid">
             {jobsLoading ? (
               <p className="meta">Loading…</p>

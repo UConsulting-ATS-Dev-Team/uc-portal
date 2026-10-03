@@ -231,7 +231,7 @@ function StepRoles({ preferences, stats, onToggleRole, onToggleLocation, onToggl
   );
 }
 
-function StepCompanies({ followed, onToggleFollow, people, realJobs }) {
+function StepCompanies({ followed, onToggleFollow, people, realJobs, preferYc, onToggleFlag }) {
   const [query, setQuery] = useState("");
   const knownCompanies = useKnownCompanies();
   // Suggestions are the curated few; typing searches every company the job board tracks.
@@ -244,6 +244,11 @@ function StepCompanies({ followed, onToggleFollow, people, realJobs }) {
       <div className="onboarding__kicker">Step 4 of 5</div>
       <h1 className="onboarding__title">Companies</h1>
       <p className="onboarding__subtitle">Suggested by UC alumni presence — follow the ones you're tracking.</p>
+
+      <div className="checkbox-row" style={{ marginBottom: "var(--space-4)" }}>
+        <input type="checkbox" id="prefer-yc" checked={!!preferYc} onChange={() => onToggleFlag("preferYc")} />
+        <label htmlFor="prefer-yc">Prefer Y Combinator-backed companies</label>
+      </div>
 
       <div className="field">
         <input
@@ -610,7 +615,7 @@ export default function Onboarding() {
             onToggleFlag={toggleFlag}
           />
         )}
-        {step === 3 && <StepCompanies followed={preferences.followedCompanies} onToggleFollow={toggleFollow} people={people} realJobs={realJobs} />}
+        {step === 3 && <StepCompanies followed={preferences.followedCompanies} onToggleFollow={toggleFollow} people={people} realJobs={realJobs} preferYc={preferences.preferYc} onToggleFlag={toggleFlag} />}
         {step === 4 && (
           <StepTimeline
             preferences={preferences}

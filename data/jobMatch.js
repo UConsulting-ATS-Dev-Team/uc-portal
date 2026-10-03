@@ -39,7 +39,8 @@ function isEligible(job, preferences, classYear) {
 // Each soft-preference factor's max weight -- unchanged from the original
 // flat version, kept as a named map now that scoring is graduated/
 // applicability-gated rather than "matched ? weight : 0" per factor.
-const FACTOR_WEIGHTS = { industry: 30, role: 25, location: 20, compensation: 10, skills: 15, timing: 10 };
+// `yc` only counts for a member who turned on "prefer Y Combinator-backed companies" (preferences.preferYc).
+const FACTOR_WEIGHTS = { industry: 30, role: 25, location: 20, compensation: 10, skills: 15, timing: 10, yc: 10 };
 
 // 2026-09-23 follow-up to the graduated-scoring redesign above: live
 // verification found the redesign was correct but couldn't fully solve
@@ -107,7 +108,9 @@ const FACTOR_WEIGHTS = { industry: 30, role: 25, location: 20, compensation: 10,
 // a job with no classified data at all), the score is a neutral 50 --
 // not a false 0 (which would read as "bad fit" with zero evidence
 // either way) and not the old false-100-style inflation.
-export function matchJob(job, preferences, classYear, gradMonth) {
+// ycBatch: the job's company's Y Combinator batch ("W12") or a falsy value; callers read it from
+// data/useYcCompanies.js. Omitting it just means the YC factor reads as "not YC".
+export function matchJob(job, preferences, classYear, gradMonth, ycBatch = null) {
   const factors = [];
   const eligible = isEligible(job, preferences, classYear);
 
@@ -236,6 +239,17 @@ export function matchJob(job, preferences, classYear, gradMonth) {
     label: monthsOut !== null ? `${monthsOut} month${monthsOut === 1 ? "" : "s"} until graduation` : "Graduation month not set",
   });
 
+  // Applicable only when the member asked for it; a YC-backed company then counts fully, anything else not at all.
+  let ycFrac = null;
+  if (preferences.preferYc) {
+    ycFrac = ycBatch ? 1 : 0;
+    factors.push({
+      key: "yc",
+      match: ycFrac > 0,
+      label: ycBatch ? `Backed by Y Combinator (${ycBatch})` : "Not a Y Combinator-backed company",
+    });
+  }
+
   const applicable = [
     ["industry", industryFrac],
     ["role", roleFrac],
@@ -243,6 +257,7 @@ export function matchJob(job, preferences, classYear, gradMonth) {
     ["compensation", compFrac],
     ["skills", skillsFrac],
     ["timing", timingFrac],
+    ["yc", ycFrac],
   ].filter(([, frac]) => frac !== null);
 
   let score;

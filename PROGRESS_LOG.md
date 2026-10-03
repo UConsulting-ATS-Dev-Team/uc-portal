@@ -5118,3 +5118,34 @@ longer breaks down to phone width either.
   **Not done / limits:** no ranking boost for YC companies (only badge + filter); Rippling/Deel/Retool/Whatnot (boards that
   aren't guessable) are out unless someone finds their slug; Lever's `allLocations` (multi-city) is still unused; recurrence of the
   intermittent duplicate-key failure not seen in this window.
+
+- **2026-10-03: backlog drained, duplicate-key failure fixed, YC preference, "new since your last visit" and job alerts** --
+  Request: check the first scheduled batches and the active-job count, backfill locations now, then a YC ranking preference and
+  new-role alerts.
+  **Pipeline:** the :47 Ashby batch (8 companies) ran clean at 08:47. Rather than wait a day for each company's next scheduled fetch,
+  the whole backlog was run by hand, one batch at a time (a batch of 20 Greenhouse companies takes ~2 s): every enabled Greenhouse,
+  Lever and Ashby source now has a successful fetch in the last 26h (205 / 23 / 54, none never-fetched), which also fills `locations`
+  for their jobs (active jobs with NULL `locations`: 3,723 -> 400; why those 400 are still NULL was not investigated). Active jobs went
+  3,985 -> 2,427 as caps applied to the new companies' first fetches; 0 orphans.
+  **Root cause of the intermittent `job_sources_source_id_source_job_id_key` failure** (it recurred on 7 companies during the drain,
+  now with the key detail in the message): `fetchAllRows()` in `_shared/dedupeHelpers.ts` paged with `.range()` and NO `.order()`.
+  Unordered `LIMIT/OFFSET` is not stable across pages: a row updated between two page reads moves and can fall through both, so an
+  already-tracked `job_sources` row went missing from the "known" map, the job looked new, and the insert collided. It only bites a
+  run that reads more than 1000 rows (a big company, or a batch of 20), which is why it was rare and never reproduced on a re-run.
+  Not concurrent runs: `cron_run_locks` showed exactly one lock row for the failing 06:17 batch. Fix: `fetchAllRows` now takes a unique
+  `orderBy` (default `id`; `company_name` for `company_tiers`). Deployed to all six functions that use it; the 18 companies that had
+  failed all succeeded on re-run (Databricks, Airbnb, Affirm, Epic Games, ...). Not proven gone forever -- watch `source_fetch_log`.
+  **YC preference:** `member_preferences.prefer_yc` (migration `20261010600000`, default false). When on, `matchJob()` adds a `yc` factor
+  (weight 10, only applicable for members who turned it on, so everyone else's score is unchanged) and it shows in the job's "why this
+  might be a fit" checklist. `matchJob` takes the company's YC batch as a 5th argument (`useYcCompanies`); every caller passes it.
+  Toggle on My Profile > Career Preferences and on onboarding step 4. Note a profile with nothing else filled in then scores YC
+  companies 100% and others 0% (an applicable factor renormalizes, existing rule).
+  **New since your last visit + alerts:** `jobs.created_at` (when the board first listed it) comes down on the list columns as `addedAt`.
+  `data/jobVisit.js` keeps a per-account, per-browser baseline in localStorage: the previous visit's last activity (a visit = activity
+  with gaps under 30 min, so badges don't vanish mid-session), capped at 14 days back, 7 days on a first visit. Jobs gets a "New since
+  your last visit" tab and a "New" chip (`?tab=new` deep link), Home a one-line link, and Notifications three derived alerts: new roles at
+  companies you follow, new roles at 70%+ match, and new roles per saved search (`?savedSearch=<id>` opens it). They respect the
+  existing "New matched jobs" notification setting. Nothing is emailed. The Jobs filter predicate moved to `data/jobFilters.js` so
+  notifications can reuse it for saved searches. Saved searches are still local to the browser (not synced to the account).
+  Tested as a throwaway plain member (removed: `roster_total=53 people_total=209`): onboarding checkbox, profile toggle, `prefer_yc`
+  persisted, New tab (64 new, 14 at 70%+), YC saved-search alert and deep link. 211 server tests pass (12 new in `jobAlerts.test.ts`).

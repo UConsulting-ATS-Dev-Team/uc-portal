@@ -53,6 +53,7 @@ const DEFAULT_STATE = {
     openToRelocating: false,
     remoteOrHybridOnly: false,
     followedCompanies: [],
+    preferYc: false, // weight Y Combinator-backed companies up in the match score (My Profile)
     recruitingCycle: null,
     helpNeeded: [],
     remindersEnabled: true,
@@ -665,6 +666,7 @@ export function AppStateProvider({ children }) {
         isAdmin,
         realMemberStatus,
         accountEmail,
+        accountId: sessionUserId, // undefined until the first session check resolves, null when signed out
         // true until the signed-in member's data has finished loading. Deliberately just `!memberDataReady` rather
         // than also checking sessionUserId: right after sign-in the router reaches Home a moment BEFORE this
         // provider has learned who signed in, and a check that read "no user yet" as "nothing to load" let the

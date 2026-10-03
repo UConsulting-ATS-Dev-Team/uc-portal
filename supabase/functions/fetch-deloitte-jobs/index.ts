@@ -183,7 +183,7 @@ async function runFetch(adminClient: SupabaseClient, source: any): Promise<Fetch
       // Just this one company -- unlike the multi-company adapters, this
       // source is always exactly "Deloitte", so there's no need to pull the
       // whole company_tiers table.
-      fetchAllRows(adminClient, "company_tiers", "tier", (q) => q.eq("company_name", "Deloitte")),
+      fetchAllRows(adminClient, "company_tiers", "tier", (q) => q.eq("company_name", "Deloitte"), "company_name"),
     ]);
     companyTierRow = (companyTierRows[0] as { tier: number } | undefined) ?? null;
   } catch (err) {
