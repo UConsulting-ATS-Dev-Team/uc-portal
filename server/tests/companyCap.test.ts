@@ -123,7 +123,7 @@ describe("capForCompanyTier", () => {
     expect(capForCompanyTier(0)).toBe(25);
     expect(capForCompanyTier(1)).toBe(15);
     expect(capForCompanyTier(2)).toBe(10);
-    expect(capForCompanyTier(3)).toBe(3);
+    expect(capForCompanyTier(3)).toBe(5);
   });
 
   it("defaults null/undefined (a company missing from company_tiers) to tier 3's cap", () => {

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { fetchRemotePreferences, syncPreferencesToRemote } from "./memberPreferencesSync.js";
 import { fetchRemoteTrackedApplications, syncTrackedApplicationToRemote } from "./trackerSync.js";
 import { fetchRemoteNetworkConnections, syncNetworkConnectionToRemote } from "./networkSync.js";
@@ -13,6 +13,9 @@ import { supabase } from "./supabaseClient.js";
 // localStorage since there's no backend. This is what lets onboarding
 // answers actually show up later on My Profile / Jobs.
 const STORAGE_KEY = "uc-portal-state";
+// Which signed-in account the cached state under STORAGE_KEY belongs to, so a different member
+// signing in on the same browser never inherits (or syncs) the previous member's data.
+const OWNER_KEY = "uc-portal-state-owner";
 const VIEW_AS_STORAGE_KEY = "uc-portal-view-as";
 
 // Removed (2026-09-23, direct instruction to trim mock content down to a
@@ -141,6 +144,11 @@ export function AppStateProvider({ children }) {
   // The signed-in account's own email, so displayName() has an honest fallback
   // (its local part) for accounts with no full_name instead of a fake identity.
   const [accountEmail, setAccountEmail] = useState(null);
+  // Which account is signed in right now: undefined until the first session check resolves, null when
+  // signed out, else the user id. Hydration below is keyed on this, so it re-runs whenever the signed-in
+  // member changes -- not just once when the app first mounts.
+  const [sessionUserId, setSessionUserId] = useState(undefined);
+  const hydratedUserRef = useRef(null); // the user id the in-memory state currently belongs to
 
   // Real admin "view as" simulation -- direct ask: instead of creating a
   // separate throwaway account for every member type, a real admin can
@@ -196,9 +204,13 @@ export function AppStateProvider({ children }) {
   useEffect(() => {
     fetchRealRole().then(setRealRole);
     fetchRealMemberStatus().then(setRealMemberStatus);
-    supabase.auth.getSession().then(({ data }) => setAccountEmail(data.session?.user?.email ?? null));
+    supabase.auth.getSession().then(({ data }) => {
+      setAccountEmail(data.session?.user?.email ?? null);
+      setSessionUserId(data.session?.user?.id ?? null);
+    });
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
       setAccountEmail(session?.user?.email ?? null);
+      setSessionUserId(session?.user?.id ?? null);
       if (!session) {
         setRealRole(null);
         setRealMemberStatus(null);
@@ -210,13 +222,67 @@ export function AppStateProvider({ children }) {
     return () => subscription.subscription.unsubscribe();
   }, []);
 
-  // Stage 2: one-time hydration from Supabase on mount, if this signed-in
-  // member has a real member_preferences row already (e.g. set on another
-  // device) -- remote wins over local, but only once this resolves, so a
-  // pre-hydration render of local defaults never races ahead and overwrites
-  // real remote data (see the sync effect below, gated on hydratedFromRemote).
+  // Hydration from Supabase, keyed on WHO is signed in -- not on the provider's mount.
+  //
+  // It used to be five effects with [] deps, so they ran exactly once when this provider first mounted,
+  // typically on /sign-in before any session existed. Signing in afterwards in the same page load (the
+  // normal first-time path on a new device) never re-ran them, with two consequences found 2026-10-03:
+  //   * the member saw empty tracked jobs / saved jobs / preferences until they reloaded; and
+  //   * worse, the sync effects below were gated on a flag the signed-out mount had already flipped to
+  //     true, so a preference change made before that reload upserted the EMPTY local state over the
+  //     member's real remote row. Sign-out cleared the localStorage cache but not this in-memory state, so
+  //     on a shared computer the next member to sign in could inherit, and then sync, the previous one's data.
+  //
+  // Now: whenever the signed-in account changes (sign-in, sign-out, a different member), both hydration
+  // flags drop back to false -- which switches every background sync off -- the in-memory state is reset if
+  // it belonged to someone else, and remote state is fetched for the new account. The syncs come back on
+  // only once the fetch they depend on has finished. A fetch that resolves after the account has changed
+  // again is discarded.
+  //
+  // Remote wins over local for preferences/profile; tracker, network and saved jobs are merged (remote per
+  // key, anything local-only kept) so an action taken in the brief window before they resolve isn't wiped.
   useEffect(() => {
+    if (sessionUserId === undefined) return; // first session check hasn't resolved yet
+    setHydratedFromRemote(false);
+    setProfileOverridesHydrated(false);
+
+    if (sessionUserId === null) {
+      // Signed out. The in-memory state may still be the departing member's -- drop it, and the cache key.
+      if (hydratedUserRef.current) {
+        hydratedUserRef.current = null;
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(OWNER_KEY);
+        } catch {
+          // storage unavailable -- the in-memory reset below is what matters
+        }
+        setState(DEFAULT_STATE);
+      }
+      return;
+    }
+
+    let cancelled = false;
+    let cachedOwner = null;
+    try {
+      cachedOwner = localStorage.getItem(OWNER_KEY);
+    } catch {
+      // treated as "no recorded owner"
+    }
+    // A cache with no recorded owner predates this check and is assumed to be this member's own (wiping it
+    // would drop their local-only progress for nothing); one recorded for a DIFFERENT account is not.
+    const belongsToSomeoneElse =
+      (cachedOwner && cachedOwner !== sessionUserId) ||
+      (hydratedUserRef.current && hydratedUserRef.current !== sessionUserId);
+    if (belongsToSomeoneElse) setState(DEFAULT_STATE);
+    hydratedUserRef.current = sessionUserId;
+    try {
+      localStorage.setItem(OWNER_KEY, sessionUserId);
+    } catch {
+      // ignore
+    }
+
     fetchRemotePreferences().then((remote) => {
+      if (cancelled) return;
       if (remote) {
         setState((prev) => ({
           ...prev,
@@ -229,7 +295,52 @@ export function AppStateProvider({ children }) {
       }
       setHydratedFromRemote(true);
     });
-  }, []);
+
+    fetchRemoteProfileOverrides()
+      .then((remote) => {
+        if (cancelled || !remote) return;
+        setState((prev) => ({
+          ...prev,
+          profileOverrides: { ...prev.profileOverrides, ...remote.profileOverrides },
+          onboardingComplete: remote.onboardingComplete || prev.onboardingComplete,
+          profileLastUpdated: remote.profileLastUpdated ?? prev.profileLastUpdated,
+        }));
+      })
+      .finally(() => {
+        if (!cancelled) setProfileOverridesHydrated(true);
+      });
+
+    fetchRemoteTrackedApplications().then((remote) => {
+      if (cancelled || !remote) return;
+      setState((prev) => ({
+        ...prev,
+        trackedJobs: { ...prev.trackedJobs, ...remote.trackedJobs },
+        prepLogged: { ...prev.prepLogged, ...remote.prepLogged },
+        timelineShiftDays: { ...prev.timelineShiftDays, ...remote.timelineShiftDays },
+      }));
+    });
+
+    fetchRemoteNetworkConnections().then((remote) => {
+      if (cancelled || !remote) return;
+      setState((prev) => ({
+        ...prev,
+        savedConnections: [...new Set([...prev.savedConnections, ...remote.savedConnections])],
+        coffeeChatStatus: { ...prev.coffeeChatStatus, ...remote.coffeeChatStatus },
+      }));
+    });
+
+    fetchRemoteSavedJobs().then((remote) => {
+      if (cancelled || !remote) return;
+      setState((prev) => ({
+        ...prev,
+        savedJobIds: [...new Set([...prev.savedJobIds, ...remote])],
+      }));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionUserId]);
 
   // Background sync to Supabase whenever preferences actually change --
   // fire-and-forget, never blocks the UI. data/store.jsx stays the source
@@ -241,38 +352,13 @@ export function AppStateProvider({ children }) {
     syncPreferencesToRemote(state.preferences);
   }, [state.preferences, hydratedFromRemote]);
 
-  // My Profile's Personal tab + onboardingComplete -- same one-time-
-  // hydrate-then-background-sync shape as preferences above (remote wins
-  // on hydration, this is now genuinely durable identity, not just a
-  // local convenience). Was the one piece of real member state that
-  // never got this treatment: only ever lived in localStorage, so signing
-  // into a real account on a different browser/device meant starting
-  // onboarding over from scratch with no memory of anything entered
-  // before. Reuses hydratedFromRemote as its own sync gate too, same as
-  // preferences -- both hydration effects run independently on mount, so
-  // this can fire its own redundant write-back the moment its hydration
-  // resolves if preferences' already flipped the flag first; harmless
-  // (writing back the same data just read), same accepted characteristic
-  // preferences' own effect already has.
+  // Profile sync waits for the profile fetch itself, not just the preferences one: with only
+  // hydratedFromRemote it could fire before the real profile arrived and write local defaults
+  // (full_name null, onboarding_complete false) over the member's real row.
   useEffect(() => {
-    fetchRemoteProfileOverrides()
-      .then((remote) => {
-        if (remote) {
-          setState((prev) => ({
-            ...prev,
-            profileOverrides: { ...prev.profileOverrides, ...remote.profileOverrides },
-            onboardingComplete: remote.onboardingComplete || prev.onboardingComplete,
-            profileLastUpdated: remote.profileLastUpdated ?? prev.profileLastUpdated,
-          }));
-        }
-      })
-      .finally(() => setProfileOverridesHydrated(true));
-  }, []);
-
-  useEffect(() => {
-    if (!hydratedFromRemote) return;
+    if (!hydratedFromRemote || !profileOverridesHydrated) return;
     syncProfileOverridesToRemote(state.profileOverrides, state.onboardingComplete, state.profileLastUpdated);
-  }, [state.profileOverrides, state.onboardingComplete, state.profileLastUpdated, hydratedFromRemote]);
+  }, [state.profileOverrides, state.onboardingComplete, state.profileLastUpdated, hydratedFromRemote, profileOverridesHydrated]);
 
   // Real Directory auto-fill (see data/directoryPrefillSync.js for the
   // full rationale). This comment used to claim gating on hydratedFromRemote
@@ -307,55 +393,6 @@ export function AppStateProvider({ children }) {
       })
       .catch(() => {});
   }, [hydratedFromRemote, profileOverridesHydrated]);
-
-  // Real applications tracker (Stage 5) -- same one-time-hydrate-on-mount
-  // shape as preferences above, except merged into local state rather than
-  // replacing it outright: trackedJobs/prepLogged/timelineShiftDays also
-  // hold the seeded demo applications (SEED_TRACKED_JOBS), which are
-  // deliberately never synced to Supabase (see below), so a member with no
-  // real tracked applications yet should keep seeing them, not an empty
-  // board. Merging (remote entries win per-jobId, anything local-only is
-  // preserved) gets that for free and also closes a narrow race: if a
-  // member interacts with the tracker in the brief window before this
-  // fetch resolves, an outright replace would wipe that action the moment
-  // hydration completes.
-  useEffect(() => {
-    fetchRemoteTrackedApplications().then((remote) => {
-      if (remote) {
-        setState((prev) => ({
-          ...prev,
-          trackedJobs: { ...prev.trackedJobs, ...remote.trackedJobs },
-          prepLogged: { ...prev.prepLogged, ...remote.prepLogged },
-          timelineShiftDays: { ...prev.timelineShiftDays, ...remote.timelineShiftDays },
-        }));
-      }
-    });
-  }, []);
-
-  // Real savedConnections/coffeeChatStatus (Network) and savedJobIds (Jobs
-  // board) -- same one-time-hydrate-and-merge shape as the tracker above,
-  // for the same reason (SEED_COFFEE_CHATS should survive until a member
-  // has real synced data, and a merge can't clobber a pre-hydration local
-  // action the way a replace could).
-  useEffect(() => {
-    fetchRemoteNetworkConnections().then((remote) => {
-      if (remote) {
-        setState((prev) => ({
-          ...prev,
-          savedConnections: [...new Set([...prev.savedConnections, ...remote.savedConnections])],
-          coffeeChatStatus: { ...prev.coffeeChatStatus, ...remote.coffeeChatStatus },
-        }));
-      }
-    });
-    fetchRemoteSavedJobs().then((remote) => {
-      if (remote) {
-        setState((prev) => ({
-          ...prev,
-          savedJobIds: [...new Set([...prev.savedJobIds, ...remote])],
-        }));
-      }
-    });
-  }, []);
 
   function updatePreferences(patch) {
     setState((prev) => ({ ...prev, preferences: { ...prev.preferences, ...patch } }));

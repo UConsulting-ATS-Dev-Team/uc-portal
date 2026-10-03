@@ -4959,3 +4959,36 @@ longer breaks down to phone width either.
   which were uncapped companies, orphans and dead postings). If that is smaller than wanted, the knobs are the tier caps
   (`TIER_CAPS`, kept identical in `data/companyTiers.js`, `server/src/companyCap.ts` and
   `supabase/functions/_shared/pipeline/companyCap.ts`) and each company's tier (Admin > Company tiers).
+
+- **2026-10-03: tier-3 cap 3 -> 5, and the "state hydrates once" bug fixed** --
+  **Cap.** "Everyone else" (tier 3, and the default for unclassified companies) now allows 5 active jobs instead of 3. Changed in
+  the three mirrors (`data/companyTiers.js`, `server/src/companyCap.ts`, `supabase/functions/_shared/pipeline/companyCap.ts`),
+  the test that pins it (148/148 still pass) and the Admin > Company tiers copy; the three fetchers that import it
+  (Greenhouse, Lever, Deloitte) are redeployed. No restore step was needed: every fetch's refresh path sets `active: true` on
+  all tracked jobs still on the employer's board (including cap-removed ones) and `enforceCompanyCap` then re-trims to the
+  current cap, so the new number applies at each company's next fetch. Steady-state ceiling moves from ~1,400 to ~1,500 active
+  jobs (56 tier-3 companies x up to 2 more).
+  **Hydration bug.** Reproduced earlier the same day (a same-page sign-in showed empty tracked/saved/preferences until a
+  reload); reading the code showed it was two data-safety problems, not a cosmetic one. (1) Hydration ran once at mount, and the
+  sync effects were gated on a flag the signed-out mount had already set true, so a change made before the reload upserted empty
+  local state over the member's real `member_preferences` row. The profile sync was also gated only on the *preferences*
+  fetch, so it could fire before the profile arrived and write defaults (including `onboarding_complete: false`) over the real
+  row. (2) Sign-out cleared the localStorage cache but not the in-memory state, so on a shared computer the next member to
+  sign in in the same tab could inherit -- and then sync into their own account -- the previous member's data.
+  **Fix (`data/store.jsx`):** one hydration effect keyed on the signed-in user id replaces the five mount-only effects; a user
+  change drops both hydration flags (which switches every background sync off), resets the in-memory state if the cache
+  belonged to someone else (`uc-portal-state-owner`; a cache with no recorded owner is assumed to be the member's own so
+  existing local-only progress isn't wiped), then fetches the new account's data; late results for a previous account are
+  discarded; the profile sync now waits for the profile fetch as well. `MyProfile` re-seeds its form when the saved values
+  change (otherwise a form opened before the data arrived stayed blank and "Save changes" would have written blanks) and its
+  LinkedIn field no longer starts as `null`.
+  **Verified live** with two throwaway members (Alpha with real saved data, Bravo blank) on one page, never reloading between
+  sign-ins: Alpha's tracked job, saved job, preferences and name appeared immediately; the call log shows every read finishing
+  (936 ms) before the first write (1,176 ms); a change made right away synced without losing anything; signing out cleared the
+  in-memory state and cache owner; Bravo then saw none of Alpha's data, and the database confirms Alpha's row intact (including
+  the added location) and Bravo's row holding nothing of Alpha's; switching back to Alpha and a full reload both kept
+  everything; two full sign-out/sign-in cycles produced zero failed requests. Throwaway members removed (`roster_total=53
+  people_total=209`).
+  **Not done:** a returning member still sees a brief flash of Home's empty first-login state while their data loads (no
+  loading flag is exposed for tracked jobs); and the React "value should not be null" warning on My Profile was not reproduced
+  after the LinkedIn fix, but React logs it once per page load and the console tool may collapse repeats, so that is not proof.

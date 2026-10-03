@@ -374,7 +374,9 @@ which are chronological and not rewritten when later work supersedes them.
   and the existing orphans were cleaned up reversibly (`orphan_cleanup_backup`, `revert_orphan_cleanup()`).
   Detail in JOB_ENGINE_ARCHITECTURE.md's 2026-10-03 addendum.
 - **The active-job count is falling on purpose:** it was 11,261 on 2026-10-01 (uncapped companies, orphans, dead
-  postings) and settles near ~1,400 once every company has been re-fetched and capped (tier caps 25 / 15 / 10 / 3).
+  postings) and settles near ~1,500 once every company has been re-fetched and capped (tier caps 25 / 15 / 10 / 5;
+  tier 3 was 3 until 2026-10-03). A cap change needs no restore step: every fetch re-activates all tracked jobs still
+  on the employer's board and then re-trims to the current cap, so it applies at each company's next fetch.
   The batched Greenhouse schedule was confirmed working on 2026-10-03. Don't treat the shrinkage as a bug; to change
   it, change the tier caps or a company's tier.
 - **Closed jobs a member tracked or saved stay visible.** `jobs` is otherwise readable by members only while `active`;
@@ -382,10 +384,12 @@ which are chronological and not rewritten when later work supersedes them.
   saved list. `useRealJobs` returns `realJobs` (open postings only: recommendations, new matches, deadlines) and
   `allKnownJobs` (also the member's closed ones: use it to RESOLVE their own ids). Closed jobs carry `closed: true` and
   render as "Posting closed". Never use `realJobs.find(id)` to resolve a tracked or saved job.
-- **Known open issue -- hydration happens once:** `AppStateProvider` loads remote state (tracked jobs, saved jobs,
-  preferences, network) only when it first mounts, so a member who signs in without a page reload sees empty state until
-  they reload, and a preference change before that reload would overwrite the real remote row with empty local state.
-  Fix not yet built: re-hydrate on a SIGNED_IN auth event and hold the sync effects until it finishes.
+- **Member state follows the signed-in account (fixed 2026-10-03):** `AppStateProvider` hydrates tracked jobs, saved
+  jobs, preferences, network and profile in one effect keyed on the signed-in user id, so it re-runs on sign-in, sign-out
+  and a different member signing in -- not just when the app first mounts. A user change resets the in-memory state first
+  (`uc-portal-state-owner` records whose cache it is), both background syncs stay off until their own fetch has finished,
+  and a fetch that resolves after the account changed is discarded. It used to hydrate once at mount, which left a
+  same-page sign-in with empty state and let a change made before a reload overwrite the real remote row.
 - **Repo & deploys:** public at github.com/UConsulting-ATS-Dev-Team/uc-portal
   (history was rewritten once to scrub real PII). The frontend deploys to
   Vercel on push to `master`. Backend changes are separate steps:
@@ -462,9 +466,10 @@ which are chronological and not rewritten when later work supersedes them.
   unbounded read.
 - `upsert` on an RLS table needs INSERT privilege even when it resolves to an
   UPDATE — use `.update().eq(...)` when the row always exists.
-- Hydration runs once at `AppStateProvider` mount, often before any session
-  exists; anything that must update on sign-in needs the `onAuthStateChange`
-  subscription in `data/store.jsx`, or a direct Supabase read.
+- Anything loaded for the signed-in member belongs in the user-keyed hydration effect in `data/store.jsx`, never in a
+  mount-only effect (it would miss a same-page sign-in), and every background sync must stay gated on the fetch it
+  depends on -- an ungated sync writes empty local state over the member's real row. Components that seed a local form
+  from saved state must re-seed when that state changes, or the form can be blank when the data arrives late.
 - Logic mirrored across Deno / Node / browser (`TIER_CAPS`, `matchJob()` and
   `server/src/match.ts`, `companyCap`) must be changed in every copy; run
   `npm run test:server` after touching match logic.

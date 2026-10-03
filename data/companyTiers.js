@@ -14,13 +14,13 @@ import { supabase } from "./supabaseClient.js";
 // ingestion-side cap enforces. See
 // supabase/migrations/20260909070000_company_tiers.sql for the seeded list
 // and the full tiering rationale.
-// Tier 3's cap is 3, same as the original 2026-09-09 design (briefly
-// raised to 10 on 2026-09-11, then reverted the same day per direct
-// correction). This is also the safety-net default for any company not
+// Tier 3's cap is 5 (raised from 3 on 2026-10-03 by direct decision; the
+// original 2026-09-09 design was 3, briefly 10 on 2026-09-11 and reverted
+// the same day). This is also the safety-net default for any company not
 // yet reviewed by an admin at all -- rarely fires now that all 163 real
 // companies with active postings are independently classified (same day).
 export const DEFAULT_COMPANY_TIER = 3;
-export const TIER_CAPS = { 0: 25, 1: 15, 2: 10, 3: 3 };
+export const TIER_CAPS = { 0: 25, 1: 15, 2: 10, 3: 5 };
 
 export function capForCompanyTier(tier) {
   return TIER_CAPS[tier ?? DEFAULT_COMPANY_TIER] ?? TIER_CAPS[DEFAULT_COMPANY_TIER];

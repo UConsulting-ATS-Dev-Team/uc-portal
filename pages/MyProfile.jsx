@@ -148,8 +148,31 @@ export default function MyProfile() {
     gradMonth: profileOverrides.gradMonth ?? "",
     majors: profileOverrides.majors ?? "",
     ucCommittee: profileOverrides.ucCommittee ?? "",
-    linkedIn: profileOverrides.linkedIn,
+    linkedIn: profileOverrides.linkedIn ?? "",
   });
+
+  // The form above is seeded once, at mount. Saved values can now arrive AFTER this page mounted (the
+  // member's data is loaded after sign-in, and the Directory prefill lands after that); without this the
+  // fields would stay blank and "Save changes" would write those blanks over the member's real profile.
+  // Re-seeds only when the saved values themselves change (hydration, prefill, a save) -- unsaved typing
+  // and resume-parse suggestions live in `form` alone, so they never trigger it.
+  useEffect(() => {
+    setForm({
+      fullName: profileOverrides.fullName ?? "",
+      classYear: profileOverrides.classYear ?? "",
+      gradMonth: profileOverrides.gradMonth ?? "",
+      majors: profileOverrides.majors ?? "",
+      ucCommittee: profileOverrides.ucCommittee ?? "",
+      linkedIn: profileOverrides.linkedIn ?? "",
+    });
+  }, [
+    profileOverrides.fullName,
+    profileOverrides.classYear,
+    profileOverrides.gradMonth,
+    profileOverrides.majors,
+    profileOverrides.ucCommittee,
+    profileOverrides.linkedIn,
+  ]);
 
   function handleSaveChanges() {
     const linkedIn = normalizeLinkedInUrl(form.linkedIn);

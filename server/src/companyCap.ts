@@ -156,7 +156,7 @@ export function idsExceedingCompanyCap(
 //   Tier 1 -- other elite name-brand (bulge-bracket/elite-boutique IB,
 //     Citadel-tier quant, marquee big tech/AI, major VC) -- cap 15
 //   Tier 2 -- recognizable corporate/finance-adjacent -- cap 10
-//   Tier 3 -- everyone else -- cap 3. Also the DEFAULT for any company not
+//   Tier 3 -- everyone else -- cap 5 (was 3 until 2026-10-03). Also the DEFAULT for any company not
 //     present in company_tiers (most likely a newly-sourced one) --
 //     capForCompanyTier falls back here rather than erroring or leaving a
 //     new company uncapped. (Briefly raised to 10 on 2026-09-11, then
@@ -165,7 +165,7 @@ export function idsExceedingCompanyCap(
 //     independently classified as of the same day regardless, so this
 //     default rarely fires in practice now.)
 export const DEFAULT_COMPANY_TIER = 3;
-export const TIER_CAPS: Record<number, number> = { 0: 25, 1: 15, 2: 10, 3: 3 };
+export const TIER_CAPS: Record<number, number> = { 0: 25, 1: 15, 2: 10, 3: 5 };
 
 export function capForCompanyTier(tier: number | null | undefined): number {
   return TIER_CAPS[tier ?? DEFAULT_COMPANY_TIER] ?? TIER_CAPS[DEFAULT_COMPANY_TIER];
