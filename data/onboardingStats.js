@@ -1,5 +1,6 @@
 import { daysUntil } from "./jobUtils.js";
 import { companyMatchToken } from "./realPeople.js";
+import { locationSearchTerms } from "./locationUtils.js";
 
 // Real numbers for onboarding's "here's what's waiting for you" payoff
 // card and completion screen, computed from the same live jobs/people data
@@ -33,7 +34,8 @@ export function matchingAlumni(people, { industries = [], locations = [], follow
     (p) =>
       (p.company && tokens.some((t) => p.company.toLowerCase().startsWith(t))) ||
       (p.industry && industries.includes(p.industry)) ||
-      (p.location && locations.some((l) => p.location.toLowerCase().includes(l.toLowerCase())))
+      // A metro ("San Francisco Bay Area") stands for all of its cities.
+      (p.location && locations.some((l) => locationSearchTerms(l).some((t) => p.location.toLowerCase().includes(t.toLowerCase()))))
   );
 }
 

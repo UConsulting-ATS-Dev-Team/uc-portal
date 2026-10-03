@@ -9,6 +9,8 @@ import { fetchRealPeople } from "../data/realPeople.js";
 import { matchedJobs, upcomingDeadlineCount, matchingAlumni, alumniAtCompany, openRolesAtCompany } from "../data/onboardingStats.js";
 import { uploadResume } from "../data/resumeSync.js";
 import ThemeToggle from "../components/theme/ThemeToggle.jsx";
+import ChipPicker from "../components/ChipPicker.jsx";
+import { useKnownCompanies } from "../data/useKnownCompanies.js";
 import {
   INDUSTRIES,
   ROLES,
@@ -158,22 +160,14 @@ function StepIndustries({ industries, onToggle, onReorder }) {
         ))}
       </ul>
 
-      <div className="chip-row">
-        {INDUSTRIES.map((ind) => {
-          const selected = industries.includes(ind.name);
-          return (
-            <button
-              type="button"
-              key={ind.name}
-              className={`chip-toggle${selected ? " is-selected" : ""}`}
-              disabled={!selected && industries.length >= 3}
-              onClick={() => onToggle(ind.name)}
-            >
-              {ind.name}
-            </button>
-          );
-        })}
-      </div>
+      <ChipPicker
+        options={INDUSTRIES.map((ind) => ind.name)}
+        selected={industries}
+        onToggle={onToggle}
+        noun="industries"
+        pinned={["Still figuring it out"]}
+        isDisabled={() => industries.length >= 3}
+      />
     </>
   );
 }
@@ -185,35 +179,24 @@ function StepRoles({ preferences, stats, onToggleRole, onToggleLocation, onToggl
       <h1 className="onboarding__title">Roles & locations</h1>
       <p className="onboarding__subtitle">Suggested based on your industries — pick up to 5 roles.</p>
 
-      <div className="chip-row">
-        {ROLES.map((role) => {
-          const selected = preferences.roles.includes(role);
-          return (
-            <button
-              type="button"
-              key={role}
-              className={`chip-toggle${selected ? " is-selected" : ""}`}
-              disabled={!selected && preferences.roles.length >= 5}
-              onClick={() => onToggleRole(role)}
-            >
-              {role}
-            </button>
-          );
-        })}
-      </div>
+      <ChipPicker
+        options={ROLES}
+        selected={preferences.roles}
+        onToggle={onToggleRole}
+        noun="roles"
+        initial={12}
+        isDisabled={() => preferences.roles.length >= 5}
+      />
 
-      <div className="chip-row">
-        {LOCATIONS.map((loc) => (
-          <button
-            type="button"
-            key={loc}
-            className={`chip-toggle${preferences.locations.includes(loc) ? " is-selected" : ""}`}
-            onClick={() => onToggleLocation(loc)}
-          >
-            {loc}
-          </button>
-        ))}
-      </div>
+      <p style={{ fontWeight: 700, marginBottom: "var(--space-2)" }}>Locations</p>
+      <ChipPicker
+        options={LOCATIONS}
+        selected={preferences.locations}
+        onToggle={onToggleLocation}
+        noun="locations"
+        initial={20}
+        pinned={["Remote", "Hybrid", "International"]}
+      />
 
       <div className="checkbox-row">
         <input
@@ -250,7 +233,10 @@ function StepRoles({ preferences, stats, onToggleRole, onToggleLocation, onToggl
 
 function StepCompanies({ followed, onToggleFollow, people, realJobs }) {
   const [query, setQuery] = useState("");
-  const filtered = COMPANIES.filter((c) => c.name.toLowerCase().includes(query.toLowerCase()));
+  const knownCompanies = useKnownCompanies();
+  // Suggestions are the curated few; typing searches every company the job board tracks.
+  const pool = query.trim() ? knownCompanies.map((name) => ({ name })) : COMPANIES;
+  const filtered = pool.filter((c) => c.name.toLowerCase().includes(query.toLowerCase())).slice(0, 25);
   const exactMatch = filtered.some((c) => c.name.toLowerCase() === query.trim().toLowerCase());
 
   return (
@@ -262,7 +248,7 @@ function StepCompanies({ followed, onToggleFollow, people, realJobs }) {
       <div className="field">
         <input
           type="text"
-          placeholder="Search to follow a company"
+          placeholder={`Search ${knownCompanies.length} companies to follow`}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />

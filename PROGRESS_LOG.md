@@ -5035,3 +5035,47 @@ longer breaks down to phone width either.
   key) in all three fetchers, so a recurrence will say which row collided; those companies were refreshed manually. The same
   error was the only failure kind in the historical log, so it may have a cause beyond the pg_net race explanation.
   Throwaway accounts, synthetic dead board, submission and job removed (`roster_total=53 people_total=209`, 0 orphans).
+
+- **2026-10-03: far more industries, roles, locations, skills and companies to choose from -- and matching that actually uses them** --
+  Request: "add more locations/industry/other similar preferences to the profile, there are much more industries/skills than
+  listed" (and, separately, grow the board by adding companies rather than raising tier caps -- not done yet, see below).
+  **Finding that shaped the work:** options a member can pick are worthless unless something matches them, and location matching
+  was nearly dead: **3,579 of 4,710 active jobs (76%) had no city**. The parser only understood "City, ST" plus five hard-coded
+  cities, but real feeds say "San Francisco, California", "New York City, New York", "Hawthorne, CA; Redmond, WA", "SF | NYC", a
+  bare "Chicago" or "London", or just "United States". A job also carried ONE place, so a role open in three cities matched a
+  member in only the first. So the lists grew AND the matching behind them was rebuilt.
+  **Option lists (`data/careerOptions.js`):** industries 29 -> 67, roles 10 -> 46, locations 23 -> 90 (30 more US cities, seven
+  metros -- San Francisco Bay Area, New York Metro, Greater Los Angeles, Greater Boston, Washington DC Area, Seattle Area,
+  Dallas-Fort Worth -- ~30 international cities, three countries), skills 28 -> 78. Every new option has a matching path: a test
+  fails if an industry has no title patterns or a skill is implied by no title.
+  **Locations, end to end:** `normalizeLocation()` (both copies, `server/src/taxonomy/locations.ts` and the Deno mirror) now splits
+  multi-place text (`;` `|`), reads full state names, canonicalises New York City, places bare unambiguous cities, handles non-US
+  cities and countries, and does not read "Remote-Friendly" as remote. It returns `locations`, every place the posting lists, written to the new
+  `jobs.locations text[]` ("Austin, TX", "London, United Kingdom", "Canada"; a bare United States adds nothing). Migration
+  `20261009100000_job_locations.sql` adds the column and `apply_job_locations(jsonb)`: raw feed text was never stored, so existing jobs
+  are corrected by the fetchers (Greenhouse, Lever) from each company's next fetch -- the RPC only touches rows whose `locations`
+  is still NULL, so each job is fixed once. Verified live on SpaceX: 271 jobs backfilled in one scoped run, e.g. Redmond/Palo Alto/
+  Hawthorne/Starbase now resolve. Until a company's next fetch its jobs fall back to their single `city`, exactly as before.
+  Expect the no-city share to fall over about a day as the batches rotate through every company.
+  **Matching (frontend, the live matcher is `data/jobMatch.js`):** `data/locationUtils.js` matches a preference against every place
+  (metros expand to member cities, a country matches its cities, "International" means any non-US place, "Washington DC"
+  aliases to "Washington, DC"); `data/industryPatterns.js` (moved out of jobMatch, patterns for all 66 industries, titles only) is
+  shared by the match score AND the Jobs industry filter, which used to read only the single structured tag; `data/skillInference.js`
+  implies skills from titles (a Data Analyst implies SQL/Tableau/Excel; a plain "Software Engineer" does NOT imply Java). Skills score
+  now measures matches against at most 5 skills, because the larger implied sets would otherwise dilute the fraction. Jobs filters
+  (location/industry) use the same helpers, and gained search boxes since they now have 60-80+ options.
+  **UI:** new `components/ChipPicker.jsx` (search + "Show all N" + pinned chips + selected-stay-visible) for onboarding's industries,
+  roles and locations; My Profile's industry/role chip rows collapse like skills/locations did, and expand while searching; company
+  picking (profile + onboarding) searches all 169 companies the job board tracks (`data/useKnownCompanies.js`, from
+  `company_tiers`) instead of 8, so a followed company is the exact string jobs carry; the natural-language job search recognises
+  every industry and location by name; onboarding's alumni count expands a metro into its cities.
+  **Verified** as a throwaway plain member in the browser: picked Aerospace & defense and Quantitative trading through the search,
+  San Francisco Bay Area and Software Engineer in step 3 (payoff card updated), "Match my profile" on Jobs applied Internship +
+  Aerospace + Quantitative + Bay Area filters and returned a Palo Alto job, profile industries collapse/"Show all 66", company search
+  found SpaceX among 169. 180 server tests pass (32 new: 14 location-parser cases built from real feed strings, 18 for the matchers).
+  Throwaway account removed (`roster_total=53 people_total=209`). One 400 in the console during the first onboarding pass did not
+  reproduce on a clean reload and was not traced.
+  **Known limits:** `server/src/match.ts` (a test-only mirror, not used by the app) was NOT updated -- it still compares `city` only and
+  has no title-pattern or skill inference. Deloitte jobs keep their structured city and fall back to it. A job with no recognisable
+  industry still passes the Jobs industry filter ("unknown isn't excluded"). Ambiguous bare cities (Springfield, Portland) are left
+  unplaced rather than guessed. **Not done:** adding more companies to the pipeline (the stated preferred way to grow past ~1,500 jobs).

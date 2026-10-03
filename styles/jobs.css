@@ -86,6 +86,11 @@
   margin-top: var(--space-2);
 }
 
+.filters__search {
+  width: 100%;
+  margin-bottom: var(--space-3);
+}
+
 .filters__show-more {
   margin-top: var(--space-3);
 }

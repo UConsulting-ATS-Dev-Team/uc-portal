@@ -1,4 +1,6 @@
 import { supabase } from "./supabaseClient.js";
+import { placesForJob, placeLabel } from "./locationUtils.js";
+import { industriesFromTitle } from "./industryPatterns.js";
 
 // Maps a real jobs-table row (+ an optional data/jobMatch.js match result)
 // into the exact shape components/JobCard.jsx and data/jobUtils.js already
@@ -50,6 +52,9 @@ export const JOB_LIST_COLUMNS = [
   "quality_score",
   "status",
   "city",
+  "state",
+  "country",
+  "locations",
   "remote_type",
   "salary_min",
   "salary_max",
@@ -76,6 +81,7 @@ const EMPLOYMENT_TYPE_LABEL = {
 const REMOTE_TYPE_LABEL = { remote: "Remote", hybrid: "Hybrid", in_person: "In-person" };
 
 export function realJobToCardShape(job, matchResult) {
+  const places = placesForJob(job);
   const workMode = REMOTE_TYPE_LABEL[job.remote_type] ?? "In-person";
   const postedDaysAgo = job.posted_date ? Math.max(0, Math.floor((Date.now() - new Date(job.posted_date)) / 86400000)) : 0;
 
@@ -95,7 +101,11 @@ export function realJobToCardShape(job, matchResult) {
     closed: job.status === "expired" || job.status === "removed",
     ucPosted: false,
     referralAvailable: false,
-    location: job.city ?? (job.remote_type === "remote" ? "Remote" : ""),
+    location: placeLabel(job),
+    // Every place the posting lists, and its remote mode: what the Jobs location filter matches
+    // (data/locationUtils.js). `location` above is only the label shown on the card.
+    places,
+    remoteType: job.remote_type,
     workMode,
     compMin: job.salary_min,
     compMax: job.salary_max,
@@ -104,6 +114,8 @@ export function realJobToCardShape(job, matchResult) {
     type: EMPLOYMENT_TYPE_LABEL[job.employment_type] ?? "Not classified",
     classYears: job.graduation_years ?? [],
     industry: job.relevant_industries?.[0] ?? "",
+    // Structured tags plus what the title reads as (data/industryPatterns.js): what the industry filter matches.
+    industries: [...new Set([...(job.relevant_industries ?? []), ...industriesFromTitle(job.title)])],
     deadlineDate: job.application_deadline,
     rolling: !job.application_deadline,
     companySize: undefined,

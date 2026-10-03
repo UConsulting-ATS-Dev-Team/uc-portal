@@ -85,6 +85,9 @@ export interface NormalizedJob {
   state: string | null;
   country: string | null;
   remoteType: RemoteType | null;
+  // Every place the posting is open in ("Austin, TX", "London, United Kingdom", "Canada"); `city` above is
+  // only the first. What member location preferences match against -- see taxonomy/locations.ts.
+  locations: string[];
 
   salaryMin: number | null;
   salaryMax: number | null;

@@ -32,6 +32,7 @@ export function normalizeJob(raw: RawJob, now: Date = new Date()): NormalizedJob
     state: location.state,
     country: location.country,
     remoteType: location.remoteType,
+    locations: location.locations,
 
     salaryMin: compensation.min,
     salaryMax: compensation.max,

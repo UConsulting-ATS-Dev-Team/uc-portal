@@ -35,7 +35,7 @@ export default function JobCard({ job, saved, onToggleSave }) {
         <div className="chip-row" style={{ marginBottom: "var(--space-4)" }}>
           <span className="chip">{job.type}</span>
           {job.classYears?.length > 0 && <span className="chip">Class of {job.classYears.join(", ")}</span>}
-          {job.industry && <span className="chip">{job.industry}</span>}
+          {(job.industry || job.industries?.[0]) && <span className="chip">{job.industry || job.industries[0]}</span>}
           <span className={`chip job-card__chip${urgent ? " is-urgent" : ""}`}>{deadlineLabel(job)}</span>
         </div>
 

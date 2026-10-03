@@ -3,7 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import JobCard from "../components/JobCard.jsx";
 import ErrorState from "../components/ErrorState.jsx";
 import PostOpportunityModal from "../components/modals/PostOpportunityModal.jsx";
-import { INDUSTRIES, LOCATIONS } from "../data/careerOptions.js";
+import { INDUSTRIES, LOCATIONS, canonicalIndustry } from "../data/careerOptions.js";
+import { locationPrefMatches } from "../data/locationUtils.js";
 import { daysUntil, matchesDeadlineBucket } from "../data/jobUtils.js";
 import { fetchCompanyTiers, capForCompanyTier } from "../data/companyTiers.js";
 import { useAppState } from "../data/store.jsx";
@@ -159,8 +160,21 @@ function matchesFilters(job, filters) {
   // filter rather than being excluded -- "unknown" isn't "ineligible."
   if (filters.gradYears.length && job.classYears.length && !job.classYears.some((y) => filters.gradYears.includes(String(y))))
     return false;
-  if (filters.industries.length && job.industry && !filters.industries.includes(job.industry)) return false;
-  if (filters.locations.length && !filters.locations.includes(job.location) && !filters.locations.includes(job.workMode))
+  // A job with no recognisable industry passes, same "unknown isn't excluded" rule as grad year. `industries`
+  // is the structured tag plus what the title reads as (data/industryPatterns.js), the same signal the
+  // profile's match score uses.
+  if (
+    filters.industries.length &&
+    job.industries?.length &&
+    !job.industries.some((i) => filters.industries.some((f) => canonicalIndustry(f) === canonicalIndustry(i)))
+  )
+    return false;
+  // Places the posting lists (a metro or country chip matches its cities), or the work mode chip.
+  if (
+    filters.locations.length &&
+    !filters.locations.some((l) => locationPrefMatches(l, { remote_type: job.remoteType }, job.places ?? [])) &&
+    !filters.locations.includes(job.workMode)
+  )
     return false;
   if (job.compHourly && job.compMin != null && (job.compMax < filters.compMin || job.compMin > filters.compMax)) return false;
   if (filters.deadlines.length && !filters.deadlines.some((d) => matchesDeadlineBucket(job, d))) return false;
@@ -266,6 +280,8 @@ export default function Jobs() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [showMoreIndustries, setShowMoreIndustries] = useState(false);
   const [showMoreLocations, setShowMoreLocations] = useState(false);
+  const [industrySearch, setIndustrySearch] = useState("");
+  const [locationSearch, setLocationSearch] = useState("");
   const [showPostModal, setShowPostModal] = useState(false);
   const [nlQuery, setNlQuery] = useState("");
   const [nlResult, setNlResult] = useState(null);
@@ -565,7 +581,21 @@ export default function Jobs() {
 
         <div className="filters__group">
           <div className="filters__group-title">Industry</div>
-          {(showMoreIndustries ? INDUSTRY_OPTIONS : INDUSTRY_OPTIONS.slice(0, 4)).map((ind) => (
+          {showMoreIndustries && (
+            <input
+              type="text"
+              className="filters__search"
+              placeholder={`Search ${INDUSTRY_OPTIONS.length} industries…`}
+              value={industrySearch}
+              onChange={(e) => setIndustrySearch(e.target.value)}
+            />
+          )}
+          {(showMoreIndustries
+            ? INDUSTRY_OPTIONS.filter(
+                (ind) => filters.industries.includes(ind.name) || ind.name.toLowerCase().includes(industrySearch.trim().toLowerCase())
+              )
+            : INDUSTRY_OPTIONS.slice(0, 4)
+          ).map((ind) => (
             <label className="filters__checkbox" key={ind.name}>
               <span>
                 <input
@@ -586,8 +616,22 @@ export default function Jobs() {
 
         <div className="filters__group">
           <div className="filters__group-title">Location</div>
+          {showMoreLocations && (
+            <input
+              type="text"
+              className="filters__search"
+              placeholder={`Search ${LOCATION_CHIPS.length} locations…`}
+              value={locationSearch}
+              onChange={(e) => setLocationSearch(e.target.value)}
+            />
+          )}
           <div className="filters__chip-group">
-            {(showMoreLocations ? LOCATION_CHIPS : LOCATION_CHIPS.slice(0, 8)).map((loc) => (
+            {(showMoreLocations
+              ? LOCATION_CHIPS.filter(
+                  (loc) => filters.locations.includes(loc) || loc.toLowerCase().includes(locationSearch.trim().toLowerCase())
+                )
+              : LOCATION_CHIPS.slice(0, 8)
+            ).map((loc) => (
               <button
                 type="button"
                 key={loc}

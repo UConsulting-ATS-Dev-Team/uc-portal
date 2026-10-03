@@ -384,6 +384,15 @@ which are chronological and not rewritten when later work supersedes them.
   saved list. `useRealJobs` returns `realJobs` (open postings only: recommendations, new matches, deadlines) and
   `allKnownJobs` (also the member's closed ones: use it to RESOLVE their own ids). Closed jobs carry `closed: true` and
   render as "Posting closed". Never use `realJobs.find(id)` to resolve a tracked or saved job.
+- **Preference options only count if something matches them (2026-10-03).** Option lists live in `data/careerOptions.js`
+  (67 industries, 46 roles, 90 locations incl. metros, 78 skills). Matching is client-side in `data/jobMatch.js`:
+  industries by job TITLE (`data/industryPatterns.js`, also used by the Jobs industry filter), skills implied by title
+  (`data/skillInference.js`), locations against every place a job lists (`data/locationUtils.js`; metros expand to member
+  cities). A job's places are `jobs.locations`, written by `normalizeLocation()` (two mirrored copies) at insert and filled in
+  for existing jobs by the Greenhouse/Lever fetchers from each company's next fetch (`apply_job_locations`, only rows whose
+  `locations` is NULL; raw feed text is never stored). When adding an option, add its matcher in the same change -- tests
+  fail if an industry has no title patterns or a skill is implied by no title. Companies a member can follow come from
+  `company_tiers` (`useKnownCompanies`), so the string equals what jobs carry.
 - **Member state follows the signed-in account (fixed 2026-10-03):** `AppStateProvider` hydrates tracked jobs, saved
   jobs, preferences, network and profile in one effect keyed on the signed-in user id, so it re-runs on sign-in, sign-out
   and a different member signing in -- not just when the app first mounts. A user change resets the in-memory state first
@@ -479,9 +488,9 @@ which are chronological and not rewritten when later work supersedes them.
   mount-only effect (it would miss a same-page sign-in), and every background sync must stay gated on the fetch it
   depends on -- an ungated sync writes empty local state over the member's real row. Components that seed a local form
   from saved state must re-seed when that state changes, or the form can be blank when the data arrives late.
-- Logic mirrored across Deno / Node / browser (`TIER_CAPS`, `matchJob()` and
-  `server/src/match.ts`, `companyCap`) must be changed in every copy; run
-  `npm run test:server` after touching match logic.
+- Logic mirrored across Deno / Node / browser (`TIER_CAPS`, `companyCap`, `normalizeLocation()`) must be changed in every
+  copy; run `npm run test:server` after touching it. The app's live matcher is `data/jobMatch.js`; `server/src/match.ts` is
+  a test-only mirror that has NOT kept up (no title patterns, skill inference or multi-place locations).
 - CSS: colors come only from tokens in `styles/tokens.css` (light and dark);
   style selects with `background-color`, never the `background` shorthand (it
   erases the drawn arrow). Load heavy libraries (`pdfjs-dist`, `mammoth`) with

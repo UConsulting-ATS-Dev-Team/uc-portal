@@ -17,6 +17,9 @@
 // than server/src/rank.ts's real one -- see finalScore()'s own comment.
 
 import { canonicalIndustry } from "./careerOptions.js";
+import { industryTitleHit } from "./industryPatterns.js";
+import { matchesAnyLocation, placeLabel } from "./locationUtils.js";
+import { skillsFromTitle } from "./skillInference.js";
 import { DEFAULT_COMPANY_TIER } from "./companyTiers.js";
 import { monthsUntilGraduation } from "./profileUtils.js";
 
@@ -65,41 +68,8 @@ const FACTOR_WEIGHTS = { industry: 30, role: 25, location: 20, compensation: 10,
 // Only job.title is used, not description -- JOB_LIST_COLUMNS (data/
 // realJobAdapter.js) doesn't fetch description on the list view, and
 // matchJob() has to score identically regardless of which page called it.
-const INDUSTRY_TITLE_PATTERNS = {
-  "Management consulting": [/consult/i, /\bstrategy analyst\b/i, /\bmanagement analyst\b/i],
-  "Technology consulting": [/technology consult/i, /\bit consult/i, /digital consult/i],
-  "Human capital consulting": [/human capital/i, /organi[sz]ational consult/i, /talent consult/i],
-  "Investment banking": [/investment bank/i, /\bibd\b/i, /\bm&a\b/i, /\bmergers\b/i],
-  "Private equity": [/private equity/i, /\bpe\b analyst/i],
-  "Venture capital": [/venture capital/i, /\bvc\b analyst/i],
-  "Hedge funds / asset management": [/hedge fund/i, /asset management/i, /portfolio (analyst|manager)/i],
-  "Corporate finance / FP&A": [/\bfp&a\b/i, /corporate finance/i, /financial planning/i],
-  "Commercial & retail banking": [/commercial bank/i, /retail bank/i],
-  "Fintech": [/fintech/i],
-  "Insurance & actuarial": [/actuar/i, /insurance/i],
-  "Marketing & brand strategy": [/marketing/i, /brand (strategy|manager)/i],
-  "Corporate strategy & business development": [/corporate strategy/i, /business development/i, /\bbiz dev\b/i],
-  "Product management": [/product (manager|management)/i, /\btpm\b/i],
-  "Operations & supply chain": [/\boperations\b/i, /supply chain/i, /logistics/i],
-  "Sales & business development": [/\bsales\b/i, /account executive/i, /business development/i],
-  "Human resources / people operations": [/human resources/i, /people operations/i, /\bhr\b/i, /talent acquisition/i],
-  "Tech / product strategy": [/product strategy/i, /technology strategy/i],
-  "Data & analytics": [/data analy/i, /data scien/i, /\banalytics\b/i],
-  "Software engineering": [/software engineer/i, /software develop/i, /\bswe\b/i],
-  "Cybersecurity": [/cybersecurity/i, /security engineer/i, /\binfosec\b/i],
-  "Consumer goods & retail": [/consumer goods/i, /\bretail\b/i, /\bcpg\b/i],
-  "Media & entertainment": [/\bmedia\b/i, /entertainment/i, /content strategy/i],
-  "Energy & sustainability": [/\benergy\b/i, /sustainab/i, /renewable/i],
-  "Healthcare": [/healthcare/i, /health care/i, /clinical/i, /pharma/i],
-  "Real estate": [/real estate/i],
-  "Nonprofit / public sector": [/nonprofit/i, /non-profit/i, /public sector/i, /government affairs/i],
-};
-
-function industryTitleHit(industryPref, title) {
-  if (!title) return false;
-  const patterns = INDUSTRY_TITLE_PATTERNS[canonicalIndustry(industryPref)];
-  return patterns?.some((p) => p.test(title)) ?? false;
-}
+// The keyword map itself (every industry, matched against the title) lives in
+// data/industryPatterns.js so the Jobs page's industry filter reads the same one.
 
 // --- Soft preferences (US-33/34): affect score only, always explainable ---
 //
@@ -188,16 +158,18 @@ export function matchJob(job, preferences, classYear, gradMonth) {
   }
   factors.push({ key: "role", match: (roleFrac ?? 0) > 0, label: job.title });
 
+  // A job can be open in several places and a preference can be a metro or country, so this
+  // compares against every place the posting lists (data/locationUtils.js), not just job.city.
   let locationFrac = null;
   if (preferences.locations.length > 0 || preferences.remoteOrHybridOnly || preferences.openToRelocating) {
     locationFrac =
-      (!!job.city && preferences.locations.includes(job.city)) ||
+      matchesAnyLocation(preferences.locations, job) ||
       (preferences.remoteOrHybridOnly && (job.remote_type === "remote" || job.remote_type === "hybrid")) ||
       preferences.openToRelocating
         ? 1
         : 0;
   }
-  factors.push({ key: "location", match: (locationFrac ?? 0) > 0, label: job.city ?? job.remote_type ?? "Unknown" });
+  factors.push({ key: "location", match: (locationFrac ?? 0) > 0, label: placeLabel(job) || job.city || job.remote_type || "Unknown" });
 
   // Applicability gated on the JOB listing a real number, not on whether
   // the member's compTarget "looks unset" -- it never is (defaults to
@@ -215,12 +187,23 @@ export function matchJob(job, preferences, classYear, gradMonth) {
   // NormalizedJob.preferredSkills even though the column existed) --
   // fixed as part of Part 7 Stage 5, so this is now materially non-empty
   // for any job whose title classified to a known O*NET occupation.
-  const relevantSkills = [...(job.required_skills ?? []), ...(job.preferred_skills ?? [])];
+  //
+  // 2026-10-03: the stored skills only cover ~33% of jobs and a 28-word vocabulary, so the
+  // skills a title implies (data/skillInference.js) are added, de-duplicated. The fraction is
+  // measured against at most 5 skills: a job that implies 12 would otherwise make matching
+  // three of them score the same as matching one of five.
+  const seenSkills = new Set();
+  const relevantSkills = [...(job.required_skills ?? []), ...(job.preferred_skills ?? []), ...skillsFromTitle(job.title)].filter((skill) => {
+    const key = skill.toLowerCase();
+    if (seenSkills.has(key)) return false;
+    seenSkills.add(key);
+    return true;
+  });
   let skillsFrac = null;
   let matchedSkills = [];
   if (preferences.skills.length > 0 && relevantSkills.length > 0) {
     matchedSkills = relevantSkills.filter((skill) => preferences.skills.some((s) => s.toLowerCase() === skill.toLowerCase()));
-    skillsFrac = matchedSkills.length / relevantSkills.length;
+    skillsFrac = Math.min(1, matchedSkills.length / Math.min(relevantSkills.length, 5));
   }
   factors.push({
     key: "skills",

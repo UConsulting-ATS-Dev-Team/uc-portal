@@ -12,6 +12,8 @@
 // deadline-bucket vocabulary Jobs.jsx already defines) -- this never
 // invents a category the chip-based filter UI doesn't already have.
 
+import { INDUSTRIES, LOCATIONS } from "./careerOptions.js";
+
 const INDUSTRY_SYNONYMS = [
   { name: "Management consulting", terms: ["management consulting", "consulting", "consultant", "mbb"] },
   { name: "Investment banking", terms: ["investment banking", "banking", "ib"] },
@@ -21,6 +23,30 @@ const INDUSTRY_SYNONYMS = [
   { name: "Nonprofit / public sector", terms: ["nonprofit", "non-profit", "public sector", "government"] },
   { name: "Healthcare", terms: ["healthcare", "health care"] },
   { name: "Real estate", terms: ["real estate"] },
+  // Added 2026-10-03 with the wider option lists. Short spoken forms; every industry's full name is
+  // also recognised (see ALL_INDUSTRY_SYNONYMS).
+  { name: "Quantitative trading", terms: ["quant", "quantitative", "quant trading"] },
+  { name: "AI & machine learning", terms: ["machine learning", "artificial intelligence", "ai", "ml"] },
+  { name: "Software engineering", terms: ["software", "software engineering", "swe"] },
+  { name: "Data & analytics", terms: ["data", "analytics", "data science"] },
+  { name: "Aerospace & defense", terms: ["aerospace", "defense", "space"] },
+  { name: "Biotech & pharma", terms: ["biotech", "pharma"] },
+  { name: "Legal & regulatory", terms: ["legal", "law"] },
+  { name: "Design & UX", terms: ["design", "ux"] },
+  { name: "Accounting & audit", terms: ["accounting", "audit"] },
+  { name: "Sales & business development", terms: ["sales"] },
+  { name: "Fintech", terms: ["fintech"] },
+  { name: "Cybersecurity", terms: ["cybersecurity", "security"] },
+];
+
+// Every industry by its own full name too, so a new row in careerOptions.js is searchable without
+// touching this file. Placed after the hand-written groups, which win for the short forms above.
+const ALL_INDUSTRY_SYNONYMS = [
+  ...INDUSTRY_SYNONYMS,
+  ...INDUSTRIES.filter((i) => !INDUSTRY_SYNONYMS.some((g) => g.name === i.name) && i.name !== "Still figuring it out").map((i) => ({
+    name: i.name,
+    terms: [i.name.toLowerCase()],
+  })),
 ];
 
 // Locations double as work-mode here since Jobs.jsx's own `locations`
@@ -30,9 +56,20 @@ const LOCATION_SYNONYMS = [
   { name: "Chicago", terms: ["chicago"] },
   { name: "New York", terms: ["new york", "nyc"] },
   { name: "Los Angeles", terms: ["los angeles", "la"] },
-  { name: "San Francisco", terms: ["san francisco", "bay area", "sf"] },
+  { name: "San Francisco Bay Area", terms: ["bay area", "silicon valley"] },
+  { name: "San Francisco", terms: ["san francisco", "sf"] },
   { name: "Remote", terms: ["remote", "work from home", "wfh"] },
   { name: "Hybrid", terms: ["hybrid"] },
+];
+
+// Every other city, metro or country in the option list by its own name ("boston", "greater boston",
+// "london"), after the hand-written groups above so their aliases win.
+const ALL_LOCATION_SYNONYMS = [
+  ...LOCATION_SYNONYMS,
+  ...LOCATIONS.filter((l) => !LOCATION_SYNONYMS.some((g) => g.name === l) && !["International", "Remote", "Hybrid"].includes(l)).map((l) => ({
+    name: l,
+    terms: [l.toLowerCase()],
+  })),
 ];
 
 const TYPE_SYNONYMS = [
@@ -102,14 +139,14 @@ export function parseJobQuery(rawText) {
   const patch = {};
   const matchedLabels = [];
 
-  const industries = extractGroup(text, INDUSTRY_SYNONYMS, "name");
+  const industries = extractGroup(text, ALL_INDUSTRY_SYNONYMS, "name");
   text = industries.remaining;
   if (industries.matches.length) {
     patch.industries = industries.matches;
     matchedLabels.push(...industries.matches);
   }
 
-  const locations = extractGroup(text, LOCATION_SYNONYMS, "name");
+  const locations = extractGroup(text, ALL_LOCATION_SYNONYMS, "name");
   text = locations.remaining;
   if (locations.matches.length) {
     patch.locations = locations.matches;

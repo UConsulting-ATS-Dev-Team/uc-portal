@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppState } from "../data/store.jsx";
 import { INDUSTRIES, ROLES, SKILLS, LOCATIONS, COMPANIES, RECRUITING_CYCLES } from "../data/careerOptions.js";
+import { useKnownCompanies } from "../data/useKnownCompanies.js";
 import { computeProfileStrength, MONTH_NAMES } from "../data/profileUtils.js";
 import { uploadAvatar, removeAvatar } from "../data/avatarSync.js";
 import { uploadResume, removeResume, getResumeSignedUrl } from "../data/resumeSync.js";
@@ -123,7 +124,10 @@ export default function MyProfile() {
   const [roleQuery, setRoleQuery] = useState("");
   const [locationQuery, setLocationQuery] = useState("");
   const [companyQuery, setCompanyQuery] = useState("");
+  const knownCompanies = useKnownCompanies();
   const [showAllSkills, setShowAllSkills] = useState(false);
+  const [showAllIndustries, setShowAllIndustries] = useState(false);
+  const [showAllRoles, setShowAllRoles] = useState(false);
   const [showAllLocations, setShowAllLocations] = useState(false);
   const fileInput = useRef(null);
 
@@ -931,7 +935,7 @@ export default function MyProfile() {
                 onChange={(e) => setIndustryQuery(e.target.value)}
                 style={{ marginBottom: "var(--space-3)" }}
               />
-              <div className="chip-row">
+              <div className={`chip-row${showAllIndustries || industryQuery.trim() ? "" : " chip-row--collapsed"}`}>
                 {INDUSTRIES.filter((i) => i.name !== "Still figuring it out")
                   .filter((ind) => preferences.industries.includes(ind.name) || ind.name.toLowerCase().includes(industryQuery.trim().toLowerCase()))
                   .map((ind) => (
@@ -945,6 +949,9 @@ export default function MyProfile() {
                     </button>
                   ))}
               </div>
+              <button className="btn-link" style={{ marginBottom: "var(--space-6)" }} onClick={() => setShowAllIndustries((v) => !v)}>
+                {showAllIndustries ? "Show fewer" : `Show all ${INDUSTRIES.length - 1}`}
+              </button>
 
               <p style={{ fontWeight: 700 }}>Target roles</p>
               <input
@@ -954,7 +961,7 @@ export default function MyProfile() {
                 onChange={(e) => setRoleQuery(e.target.value)}
                 style={{ marginBottom: "var(--space-3)" }}
               />
-              <div className="chip-row">
+              <div className={`chip-row${showAllRoles || roleQuery.trim() ? "" : " chip-row--collapsed"}`}>
                 {ROLES.filter((role) => preferences.roles.includes(role) || role.toLowerCase().includes(roleQuery.trim().toLowerCase())).map(
                   (role) => (
                     <button
@@ -968,6 +975,9 @@ export default function MyProfile() {
                   )
                 )}
               </div>
+              <button className="btn-link" style={{ marginBottom: "var(--space-6)" }} onClick={() => setShowAllRoles((v) => !v)}>
+                {showAllRoles ? "Show fewer" : `Show all ${ROLES.length}`}
+              </button>
 
               <p style={{ fontWeight: 700 }}>Skills</p>
               <p className="meta" style={{ marginTop: "calc(-1 * var(--space-3))" }}>
@@ -981,7 +991,7 @@ export default function MyProfile() {
                 onChange={(e) => setSkillQuery(e.target.value)}
                 style={{ marginBottom: "var(--space-3)" }}
               />
-              <div className={`chip-row${showAllSkills ? "" : " chip-row--collapsed"}`}>
+              <div className={`chip-row${showAllSkills || skillQuery.trim() ? "" : " chip-row--collapsed"}`}>
                 {SKILLS.filter(
                   (skill) => preferences.skills.includes(skill) || skill.toLowerCase().includes(skillQuery.trim().toLowerCase())
                 ).map((skill) => (
@@ -1009,7 +1019,7 @@ export default function MyProfile() {
                 onChange={(e) => setLocationQuery(e.target.value)}
                 style={{ marginBottom: "var(--space-3)" }}
               />
-              <div className={`chip-row${showAllLocations ? "" : " chip-row--collapsed"}`}>
+              <div className={`chip-row${showAllLocations || locationQuery.trim() ? "" : " chip-row--collapsed"}`}>
                 {LOCATIONS.filter((loc) => preferences.locations.includes(loc) || loc.toLowerCase().includes(locationQuery.trim().toLowerCase())).map(
                   (loc) => (
                     <button
@@ -1086,7 +1096,7 @@ export default function MyProfile() {
               <div className="field" style={{ marginTop: "var(--space-3)", marginBottom: "var(--space-2)" }}>
                 <input
                   type="text"
-                  placeholder="Can't find your company? Type to add it"
+                  placeholder={`Search ${knownCompanies.length} companies, or type a name and press Enter`}
                   value={companyQuery}
                   onChange={(e) => setCompanyQuery(e.target.value)}
                   onKeyDown={(e) => {
@@ -1097,8 +1107,33 @@ export default function MyProfile() {
                   }}
                 />
               </div>
+              {companyQuery.trim() && (
+                <div className="chip-row">
+                  {knownCompanies
+                    .filter(
+                      (name) =>
+                        !preferences.followedCompanies.includes(name) &&
+                        !COMPANIES.some((c) => c.name === name) &&
+                        name.toLowerCase().includes(companyQuery.trim().toLowerCase())
+                    )
+                    .slice(0, 12)
+                    .map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        className="chip-toggle"
+                        onClick={() => {
+                          toggleCompany(name);
+                          setCompanyQuery("");
+                        }}
+                      >
+                        + {name}
+                      </button>
+                    ))}
+                </div>
+              )}
               {companyQuery.trim() &&
-                !COMPANIES.some((c) => c.name.toLowerCase() === companyQuery.trim().toLowerCase()) &&
+                !knownCompanies.some((name) => name.toLowerCase() === companyQuery.trim().toLowerCase()) &&
                 !preferences.followedCompanies.includes(companyQuery.trim()) && (
                   <button
                     type="button"

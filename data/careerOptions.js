@@ -65,6 +65,56 @@ export const INDUSTRIES = [
   { name: "Real estate" },
   { name: "Nonprofit / public sector" },
 
+  // --- Added 2026-10-03: the list had 29 rows while the live board spans far more. Each one is
+  // recognised from job titles by data/industryPatterns.js, so picking it actually changes the
+  // member's matches. Consulting / advisory ---
+  { name: "Economic consulting" },
+  { name: "Healthcare consulting" },
+  { name: "Financial advisory & restructuring" },
+  { name: "Public sector consulting" },
+
+  // --- Finance ---
+  { name: "Quantitative trading" },
+  { name: "Sales & trading" },
+  { name: "Equity research" },
+  { name: "Wealth management" },
+  { name: "Credit & lending" },
+  { name: "Accounting & audit" },
+  { name: "Tax" },
+  { name: "Risk & compliance" },
+  { name: "Crypto & digital assets" },
+
+  // --- Business & corporate ---
+  { name: "Legal & regulatory" },
+  { name: "Public relations & communications" },
+  { name: "Customer success & account management" },
+  { name: "Procurement & sourcing" },
+  { name: "Entrepreneurship / startups" },
+  { name: "Education & edtech" },
+  { name: "Design & UX" },
+  { name: "Program & project management" },
+  { name: "Business operations & chief of staff" },
+
+  // --- Tech ---
+  { name: "AI & machine learning" },
+  { name: "Cloud & infrastructure" },
+  { name: "Hardware & semiconductors" },
+  { name: "Robotics & automation" },
+  { name: "Gaming" },
+
+  // --- Other sectors ---
+  { name: "Aerospace & defense" },
+  { name: "Automotive & mobility" },
+  { name: "Biotech & pharma" },
+  { name: "Manufacturing & industrial" },
+  { name: "Travel & hospitality" },
+  { name: "Telecommunications" },
+  { name: "Logistics & transportation" },
+  { name: "Food & agriculture" },
+  { name: "Fashion & luxury" },
+  { name: "Government & policy" },
+  { name: "Sports & fitness" },
+
   { name: "Still figuring it out" },
 ];
 
@@ -99,9 +149,53 @@ export const ROLES = [
   "Operations Associate",
   "Business Development",
   "Program Manager",
+
+  // Added 2026-10-03. A role matches a job whose title contains it (case-insensitive), so every
+  // entry reads like a real posting title.
+  "Software Engineer",
+  "Data Scientist",
+  "Machine Learning Engineer",
+  "Business Analyst",
+  "Management Analyst",
+  "Associate Consultant",
+  "Financial Analyst",
+  "Research Analyst",
+  "Quantitative Analyst",
+  "Risk Analyst",
+  "Compliance Analyst",
+  "Audit Associate",
+  "Tax Associate",
+  "Trader",
+  "Product Analyst",
+  "Product Designer",
+  "UX Designer",
+  "Project Manager",
+  "Technical Program Manager",
+  "Chief of Staff",
+  "Business Operations",
+  "Corporate Development",
+  "Account Executive",
+  "Account Manager",
+  "Customer Success Manager",
+  "Sales Development Representative",
+  "Solutions Engineer",
+  "Growth Marketing",
+  "Brand Manager",
+  "Communications Associate",
+  "Policy Analyst",
+  "Recruiter",
+  "People Operations",
+  "Supply Chain Analyst",
+  "Procurement Analyst",
+  "Paralegal",
 ];
 
+// Cities and metros members can pick. A city matches a job open there; a metro ("San Francisco Bay
+// Area") matches any of its member cities too (data/locationUtils.js holds the membership). Jobs
+// carry every place their posting lists (jobs.locations, see server/src/taxonomy/locations.ts).
+// Expanded 2026-10-03 from 20 cities to cover where the live board actually is.
 export const LOCATIONS = [
+  // --- Major US markets ---
   "New York",
   "Chicago",
   "Los Angeles",
@@ -122,14 +216,89 @@ export const LOCATIONS = [
   "Phoenix",
   "Nashville",
   "Detroit",
+
+  // --- Metros: the city plus the suburbs most employers actually list ---
+  "San Francisco Bay Area",
+  "New York Metro",
+  "Greater Los Angeles",
+  "Greater Boston",
+  "Washington DC Area",
+  "Seattle Area",
+  "Dallas-Fort Worth",
+
+  // --- More US cities ---
+  "San Jose",
+  "Oakland",
+  "Palo Alto",
+  "Cambridge",
+  "Pittsburgh",
+  "Raleigh",
+  "Durham",
+  "Columbus",
+  "Cleveland",
+  "Cincinnati",
+  "Indianapolis",
+  "Milwaukee",
+  "Kansas City",
+  "St. Louis",
+  "Salt Lake City",
+  "Las Vegas",
+  "Tampa",
+  "Orlando",
+  "Baltimore",
+  "Boulder",
+  "Sacramento",
+  "San Antonio",
+  "Stamford",
+  "Hartford",
+  "Providence",
+  "Princeton",
+  "Honolulu",
+  "New Orleans",
+  "Louisville",
+  "Ann Arbor",
+
+  // --- Work mode ---
   "Remote",
   "Hybrid",
+
+  // --- International ---
   "International",
+  "London",
+  "Toronto",
+  "Vancouver",
+  "Montreal",
+  "Dublin",
+  "Paris",
+  "Berlin",
+  "Munich",
+  "Frankfurt",
+  "Amsterdam",
+  "Zurich",
+  "Madrid",
+  "Milan",
+  "Stockholm",
+  "Singapore",
+  "Hong Kong",
+  "Tokyo",
+  "Seoul",
+  "Shanghai",
+  "Bengaluru",
+  "Mumbai",
+  "Delhi",
+  "Sydney",
+  "Tel Aviv",
+  "Dubai",
+  "Mexico City",
+  "São Paulo",
+  "Canada",
+  "United Kingdom",
+  "India",
 ];
 
-// Part 10 / US-26 -- the exact vocabulary supabase/functions/_shared/
+// Part 10 / US-26 -- the first 28 entries are the exact vocabulary supabase/functions/_shared/
 // pipeline/taxonomy/occupationTaxonomy.ts's skillsForOccupation() actually
-// populates on real jobs (required_skills), deduplicated across all 6
+// populates on real jobs (the rest, from "Tableau" on, are matched by data/skillInference.js) (required_skills), deduplicated across all 6
 // occupation buckets there. Deliberately a closed list matching that
 // taxonomy, not free text -- data/jobMatch.js's skill matching (like
 // server/src/match.ts's) is an exact case-insensitive string match, so a
@@ -174,6 +343,60 @@ export const SKILLS = [
   "Communications and Media",
   "Computers and Electronics",
   "Engineering and Technology",
+
+  // Added 2026-10-03. Each is inferred from a job's title by data/skillInference.js (a Data Analyst
+  // role implies SQL, Tableau, ...), so a pick can actually match; a skill no title implies is not
+  // listed, since it could never match anything.
+  "Tableau",
+  "Power BI",
+  "R",
+  "Java",
+  "JavaScript",
+  "TypeScript",
+  "C++",
+  "React",
+  "Node.js",
+  "AWS",
+  "Docker & Kubernetes",
+  "Machine Learning",
+  "Statistics",
+  "Data Visualization",
+  "Data Modeling",
+  "A/B Testing",
+  "Valuation",
+  "LBO Modeling",
+  "Accounting",
+  "Budgeting & Forecasting",
+  "Due Diligence",
+  "Risk Management",
+  "Financial Reporting",
+  "Salesforce",
+  "CRM",
+  "Prospecting & Lead Generation",
+  "Negotiation",
+  "Account Management",
+  "SEO",
+  "Google Analytics",
+  "Content Strategy",
+  "Social Media",
+  "Brand Strategy",
+  "Market Research",
+  "Competitive Analysis",
+  "Figma",
+  "UX Research",
+  "Product Roadmapping",
+  "Agile / Scrum",
+  "Jira",
+  "Process Improvement",
+  "Supply Chain Planning",
+  "Vendor Management",
+  "Contract Review",
+  "Legal Research",
+  "Regulatory Compliance",
+  "Recruiting",
+  "Public Speaking",
+  "Business Writing",
+  "Stakeholder Management",
 ];
 
 export const COMPANIES = [

@@ -36,7 +36,7 @@ import { validateJob, scoreQuality } from "../_shared/pipeline/quality.ts";
 import { scoreDuplicate, classifyDuplicateTier } from "../_shared/pipeline/dedupe.ts";
 import { isLikelySeniorRole, isLikelyNonCorporateRole } from "../_shared/pipeline/relevance.ts";
 import type { RawJob } from "../_shared/pipeline/types.ts";
-import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows, updateInBatches, enforceCompanyCap } from "../_shared/dedupeHelpers.ts";
+import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows, updateInBatches, enforceCompanyCap, backfillJobLocations } from "../_shared/dedupeHelpers.ts";
 import { capForCompanyTier, indexCompanyTiers } from "../_shared/pipeline/companyCap.ts";
 import { requireCronSecret } from "../_shared/requireCronSecret.ts";
 import { claimRunOrSkip } from "../_shared/dedupeRun.ts";
@@ -125,6 +125,7 @@ async function runFetchForCompany(
 
   const seenSourceJobIds = new Set<string>();
   const refreshJobIds: string[] = [];
+  const locationBackfill: Array<{ id: string; locationText: string | undefined }> = [];
   const mergeAttachments: Array<{ job_id: string; source_id: string; source_job_id: string; source_url: string; is_primary: boolean }> = [];
   const mergeJobIds: string[] = [];
   const newJobRows: Array<ReturnType<typeof jobInsertFromNormalized> & { id: string }> = [];
@@ -142,6 +143,7 @@ async function runFetchForCompany(
     const existingJobId = existingJobIdBySourceJobId.get(sourceJobId);
     if (existingJobId) {
       refreshJobIds.push(existingJobId);
+      locationBackfill.push({ id: existingJobId, locationText: ghJob.location?.name ?? undefined });
       continue;
     }
 
@@ -284,6 +286,9 @@ async function runFetchForCompany(
     });
     if (error) return failed(`Refresh update failed: ${error}`);
   }
+  // Location fix-up for jobs already tracked (see backfillJobLocations). A failure here is reported in the
+  // run summary but never fails the run.
+  const locationResult = await backfillJobLocations(adminClient, locationBackfill);
 
   // Freshness (§3.4/US-22/23): each company's Greenhouse board is
   // exhaustive (every current posting, one call), so "tracked before,
@@ -331,6 +336,8 @@ async function runFetchForCompany(
     merged: mergeAttachments.length,
     flaggedDuplicate: newDuplicateCandidates.length,
     refreshed: refreshJobIds.length,
+    locationsBackfilled: locationResult.updated,
+    ...(locationResult.error ? { locationBackfillError: locationResult.error } : {}),
     skippedInvalid,
     skippedCompanyMismatch,
     skippedNotRelevant,

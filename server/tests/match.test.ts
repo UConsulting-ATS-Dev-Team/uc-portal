@@ -22,6 +22,7 @@ function normalizedJob(overrides: Partial<NormalizedJob> = {}): NormalizedJob {
     state: null,
     country: null,
     remoteType: null,
+    locations: [],
     salaryMin: null,
     salaryMax: null,
     salaryCurrency: "USD",

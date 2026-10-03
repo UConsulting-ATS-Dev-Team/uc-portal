@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import type { NormalizedJob } from "./pipeline/types.ts";
+import { normalizeLocation } from "./pipeline/taxonomy/locations.ts";
 import { MAX_ACTIVE_JOBS_PER_COMPANY, idsExceedingCompanyCap, type CompanyCapCandidate } from "./pipeline/companyCap.ts";
 
 // Shared between approve-submission (Stage 2), fetch-deloitte-jobs, and
@@ -60,6 +61,7 @@ export function comparableFromExistingJob(row: Record<string, unknown>): Normali
     state: null,
     country: null,
     remoteType: (row.remote_type as NormalizedJob["remoteType"]) ?? null,
+    locations: [],
     salaryMin: (row.salary_min as number | null) ?? null,
     salaryMax: null,
     salaryCurrency: "USD",
@@ -138,6 +140,7 @@ export function jobInsertFromNormalized(
     state: normalized.state,
     country: normalized.country,
     remote_type: normalized.remoteType,
+    locations: normalized.locations,
     salary_min: normalized.salaryMin,
     salary_max: normalized.salaryMax,
     salary_currency: normalized.salaryCurrency,
@@ -184,6 +187,28 @@ export async function resolveJobFunctionId(adminClient: any, jobFunctionName: st
 // PostgREST .in()-URL-length workaround fetch-deloitte-jobs would otherwise
 // need too.
 const UPDATE_BATCH_SIZE = 200;
+
+// Fills in `jobs.locations` (and a better city/state/country/remote_type) for jobs this run found
+// still on the employer's board. The raw feed text is never stored, so a fetch is the only moment
+// an existing job's location can be re-derived; apply_job_locations() only touches rows whose
+// `locations` is still NULL, so each job is corrected once and later runs change nothing. Never
+// fails a run -- the location is a refinement, not the job itself.
+export async function backfillJobLocations(
+  adminClient: SupabaseClient,
+  rows: Array<{ id: string; locationText: string | undefined }>,
+): Promise<{ updated: number; error: string | null }> {
+  let updated = 0;
+  for (let i = 0; i < rows.length; i += UPDATE_BATCH_SIZE) {
+    const payload = rows.slice(i, i + UPDATE_BATCH_SIZE).map(({ id, locationText }) => {
+      const loc = normalizeLocation(locationText);
+      return { id, city: loc.city, state: loc.state, country: loc.country, remote_type: loc.remoteType, locations: loc.locations };
+    });
+    const { data, error } = await adminClient.rpc("apply_job_locations", { p_rows: payload });
+    if (error) return { updated, error: error.message };
+    updated += (data as number | null) ?? 0;
+  }
+  return { updated, error: null };
+}
 export async function updateInBatches(adminClient: SupabaseClient, ids: string[], fields: Record<string, unknown>): Promise<string | null> {
   const uniqueIds = [...new Set(ids)];
   for (let i = 0; i < uniqueIds.length; i += UPDATE_BATCH_SIZE) {
