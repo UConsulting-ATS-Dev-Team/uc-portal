@@ -5079,3 +5079,42 @@ longer breaks down to phone width either.
   has no title-pattern or skill inference. Deloitte jobs keep their structured city and fall back to it. A job with no recognisable
   industry still passes the Jobs industry filter ("unknown isn't excluded"). Ambiguous bare cities (Springfield, Portland) are left
   unplaced rather than guessed. **Not done:** adding more companies to the pipeline (the stated preferred way to grow past ~1,500 jobs).
+
+- **2026-10-03: 112 more companies, an Ashby adapter, and Y Combinator targeting** --
+  Request: add the 14 proposed companies, build the Ashby adapter, and "target YCombinator backed companies, especially the
+  prominent ones" (people have heard of them whatever the industry). Decision recorded earlier the same day: grow the board with
+  more companies, not bigger tier caps.
+  **14 Greenhouse/Lever companies** (migration `20261009800000`): Teneo, Man Group, GLG, AlphaSense, Coleman Research (its board
+  calls itself "VISASQ/COLEMAN"), Thoughtworks, a16z, Verkada, Vast, Shield AI (Lever), Flatiron Health, Clover Health, BitGo,
+  Ginkgo Bioworks. Each identity-checked and run through the real relevance filter first (e.g. Teneo 17/51 survive). Consulting is
+  thin by nature: of ~45 consulting/advisory/research firms probed only Teneo and Thoughtworks have a public board.
+  **Ashby adapter:** `fetch-ashby-companies` + `_shared/ashbyAdapter.ts` (pure mapping helpers, 15 tests, imported by both the Edge
+  Function and vitest -- one copy, unlike Lever's hand-kept port). Ashby's public Job Posting API is its own documented, unauthenticated
+  endpoint (same legal category as Greenhouse/Lever). Differences handled: no company name on postings (identity = the posting URL's
+  board segment, same limit as Lever); employmentType Intern/FullTime/PartTime mapped, **Contract/Temporary skipped** (the jobs table
+  has no contract type); structured addresses + secondaryLocations feed `normalizeLocation()` (so multi-city postings resolve to every
+  city); USD salary components become compensation text; `isListed:false` ignored. Verified live on Ramp: 157 fetched, 119 inserted, capped
+  to 15, locations and salary ranges parsed, no orphans. Ramp's own feed spells "San Fransisco": the parser now corrects that
+  (and a migration repaired the rows written before). Migration `20261009900000` adds Ashby to Pipeline health coverage and to
+  dead-board detection.
+  **Y Combinator:** the list comes from the public YC directory (yc-oss mirror, updated daily). Candidates were active/public YC companies
+  that YC flags "top" or that have 120+ people and a US presence (198); each one's public Greenhouse/Lever/Ashby boards were probed,
+  identity-checked (Greenhouse: self-reported name; Lever/Ashby: sampled descriptions must name the company) and relevance-filtered.
+  118 of 198 have a public board; the rest (Rippling, Deel, Retool, Whatnot, ...) use their own systems or non-guessable board names.
+  Migration `20261010100000` adds **98 sources** (54 Ashby, 34 Greenhouse, 10 Lever; 73 YC companies and 25 other well-known Ashby
+  startups -- OpenAI, Ramp, Plaid, Notion, Harvey, Perplexity, Cursor, ...) with tiers (11 tier 1, 46 tier 2, 41 tier 3), plus a
+  `company_yc` table (company name -> short batch "W12") tagging the 73 new YC companies and 20 already-tracked ones (Airbnb, Stripe,
+  Coinbase, Dropbox, Instacart, ...; exact-name matches reviewed by hand -- Alloy, Guild and Prophet matched by name only and are not YC).
+  Greenhouse sources can now carry `config.board_name` (how the board spells the company, e.g. "HackerRank Careers") so the display name
+  stays clean while the identity check still compares against what the board reports.
+  **App:** a "YC W12" chip on job cards and the job page, a "Backed by > Y Combinator" filter, and natural-language search ("YC-backed
+  internships in Boston"). While adding the search terms I fixed a real bug in `parseJobQuery`: it matched the first synonym group that hit,
+  so "Seattle Area" matched "Seattle" and left "Area" behind; it now matches the longest phrase first across all groups.
+  **Capacity:** with ~210 Greenhouse companies, 14 per 2 hours (168/day) could not cover everyone inside the 26h coverage window, so the
+  Greenhouse batch is now 20 (240/day); Ashby runs hourly at :47 in batches of 8 (192/day), small because a first fetch of a big board can
+  insert 150 jobs and the all-at-once Greenhouse run was once killed by the Edge Function limit. Active jobs should climb from ~3,800 as
+  the new companies arrive and then settle lower as caps apply (tier caps 25/15/10/5).
+  Throwaway accounts removed (`roster_total=53 people_total=209`).
+  **Not done / limits:** no ranking boost for YC companies (only badge + filter); Rippling/Deel/Retool/Whatnot (boards that
+  aren't guessable) are out unless someone finds their slug; Lever's `allLocations` (multi-city) is still unused; recurrence of the
+  intermittent duplicate-key failure not seen in this window.

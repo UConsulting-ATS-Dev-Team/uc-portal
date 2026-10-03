@@ -16,6 +16,11 @@ describe("normalizeLocation — real feed formats", () => {
     expect(normalizeLocation("Seattle, Washington, United States").locations).toEqual(["Seattle, WA"]);
   });
 
+  it("corrects a misspelled San Francisco seen in a real Ashby feed", () => {
+    expect(normalizeLocation("San Fransisco, CA").locations).toEqual(["San Francisco, CA"]);
+    expect(normalizeLocation("San Fransisco").city).toBe("San Francisco");
+  });
+
   it("canonicalises New York City", () => {
     expect(normalizeLocation("New York City, New York").locations).toEqual(["New York, NY"]);
     expect(normalizeLocation("New York City, NY").city).toBe("New York");

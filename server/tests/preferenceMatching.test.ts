@@ -8,6 +8,8 @@ import { INDUSTRY_TITLE_PATTERNS, industriesFromTitle } from "../../data/industr
 // @ts-expect-error -- untyped JS module
 import { skillsFromTitle, inferableSkills } from "../../data/skillInference.js";
 // @ts-expect-error -- untyped JS module
+import { parseJobQuery } from "../../data/nlSearchParser.js";
+// @ts-expect-error -- untyped JS module
 import { METROS, placesForJob, locationPrefMatches, matchesAnyLocation, placeLabel, locationSearchTerms } from "../../data/locationUtils.js";
 
 describe("option lists are all matchable", () => {
@@ -133,5 +135,23 @@ describe("location preferences", () => {
     expect(locationSearchTerms("San Francisco Bay Area")).toContain("Palo Alto");
     expect(locationSearchTerms("Boston")).toEqual(["Boston"]);
     expect(locationSearchTerms("Remote")).toEqual([]);
+  });
+});
+
+describe("natural-language job search", () => {
+  it("reads Y Combinator phrasings into the yc filter", () => {
+    expect(parseJobQuery("yc backed internships in boston").patch).toMatchObject({ yc: true, locations: ["Boston"], types: ["Internship"] });
+    expect(parseJobQuery("Y Combinator startups").patch.yc).toBe(true);
+    expect(parseJobQuery("quant yc").patch).toMatchObject({ yc: true, industries: ["Quantitative trading"] });
+  });
+  it("does not read yc out of other words", () => {
+    expect(parseJobQuery("async tasks").patch.yc).toBeUndefined();
+  });
+  it("recognises the new industries and locations by name", () => {
+    expect(parseJobQuery("aerospace & defense roles in Seattle Area").patch).toMatchObject({
+      industries: ["Aerospace & defense"],
+      locations: ["Seattle Area"],
+    });
+    expect(parseJobQuery("jobs in the bay area").patch.locations).toEqual(["San Francisco Bay Area"]);
   });
 });

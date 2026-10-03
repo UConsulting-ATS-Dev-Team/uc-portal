@@ -1,34 +1,16 @@
-// Generalizes fetch-greenhouse-stripe (Stage 3's pilot) into a single
-// adapter that runs every configured Greenhouse company, driven by data
-// (sources.config), not one Edge Function per company. Adding company #8
-// is a migration (insert into sources with config {"platform":
-// "greenhouse", "slug": ..., "company": ...}), not a new deploy.
+// Ashby ingestion adapter -- same config-driven architecture as fetch-greenhouse-companies and
+// fetch-lever-companies (sources.config rows with {platform: "ashby", slug, company}, one Edge Function for every
+// configured Ashby company), reusing the same shared pipeline (dedupeHelpers.ts, normalize.ts, relevance.ts,
+// companyCap.ts, quality.ts) instead of duplicating any of that logic.
 //
-// All 7 companies configured as of this writing (Stripe, Databricks,
-// Coinbase, Airbnb, Brex, Figma, Robinhood) go through the exact same
-// legal mechanism already vetted for Stripe -- Greenhouse's own documented,
-// unauthenticated, explicitly third-party-facing Job Board API
-// (developers.greenhouse.io/job-board.html). That's the terms of the
-// platform itself, not per-customer, so a new Greenhouse company doesn't
-// need the same from-scratch legal research a new *mechanism* (like
-// Deloitte's RSS feed) did -- it still gets the same company-identity
-// verification every adapter in this app applies (Greenhouse's own
-// company_name field on each job, cross-checked against what's configured,
-// same spirit as check-company-source.mjs's slug-collision catch that
-// caught "Oliver Wyman Labs" masquerading as Oliver Wyman during this
-// same round of research).
+// Ashby's public Job Posting API (api.ashbyhq.com/posting-api/job-board/{board}) is Ashby's own documented,
+// unauthenticated, third-party-facing job board API -- the same legal category as Greenhouse's Job Board API and
+// Lever's Postings API. Its shape and how this adapter maps it (employment types, structured locations,
+// compensation, identity check) are in _shared/ashbyAdapter.ts, which is unit-tested
+// (server/tests/ashbyAdapter.test.ts).
 //
-// Scale fix applied from the start (learned the hard way on Stripe, then
-// on the Deloitte rewrite): dedup-scoring a new job against every OTHER
-// company's active jobs is pure wasted work -- scoreDuplicate()'s signals
-// (canonical URL, source_job_id, company+title+location) all require a
-// company match to mean anything, so cross-company comparisons can only
-// ever score 0. Filtering the comparison set to each company's own
-// existing jobs before scoring turns what would have been a single O(n^2)
-// pass over ~2,400 combined jobs (all 7 companies, one company alone
-// contributing 820) into 7 much smaller independent passes, each bounded
-// by that one company's own job count -- correctness-preserving, not an
-// approximation.
+// Added 2026-10-03 because many of the best-known startups (Ramp, Plaid, Notion, OpenAI, ...) post only on Ashby.
+// Batched like Greenhouse ({"batch": N}, stalest companies first): anything that scales with company count has to be.
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { normalizeJob } from "../_shared/pipeline/normalize.ts";
@@ -40,43 +22,22 @@ import { comparableFromExistingJob, jobInsertFromNormalized, fetchAllRows, updat
 import { capForCompanyTier, indexCompanyTiers } from "../_shared/pipeline/companyCap.ts";
 import { requireCronSecret } from "../_shared/requireCronSecret.ts";
 import { claimRunOrSkip } from "../_shared/dedupeRun.ts";
+import {
+  type AshbyPosting,
+  ashbyCompensationText,
+  ashbyEmploymentTypeText,
+  ashbyPostedDate,
+  buildAshbyLocationText,
+  isContractOrTemporary,
+  jobUrlMatchesSlug,
+} from "../_shared/ashbyAdapter.ts";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
-// fetchAllRows and updateInBatches moved to ../_shared/dedupeHelpers.ts --
-// approve-submission and fetch-deloitte-jobs turned out to have the exact
-// same unbounded-.select() risk against `jobs`/`job_sources`, and
-// enforceCompanyCap (Part 2, 2026-08-27) needed updateInBatches too, so
-// both live in one place instead of duplicated per function.
-//
-// PostgREST encodes .in() filters into the request URL's query string
-// regardless of HTTP method, which has a real length limit -- confirmed
-// live: a refresh update against ~600 already-tracked Databricks jobs
-// failed outright ("Bad Request") once the backfill built up enough
-// tracked jobs for one company. Chunking keeps every .in() call well
-// under that limit permanently, not just for today's backfill -- this was
-// going to fail on every future daily run once any company had a few
-// hundred already-tracked jobs, not just during the initial backfill.
-
-// See the deferral comment in runFetchForCompany's main loop -- this is
-// the actual ceiling that keeps a single very large first-run backfill
-// (Databricks: 820 postings, zero pre-existing) from tripping Supabase's
-// Edge Function compute limit. Steady-state daily runs process far fewer
-// than this per company (only that day's genuinely new postings), so it
-// never engages once a company's initial backfill is complete.
+// Same ceiling as the other ATS adapters: keeps a large first-run backfill from tripping the Edge Function limit.
 const MAX_NEW_JOBS_PER_RUN = 150;
-
-interface GreenhouseJob {
-  id: number;
-  title: string;
-  absolute_url: string;
-  updated_at: string;
-  application_deadline: string | null;
-  location: { name: string } | null;
-  company_name?: string;
-}
 
 interface FetchOutcome {
   logStatus: "success" | "failed" | "skipped";
@@ -102,24 +63,26 @@ async function runFetchForCompany(
   if (!slug || !company) return failed(`Source "${source.name}" is missing config.slug or config.company`);
 
   if (source.authorization_status === "disabled" || source.authorization_status === "not_approved") {
-    // §3.7's kill switch -- flip this row and the next scheduled run skips it, no code change or redeploy needed.
+    // §3.7's kill switch, same as every other adapter.
     const reason = `source is ${source.authorization_status}`;
     return { logStatus: "skipped", logSummary: { reason } };
   }
 
-  let ghJobs: GreenhouseJob[];
+  let ashbyJobs: AshbyPosting[];
   try {
-    const res = await fetch(`https://boards-api.greenhouse.io/v1/boards/${slug}/jobs`);
-    if (!res.ok) throw new Error(`Greenhouse returned HTTP ${res.status}`);
+    // includeCompensation adds the structured pay components (read by ashbyCompensationText).
+    const res = await fetch(`https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(slug)}?includeCompensation=true`);
+    if (!res.ok) throw new Error(`Ashby returned HTTP ${res.status}`);
     const body = await res.json();
-    ghJobs = body.jobs ?? [];
+    // isListed: false postings are not on the public board.
+    ashbyJobs = ((body?.jobs ?? []) as AshbyPosting[]).filter((j) => j.isListed !== false);
   } catch (err) {
     // §3.4: never touch existing data on a failed fetch. Report and exit.
     const message = err instanceof Error ? err.message : String(err);
     return failed(`Fetch failed: ${message}`);
   }
 
-  const suspiciouslyEmpty = ghJobs.length < 5;
+  const suspiciouslyEmpty = ashbyJobs.length < 5;
   const nowIso = new Date().toISOString();
   const activeJobs = [...activeJobsForCompany]; // local copy -- safe to push into during this company's own loop
 
@@ -134,86 +97,67 @@ async function runFetchForCompany(
   let skippedInvalid = 0;
   let skippedCompanyMismatch = 0;
   let skippedNotRelevant = 0;
+  let skippedContract = 0;
   let deferred = 0;
 
-  for (const ghJob of ghJobs) {
-    const sourceJobId = String(ghJob.id);
+  for (const ashbyJob of ashbyJobs) {
+    const sourceJobId = String(ashbyJob.id);
     seenSourceJobIds.add(sourceJobId); // present in today's feed either way -- see freshness note below
 
     const existingJobId = existingJobIdBySourceJobId.get(sourceJobId);
     if (existingJobId) {
       refreshJobIds.push(existingJobId);
-      locationBackfill.push({ id: existingJobId, locationText: ghJob.location?.name ?? undefined });
+      locationBackfill.push({ id: existingJobId, locationText: buildAshbyLocationText(ashbyJob) });
       continue;
     }
 
-    // Relevance filter -- see _shared/pipeline/relevance.ts's header comment
-    // for the full rationale (Greenhouse returns a company's entire board,
-    // not just entry-level roles, so most of what comes back for a large
-    // tech employer is senior/management roles no UC undergrad would apply
-    // to). Checked before the MAX_NEW_JOBS_PER_RUN deferral below so a
-    // company's per-day budget of "new postings actually processed" isn't
-    // spent scoring/inserting roles that were never going to be kept
-    // anyway. Only gates brand-new postings, not already-tracked ones --
-    // this is forward-looking, not a retroactive cleanup of what's already
-    // in the table (see JOB_ENGINE_ARCHITECTURE.md's Stage 4 entry for why
-    // that's a separate, deliberately-reviewed decision).
-    //
-    // isLikelyNonCorporateRole() is the same idea on a different axis: not
-    // "too senior" but "not the kind of job UC Portal exists for" (manual
-    // trade/hourly operations, direct clinical/patient care). Added after
-    // Carvana (45% of the live table) turned out to be overwhelmingly
-    // automotive-operations roles, not senior ones -- isLikelySeniorRole()
-    // alone let all of that through.
-    if (isLikelySeniorRole(ghJob.title) || isLikelyNonCorporateRole(ghJob.title)) {
+    // The jobs table has no contract type, so contract/temporary postings are skipped rather than mislabelled.
+    if (isContractOrTemporary(ashbyJob)) {
+      skippedContract++;
+      continue;
+    }
+
+    const title = (ashbyJob.title ?? "").trim();
+
+    // Same relevance filter as every other ATS adapter -- see _shared/pipeline/relevance.ts. Checked before the
+    // MAX_NEW_JOBS_PER_RUN deferral so a company's per-run budget isn't spent on roles never going to be kept.
+    if (isLikelySeniorRole(title) || isLikelyNonCorporateRole(title)) {
       skippedNotRelevant++;
       continue;
     }
 
-    // Bounds the O(n^2) intra-company dedup loop below for a large
-    // first-run backfill (confirmed necessary: even with tokenize()
-    // memoized, scoring 820 brand-new Databricks postings against a
-    // same-company set growing to 820 still tripped Supabase's Edge
-    // Function compute limit -- jaccardSimilarity's own per-call set
-    // operations are the real O(n^2) cost, not just redundant tokenizing).
-    // Deferred jobs are marked "seen" above (they genuinely are present in
-    // the feed, just not processed this run) so the freshness sweep never
-    // mistakes "haven't gotten to it yet" for "this posting closed", and
-    // they're picked up automatically on the next run -- job_sources has
-    // no record of them yet, so they'll hit this same branch again, not
-    // this deferral one, until they're actually processed.
     if (newJobRows.length + mergeAttachments.length >= MAX_NEW_JOBS_PER_RUN) {
       deferred++;
       continue;
     }
 
-    // Same identity safeguard as check-company-source.mjs and
-    // fetch-deloitte-jobs -- a board slug or a future config typo pointing
-    // at the wrong company shouldn't silently attribute someone else's
-    // posting to this one.
-    // config.board_name is how the board spells the company when that differs from the display name in config.company
-    // (e.g. "HackerRank Careers", "DoorDash USA"); the check still compares against what the board itself reports.
-    const expectedBoardName = (source.config?.board_name as string | undefined) ?? company;
-    if (ghJob.company_name && ghJob.company_name.trim().toLowerCase() !== expectedBoardName.trim().toLowerCase()) {
+    // Identity safeguard -- see jobUrlMatchesSlug's comment in _shared/ashbyAdapter.ts for what it does and does
+    // not catch (an Ashby posting carries no company name).
+    if (!jobUrlMatchesSlug(ashbyJob.jobUrl, slug)) {
       skippedCompanyMismatch++;
       continue;
     }
 
+    const jobUrl = ashbyJob.jobUrl as string; // jobUrlMatchesSlug above confirmed it is present and well-formed
     const raw: RawJob = {
-      source: { sourceId: source.id, sourceJobId, sourceUrl: ghJob.absolute_url, isPrimary: true },
+      source: { sourceId: source.id, sourceJobId, sourceUrl: jobUrl, isPrimary: true },
       company,
-      title: ghJob.title.trim(),
-      locationText: ghJob.location?.name ?? undefined,
-      applicationUrl: ghJob.absolute_url,
-      applicationDeadlineText: ghJob.application_deadline ?? undefined,
-      updatedDate: ghJob.updated_at ? ghJob.updated_at.slice(0, 10) : undefined,
+      title,
+      // Ashby's own employmentType (Intern / FullTime / PartTime), as wording the shared normalizer reads.
+      employmentTypeText: ashbyEmploymentTypeText(ashbyJob.employmentType),
+      locationText: buildAshbyLocationText(ashbyJob),
+      applicationUrl: jobUrl,
+      postedDate: ashbyPostedDate(ashbyJob.publishedAt),
+      compensationText: ashbyCompensationText(ashbyJob),
     };
 
     let normalized = normalizeJob(raw);
     if (!normalized.employmentType) {
-      // Adapter-specific default -- confirmed on Stripe that most external
-      // ATS titles carry no employment-type signal at all (internships
-      // self-declare in the title by convention; ordinary roles don't).
+      // Same adapter-level judgment call as Greenhouse's, kept as a safety
+      // net -- verified live that categories.commitment covers every real
+      // posting on both Wealthfront's and Belvedere Trading's boards, so
+      // this is expected to engage far less often than Greenhouse's ~90%
+      // fallback rate, not a primary path here.
       normalized = { ...normalized, employmentType: "full_time" };
     }
 
@@ -231,7 +175,7 @@ async function runFetchForCompany(
     const tier = bestMatch ? classifyDuplicateTier(bestMatch.score) : "distinct";
 
     if (tier === "auto_merge" && bestMatch) {
-      mergeAttachments.push({ job_id: bestMatch.jobId, source_id: source.id, source_job_id: sourceJobId, source_url: ghJob.absolute_url, is_primary: false });
+      mergeAttachments.push({ job_id: bestMatch.jobId, source_id: source.id, source_job_id: sourceJobId, source_url: jobUrl, is_primary: false });
       mergeJobIds.push(bestMatch.jobId);
       continue;
     }
@@ -240,7 +184,7 @@ async function runFetchForCompany(
     const jobFunctionId = normalized.jobFunction ? jobFunctionIdByName.get(normalized.jobFunction) ?? null : null;
     const newId = crypto.randomUUID();
     newJobRows.push({ id: newId, ...jobInsertFromNormalized(normalized, qualityScore, jobFunctionId, source.storage_restrictions) });
-    newJobSources.push({ job_id: newId, source_id: source.id, source_job_id: sourceJobId, source_url: ghJob.absolute_url, is_primary: true });
+    newJobSources.push({ job_id: newId, source_id: source.id, source_job_id: sourceJobId, source_url: jobUrl, is_primary: true });
 
     if (tier === "review" && bestMatch) {
       const { score, signals } = scoreDuplicate(normalized, comparableFromExistingJob(bestMatch.row));
@@ -252,18 +196,11 @@ async function runFetchForCompany(
 
   const allJobSources = [...newJobSources, ...mergeAttachments];
   if (newJobRows.length > 0 || allJobSources.length > 0) {
-    // New jobs and their job_sources rows go in ONE transaction
-    // (insert_jobs_with_sources). They used to be two separate requests, and a
-    // run stopped between them (the pg_net duplicate-delivery race, or the
-    // Edge Function resource limit) left jobs with no source row: the next run
-    // found existing jobs only through job_sources, re-inserted them, and the
-    // orphans never expired or got capped (5,317 of 10,762 active jobs by
-    // 2026-10-03). Now a failure rolls back both and simply retries next run.
-    //
-    // Still a plain insert, not an upsert/ignoreDuplicates -- a
-    // (source_id, source_job_id) collision here means
-    // existingJobIdBySourceJobId was wrong about this job being new, which
-    // should fail loudly, not be silently swallowed.
+    // One transaction for the new jobs and their job_sources rows -- see
+    // fetch-greenhouse-companies for why (a run stopped between two separate
+    // inserts left orphaned jobs that never expired or got capped). Still a
+    // plain insert: a (source_id, source_job_id) collision means
+    // existingJobIdBySourceJobId was wrong, which should fail loudly.
     const { error } = await adminClient.rpc("insert_jobs_with_sources", { p_jobs: newJobRows, p_sources: allJobSources });
     if (error) return failed(`Bulk job + job_sources insert failed: ${error.message}${error.details ? ` -- ${error.details}` : ""}`);
   }
@@ -276,9 +213,6 @@ async function runFetchForCompany(
     if (error) return failed(`Merge freshness update failed: ${error}`);
   }
   if (refreshJobIds.length > 0) {
-    // missed_fetches resets to 0 the moment a job reappears -- the counter
-    // tracks *consecutive* absences (US-22), not a lifetime total, so one
-    // clean fetch fully clears whatever streak of misses came before it.
     const error = await updateInBatches(adminClient, refreshJobIds, {
       last_seen_at: nowIso,
       last_verified_at: nowIso,
@@ -293,16 +227,10 @@ async function runFetchForCompany(
   // run summary but never fails the run.
   const locationResult = await backfillJobLocations(adminClient, locationBackfill);
 
-  // Freshness (§3.4/US-22/23): each company's Greenhouse board is
-  // exhaustive (every current posting, one call), so "tracked before,
-  // absent today" is a real "this posting closed" signal here -- unlike
-  // Deloitte's capped RSS feed, where the same inference would be
-  // dishonest. mark_jobs_missed() (20260824270000) does the actual
-  // increment-then-conditionally-transition atomically per row -- a single
-  // absence no longer immediately flags a job (a real fix: one transient
-  // scrape hiccup used to flip status on the spot), and enough consecutive
-  // absences now genuinely excludes it (active -> false), not just labels
-  // it -- see that migration's own comment for the exact thresholds.
+  // Freshness (§3.4/US-22/23) -- same reasoning as fetch-greenhouse-companies:
+  // each company's Ashby board is exhaustive (every current posting, one
+  // call), so "tracked before, absent today" is a real "this posting
+  // closed" signal here, not a capped-feed artifact.
   let markedPotentiallyExpired = 0;
   let markedFullyExpired = 0;
   if (!suspiciouslyEmpty) {
@@ -318,15 +246,11 @@ async function runFetchForCompany(
     }
   }
 
-  // Part 2 (2026-08-27) -- per-company cap, enforced last so it sees this
-  // company's true post-insert/refresh/expire active set. See
-  // enforceCompanyCap's own comment (dedupeHelpers.ts) for why it re-reads
-  // from the database instead of trying to reuse the `activeJobs` local
-  // copy, and companyCap.ts for the job-function tiering rationale. cap is
-  // now resolved per-company from company_tiers (2026-09-09 addition,
-  // defaulting to tier 3's cap for anything not in that table) rather than
-  // one flat number for every company -- see companyCap.ts's "Company-tier
-  // cap" section.
+  // Same per-company cap as every other adapter, enforced last so it sees
+  // this company's true post-insert/refresh/expire active set. cap is now
+  // resolved per-company from company_tiers (defaulting to tier 3's cap for
+  // anything not in that table) rather than one flat number for everyone --
+  // see companyCap.ts's "Company-tier cap" section for the full rationale.
   let capDeactivated = 0;
   const cap = capForCompanyTier(companyTierByName.get(company));
   const { deactivatedCount, error: capError } = await enforceCompanyCap(adminClient, company, jobFunctionNameById, cap);
@@ -334,7 +258,7 @@ async function runFetchForCompany(
   capDeactivated = deactivatedCount;
 
   const summary = {
-    fetched: ghJobs.length,
+    fetched: ashbyJobs.length,
     inserted: newJobRows.length,
     merged: mergeAttachments.length,
     flaggedDuplicate: newDuplicateCandidates.length,
@@ -344,6 +268,7 @@ async function runFetchForCompany(
     skippedInvalid,
     skippedCompanyMismatch,
     skippedNotRelevant,
+    skippedContract,
     deferred,
     markedPotentiallyExpired,
     markedFullyExpired,
@@ -361,26 +286,15 @@ Deno.serve(async (req) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-  // Optional { slug } body scopes this run to one company -- exists for
-  // controlled backfilling. Confirmed necessary in practice: processing 6
-  // brand-new companies' full catalogs at once (a combined ~1,767 postings
-  // with zero prior tracking, so none of them take the cheap "already
-  // tracked" refresh path) hit Supabase's Edge Function resource limit,
-  // the same class of problem fetch-greenhouse-stripe hit once before. The
-  // daily cron omits this and processes every configured company -- safe
-  // in steady state, since after the one-time backfill each run only does
-  // real work for that day's actual new/changed postings, not a full
-  // catalog per company.
+  // Optional { slug } body scopes this run to one company -- same
+  // controlled-backfill escape hatch as fetch-greenhouse-companies. The
+  // daily cron omits this and processes every configured Ashby company.
   //
   // Optional { batch: N } processes only the N least-recently-fetched
-  // companies (see oldest_fetched_sources()). Added because the all-at-once
-  // run stopped finishing: with ~160 companies and ~11k active jobs it hit the
-  // Edge Function resource limit and was killed after logging only the few
-  // companies that happened to finish first, so by 2026-10-03 138 of 160
-  // sources had not been fetched in 2-3+ weeks (no expiry, no company caps).
-  // A bounded batch keeps each invocation small, and because it always takes
-  // the stalest companies, repeated runs rotate through everyone. Opt-in: a
-  // body-less call still behaves exactly as before.
+  // companies, same as fetch-greenhouse-companies (see its header for why:
+  // an all-companies run stopped finishing there at ~160 companies, and a run
+  // killed between its jobs insert and its job_sources insert leaves orphaned
+  // jobs behind). Scheduled in batches (see the schedule migration), the same way as Greenhouse.
   let onlySlug: string | undefined;
   let batchSize: number | undefined;
   try {
@@ -393,9 +307,9 @@ Deno.serve(async (req) => {
 
   // Real, confirmed-live pg_net duplicate-delivery mitigation -- see
   // cron_run_locks' migration header. Keyed by slug too (not just
-  // "greenhouse"), so a deliberate manual single-company backfill never
+  // "ashby"), so a deliberate manual single-company backfill never
   // collides with, or gets suppressed by, the unrelated daily full run.
-  if (!(await claimRunOrSkip(adminClient, `greenhouse:${onlySlug ?? (batchSize ? "batch" : "*")}`))) {
+  if (!(await claimRunOrSkip(adminClient, `ashby:${onlySlug ?? (batchSize ? "batch" : "*")}`))) {
     return jsonResponse({ skipped: true, reason: "duplicate invocation suppressed" }, 200);
   }
 
@@ -403,17 +317,17 @@ Deno.serve(async (req) => {
     .from("sources")
     .select("*")
     .eq("type", "employer_api")
-    .eq("config->>platform", "greenhouse");
+    .eq("config->>platform", "ashby");
   const { data: allSources, error: sourcesError } = onlySlug
     ? await sourcesQuery.eq("config->>slug", onlySlug)
     : await sourcesQuery;
   if (sourcesError) return jsonResponse({ error: sourcesError.message }, 500);
-  if (!allSources || allSources.length === 0) return jsonResponse({ error: `No Greenhouse sources configured${onlySlug ? ` for slug "${onlySlug}"` : ""}` }, 500);
+  if (!allSources || allSources.length === 0) return jsonResponse({ error: `No Ashby sources configured${onlySlug ? ` for slug "${onlySlug}"` : ""}` }, 500);
 
   let sources = allSources;
   if (!onlySlug && batchSize) {
     const { data: staleIds, error: staleError } = await adminClient.rpc("oldest_fetched_sources", {
-      p_platform: "greenhouse",
+      p_platform: "ashby",
       p_limit: batchSize,
     });
     // If the ordering lookup fails, fall back to the full set rather than
@@ -423,24 +337,15 @@ Deno.serve(async (req) => {
       sources = allSources.filter((s) => keep.has(s.id as string));
     }
   }
-  // Only load the active jobs of the companies this run actually handles --
-  // a scoped run (one slug, or a batch) shouldn't pay to load all ~11k.
+  // A scoped run (one slug, or a batch) only loads its own companies' jobs.
   const scopedCompanies =
     onlySlug || batchSize
       ? sources.map((s) => s.config?.company as string | undefined).filter((c): c is string => !!c)
       : null;
 
-  // Shared lookups, fetched once and reused across every company -- the
-  // per-company scoping happens in memory below, not via N separate
-  // queries. Paginated via fetchAllRows() -- confirmed the hard way that a
-  // plain .select() silently truncates at PostgREST's default page size
-  // (1000 rows) once combined job_sources/active-jobs volume across all 7
-  // companies passed that mark, which caused a real, serious bug: jobs
-  // that genuinely already had a job_sources row fell outside the
-  // truncated result, got miscategorized as "not yet tracked" on every
-  // run, and repeatedly created orphaned duplicate jobs rows (masked, not
-  // fixed, by job_sources' upsert/ignoreDuplicates silently swallowing the
-  // resulting conflict instead of erroring).
+  // Shared lookups, fetched once and reused across every company -- same
+  // pagination-safe fetchAllRows() as fetch-greenhouse-companies (a plain
+  // .select() silently truncates at PostgREST's 1000-row default page size).
   let rawActiveJobs: Record<string, unknown>[], jobFunctions: Record<string, unknown>[], allJobSourceRows: Record<string, unknown>[], companyTiers: Record<string, unknown>[];
   try {
     [rawActiveJobs, jobFunctions, allJobSourceRows, companyTiers] = await Promise.all([
@@ -456,8 +361,6 @@ Deno.serve(async (req) => {
   }
 
   const jobFunctionIdByName = new Map<string, string>((jobFunctions ?? []).map((f) => [f.name as string, f.id as string]));
-  // Reverse of the above, for enforceCompanyCap's tiering (job_function_id
-  // on a row -> the taxonomy name companyCap.ts's tiers are keyed on).
   const jobFunctionNameById = new Map<string, string>((jobFunctions ?? []).map((f) => [f.id as string, f.name as string]));
   const companyTierByName = indexCompanyTiers(
     (companyTiers ?? []).map((c) => ({ companyName: c.company_name as string, tier: c.tier as number, aliases: c.aliases as string[] | null })),

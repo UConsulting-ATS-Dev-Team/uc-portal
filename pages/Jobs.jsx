@@ -5,6 +5,7 @@ import ErrorState from "../components/ErrorState.jsx";
 import PostOpportunityModal from "../components/modals/PostOpportunityModal.jsx";
 import { INDUSTRIES, LOCATIONS, canonicalIndustry } from "../data/careerOptions.js";
 import { locationPrefMatches } from "../data/locationUtils.js";
+import { useYcCompanies } from "../data/useYcCompanies.js";
 import { daysUntil, matchesDeadlineBucket } from "../data/jobUtils.js";
 import { fetchCompanyTiers, capForCompanyTier } from "../data/companyTiers.js";
 import { useAppState } from "../data/store.jsx";
@@ -109,6 +110,7 @@ const NEUTRAL_FILTERS = {
   compMin: 15,
   compMax: 75,
   deadlines: [],
+  yc: false, // only companies Y Combinator backed
 };
 
 // The Jobs board's actual first-load default. Used to hardcode a generic
@@ -178,6 +180,7 @@ function matchesFilters(job, filters) {
     return false;
   if (job.compHourly && job.compMin != null && (job.compMax < filters.compMin || job.compMin > filters.compMax)) return false;
   if (filters.deadlines.length && !filters.deadlines.some((d) => matchesDeadlineBucket(job, d))) return false;
+  if (filters.yc && !job.yc) return false;
   return true;
 }
 
@@ -191,10 +194,11 @@ const DROPPABLE_FILTERS = [
   { key: "types", label: (f) => f.types.join(", "), clear: (f) => ({ ...f, types: [] }) },
   { key: "deadlines", label: (f) => f.deadlines.join(", "), clear: (f) => ({ ...f, deadlines: [] }) },
   { key: "comp", label: (f) => `$${f.compMax}/hr+`, clear: (f) => ({ ...f, compMin: 15, compMax: 75 }) },
+  { key: "yc", label: () => "Y Combinator", clear: (f) => ({ ...f, yc: false }) },
 ];
 
 function diagnoseEmptyFilters(filters, jobs) {
-  return DROPPABLE_FILTERS.filter((d) => (d.key === "comp" ? filters.compMin > 15 || filters.compMax < 75 : filters[d.key].length > 0))
+  return DROPPABLE_FILTERS.filter((d) => (d.key === "comp" ? filters.compMin > 15 || filters.compMax < 75 : d.key === "yc" ? filters.yc : filters[d.key].length > 0))
     .map((d) => ({ ...d, count: jobs.filter((j) => matchesFilters(j, d.clear(filters))).length, currentLabel: d.label(filters) }))
     .sort((a, b) => b.count - a.count);
 }
@@ -314,9 +318,16 @@ export default function Jobs() {
       .catch(() => {});
   }, []);
 
+  // Company -> Y Combinator batch, for the badge and the "Y Combinator" filter.
+  const ycByCompany = useYcCompanies();
+
   const JOBS = useMemo(
-    () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth))),
-    [rawJobs, preferences, classYear, gradMonth]
+    () =>
+      rawJobs.map((job) => ({
+        ...realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth)),
+        yc: ycByCompany.get(job.company) ?? null,
+      })),
+    [rawJobs, preferences, classYear, gradMonth, ycByCompany]
   );
 
   // Saved jobs whose posting has since closed. The board itself (JOBS) is only
@@ -349,9 +360,12 @@ export default function Jobs() {
   const savedPool = useMemo(
     () => [
       ...JOBS,
-      ...closedSavedRaw.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth))),
+      ...closedSavedRaw.map((job) => ({
+        ...realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth)),
+        yc: ycByCompany.get(job.company) ?? null,
+      })),
     ],
-    [JOBS, closedSavedRaw, preferences, classYear, gradMonth]
+    [JOBS, closedSavedRaw, preferences, classYear, gradMonth, ycByCompany]
   );
 
   useEffect(() => {
@@ -471,6 +485,7 @@ export default function Jobs() {
   filters.industries.forEach((i) => activeChips.push({ label: i, onRemove: () => toggleChip("industries", i) }));
   filters.locations.forEach((l) => activeChips.push({ label: l, onRemove: () => toggleChip("locations", l) }));
   filters.deadlines.forEach((d) => activeChips.push({ label: d, onRemove: () => toggleChip("deadlines", d) }));
+  if (filters.yc) activeChips.push({ label: "Y Combinator", onRemove: () => patchFilters({ yc: false }) });
 
   function handleSaveSearch() {
     saveSearch(filters, activeChips.length > 0 ? activeChips.map((c) => c.label).join(", ") : "All jobs");
@@ -663,6 +678,15 @@ export default function Jobs() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="filters__group">
+          <div className="filters__group-title">Backed by</div>
+          <label className="filters__checkbox">
+            <span>
+              <input type="checkbox" checked={!!filters.yc} onChange={() => patchFilters({ yc: !filters.yc })} /> Y Combinator
+            </span>
+          </label>
         </div>
 
         <div className="filters__group">

@@ -6297,3 +6297,13 @@ read an inactive job at all (`jobs_select_active_authenticated` was the only mem
 vanished. Migration `20261006400000` adds `jobs_select_own_tracked_or_saved`; the app now shows such jobs as closed (see
 PROGRESS_LOG.md). (c) Amplitude was the only dead board among all 171 enabled Greenhouse/Lever sources; disabled, with its 16 jobs
 expired (migration `20261006200000`).
+
+**2026-10-03 addendum -- Ashby as a third job-board platform, and Y Combinator sources.** `fetch-ashby-companies` reads Ashby's public Job Posting API
+(`api.ashbyhq.com/posting-api/job-board/{board}?includeCompensation=true`), the same legal category as the Greenhouse and Lever public APIs. Its
+mapping logic (`supabase/functions/_shared/ashbyAdapter.ts`) is pure and unit-tested; it skips Contract/Temporary postings (no such employment
+type), builds location text from structured addresses and `secondaryLocations` so a multi-city posting resolves to every city, turns USD salary
+components into compensation text, and, like Lever, can only check identity by the posting URL's board segment. It runs hourly at :47 in batches of
+8. Greenhouse's batch rose from 14 to 20 so ~210 companies each come round inside the 26h coverage window. 98 sources were added in one migration
+(`20261010100000`): 73 Y Combinator companies found by probing the public YC directory's active/top companies against the three platforms, plus 25
+other well-known Ashby startups; `company_yc` tags them (and 20 already-tracked YC companies) for the app's "YC" chip and filter. Greenhouse sources
+may set `config.board_name` when the board spells the company differently from its display name.

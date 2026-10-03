@@ -41,8 +41,10 @@ const INDUSTRY_SYNONYMS = [
 
 // Every industry by its own full name too, so a new row in careerOptions.js is searchable without
 // touching this file. Placed after the hand-written groups, which win for the short forms above.
+const withOwnName = (g) => ({ ...g, terms: g.terms.includes(g.name.toLowerCase()) ? g.terms : [...g.terms, g.name.toLowerCase()] });
+
 const ALL_INDUSTRY_SYNONYMS = [
-  ...INDUSTRY_SYNONYMS,
+  ...INDUSTRY_SYNONYMS.map(withOwnName),
   ...INDUSTRIES.filter((i) => !INDUSTRY_SYNONYMS.some((g) => g.name === i.name) && i.name !== "Still figuring it out").map((i) => ({
     name: i.name,
     terms: [i.name.toLowerCase()],
@@ -65,7 +67,7 @@ const LOCATION_SYNONYMS = [
 // Every other city, metro or country in the option list by its own name ("boston", "greater boston",
 // "london"), after the hand-written groups above so their aliases win.
 const ALL_LOCATION_SYNONYMS = [
-  ...LOCATION_SYNONYMS,
+  ...LOCATION_SYNONYMS.map(withOwnName),
   ...LOCATIONS.filter((l) => !LOCATION_SYNONYMS.some((g) => g.name === l) && !["International", "Remote", "Hybrid"].includes(l)).map((l) => ({
     name: l,
     terms: [l.toLowerCase()],
@@ -110,25 +112,27 @@ function escapeRegex(term) {
   return term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// Matches at most one synonym per group (so "consulting" doesn't also
-// re-match under a second phrasing of the same industry), strips the
-// matched phrase out of the working text so it can't also become leftover
-// keyword noise, and is case-insensitive with real word boundaries (so
-// "la" only matches the standalone word, never the "la" inside "large").
+// Matches each value at most once (so "consulting" doesn't also re-match under a second phrasing of the
+// same industry), strips the matched phrase out of the working text so it can't also become leftover
+// keyword noise, and is case-insensitive with real word boundaries (so "la" only matches the standalone
+// word, never the "la" inside "large"). Longest phrase first ACROSS all groups: "seattle area" must win
+// over "seattle", and "aerospace & defense" over "aerospace", or the shorter match would strip part of
+// the longer phrase and leave the rest behind as stray keyword text.
 function extractGroup(text, groups, valueKey) {
+  const entries = groups.flatMap((group) => group.terms.map((term) => ({ value: group[valueKey], term })));
+  entries.sort((a, b) => b.term.length - a.term.length);
+
   const matches = [];
   let remaining = text;
-  for (const group of groups) {
-    for (const term of group.terms) {
-      const re = new RegExp(`\\b${escapeRegex(term)}\\b`, "i");
-      if (re.test(remaining)) {
-        matches.push(group[valueKey]);
-        remaining = remaining.replace(new RegExp(`\\b${escapeRegex(term)}\\b`, "gi"), " ");
-        break;
-      }
+  for (const { value, term } of entries) {
+    if (matches.includes(value)) continue;
+    const re = new RegExp(`\\b${escapeRegex(term)}\\b`, "i");
+    if (re.test(remaining)) {
+      matches.push(value);
+      remaining = remaining.replace(new RegExp(`\\b${escapeRegex(term)}\\b`, "gi"), " ");
     }
   }
-  return { matches: [...new Set(matches)], remaining };
+  return { matches, remaining };
 }
 
 // Parses free text into a patch for pages/Jobs.jsx's filter object, plus a
@@ -151,6 +155,14 @@ export function parseJobQuery(rawText) {
   if (locations.matches.length) {
     patch.locations = locations.matches;
     matchedLabels.push(...locations.matches);
+  }
+
+  // "YC", "Y Combinator", "YC-backed": only companies Y Combinator backed (the Jobs page's yc filter).
+  const ycPattern = /\b(?:y\s?combinator|yc)(?:[\s-]*(?:backed|companies|startups?))?\b/gi;
+  if (ycPattern.test(text)) {
+    patch.yc = true;
+    matchedLabels.push("Y Combinator");
+    text = text.replace(ycPattern, " ");
   }
 
   const types = extractGroup(text, TYPE_SYNONYMS, "name");

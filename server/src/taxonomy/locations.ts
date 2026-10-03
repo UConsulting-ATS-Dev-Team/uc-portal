@@ -74,6 +74,8 @@ const KNOWN_CITIES: Record<string, Place> = {
   manhattan: us("New York", "NY"), brooklyn: us("Brooklyn", "NY"),
   "los angeles": us("Los Angeles", "CA"), la: us("Los Angeles", "CA"),
   "san francisco": us("San Francisco", "CA"), sf: us("San Francisco", "CA"), "sf bay area": us("San Francisco", "CA"),
+  // Misspellings seen in real feeds (Ramp's Ashby addresses say "San Fransisco").
+  "san fransisco": us("San Francisco", "CA"), "san franciso": us("San Francisco", "CA"),
   chicago: us("Chicago", "IL"), boston: us("Boston", "MA"), cambridge: us("Cambridge", "MA"),
   seattle: us("Seattle", "WA"), bellevue: us("Bellevue", "WA"), redmond: us("Redmond", "WA"),
   austin: us("Austin", "TX"), dallas: us("Dallas", "TX"), houston: us("Houston", "TX"),

@@ -201,10 +201,16 @@ select {
   background: var(--color-ground);
 }
 
-.chip-accent {
+.chip-accent,
+.chip-yc {
   border-color: var(--color-accent-tint-border);
   background: var(--color-accent-tint);
   color: var(--color-accent-deep);
+}
+
+/* "YC W12": a Y Combinator company (company_yc). Same tint as the accent chip, kept as its own class so it can diverge. */
+.chip-yc {
+  font-weight: 700;
 }
 
 /* Marks illustrative/seed content that isn't real club data -- direct

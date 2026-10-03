@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
 import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
 import CompanyLogo from "./CompanyLogo.jsx";
+import { useYcCompanies, ycBatchLabel } from "../data/useYcCompanies.js";
 
 export default function JobCard({ job, saved, onToggleSave }) {
   const urgent = isUrgent(job);
+  const ycBatch = useYcCompanies().get(job.company);
 
   return (
     <div className={`job-card${job.ucPosted ? " is-uc-posted" : ""}`}>
@@ -20,6 +22,11 @@ export default function JobCard({ job, saved, onToggleSave }) {
               actually known. What's real and worth surfacing is alumni
               presence at the company, not a posting's origin. */}
           {job.ucPosted && <span className="chip chip-accent">UC alumni here</span>}
+          {ycBatch && (
+            <span className="chip chip-yc" title={`Backed by Y Combinator, ${ycBatchLabel(ycBatch)}`}>
+              YC {ycBatch}
+            </span>
+          )}
           {job.possiblyClosed && <span className="chip">Possibly no longer open</span>}
           {job.closed && <span className="chip">Closed — no longer accepting applications</span>}
         </div>

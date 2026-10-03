@@ -581,10 +581,10 @@ export default function AdminDashboard() {
           <div className="detail-section">
             <h2 className="detail-section__title">Pipeline health</h2>
             <p className="meta" style={{ marginTop: 0 }}>
-              Real last-run status for all 6 scheduled jobs (5 daily ingestion/maintenance adapters + the
+              Real last-run status for every scheduled job (the ingestion and maintenance adapters + the
               weekly digest), computed from each function's own logged outcome -- not just whether pg_cron
               fired, but whether the run itself actually succeeded. A row flagged "Stale" hasn't completed
-              successfully within its expected cadence and is worth checking directly. Greenhouse and Lever run
+              successfully within its expected cadence and is worth checking directly. Greenhouse, Lever and Ashby run
               in batches, so they report coverage instead -- how many companies had a successful fetch in the
               last 24 hours -- and go stale when that drops below 90%.
             </p>

@@ -358,13 +358,14 @@ which are chronological and not rewritten when later work supersedes them.
   preview), `/admin/opportunities` (job sources), `/admin/members` (roles, mark
   alumni, graduate intern, account setup), `/admin/content` (moderation),
   `/admin/library`, `/admin/accelerator`.
-- **Scheduled work:** 6 pg_cron jobs call Edge Functions (Greenhouse, Lever,
-  Deloitte, link-health, board snapshot, weekly digest), each guarded by an
+- **Scheduled work:** 7 pg_cron jobs call Edge Functions (Greenhouse, Lever,
+  Ashby, Deloitte, link-health, board snapshot, weekly digest), each guarded by an
   `X-Cron-Secret` header (secret in Supabase Vault and as an Edge Function
   secret). `pg_net` delivers each call twice; `cron_run_locks` suppresses the
   duplicate. Health shows on Admin Dashboard's "Pipeline health". Pipeline
   detail lives in [JOB_ENGINE_ARCHITECTURE.md](JOB_ENGINE_ARCHITECTURE.md).
-  Greenhouse runs in batches (`{"batch": 14}` every 2 hours, stalest companies first) because one
+  Greenhouse runs in batches (`{"batch": 20}` every 2 hours; Ashby `{"batch": 8}` hourly at :47; stalest companies first;
+  size a batch so batch x runs/day covers every enabled company inside the 26h coverage window) because one
   all-companies run exceeds the Edge Function limit and silently stalled; anything that scales with
   company count must be batched. A scheduled call always reads as a pg_net timeout, so judge it by
   `source_fetch_log`, not `net._http_response`.
@@ -384,6 +385,16 @@ which are chronological and not rewritten when later work supersedes them.
   saved list. `useRealJobs` returns `realJobs` (open postings only: recommendations, new matches, deadlines) and
   `allKnownJobs` (also the member's closed ones: use it to RESOLVE their own ids). Closed jobs carry `closed: true` and
   render as "Posting closed". Never use `realJobs.find(id)` to resolve a tracked or saved job.
+- **Job sources: Greenhouse, Lever and Ashby (2026-10-03), plus Y Combinator tagging.** Each is a `sources` row
+  (`employer_api`, `config` = `{platform, slug, company}`; Greenhouse may add `board_name`, the board's own spelling of the
+  company, because the fetcher refuses a posting whose self-reported `company_name` differs). `fetch-ashby-companies` mirrors
+  the others; its field mapping lives in `_shared/ashbyAdapter.ts` (tested) and it skips Contract/Temporary postings. Lever and
+  Ashby postings carry no company name, so a person must confirm identity when adding one. To add companies: probe the board,
+  check the company, run its titles through `isLikelySeniorRole`/`isLikelyNonCorporateRole`, then insert the source and a
+  `company_tiers` row in a migration (the batched cron picks it up; never-fetched sources go first). `company_yc` maps a company
+  name (exactly as `jobs.company` has it) to its YC batch; it drives the "YC W12" chip (`useYcCompanies`) and the Jobs
+  "Backed by > Y Combinator" filter. Prominent YC companies with no guessable public board (Rippling, Deel, Retool, Whatnot) are
+  not tracked.
 - **Preference options only count if something matches them (2026-10-03).** Option lists live in `data/careerOptions.js`
   (67 industries, 46 roles, 90 locations incl. metros, 78 skills). Matching is client-side in `data/jobMatch.js`:
   industries by job TITLE (`data/industryPatterns.js`, also used by the Jobs industry filter), skills implied by title

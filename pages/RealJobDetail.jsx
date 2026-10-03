@@ -16,6 +16,7 @@ import LogPrepModal from "../components/modals/LogPrepModal.jsx";
 import ContributeModal from "../components/modals/ContributeModal.jsx";
 import Skeleton from "../components/Skeleton.jsx";
 import Placeholder from "./Placeholder.jsx";
+import { useYcCompanies, ycBatchLabel } from "../data/useYcCompanies.js";
 import "../styles/jobDetail.css";
 import "../styles/network.css";
 
@@ -78,6 +79,7 @@ export default function RealJobDetail({ jobId: jobIdProp }) {
   const [job, setJob] = useState(undefined); // undefined = loading, null = not found
   const { preferences, savedConnections, coffeeChatStatus, prepLogged, profileOverrides, savedJobIds, toggleSavedJob, trackedJobs, addToTracker } =
     useAppState();
+  const ycBatch = useYcCompanies().get(job?.company);
   const classYear = resolvedClassYear(currentUser, profileOverrides);
   const gradMonth = resolvedGradMonth(currentUser, profileOverrides);
   const [showLogPrepModal, setShowLogPrepModal] = useState(false);
@@ -241,6 +243,11 @@ export default function RealJobDetail({ jobId: jobIdProp }) {
               <div className="detail-header__title-row">
                 <h1 className="detail-header__role">{job.title}</h1>
                 {!job.active && <span className="chip">No longer active</span>}
+                {ycBatch && (
+                  <span className="chip chip-yc" title={`Backed by Y Combinator, ${ycBatchLabel(ycBatch)}`}>
+                    YC {ycBatch}
+                  </span>
+                )}
                 {job.active && job.status === "potentially_expired" && (
                   <span className="chip">Possibly no longer open</span>
                 )}
