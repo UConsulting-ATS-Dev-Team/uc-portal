@@ -4839,3 +4839,29 @@ longer breaks down to phone width either.
   total fetcher runs per day falling from ~34 to 16. That fits the duplicate-delivery race the lock now suppresses,
   but it rests on only two clean days.
   Throwaway account removed; `roster_total=53 people_total=209`, no storage residue.
+
+- **2026-10-03: Greenhouse ingestion had silently stalled for ~3 weeks; fixed with batching** --
+  Started as "are Datadog's and N26's broken-link flags real?" and turned into a pipeline finding. The flags are
+  true positives: for a sampled 17 of them the checker's exact request returns 404/410, a browser user agent gets
+  404 too, and Greenhouse's own board API returns 404 for the job ids (and 200 for the boards themselves). The real
+  question was why dead jobs were still `active`: expiry needs 5 consecutive missed fetches, and 138 of 160
+  Greenhouse sources had not been fetched since 09-09 or 09-16. Cause: the daily run processes every company in one
+  invocation, which exceeds the Edge Function resource limit at ~11k active jobs, so it was killed after logging only
+  the companies that finished first. Side effects: no expiry for stale companies, no tier-cap enforcement (Datadog sat
+  at ~360 active against a cap of 10), an inflated board (11,261 active). Details and the full diagnosis are in
+  `JOB_ENGINE_ARCHITECTURE.md`'s 2026-10-03 entry.
+  **Changes:** `fetch-greenhouse-companies` takes `{ "batch": N }` (stalest N companies, only their jobs loaded;
+  body-less calls unchanged) via new `oldest_fetched_sources()` (migration `20261004800000`); migration
+  `20261004900000` replaces the daily job with `fetch-greenhouse-companies-batch`, every 2 hours at `{"batch": 14}`
+  (~one fetch per company per day). Function deployed; both migrations applied.
+  **Manual runs made while diagnosing** (real work, the same thing the schedule does): Datadog alone (351 stale postings
+  cap-deactivated, 2 marked potentially expired), then a 3-company batch and a 14-company batch (all 17 succeeded,
+  0.3-2.3 s each), which ingested the six never-fetched companies' catalogs and applied their caps. Active jobs went
+  11,261 -> 10,762 by the end of the session and will keep falling as the remaining ~129 stale sources work through
+  (about 19 hours of scheduled runs).
+  **Verify after a day:** Admin > Pipeline health shows Greenhouse runs every ~2h; the by-last-fetch distribution of
+  Greenhouse sources collapses to today/yesterday; broken-link counts for Datadog/N26/Asana fall as their dead jobs
+  expire. Lever (12 sources) is unbatched and fine today.
+  Temporary fire/read diagnostic migrations were applied then deleted, with `migration repair --status reverted`
+  for the applied ones. One slip worth noting: a leftover temp diagnostic file blocked a later push until deleted --
+  delete temp files as soon as they have run.

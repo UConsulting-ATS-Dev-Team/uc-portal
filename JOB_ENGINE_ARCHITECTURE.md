@@ -6206,3 +6206,31 @@ via a temporary diagnostic table (dropped immediately after, verified at
 zero residue -- `PGRST205` on re-query).
 
 Committed and pushed per standing permission for this repo.
+
+## 2026-10-03 -- Greenhouse ingestion was silently stalling; now runs in batches
+
+**Finding.** `fetch-greenhouse-companies` ran once a day with no body, so one invocation had to process every
+Greenhouse company (160). With ~11k active jobs that exceeds the Edge Function resource limit and the run is killed
+after logging only the companies that happened to finish first. Per-source `source_fetch_log` showed 138 of 160
+sources last fetched on 09-09 or 09-16, and only ~1-3 logged per day since. Consequences, all of which looked like
+unrelated problems: jobs that closed on the employer's board were never marked missed (so dead postings stayed
+`active` -- e.g. N26, Datadog), the per-company tier caps were never enforced for stale companies (Datadog sat at
+~360 active against a cap of 10), and the active-job count was inflated (11,261). Lever (12 sources) was unaffected.
+The scheduled calls' own responses can't show this: pg_net times out client-side at 5s, so every scheduled call
+reads as a timeout regardless of outcome. Reproduced the real response by calling the function with a long
+`timeout_milliseconds`: a scoped run for one company (Datadog: 445 fetched, 11 inserted, 7 merged, 282 refreshed,
+351 cap-deactivated) and a 14-company batch (14/14 success, 0.3-2.3 s per company) both complete cleanly.
+
+**Fix.** `fetch-greenhouse-companies` accepts `{ "batch": N }`: it processes the N least-recently-fetched enabled
+companies (`oldest_fetched_sources(platform, limit)`, ordered by newest `source_fetch_log.completed_at`, never-fetched
+first, failures still move to the back) and loads only those companies' active jobs. A body-less call is unchanged.
+Migration `20261004900000` replaces `fetch-greenhouse-companies-daily` (once a day, everything) with
+`fetch-greenhouse-companies-batch`: `17 */2 * * *`, `{"batch": 14}` -- 12 runs x 14 = 168 >= ~161 enabled sources, so each
+company is refreshed about once a day and the "5 consecutive missed fetches" expiry rule keeps meaning ~5 days.
+The backlog (~129 stale sources at the time of the change) clears over roughly 19 hours of scheduled runs.
+Expect the active-job count to fall noticeably as caps and expiry finally apply to those companies.
+
+**Open.** Every Greenhouse failure on record (186) is the same `job_sources` duplicate-key error on bulk insert, last
+seen 09-30; it fits the pg_net duplicate-delivery race that `cron_run_locks` now suppresses, but only two clean days
+back that up. Lever has no batching; at 12 sources it doesn't need it, but it would hit the same wall if it grew to
+the low hundreds. Check Admin > Pipeline health after the first day: Greenhouse should show recent runs every ~2h.

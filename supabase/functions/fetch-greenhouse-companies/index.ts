@@ -361,10 +361,22 @@ Deno.serve(async (req) => {
   // in steady state, since after the one-time backfill each run only does
   // real work for that day's actual new/changed postings, not a full
   // catalog per company.
+  //
+  // Optional { batch: N } processes only the N least-recently-fetched
+  // companies (see oldest_fetched_sources()). Added because the all-at-once
+  // run stopped finishing: with ~160 companies and ~11k active jobs it hit the
+  // Edge Function resource limit and was killed after logging only the few
+  // companies that happened to finish first, so by 2026-10-03 138 of 160
+  // sources had not been fetched in 2-3+ weeks (no expiry, no company caps).
+  // A bounded batch keeps each invocation small, and because it always takes
+  // the stalest companies, repeated runs rotate through everyone. Opt-in: a
+  // body-less call still behaves exactly as before.
   let onlySlug: string | undefined;
+  let batchSize: number | undefined;
   try {
     const body = await req.json();
     onlySlug = body?.slug;
+    if (Number.isInteger(body?.batch) && body.batch > 0) batchSize = body.batch;
   } catch {
     // no body / not JSON -- fine, means "run every configured company"
   }
@@ -373,7 +385,7 @@ Deno.serve(async (req) => {
   // cron_run_locks' migration header. Keyed by slug too (not just
   // "greenhouse"), so a deliberate manual single-company backfill never
   // collides with, or gets suppressed by, the unrelated daily full run.
-  if (!(await claimRunOrSkip(adminClient, `greenhouse:${onlySlug ?? "*"}`))) {
+  if (!(await claimRunOrSkip(adminClient, `greenhouse:${onlySlug ?? (batchSize ? "batch" : "*")}`))) {
     return jsonResponse({ skipped: true, reason: "duplicate invocation suppressed" }, 200);
   }
 
@@ -382,11 +394,31 @@ Deno.serve(async (req) => {
     .select("*")
     .eq("type", "employer_api")
     .eq("config->>platform", "greenhouse");
-  const { data: sources, error: sourcesError } = onlySlug
+  const { data: allSources, error: sourcesError } = onlySlug
     ? await sourcesQuery.eq("config->>slug", onlySlug)
     : await sourcesQuery;
   if (sourcesError) return jsonResponse({ error: sourcesError.message }, 500);
-  if (!sources || sources.length === 0) return jsonResponse({ error: `No Greenhouse sources configured${onlySlug ? ` for slug "${onlySlug}"` : ""}` }, 500);
+  if (!allSources || allSources.length === 0) return jsonResponse({ error: `No Greenhouse sources configured${onlySlug ? ` for slug "${onlySlug}"` : ""}` }, 500);
+
+  let sources = allSources;
+  if (!onlySlug && batchSize) {
+    const { data: staleIds, error: staleError } = await adminClient.rpc("oldest_fetched_sources", {
+      p_platform: "greenhouse",
+      p_limit: batchSize,
+    });
+    // If the ordering lookup fails, fall back to the full set rather than
+    // skipping the run -- same as a body-less call.
+    if (!staleError && Array.isArray(staleIds) && staleIds.length > 0) {
+      const keep = new Set<string>(staleIds as string[]);
+      sources = allSources.filter((s) => keep.has(s.id as string));
+    }
+  }
+  // Only load the active jobs of the companies this run actually handles --
+  // a scoped run (one slug, or a batch) shouldn't pay to load all ~11k.
+  const scopedCompanies =
+    onlySlug || batchSize
+      ? sources.map((s) => s.config?.company as string | undefined).filter((c): c is string => !!c)
+      : null;
 
   // Shared lookups, fetched once and reused across every company -- the
   // per-company scoping happens in memory below, not via N separate
@@ -402,7 +434,9 @@ Deno.serve(async (req) => {
   let rawActiveJobs: Record<string, unknown>[], jobFunctions: Record<string, unknown>[], allJobSourceRows: Record<string, unknown>[], companyTiers: Record<string, unknown>[];
   try {
     [rawActiveJobs, jobFunctions, allJobSourceRows, companyTiers] = await Promise.all([
-      fetchAllRows(adminClient, "jobs", "id, company, title, application_url, remote_type, city, posted_date, salary_min", (q) => q.eq("active", true)),
+      fetchAllRows(adminClient, "jobs", "id, company, title, application_url, remote_type, city, posted_date, salary_min", (q) =>
+        scopedCompanies ? q.eq("active", true).in("company", scopedCompanies) : q.eq("active", true),
+      ),
       fetchAllRows(adminClient, "job_functions", "id, name"),
       fetchAllRows(adminClient, "job_sources", "source_id, job_id, source_job_id", (q) => q.in("source_id", sources.map((s) => s.id))),
       fetchAllRows(adminClient, "company_tiers", "company_name, tier, aliases"),

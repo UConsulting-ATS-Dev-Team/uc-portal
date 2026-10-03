@@ -364,6 +364,10 @@ which are chronological and not rewritten when later work supersedes them.
   secret). `pg_net` delivers each call twice; `cron_run_locks` suppresses the
   duplicate. Health shows on Admin Dashboard's "Pipeline health". Pipeline
   detail lives in [JOB_ENGINE_ARCHITECTURE.md](JOB_ENGINE_ARCHITECTURE.md).
+  Greenhouse runs in batches (`{"batch": 14}` every 2 hours, stalest companies first) because one
+  all-companies run exceeds the Edge Function limit and silently stalled; anything that scales with
+  company count must be batched. A scheduled call always reads as a pg_net timeout, so judge it by
+  `source_fetch_log`, not `net._http_response`.
 - **Repo & deploys:** public at github.com/UConsulting-ATS-Dev-Team/uc-portal
   (history was rewritten once to scrub real PII). The frontend deploys to
   Vercel on push to `master`. Backend changes are separate steps:
