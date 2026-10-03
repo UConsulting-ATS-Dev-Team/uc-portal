@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useLibrary } from "../data/useLibrary.js";
-import { JOBS as MOCK_JOBS } from "../data/mockJobs.js";
 import { useAppState } from "../data/store.jsx";
 import { useRealJobs } from "../data/useRealJobs.js";
 import { currentUser } from "../data/mockUser.js";
@@ -35,7 +34,7 @@ export default function LearningTrackDetail() {
   const currentStep = track.steps[completed];
 
   const tiedApplications = Object.entries(trackedJobs)
-    .map(([jobId, info]) => ({ job: realJobs.find((j) => j.id === jobId) || MOCK_JOBS.find((j) => j.id === jobId), stage: info.stage }))
+    .map(([jobId, info]) => ({ job: realJobs.find((j) => j.id === jobId), stage: info.stage }))
     .filter((e) => e.job && e.job.industry === "Management consulting")
     .slice(0, 3);
 

@@ -1,28 +1,17 @@
-import { JOBS } from "./mockJobs.js";
 import { COMPANIES } from "./mockCompanies.js";
 
 function matches(text, q) {
   return text && text.toLowerCase().includes(q);
 }
 
-// Simple substring search across each mock dataset's obvious display
-// fields. Good enough at this data scale; a real backend would swap this
-// for a proper index (see JOB_ENGINE_ARCHITECTURE.md's search section for
-// the job-side version of that same tradeoff). jobs/people/companies
-// results here are dead weight in practice -- pages/GlobalSearch.jsx
-// fully replaces them with real ones (data/jobSearch.js, data/
-// realPeople.js, data/realCompanies.js) -- kept computed rather than
-// removed since nothing here is expensive at this data scale and no
-// caller has been audited to confirm it never reads the mock fallback.
-// Feed posts no longer come from here at all (data/feedSync.js's
-// searchFeedPosts replaces it, same as the other three) -- resources is
-// the one category still genuinely sourced from here.
+// Substring search over the 8 hand-curated companies (data/mockCompanies.js)
+// only -- jobs, people, real companies, feed posts and library resources are
+// all searched from their real tables by pages/GlobalSearch.jsx itself.
 export function searchAll(query) {
   const q = query.trim().toLowerCase();
-  if (!q) return { jobs: [], companies: [] };
+  if (!q) return { companies: [] };
 
   return {
-    jobs: JOBS.filter((j) => matches(j.role, q) || matches(j.company, q) || matches(j.industry, q)),
     companies: COMPANIES.filter((c) => matches(c.name, q) || matches(c.industry, q)),
   };
 }

@@ -21,11 +21,13 @@ deadlines), **networking** (alumni directory, coffee chats, messages), and
 Every job/company/resource is annotated with UC's own private data — that
 annotation is the product's differentiator.
 
-This is a **clickable prototype**: no real backend, no real auth, no real
-user data. Interactions (drag-and-drop tracker, live odds recompute, live
-onboarding match counts, filters) should work against mock/in-memory data
-so the flows feel real when clicked through, but nothing here is
-production-secure or persistent beyond the browser session.
+**Current reality (2026-10-03):** this started as a clickable prototype but
+is now a real, deployed app on a real Supabase backend (Postgres + RLS, Auth,
+Storage, Edge Functions, pg_cron) with real sign-in, a real roster gate, and
+real member data. The "Progress" log below is a chronological history -- early
+entries describe a mock-data prototype and name files that no longer exist;
+see "Current state" at the top of Progress for what to trust. Real member data
+is never committed to git (see the history-rewrite entry).
 
 ## Source
 
@@ -278,41 +280,69 @@ UConsulting Drive > Committees > Marketing > Branding, accessed read-only).
    change stage on a phone from any view. See "Gesture nav, scoped and
    built" below. Broader gesture patterns (swipe-between-tabs,
    pull-to-refresh, swipe-to-delete) remain genuinely unscoped.
-2. **People avatars** — **Correction, 2026-09-15**: real profile photos
-   now exist (see the dated Progress entry below) — both a real
-   self-upload path and, for current members, real headshots imported
-   from the club's own public team page. `mockPeople.js`'s 13 fictional
-   entries still stay text-initials, intentionally (no real person, no
-   real photo to use). What's still genuinely text-initials for a real
-   person: any real current member neither on the team page nor
-   self-uploaded yet, and every real alumnus (the team page only ever
-   covers current members).
+2. **People avatars** — real profile photos exist (self-upload, plus real
+   headshots imported for current members from the club's public team
+   page). Still text-initials: any real person with no photo yet, notably
+   every real alumnus (the team page only covers current members). The
+   fictional mock people are gone entirely.
 
 ## Stack
 
-**React (Vite + React Router), no backend.** Chosen over plain HTML/JS
-once the true scope (24 screens, heavy shared chrome — nav shell, job/
-person/resource cards, chips, modals — plus state that must stay in sync
-across pages: tracker stage across Board/Table/Timeline, saved jobs,
-odds-model inputs, notification counts) became clear from the wireframe
-handoff. Component reuse and a shared in-memory/localStorage mock-data
-layer avoid re-duplicating markup and hand-wiring state across ~24 static
-files.
+**React (Vite + React Router) on a real Supabase backend.** Chosen over plain
+HTML/JS once the true scope (24 screens, heavy shared chrome — nav shell,
+job/person/resource cards, chips, modals — plus state that must stay in sync
+across pages) became clear from the wireframe handoff. Shared app state lives
+in `data/store.jsx` (React Context, cached in `localStorage` and synced to
+Supabase per slice); data access lives in `data/*Sync.js` modules; the job
+ingestion pipeline runs as scheduled Edge Functions (see
+`JOB_ENGINE_ARCHITECTURE.md`).
 
 Structure:
 - `index.html` / `main.jsx` / `App.jsx` — entry point + router setup
-- `pages/` — one component per route/screen (e.g. `Jobs.jsx`, `JobDetail.jsx`)
+- `pages/` — one component per route/screen (e.g. `Jobs.jsx`, `RealJobDetail.jsx`)
 - `components/` — shared UI (nav shell, cards, chips, modals, stat strips)
-- `styles/tokens.css` — design tokens pulled from the wireframe handoff
+- `styles/tokens.css` — design tokens (light + dark)
 - `styles/global.css` — base reset/typography
-- `assets/` — icons, placeholder logos, etc.
-- `data/` — mock data modules (starting with `mockUser.js`: current user,
-  nav counts, club stats) — no backend, no real auth.
+- `assets/` — icons, logos
+- `data/` — data modules: `*Sync.js` (Supabase access), `store.jsx`, pure
+  helpers, and the few remaining static modules (`mockCompanies.js`,
+  `mockUser.js`, `mockAdmin.js`, `certifications.js`, `careerOptions.js`)
+- `supabase/migrations/` — schema; `supabase/functions/` — Edge Functions
 
 ## Progress
 
 See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the full build checklist and
 priorities (P1/P2/P3) — kept in sync with this section as we go.
+
+### Current state (2026-10-03) — read this before trusting older entries
+
+Entries below are chronological and are not rewritten when later work
+supersedes them. What has changed since the early ones:
+
+- **Gone entirely** (do not look for them): `data/mockJobs.js`,
+  `data/mockPeople.js`, `data/peopleUtils.js`, `data/mockResources.js`,
+  `data/mockFeed.js`, `data/mockMessages.js`, `data/oddsModel.js` (the mock
+  odds model), `data/companyUtils.js`, `pages/JobDetail.jsx`. Every job,
+  person, resource, feed post and message in the app is real.
+- **Still static on purpose:** the 8 hand-curated companies in
+  `data/mockCompanies.js` (Bain, McKinsey, BCG, Deloitte, Stripe, Goldman,
+  EY-Parthenon, Accenture) — several don't post on the public job boards the
+  pipeline ingests, so they'd otherwise have no page. Their numbers are all
+  computed from real data; only the descriptions are hand-written. Also
+  `data/certifications.js` (real third-party free courses) and
+  `data/careerOptions.js` (option lists only, no counts).
+- **Career Resources** is a real admin-managed library (`library_resources`,
+  `learning_tracks`, edited at `/admin/library`), not the old static list.
+- **Applications tracker** resolves tracked jobs against real jobs or manual
+  entries only; "Add application" never offers a fictional job.
+- **Messaging** works between accounts; a message to a directory person with
+  no account waits in `pending_messages` and is delivered on signup.
+- **Working agreements:** real member data is never committed to git; real
+  migrations are applied with `supabase db push` by the user (the cloud
+  session has no Supabase credentials, so cloud-session work can build and
+  type-check but cannot apply migrations or test against the live database);
+  most recent changes have been verified by `vite build` only, not in a live
+  authenticated browser.
 
 - **Shell built** — `components/NavShell.jsx` (+ `TopBar.jsx`, `NavRail.jsx`)
   implements the nav shell spec above and wraps every route in `App.jsx`.
@@ -5055,7 +5085,9 @@ longer breaks down to phone width either.
   - **Real Career Resources library**: `data/mockResources.js` is deleted. `library_resources` / `learning_tracks` tables (migration `20261003100000`), read by `data/useLibrary.js`, managed on the new admin page `/admin/library` (`pages/AdminLibrary.jsx`). All fabricated stats (views, completions, outcome claims, fake workshop dates, seeded progress) are gone; one starter track is built from real free courses. Certifications live in `data/certifications.js`. A resource's uploaded file (`resource_guide_files`) no longer falls back to the shared placeholder PDF.
   - **Onboarding numbers are real** (`data/onboardingStats.js`): matched roles, alumni, and 30-day deadlines come from live jobs and the real directory; the invented `computeMatches` formula and made-up member/alumni/open-role counts in `data/careerOptions.js` are removed.
   - **Pending messages** (migration `20261003200000`): a "Message" to a directory person with no account is stored in `pending_messages` (visible only to the sender, max 5 per recipient) and delivered into `messages`, with its original timestamp, by `handle_new_user()` when an account is created for that person's email. Messages.jsx shows these as "Waiting for them to join" with a Cancel link. A person with no email on file can't be messaged.
-  - Not click-tested in a live browser this pass (no authenticated test account available in the cloud session); verified with clean `vite build`s. Both new migrations must be applied with `supabase db push`.
+  - **Mock job layer removed** (PR #5): `data/mockJobs.js` and the mock odds model are deleted. Real leak closed: Add Application's "From a UC posting" search was still offering the 8 fictional demo jobs, so a member could add a fake job to their real tracker. Every tracked-job lookup (Home, Applications, Notifications, Career Resources, resource/track detail, Log prep, notificationUtils) now resolves real jobs or manual entries only; the dead seeded-demo badges, Feed's embedded mock job card, and the generated job copy/fake interview write-ups in `data/jobUtils.js` are gone. The 8 mock companies were deliberately kept. A member whose tracker still held an old demo job id from early testing would no longer see that row (it would still count in the nav badge); not checked against real data.
+  - **Messages option A: pre-created alumni accounts, no emails** (migration `20261003300000_alumni_account_support.sql`, Edge Function `pre-provision-accounts` (extended), `components/admin/AccountSetupPanel.jsx` on Admin > Members, `data/accountSetupSync.js`). `pre-provision-accounts` now takes `{ audience: "roster" | "alumni" | "all" }`; "alumni" creates an account (no email sent) for every directory person with status Alumni and an email, so a Message to any alumnus reaches a real account and waits for them. "Unclaimed" = an account that has never signed in (`last_sign_in_at is null`); `list_unclaimed_accounts()` lists them for admins. **Deliberate product decision: the app never emails anyone to claim an account** -- people who aren't expecting an email may treat it as spam. A person claims theirs with "Forgot your password?" on their own, or an admin tells them directly (Account setup has a "Copy invite message" button). A "send claim emails" Edge Function was built and then removed the same day for this reason; don't re-add bulk claim emails without asking. Also: `list_messageable_members()` now prefers the real directory name (pre-created accounts have no `full_name`), the New-conversation picker got a search box and A-Z order, `member_engagement_report()` excludes alumni (so ~150 unclaimed alumni don't swamp the nudge list), `weekly-digest` skips never-signed-in accounts, and Admin > Members got a search box. Deploying needs `supabase db push` plus `supabase functions deploy pre-provision-accounts weekly-digest`. Verified by `vite build` only -- no live run of the new migration/functions from the cloud session.
+  - Not click-tested in a live browser this pass (no authenticated test account available in the cloud session); verified with clean `vite build`s. Migrations `20261003100000`, `20261003200000`, `20261003300000` must be applied with `supabase db push`, and `pre-provision-accounts` + `weekly-digest` redeployed.
 
 Run locally:
 ```bash

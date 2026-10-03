@@ -110,6 +110,15 @@ Deno.serve(async (req) => {
   const results: { profileId: string; skipped: boolean; reason?: string }[] = [];
 
   for (const member of members ?? []) {
+    // Pre-created accounts nobody has claimed yet (never signed in) have
+    // no one to read a digest -- skip them rather than writing hundreds of
+    // rows for people who can't see them.
+    const { data: userRes } = await adminClient.auth.admin.getUserById(member.id);
+    if (!userRes?.user?.last_sign_in_at) {
+      results.push({ profileId: member.id, skipped: true, reason: "unclaimed_account" });
+      continue;
+    }
+
     const { data: prefs } = await adminClient
       .from("member_preferences")
       .select("industries, followed_companies, reminders_enabled")

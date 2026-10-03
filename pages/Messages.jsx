@@ -128,6 +128,7 @@ export default function Messages() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [showNewPicker, setShowNewPicker] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState("");
   const [messageable, setMessageable] = useState([]);
   const [mobileView, setMobileView] = useState("list");
   const [avatarsById, setAvatarsById] = useState(new Map());
@@ -266,6 +267,7 @@ export default function Messages() {
   function openNewPicker() {
     setError(null);
     listMessageableMembers().then(setMessageable).catch((err) => setError(err.message));
+    setPickerSearch("");
     setShowNewPicker(true);
   }
 
@@ -521,7 +523,19 @@ export default function Messages() {
       {showNewPicker && (
         <Modal title="New conversation" onClose={() => setShowNewPicker(false)} width={420}>
           {messageable.length === 0 && <p className="meta">No other real UC Portal accounts exist yet to message.</p>}
-          {messageable.map((m) => (
+          {messageable.length > 8 && (
+            <input
+              type="text"
+              placeholder="Search by name"
+              value={pickerSearch}
+              onChange={(e) => setPickerSearch(e.target.value)}
+              style={{ width: "100%", marginBottom: "var(--space-3)" }}
+            />
+          )}
+          {messageable
+            .filter((m) => !pickerSearch.trim() || m.display_name.toLowerCase().includes(pickerSearch.trim().toLowerCase()))
+            .sort((a, b) => a.display_name.localeCompare(b.display_name))
+            .map((m) => (
             <button
               key={m.member_id}
               className="conversation-row"
