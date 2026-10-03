@@ -6234,3 +6234,35 @@ Expect the active-job count to fall noticeably as caps and expiry finally apply 
 seen 09-30; it fits the pg_net duplicate-delivery race that `cron_run_locks` now suppresses, but only two clean days
 back that up. Lever has no batching; at 12 sources it doesn't need it, but it would hit the same wall if it grew to
 the low hundreds. Check Admin > Pipeline health after the first day: Greenhouse should show recent runs every ~2h.
+
+### Addendum, 2026-10-03: orphaned job rows (found while tracing broken links) -- NOT yet cleaned up
+
+**Finding.** 5,317 of 10,762 active jobs (49%) have no `job_sources` row, against 5,445 properly tracked ones.
+Expiry (`mark_jobs_missed`) and the per-company caps both act only on tracked jobs, so these never expire and are
+never capped. Classified by joining on `application_url`:
+- 2,482 are **zombies**: their tracked twin is inactive (capped or expired) while the orphan stays active, so they
+  bypass the caps -- Stripe 420, Carvana 389, Toast 339, SpaceX 236, Anthropic 216, MongoDB 216, Third Bridge 201...
+- 1,115 are **live duplicates** of an active tracked job (the same posting shown twice).
+- 1,720 have **no twin**, and every one belongs to a company that has an enabled source.
+- 3,076 haven't been seen in over 14 days; only 462 in the last 3.
+- 31 of them are among the broken-link flags (N26, Coursera, HelloFresh, MongoDB, Cloudflare...).
+
+**Cause.** The fetchers write a run's new `jobs` rows first and its `job_sources` rows second, as two separate
+requests. Anything that stops a run between them leaves jobs with no source row, and the next run -- which finds
+existing jobs *through* `job_sources` -- treats them as new and inserts them again. Two things did that: the pg_net
+duplicate-delivery race (the second run's `job_sources` insert fails with a duplicate key; now suppressed by
+`cron_run_locks`), and the all-at-once run being killed by the Edge Function resource limit (the orphans created at
+exactly 13:17 on 09-30, 10-01 and 10-02 -- 308, 11 and 143 -- come from the daily run dying mid-flight, with no failure
+logged because a killed run logs nothing). The batching change above should stop the second cause; neither is
+confirmed gone until a few days of scheduled batches have run.
+
+**Proposed, not done (it would change what members see by roughly a third of the board):**
+1. Make the two inserts atomic (a single RPC that inserts jobs and job_sources in one transaction) in the Greenhouse,
+   Lever and Deloitte fetchers, so a partial run can't leave orphans.
+2. Clean up existing orphans, reversibly (copy ids and prior state to a backup table first): deactivate the 1,115
+   duplicates and the 2,482 zombies; re-adopt the 1,720 no-twin orphans by creating their `job_sources` row from the
+   `gh_jid` in their URL, so the normal expiry and cap logic applies to them from then on.
+
+**Related, smaller:** GSA Capital's own wrapper URLs 404 (even in a browser) for jobs Greenhouse's API lists as live,
+so their broken flags are correct. Greenhouse's embed URL (`job-boards.greenhouse.io/embed/job_app?for=<slug>&token=<id>`)
+returns a working application page for the same jobs and could serve as a fallback apply link.

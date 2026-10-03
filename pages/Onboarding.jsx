@@ -349,7 +349,6 @@ function StepTimeline({ preferences, onSetCycle, onToggleHelp, onToggleFlag }) {
 
 function Completion({ preferences, profileOverrides, stats, firstTrackTitle, onFinish }) {
   const { accountEmail } = useAppState();
-  const featuredIndustry = preferences.industries[0] || "your target industry";
   // First name only, for a greeting -- displayName() gives the full name
   // (real override, else the account email's local part), same as every other
   // avatar in the app reads through, but "You're set up, Test Account"
@@ -382,7 +381,7 @@ function Completion({ preferences, profileOverrides, stats, firstTrackTitle, onF
 
       <ul className="completion__actions">
         {stats.deadlines > 0 && <li>You have {stats.deadlines} matched deadlines coming up — worth a look this week.</li>}
-        {stats.alumni > 0 && <li>Meet a UC alum in {featuredIndustry} — {stats.alumni} are one message away.</li>}
+        {stats.alumni > 0 && <li>Meet a UC alum who shares your industries, locations or target companies — {stats.alumni} {stats.alumni === 1 ? "is" : "are"} one message away.</li>}
         <li>{firstTrackTitle ? `Start the ${firstTrackTitle} track in Career Resources.` : "Browse the guides and tracks in Career Resources."}</li>
       </ul>
 

@@ -368,6 +368,9 @@ which are chronological and not rewritten when later work supersedes them.
   all-companies run exceeds the Edge Function limit and silently stalled; anything that scales with
   company count must be batched. A scheduled call always reads as a pg_net timeout, so judge it by
   `source_fetch_log`, not `net._http_response`.
+- **Known open issue -- orphaned jobs:** ~5,300 of ~10,800 active jobs have no `job_sources` row, so they never
+  expire and bypass the company caps (details and the proposed fix in JOB_ENGINE_ARCHITECTURE.md's 2026-10-03
+  addendum). Not cleaned up yet; don't assume the active-job count is trustworthy until it is.
 - **Repo & deploys:** public at github.com/UConsulting-ATS-Dev-Team/uc-portal
   (history was rewritten once to scrub real PII). The frontend deploys to
   Vercel on push to `master`. Backend changes are separate steps:
@@ -460,6 +463,10 @@ which are chronological and not rewritten when later work supersedes them.
   `DELETE ... RETURNING`). Any bucket an admin deletes from needs an admin SELECT policy, not just DELETE.
 - Fixed-position UI (tour tooltip, top bar) must size against `document.documentElement.clientWidth`, not
   `window.innerWidth`; check phone layouts as an admin too, whose top bar carries extra items.
+- Delete a temporary migration file the moment it has run: a leftover failing diagnostic blocks every later
+  `db push`. In the test browser, clear localStorage after deleting a throwaway account -- its stale session
+  produces 409/403 console noise that looks like an app bug. Match buttons by exact label in test scripts
+  (a loose `/finish/i` also matches "Save & finish later").
 - `check-job-links` is sensitive to invocation frequency (past false-positive
   bursts); don't invoke it repeatedly by hand.
 

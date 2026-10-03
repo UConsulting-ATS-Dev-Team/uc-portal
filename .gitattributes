@@ -1,0 +1,3 @@
+# PROGRESS_LOG.md is append-only history that both local and cloud sessions add to at the
+# end. A union merge keeps both sides instead of raising a conflict on every concurrent append.
+PROGRESS_LOG.md merge=union

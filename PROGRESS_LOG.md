@@ -4865,3 +4865,30 @@ longer breaks down to phone width either.
   Temporary fire/read diagnostic migrations were applied then deleted, with `migration repair --status reverted`
   for the applied ones. One slip worth noting: a leftover temp diagnostic file blocked a later push until deleted --
   delete temp files as soon as they have run.
+
+- **2026-10-03: items 5-11 follow-up (broken-link groups, orphaned jobs, Lever batching, onboarding/Network checks)** --
+  **Broken-link groups.** AlphaSights (71) needs no action: their site 403s the checker, so those jobs correctly stay
+  `unchecked` rather than `broken`. The long tail is mostly Greenhouse companies the pipeline hadn't re-fetched (they
+  resolve as batches run and dead jobs expire); the remainder splits into genuine employer-side dead links and
+  **orphaned job rows** -- see `JOB_ENGINE_ARCHITECTURE.md`'s addendum: 5,317 of 10,762 active jobs have no
+  `job_sources` row (2,482 zombies past their caps, 1,115 live duplicates, 1,720 no-twin), created when a run is
+  stopped between its `jobs` insert and its `job_sources` insert. Cleanup deliberately NOT done -- it changes about a
+  third of the live board; the proposal is written up there and is waiting on a decision. Also: GSA Capital's own
+  apply URLs 404 even in a browser while Greenhouse's embed URL works.
+  **Lever batching (item 8):** `fetch-lever-companies` now accepts `{ "batch": N }` exactly like Greenhouse (deployed;
+  verified with a 2-company batch). Not scheduled -- 12 sources finish easily; the cron is unchanged.
+  **Verified live (item 7):** Network's grad-year sort with three synthetic people (newest: 2029, 2024; oldest: 2024,
+  2029; unknown always last; the filter lists the real years). Onboarding's real numbers match direct database counts
+  (Boston: 2 alumni; Management consulting: 0; BCG: 10 alumni / 0 open roles). Fixed one inaccurate line on the
+  completion screen: it said "Meet a UC alum in <industry>" even when the alumni matched on location or company.
+  **Console noise (item 9):** 0 broken images across 53 on Network. The `409`/`403`/connection-refused lines appear in
+  a browser profile still holding a session for a throwaway account that had been deleted (its token's user no longer
+  exists, so writes hit the foreign key); fresh sign-ins in a clean profile produce only 2xx. One earlier run where
+  onboarding completion didn't reach the database could not be reproduced in clean state (the following runs wrote
+  `PATCH profiles` correctly and a cleared-storage sign-in landed on Home) -- unexplained, but it happened only in that
+  polluted profile.
+  **Housekeeping (items 10-11):** dropped the superseded stash (saved first as a patch outside the repo); added
+  `.gitattributes` with `PROGRESS_LOG.md merge=union` so concurrent appends from local and cloud sessions merge without
+  a conflict (proved in a scratch repo). No other remote branches exist.
+  **Not done:** item 6 (a real browser sign-up) -- it sends a confirmation email and needs a real inbox; the first
+  scheduled Greenhouse batch hadn't fired yet (first run 04:17 UTC), so the backlog check is still open.

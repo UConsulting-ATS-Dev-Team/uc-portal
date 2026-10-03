@@ -377,10 +377,19 @@ Deno.serve(async (req) => {
   // Optional { slug } body scopes this run to one company -- same
   // controlled-backfill escape hatch as fetch-greenhouse-companies. The
   // daily cron omits this and processes every configured Lever company.
+  //
+  // Optional { batch: N } processes only the N least-recently-fetched
+  // companies, same as fetch-greenhouse-companies (see its header for why:
+  // an all-companies run stopped finishing there at ~160 companies, and a run
+  // killed between its jobs insert and its job_sources insert leaves orphaned
+  // jobs behind). Not scheduled for Lever today -- 12 sources finish easily --
+  // but the same wall is waiting if this ever grows to the low hundreds.
   let onlySlug: string | undefined;
+  let batchSize: number | undefined;
   try {
     const body = await req.json();
     onlySlug = body?.slug;
+    if (Number.isInteger(body?.batch) && body.batch > 0) batchSize = body.batch;
   } catch {
     // no body / not JSON -- fine, means "run every configured company"
   }
@@ -389,7 +398,7 @@ Deno.serve(async (req) => {
   // cron_run_locks' migration header. Keyed by slug too (not just
   // "lever"), so a deliberate manual single-company backfill never
   // collides with, or gets suppressed by, the unrelated daily full run.
-  if (!(await claimRunOrSkip(adminClient, `lever:${onlySlug ?? "*"}`))) {
+  if (!(await claimRunOrSkip(adminClient, `lever:${onlySlug ?? (batchSize ? "batch" : "*")}`))) {
     return jsonResponse({ skipped: true, reason: "duplicate invocation suppressed" }, 200);
   }
 
@@ -398,11 +407,30 @@ Deno.serve(async (req) => {
     .select("*")
     .eq("type", "employer_api")
     .eq("config->>platform", "lever");
-  const { data: sources, error: sourcesError } = onlySlug
+  const { data: allSources, error: sourcesError } = onlySlug
     ? await sourcesQuery.eq("config->>slug", onlySlug)
     : await sourcesQuery;
   if (sourcesError) return jsonResponse({ error: sourcesError.message }, 500);
-  if (!sources || sources.length === 0) return jsonResponse({ error: `No Lever sources configured${onlySlug ? ` for slug "${onlySlug}"` : ""}` }, 500);
+  if (!allSources || allSources.length === 0) return jsonResponse({ error: `No Lever sources configured${onlySlug ? ` for slug "${onlySlug}"` : ""}` }, 500);
+
+  let sources = allSources;
+  if (!onlySlug && batchSize) {
+    const { data: staleIds, error: staleError } = await adminClient.rpc("oldest_fetched_sources", {
+      p_platform: "lever",
+      p_limit: batchSize,
+    });
+    // If the ordering lookup fails, fall back to the full set rather than
+    // skipping the run -- same as a body-less call.
+    if (!staleError && Array.isArray(staleIds) && staleIds.length > 0) {
+      const keep = new Set<string>(staleIds as string[]);
+      sources = allSources.filter((s) => keep.has(s.id as string));
+    }
+  }
+  // A scoped run (one slug, or a batch) only loads its own companies' jobs.
+  const scopedCompanies =
+    onlySlug || batchSize
+      ? sources.map((s) => s.config?.company as string | undefined).filter((c): c is string => !!c)
+      : null;
 
   // Shared lookups, fetched once and reused across every company -- same
   // pagination-safe fetchAllRows() as fetch-greenhouse-companies (a plain
@@ -410,7 +438,9 @@ Deno.serve(async (req) => {
   let rawActiveJobs: Record<string, unknown>[], jobFunctions: Record<string, unknown>[], allJobSourceRows: Record<string, unknown>[], companyTiers: Record<string, unknown>[];
   try {
     [rawActiveJobs, jobFunctions, allJobSourceRows, companyTiers] = await Promise.all([
-      fetchAllRows(adminClient, "jobs", "id, company, title, application_url, remote_type, city, posted_date, salary_min", (q) => q.eq("active", true)),
+      fetchAllRows(adminClient, "jobs", "id, company, title, application_url, remote_type, city, posted_date, salary_min", (q) =>
+        scopedCompanies ? q.eq("active", true).in("company", scopedCompanies) : q.eq("active", true),
+      ),
       fetchAllRows(adminClient, "job_functions", "id, name"),
       fetchAllRows(adminClient, "job_sources", "source_id, job_id, source_job_id", (q) => q.in("source_id", sources.map((s) => s.id))),
       fetchAllRows(adminClient, "company_tiers", "company_name, tier, aliases"),
