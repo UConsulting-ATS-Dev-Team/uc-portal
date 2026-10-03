@@ -4909,3 +4909,41 @@ longer breaks down to phone width either.
   `active` jobs, so a tracked or saved job that later expires or is capped would seem to vanish from a member's list instead of
   showing as closed (not verified end to end); Amplitude's Greenhouse board now 404s, so that source should be disabled.
   Temporary diagnostics were deleted as they ran; applied temp migrations repaired with `migration repair --status reverted`.
+
+- **2026-10-03: the four open items from the orphan cleanup -- tracker/saved-list closure bug fixed, Lever parsing validated, Amplitude disabled, schedule checked** --
+  **(1) Lever re-adoption (validated, not exercised):** no Lever orphans existed, so the branch itself never ran, but its URL
+  parsing was checked against every real tracked job: Greenhouse matches the stored `source_job_id` for 13,947 of 14,223
+  (98.1%) and Lever for 687 of 693 (99.1%); the mismatches are merged duplicates (a job row that carries a second source's
+  id), not parse errors.
+  **(2) Closed tracked/saved jobs vanishing -- confirmed and fixed.** It was worse than the code suggested: the only
+  member-facing SELECT policy on `jobs` was "active rows only", so a job a member had tracked or saved became unreadable at
+  the database the moment it closed, and even `/jobs/<id>` returned not-found. Fix, in three layers: migration
+  `20261006400000` adds `jobs_select_own_tracked_or_saved` (a member can also read an inactive job if it is in their OWN
+  `tracked_applications` or `saved_jobs`; every other inactive job stays hidden); `realJobToCardShape` gets a `closed` flag and
+  new `fetchJobsByIds()`; `useRealJobs` now returns `realJobs` (open only -- recommendations, new matches, deadlines) and
+  `allKnownJobs` (also the member's closed ones), used wherever a member's own jobs are resolved (Applications, Home, Career
+  Resources, Learning Track, Resource detail, Log-prep modal, Notifications, Jobs' Saved tab). Closed jobs are labeled
+  ("Posting closed" on the board, table and timeline; a chip and "View" on saved cards; the existing "No longer active" chip
+  on the detail page) and excluded from deadline reminders and the "this week" rail, while the prep reminder for an
+  interview-stage application is kept (interviews outlast postings). Applications and Home now use the shared hook instead
+  of their own copies of the loader. Verified live as a plain member with one closed job tracked and a different one saved:
+  all three tracker views show it as closed, the Saved tab shows it with the chip and a correct count, the detail page loads,
+  Notifications keeps the prep reminder and raises no deadline, and the member can read exactly those two of ~13,500 closed
+  jobs (a policy test with real role impersonation agrees: the owner sees 1, another member 0, saving grants access).
+  **(3) Amplitude:** the only dead board of 171 enabled Greenhouse/Lever sources (probed all of them); migration
+  `20261006200000` disables the source and expires its 16 jobs (every link redirects to an error page).
+  **(4) Schedule:** at the last check (04:02 UTC) the first `fetch-greenhouse-companies-batch` run was still ~15 minutes away
+  (`17 */2 * * *`), so the backlog (about 125 stale sources) hadn't started draining yet; active jobs 6,711, 0 orphans, 63 broken.
+  **Console noise, corrected:** earlier entries blamed a stale session for the 409/403/connection-refused lines. With a logger
+  injected into `index.html` before the app loads (temporary, removed), a clean sign-in, login, reload and a walk through nine
+  pages as a member produced zero failed fetch/XHR/element loads and the console did not grow. The errors come from a page
+  that is still running after the account it is signed in as has been deleted underneath it (background token refresh and
+  preference sync against a user that no longer exists) -- an artifact of throwaway-account testing, not of normal use.
+  **New, found while testing, NOT fixed:** state is hydrated once when the app first mounts (`AppStateProvider`), so a member
+  who signs in without a page reload -- the normal first-time path on a new device -- gets empty tracked jobs, saved jobs and
+  preferences until they reload (reproduced: Home showed the empty first-login state after sign-in, and the closed job
+  appeared after a reload). Worse, the sync effects only need `hydratedFromRemote` (already true from the signed-out mount),
+  so a preference change made before that reload would write the empty local state over the real remote row. The same
+  "hydration happens once at mount" root cause is already noted for onboarding routing. Proposed fix: re-run hydration on a
+  SIGNED_IN auth event and hold the sync effects until it completes.
+  Throwaway member removed; `roster_total=53 people_total=209`.

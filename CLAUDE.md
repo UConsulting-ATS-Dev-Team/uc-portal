@@ -373,6 +373,15 @@ which are chronological and not rewritten when later work supersedes them.
   (about half the active board). New jobs and their sources now go in together via `insert_jobs_with_sources()`,
   and the existing orphans were cleaned up reversibly (`orphan_cleanup_backup`, `revert_orphan_cleanup()`).
   Detail in JOB_ENGINE_ARCHITECTURE.md's 2026-10-03 addendum.
+- **Closed jobs a member tracked or saved stay visible.** `jobs` is otherwise readable by members only while `active`;
+  the `jobs_select_own_tracked_or_saved` policy also lets a member read an inactive job that is in their OWN tracker or
+  saved list. `useRealJobs` returns `realJobs` (open postings only: recommendations, new matches, deadlines) and
+  `allKnownJobs` (also the member's closed ones: use it to RESOLVE their own ids). Closed jobs carry `closed: true` and
+  render as "Posting closed". Never use `realJobs.find(id)` to resolve a tracked or saved job.
+- **Known open issue -- hydration happens once:** `AppStateProvider` loads remote state (tracked jobs, saved jobs,
+  preferences, network) only when it first mounts, so a member who signs in without a page reload sees empty state until
+  they reload, and a preference change before that reload would overwrite the real remote row with empty local state.
+  Fix not yet built: re-hydrate on a SIGNED_IN auth event and hold the sync effects until it finishes.
 - **Repo & deploys:** public at github.com/UConsulting-ATS-Dev-Team/uc-portal
   (history was rewritten once to scrub real PII). The frontend deploys to
   Vercel on push to `master`. Backend changes are separate steps:
@@ -471,6 +480,12 @@ which are chronological and not rewritten when later work supersedes them.
   (a loose `/finish/i` also matches "Save & finish later").
 - Never write a job and its `job_sources` row as two separate requests: use `insert_jobs_with_sources()`. A run
   interrupted between them leaves an orphan the pipeline can no longer see, expire or cap.
+- 409/403/"connection refused" lines in the test browser's console are usually a page still running after its
+  throwaway account was deleted in the database (token refresh and syncs against a user that no longer exists). To check
+  whether the app itself fails, load it from a clean state; a temporary logger in `index.html` that records failed
+  `fetch`/XHR/element loads from the first instant is the reliable way (remove it afterward).
+- Test member-visible access as a plain member, never an admin: admins read every row, so an admin session proves
+  nothing about RLS meant for members.
 - `check-job-links` is sensitive to invocation frequency (past false-positive
   bursts); don't invoke it repeatedly by hand.
 

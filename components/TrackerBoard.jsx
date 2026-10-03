@@ -189,6 +189,8 @@ export default function TrackerBoard({ applications, onMoveStage, onRequestOutco
                             ? `${outcomeLabel(outcome)} — ${rejectionStageLabel(rejectionStage)}`
                             : outcomeLabel(outcome)
                           : "Closed"
+                        : job.closed
+                        ? "Posting closed"
                         : job.rolling
                         ? "Rolling deadline"
                         : deadlineLabel(job)}

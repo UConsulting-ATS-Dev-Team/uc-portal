@@ -23,7 +23,7 @@ export default function LearningTrackDetail() {
   // return, per Rules of Hooks.
   const classYear = resolvedClassYear(currentUser, profileOverrides);
   const gradMonth = resolvedGradMonth(currentUser, profileOverrides);
-  const { realJobs } = useRealJobs(preferences, classYear, gradMonth);
+  const { allKnownJobs } = useRealJobs(preferences, classYear, gradMonth, true, Object.keys(trackedJobs));
 
   if (!track) {
     return <Placeholder title={libraryLoading ? "Loading…" : "Learning track not found"} />;
@@ -34,7 +34,7 @@ export default function LearningTrackDetail() {
   const currentStep = track.steps[completed];
 
   const tiedApplications = Object.entries(trackedJobs)
-    .map(([jobId, info]) => ({ job: realJobs.find((j) => j.id === jobId), stage: info.stage }))
+    .map(([jobId, info]) => ({ job: allKnownJobs.find((j) => j.id === jobId), stage: info.stage }))
     .filter((e) => e.job && e.job.industry === "Management consulting")
     .slice(0, 3);
 

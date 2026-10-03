@@ -20,13 +20,15 @@ export default function LogPrepModal({ job, onClose, computeOddsFn }) {
   const { trackedJobs, prepLogged, logPrep, preferences, profileOverrides } = useAppState();
   const classYear = resolvedClassYear(currentUser, profileOverrides);
   const gradMonth = resolvedGradMonth(currentUser, profileOverrides);
-  const { realJobs } = useRealJobs(preferences, classYear, gradMonth);
+  // allKnownJobs so prep can still be logged for an application whose posting
+  // has closed (interviews often continue after the employer takes it down).
+  const { allKnownJobs } = useRealJobs(preferences, classYear, gradMonth, true, Object.keys(trackedJobs));
   const trackedList = useMemo(
     () =>
       Object.keys(trackedJobs)
-        .map((id) => realJobs.find((j) => j.id === id))
+        .map((id) => allKnownJobs.find((j) => j.id === id))
         .filter(Boolean),
-    [trackedJobs, realJobs]
+    [trackedJobs, allKnownJobs]
   );
   const [selectedId, setSelectedId] = useState(job?.id || trackedList[0]?.id || null);
   const [activity, setActivity] = useState(ACTIVITIES[0]);

@@ -30,6 +30,10 @@ export function buildNotifications({
   prepLogged,
   coffeeChatStatus,
   realJobs = [],
+  // realJobs is only what is still open; knownJobs additionally holds the
+  // member's own tracked/saved jobs that have since closed. Defaults to
+  // realJobs so a caller that doesn't pass it behaves exactly as before.
+  knownJobs = realJobs,
   savedJobIds = [],
   feedPosts = [],
   conversations = [],
@@ -39,10 +43,13 @@ export function buildNotifications({
   const needsAction = [];
 
   Object.entries(trackedJobs).forEach(([jobId, info]) => {
-    const job = realJobs.find((j) => j.id === jobId);
+    const job = knownJobs.find((j) => j.id === jobId);
     if (!job || info.stage === "Closed") return;
 
-    if (isUrgent(job)) {
+    // A closed posting has no deadline left to act on, so no deadline
+    // reminder -- but the prep reminder below stays: interviews routinely
+    // continue after the employer takes the posting down.
+    if (!job.closed && isUrgent(job)) {
       const days = daysUntil(job.deadlineDate);
       needsAction.push({
         id: `deadline-${jobId}`,
@@ -76,8 +83,8 @@ export function buildNotifications({
   // (trackedJobs), so this can never double up on the same job.
   savedJobIds.forEach((jobId) => {
     if (trackedJobs[jobId]) return;
-    const job = realJobs.find((j) => j.id === jobId);
-    if (!job || !isUrgent(job)) return;
+    const job = knownJobs.find((j) => j.id === jobId);
+    if (!job || job.closed || !isUrgent(job)) return;
     const days = daysUntil(job.deadlineDate);
     needsAction.push({
       id: `deadline-${jobId}`,

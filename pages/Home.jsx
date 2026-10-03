@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { MapPin } from "lucide-react";
 import { currentUser } from "../data/mockUser.js";
@@ -10,9 +10,7 @@ import { computeProfileStrength, displayName, resolvedClassYear, resolvedGradMon
 import Avatar from "../components/Avatar.jsx";
 import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
 import { nextActionForStage } from "../data/trackerUtils.js";
-import { fetchAllRows } from "../data/fetchAllRows.js";
-import { matchJob } from "../data/jobMatch.js";
-import { realJobToCardShape, JOB_LIST_COLUMNS } from "../data/realJobAdapter.js";
+import { useRealJobs } from "../data/useRealJobs.js";
 import JobCard from "../components/JobCard.jsx";
 import "../styles/jobs.css";
 import "../styles/jobDetail.css";
@@ -48,22 +46,11 @@ export default function Home() {
   // pages agree on what a "real job" and its match score even are.
   const classYear = resolvedClassYear(currentUser, profileOverrides);
   const gradMonth = resolvedGradMonth(currentUser, profileOverrides);
-  const [rawJobs, setRawJobs] = useState([]);
-  const [jobsLoading, setJobsLoading] = useState(true);
-  useEffect(() => {
-    // JOB_LIST_COLUMNS, not "*" -- same ~58% payload cut as pages/Jobs.jsx's
-    // identical fetch (see data/realJobAdapter.js's own comment); this page
-    // reads the exact same fields via the same realJobToCardShape/matchJob
-    // pipeline, so the trim is safe here for the same reason.
-    fetchAllRows("jobs", JOB_LIST_COLUMNS, (q) => q.eq("active", true))
-      .then(setRawJobs)
-      .catch(() => {}) // Recommended/counts below degrade to "0 real jobs" rather than crashing Home
-      .finally(() => setJobsLoading(false));
-  }, []);
-  const realJobs = useMemo(
-    () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth))),
-    [rawJobs, preferences, classYear, gradMonth]
-  );
+  // The shared hook (data/useRealJobs.js) runs the same active-jobs fetch this
+  // page used to inline. realJobs (active only) feeds Recommended; allKnownJobs
+  // also includes tracked jobs that have since closed, so those still resolve
+  // (shown as closed) instead of dropping out of the member's own progress.
+  const { realJobs, allKnownJobs, jobsLoading } = useRealJobs(preferences, classYear, gradMonth, true, Object.keys(trackedJobs));
 
   // Real feed posts (same pipeline pages/Feed.jsx itself uses) -- this
   // preview used to always show the same 2 mock FEED_POSTS regardless of
@@ -96,7 +83,7 @@ export default function Home() {
     .map(([jobId, info]) => ({
       jobId,
       job:
-        realJobs.find((j) => j.id === jobId) ||
+        allKnownJobs.find((j) => j.id === jobId) ||
         (isManualJobId(jobId) ? jobForManualEntry(jobId, info) : null),
       ...info,
     }))
@@ -146,10 +133,12 @@ export default function Home() {
 
   const activeApps = trackedEntries.filter((e) => e.stage !== "Closed");
   const interviewingApps = trackedEntries.filter((e) => ["First round", "Final round"].includes(e.stage));
-  const urgentApps = trackedEntries.filter((e) => isUrgent(e.job));
+  // A posting that has closed has no deadline to act on, so it is never "urgent".
+  const urgent = (e) => !e.job.closed && isUrgent(e.job);
+  const urgentApps = trackedEntries.filter(urgent);
   const attentionNeeded = [...trackedEntries]
     .filter((e) => e.stage !== "Closed")
-    .sort((a, b) => (isUrgent(b.job) ? 1 : 0) - (isUrgent(a.job) ? 1 : 0))
+    .sort((a, b) => (urgent(b) ? 1 : 0) - (urgent(a) ? 1 : 0))
     .slice(0, 3);
 
   // Recommended actions: computed nudges, not static copy.
@@ -177,7 +166,7 @@ export default function Home() {
   const suggestedPeople = openToCoffeeChat.slice(0, 3);
 
   const upcomingDeadlines = [...trackedEntries]
-    .filter((e) => e.stage !== "Closed" && !e.job.rolling)
+    .filter((e) => e.stage !== "Closed" && !e.job.rolling && !e.job.closed)
     .sort((a, b) => new Date(a.job.deadlineDate) - new Date(b.job.deadlineDate))
     .slice(0, 4);
 

@@ -52,7 +52,9 @@ export default function Notifications() {
   // data/mockJobs.js internally.
   const classYear = resolvedClassYear(currentUser, profileOverrides);
   const gradMonth = resolvedGradMonth(currentUser, profileOverrides);
-  const { realJobs } = useRealJobs(preferences, classYear, gradMonth);
+  // realJobs = still-open postings (for "new matches"); allKnownJobs also holds
+  // the member's own tracked/saved jobs that have since closed, so those resolve.
+  const { realJobs, allKnownJobs } = useRealJobs(preferences, classYear, gradMonth, true, [...Object.keys(trackedJobs), ...savedJobIds]);
 
   // Real feed posts + real conversations, fetched once on mount -- closes
   // the "Expand general notifications" quick win by replacing the old
@@ -87,8 +89,8 @@ export default function Notifications() {
   }, []);
 
   const { needsAction, earlierThisWeek } = useMemo(
-    () => buildNotifications({ trackedJobs, prepLogged, coffeeChatStatus, realJobs, savedJobIds, feedPosts, conversations, currentAccountId, people }),
-    [trackedJobs, prepLogged, coffeeChatStatus, realJobs, savedJobIds, feedPosts, conversations, currentAccountId, people]
+    () => buildNotifications({ trackedJobs, prepLogged, coffeeChatStatus, realJobs, knownJobs: allKnownJobs, savedJobIds, feedPosts, conversations, currentAccountId, people }),
+    [trackedJobs, prepLogged, coffeeChatStatus, realJobs, allKnownJobs, savedJobIds, feedPosts, conversations, currentAccountId, people]
   );
 
   const category = TAB_TO_CATEGORY[tab] || tab;
@@ -97,8 +99,8 @@ export default function Notifications() {
   const visibleEarlier = tab === "Needs action" ? [] : tab === "All" ? earlierThisWeek : earlierThisWeek.filter((n) => n.category === category);
 
   const upcoming = Object.entries(trackedJobs)
-    .map(([jobId, info]) => ({ job: realJobs.find((j) => j.id === jobId), ...info }))
-    .filter((e) => e.job && e.stage !== "Closed" && !e.job.rolling)
+    .map(([jobId, info]) => ({ job: allKnownJobs.find((j) => j.id === jobId), ...info }))
+    .filter((e) => e.job && e.stage !== "Closed" && !e.job.rolling && !e.job.closed)
     .sort((a, b) => new Date(a.job.deadlineDate) - new Date(b.job.deadlineDate))
     .slice(0, 4);
 

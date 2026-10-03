@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { daysUntil } from "../data/jobUtils.js";
 import { STAGES, outcomeLabel, rejectionStageLabel } from "../data/trackerUtils.js";
 import { useAppState } from "../data/store.jsx";
-import { fetchAllRows } from "../data/fetchAllRows.js";
-import { matchJob } from "../data/jobMatch.js";
-import { realJobToCardShape, JOB_LIST_COLUMNS } from "../data/realJobAdapter.js";
+import { useRealJobs } from "../data/useRealJobs.js";
 import { currentUser } from "../data/mockUser.js";
 import { resolvedClassYear, resolvedGradMonth } from "../data/profileUtils.js";
 import { isManualJobId, jobForManualEntry } from "../data/manualApplications.js";
@@ -62,26 +60,17 @@ export default function Applications() {
   // real-jobs fetch pages/Home.jsx and pages/Jobs.jsx already use.
   const classYear = resolvedClassYear(currentUser, profileOverrides);
   const gradMonth = resolvedGradMonth(currentUser, profileOverrides);
-  const [rawJobs, setRawJobs] = useState([]);
-  useEffect(() => {
-    // JOB_LIST_COLUMNS, not "*" -- same ~58% payload cut as pages/Jobs.jsx's
-    // identical fetch (see data/realJobAdapter.js's own comment); this page
-    // reads the exact same fields via the same realJobToCardShape/matchJob
-    // pipeline, so the trim is safe here for the same reason.
-    fetchAllRows("jobs", JOB_LIST_COLUMNS, (q) => q.eq("active", true))
-      .then(setRawJobs)
-      .catch(() => {});
-  }, []);
-  const realJobs = useMemo(
-    () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth))),
-    [rawJobs, preferences, classYear, gradMonth]
-  );
+  // The shared hook (data/useRealJobs.js) does the same active-jobs fetch this
+  // page used to inline, and also returns allKnownJobs: the active jobs plus any
+  // tracked job that has since closed, so an application whose posting expired
+  // stays on the board marked "Closed" instead of silently disappearing.
+  const { realJobs, allKnownJobs } = useRealJobs(preferences, classYear, gradMonth, true, Object.keys(trackedJobs));
 
   const applications = useMemo(() => {
     return Object.entries(trackedJobs)
       .map(([jobId, info]) => {
         const job =
-          realJobs.find((j) => j.id === jobId) ||
+          allKnownJobs.find((j) => j.id === jobId) ||
           (isManualJobId(jobId) ? jobForManualEntry(jobId, info) : null);
         if (!job) return null;
         return { jobId, job, ...info };
@@ -93,7 +82,7 @@ export default function Applications() {
         const q = search.toLowerCase();
         return a.job.company.toLowerCase().includes(q) || a.job.role.toLowerCase().includes(q);
       });
-  }, [trackedJobs, realJobs, search, stageFilter]);
+  }, [trackedJobs, allKnownJobs, search, stageFilter]);
 
   const sortedForTable = useMemo(() => {
     const withKey = applications.map((a) => {
@@ -206,7 +195,7 @@ export default function Applications() {
         <RecordOutcomeModal
           jobId={outcomeModalJobId}
           job={
-            realJobs.find((j) => j.id === outcomeModalJobId) ||
+            allKnownJobs.find((j) => j.id === outcomeModalJobId) ||
             (isManualJobId(outcomeModalJobId) ? jobForManualEntry(outcomeModalJobId, trackedJobs[outcomeModalJobId]) : null)
           }
           currentOutcome={trackedJobs[outcomeModalJobId]?.outcome}

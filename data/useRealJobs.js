@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchAllRows } from "./fetchAllRows.js";
 import { matchJob } from "./jobMatch.js";
-import { realJobToCardShape, JOB_LIST_COLUMNS } from "./realJobAdapter.js";
+import { realJobToCardShape, JOB_LIST_COLUMNS, fetchJobsByIds, isRealJobId } from "./realJobAdapter.js";
 
 // Shared by every page/component that needs to resolve a trackedJobs
 // entry (or otherwise look up a job by id) against real data, not just
@@ -21,9 +21,21 @@ import { realJobToCardShape, JOB_LIST_COLUMNS } from "./realJobAdapter.js";
 // matching, not a real match score, can omit preferences/classYear
 // entirely; matchJob(job, undefined, undefined) still returns a shape
 // realJobToCardShape can read (score defaults to 0 via its own `?? 0`).
-export function useRealJobs(preferences, classYear, gradMonth, enabled = true) {
+//
+// Two lists come back, and which one a caller wants matters:
+//   realJobs      -- only jobs still on the board (active). Use for anything
+//                    that is about what to apply to NOW: recommendations,
+//                    "new matches", counts, deadline reminders.
+//   allKnownJobs  -- realJobs plus any of `extraJobIds` (a member's tracked or
+//                    saved jobs) that have since closed. Use to RESOLVE a
+//                    member's own job ids, so a tracked or saved posting that
+//                    expires shows up as closed instead of vanishing. The
+//                    closed rows are only readable because of the
+//                    jobs_select_own_tracked_or_saved policy.
+export function useRealJobs(preferences, classYear, gradMonth, enabled = true, extraJobIds = []) {
   const [rawJobs, setRawJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(true);
+  const [closedRaw, setClosedRaw] = useState([]);
   useEffect(() => {
     if (!enabled) {
       setJobsLoading(false);
@@ -38,9 +50,39 @@ export function useRealJobs(preferences, classYear, gradMonth, enabled = true) {
       .catch(() => {}) // callers degrade to "0 real jobs" (mock fallback still works) rather than crashing
       .finally(() => setJobsLoading(false));
   }, [enabled]);
+
+  // Jobs the member tracked/saved that are no longer in the active list.
+  // Keyed on the id list's content so adding a tracked job re-runs it.
+  const idsKey = extraJobIds.filter(isRealJobId).sort().join(",");
+  useEffect(() => {
+    if (!enabled || jobsLoading || !idsKey) {
+      setClosedRaw([]);
+      return;
+    }
+    const active = new Set(rawJobs.map((j) => j.id));
+    const missing = idsKey.split(",").filter((id) => !active.has(id));
+    if (missing.length === 0) {
+      setClosedRaw([]);
+      return;
+    }
+    let cancelled = false;
+    fetchJobsByIds(missing)
+      .then((rows) => {
+        if (!cancelled) setClosedRaw(rows);
+      })
+      .catch(() => {}); // degrade to "not shown" rather than crash
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, jobsLoading, rawJobs, idsKey]);
+
   const realJobs = useMemo(
     () => rawJobs.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth))),
     [rawJobs, preferences, classYear, gradMonth]
   );
-  return { realJobs, jobsLoading };
+  const allKnownJobs = useMemo(
+    () => [...realJobs, ...closedRaw.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth)))],
+    [realJobs, closedRaw, preferences, classYear, gradMonth]
+  );
+  return { realJobs, allKnownJobs, jobsLoading };
 }

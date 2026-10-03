@@ -89,6 +89,10 @@ export function realJobToCardShape(job, matchResult) {
     matchEligible: matchResult?.eligible ?? true,
     qualityScore: job.quality_score,
     possiblyClosed: job.status === "potentially_expired", // US-22/23 -- still active, but the source has missed it 2+ consecutive fetches
+    // Expired/removed: no longer on the board. Only ever present for a job the
+    // member tracked or saved (jobs_select_own_tracked_or_saved) -- shown as
+    // closed rather than silently disappearing from their tracker/saved list.
+    closed: job.status === "expired" || job.status === "removed",
     ucPosted: false,
     referralAvailable: false,
     location: job.city ?? (job.remote_type === "remote" ? "Remote" : ""),
@@ -109,6 +113,24 @@ export function realJobToCardShape(job, matchResult) {
     postedDaysAgo,
     whyLowerMatch: null,
   };
+}
+
+// Fetches specific jobs by id regardless of whether they are still active --
+// for a member's own tracked/saved jobs, which must keep resolving after the
+// posting closes. Works because of the jobs_select_own_tracked_or_saved policy
+// (without it, RLS would hide every inactive row). Same trimmed column list as
+// the board fetch. Ids are chunked to keep the request URL short, and anything
+// that isn't a real (UUID) job id -- manual-entry ids, old mock slugs -- is
+// skipped rather than sent to a uuid column.
+export async function fetchJobsByIds(ids) {
+  const real = [...new Set((ids ?? []).filter(isRealJobId))];
+  const rows = [];
+  for (let i = 0; i < real.length; i += 80) {
+    const { data, error } = await supabase.from("jobs").select(JOB_LIST_COLUMNS).in("id", real.slice(i, i + 80));
+    if (error) throw new Error(`Fetching jobs by id failed: ${error.message}`);
+    rows.push(...(data ?? []));
+  }
+  return rows;
 }
 
 // A bounded, on-demand search (top `limit` matches) for components/modals/

@@ -70,7 +70,14 @@ export default function TrackerTable({ applications, sortColumn, sortDirection, 
                     </Link>
                   )}
                 </td>
-                <td>{job.role}</td>
+                <td>
+                  {job.role}
+                  {job.closed && (
+                    <span className="chip" style={{ marginLeft: "var(--space-2)" }}>
+                      Posting closed
+                    </span>
+                  )}
+                </td>
                 <td>
                   <select
                     className="tracker-table__stage-select"

@@ -39,11 +39,13 @@ export default function CareerResources() {
   // the 8 mock demo jobs, so it silently never fired for a real posting.
   const classYear = resolvedClassYear(currentUser, profileOverrides);
   const gradMonth = resolvedGradMonth(currentUser, profileOverrides);
-  const { realJobs } = useRealJobs(preferences, classYear, gradMonth);
+  // allKnownJobs, not realJobs: an interview-stage application stays relevant
+  // even if the employer has since closed the posting.
+  const { allKnownJobs } = useRealJobs(preferences, classYear, gradMonth, true, Object.keys(trackedJobs));
 
   const interviewJob = Object.entries(trackedJobs)
     .map(([jobId, info]) => ({
-      job: realJobs.find((j) => j.id === jobId),
+      job: allKnownJobs.find((j) => j.id === jobId),
       stage: info.stage,
     }))
     .find((e) => e.job && ["First round", "Final round"].includes(e.stage));

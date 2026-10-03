@@ -107,7 +107,10 @@ export default function TrackerTimeline({ applications, timelineShiftDays, onShi
                       <CompanyLogo name={job.company} initials={job.logoInitials} className="board-card__logo" />
                       <div>
                         <div style={{ fontWeight: 700, fontSize: "var(--text-secondary)" }}>{job.company}</div>
-                        <div className="meta">{job.role}</div>
+                        <div className="meta">
+                          {job.role}
+                          {job.closed ? " · posting closed" : ""}
+                        </div>
                       </div>
                     </div>
                     <div

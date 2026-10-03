@@ -50,7 +50,7 @@ export default function ResourceDetail() {
   // as CareerResources.jsx so "Used for" can match a real tracked job too.
   const classYear = resolvedClassYear(currentUser, profileOverrides);
   const gradMonth = resolvedGradMonth(currentUser, profileOverrides);
-  const { realJobs } = useRealJobs(preferences, classYear, gradMonth);
+  const { allKnownJobs } = useRealJobs(preferences, classYear, gradMonth, true, Object.keys(trackedJobs));
 
   if (!resource) {
     return <Placeholder title={libraryLoading ? "Loading…" : "Resource not found"} />;
@@ -67,7 +67,7 @@ export default function ResourceDetail() {
 
   const activeStages = ["Preparing", "Applied", "Assessment", "First round", "Final round"];
   const usedFor = Object.entries(trackedJobs)
-    .map(([jobId, info]) => ({ job: realJobs.find((j) => j.id === jobId), stage: info.stage }))
+    .map(([jobId, info]) => ({ job: allKnownJobs.find((j) => j.id === jobId), stage: info.stage }))
     .filter(
       (e) =>
         e.job &&

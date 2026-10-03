@@ -6289,3 +6289,11 @@ returns a working application page for the same jobs and could serve as a fallba
 (b) the app loads only `active` jobs, so a job a member has tracked or saved that later expires, is capped or is deactivated by a
 cleanup like this one would appear to vanish from their tracker/saved list rather than show as closed (not verified end to end;
 no live data was affected today); (c) Amplitude's Greenhouse board now returns 404, so that source should be disabled.
+
+**Update (2026-10-03, later): the three "still open" items from the resolution above.** (a) The Lever re-adoption parsing was
+checked against every real tracked job (Greenhouse 98.1% and Lever 99.1% match the stored `source_job_id`; the rest are merged
+duplicates), so the branch is sound even though no Lever orphan existed to run it on. (b) Confirmed and fixed: members could not
+read an inactive job at all (`jobs_select_active_authenticated` was the only member policy), so a tracked or saved job that closed
+vanished. Migration `20261006400000` adds `jobs_select_own_tracked_or_saved`; the app now shows such jobs as closed (see
+PROGRESS_LOG.md). (c) Amplitude was the only dead board among all 171 enabled Greenhouse/Lever sources; disabled, with its 16 jobs
+expired (migration `20261006200000`).

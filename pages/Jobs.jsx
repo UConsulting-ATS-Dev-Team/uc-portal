@@ -9,7 +9,7 @@ import { fetchCompanyTiers, capForCompanyTier } from "../data/companyTiers.js";
 import { useAppState } from "../data/store.jsx";
 import { fetchAllRows } from "../data/fetchAllRows.js";
 import { matchJob, finalScore } from "../data/jobMatch.js";
-import { realJobToCardShape, JOB_LIST_COLUMNS } from "../data/realJobAdapter.js";
+import { realJobToCardShape, JOB_LIST_COLUMNS, fetchJobsByIds, isRealJobId } from "../data/realJobAdapter.js";
 import { currentUser } from "../data/mockUser.js";
 import { resolvedClassYear, resolvedGradMonth } from "../data/profileUtils.js";
 import { parseJobQuery } from "../data/nlSearchParser.js";
@@ -303,6 +303,41 @@ export default function Jobs() {
     [rawJobs, preferences, classYear, gradMonth]
   );
 
+  // Saved jobs whose posting has since closed. The board itself (JOBS) is only
+  // ever open postings, but a member's Saved list must keep showing a job they
+  // bookmarked -- marked closed -- rather than silently dropping it. Readable
+  // only because of the jobs_select_own_tracked_or_saved policy.
+  const [closedSavedRaw, setClosedSavedRaw] = useState([]);
+  const savedIdsKey = savedJobIds.filter(isRealJobId).sort().join(",");
+  useEffect(() => {
+    if (jobsLoading || !savedIdsKey) {
+      setClosedSavedRaw([]);
+      return;
+    }
+    const open = new Set(rawJobs.map((j) => j.id));
+    const missing = savedIdsKey.split(",").filter((id) => !open.has(id));
+    if (missing.length === 0) {
+      setClosedSavedRaw([]);
+      return;
+    }
+    let cancelled = false;
+    fetchJobsByIds(missing)
+      .then((rows) => {
+        if (!cancelled) setClosedSavedRaw(rows);
+      })
+      .catch(() => {}); // degrade to "not shown" rather than crash the board
+    return () => {
+      cancelled = true;
+    };
+  }, [jobsLoading, rawJobs, savedIdsKey]);
+  const savedPool = useMemo(
+    () => [
+      ...JOBS,
+      ...closedSavedRaw.map((job) => realJobToCardShape(job, matchJob(job, preferences, classYear, gradMonth))),
+    ],
+    [JOBS, closedSavedRaw, preferences, classYear, gradMonth]
+  );
+
   useEffect(() => {
     setPage(1);
   }, [filters, tab, pageSize]);
@@ -360,9 +395,9 @@ export default function Jobs() {
     // whatever filters happened to be active (seeded from the member's
     // own profile by default, but still a "current search," same
     // reasoning as the Recommended-tab count fix above).
-    if (tab === "saved") return JOBS.filter((j) => savedJobIds.includes(j.id));
+    if (tab === "saved") return savedPool.filter((j) => savedJobIds.includes(j.id));
     return filteredForCount.filter((j) => matchesTab(j, tab, savedJobIds));
-  }, [filteredForCount, JOBS, tab, savedJobIds]);
+  }, [filteredForCount, savedPool, tab, savedJobIds]);
   // Same fix as matchedCount above, for the same reason: the Saved tab's
   // badge used to be a bare savedJobIds.length -- a saved id that no
   // longer resolves to any job in JOBS (the job's posting closed, or, as
@@ -372,7 +407,7 @@ export default function Jobs() {
   // says N, tab shows 0" bug this file already fixed once for Recommended.
   // Counting off the same resolved set the tab itself reads from keeps
   // the badge honest regardless of why an id stopped resolving.
-  const savedCount = useMemo(() => JOBS.filter((j) => savedJobIds.includes(j.id)).length, [JOBS, savedJobIds]);
+  const savedCount = useMemo(() => savedPool.filter((j) => savedJobIds.includes(j.id)).length, [savedPool, savedJobIds]);
   const sorted = useMemo(
     () => sortJobs(tabbed, sortBy, preferences, filters.keyword, companyTierByName),
     [tabbed, sortBy, preferences, filters.keyword, companyTierByName]
