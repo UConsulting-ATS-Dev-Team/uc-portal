@@ -1,8 +1,10 @@
 import { supabase } from "./supabaseClient.js";
 
 // Admin tooling for pre-created accounts: list the ones nobody has claimed
-// yet, pre-create accounts for a directory audience, and send claim emails.
-// See supabase/functions/pre-provision-accounts and send-claim-emails.
+// yet and pre-create accounts for a directory audience. The app never emails
+// anyone about these accounts -- people claim one on their own with
+// "Forgot your password?", or an admin tells them directly (inviteMessage()).
+// See supabase/functions/pre-provision-accounts.
 
 export async function listUnclaimedAccounts() {
   const { data, error } = await supabase.rpc("list_unclaimed_accounts");
@@ -15,33 +17,6 @@ export async function preProvisionAccounts(audience) {
   const { data, error } = await supabase.functions.invoke("pre-provision-accounts", { method: "POST", body: { audience } });
   if (error) throw new Error(error.message);
   return data;
-}
-
-// Sends in batches the function accepts (40 max), stopping as soon as the
-// email service rate-limits. Returns combined totals so the UI can say
-// exactly what happened.
-export async function sendClaimEmails(emails, onProgress) {
-  const BATCH = 25;
-  const totals = { sent: 0, skipped: 0, notSent: 0, errors: [], rateLimited: false };
-  for (let i = 0; i < emails.length; i += BATCH) {
-    const batch = emails.slice(i, i + BATCH);
-    const { data, error } = await supabase.functions.invoke("send-claim-emails", {
-      method: "POST",
-      body: { emails: batch, redirectTo: `${window.location.origin}/reset-password` },
-    });
-    if (error) throw new Error(error.message);
-    totals.sent += data.sent.length;
-    totals.skipped += data.skipped.length;
-    totals.notSent += data.notSent.length;
-    totals.errors.push(...data.errors);
-    if (onProgress) onProgress({ ...totals, done: Math.min(i + BATCH, emails.length), total: emails.length });
-    if (data.rateLimited) {
-      totals.rateLimited = true;
-      totals.notSent += Math.max(0, emails.length - (i + BATCH)); // everything not yet attempted
-      break;
-    }
-  }
-  return totals;
 }
 
 export function inviteMessage() {
