@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../data/supabaseClient.js";
 import { graduateIntern } from "../data/acceleratorSync.js";
+import AccountSetupPanel from "../components/admin/AccountSetupPanel.jsx";
 import "../styles/jobDetail.css";
 import "../styles/admin.css";
 
@@ -38,6 +39,7 @@ export default function AdminMembers() {
   const [error, setError] = useState(null);
   const [actioningId, setActioningId] = useState(null);
   const [ownId, setOwnId] = useState(null);
+  const [search, setSearch] = useState("");
 
   async function load() {
     setLoading(true);
@@ -110,7 +112,16 @@ export default function AdminMembers() {
 
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
 
+      <AccountSetupPanel onAccountsChanged={load} />
+
       <div className="detail-section">
+        <input
+          type="text"
+          placeholder="Search members by name or email"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ marginBottom: "var(--space-3)", minWidth: 260 }}
+        />
         <div className="queue-table__scroll">
           <table className="queue-table">
             <thead>
@@ -123,7 +134,12 @@ export default function AdminMembers() {
               </tr>
             </thead>
             <tbody>
-              {members.map((m) => {
+              {members
+                .filter((m) => {
+                  const q = search.trim().toLowerCase();
+                  return !q || m.display_name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q);
+                })
+                .map((m) => {
                 const isSelf = m.member_id === ownId;
                 const isBusy = actioningId === m.member_id;
                 return (

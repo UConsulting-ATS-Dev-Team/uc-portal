@@ -35,6 +35,12 @@
 // also the only way to actually test this function at all without
 // creating real accounts for real, not-yet-signed-up club members as a
 // side effect of testing.
+//
+// Also accepts { audience: "roster" | "alumni" | "all" } (default
+// "roster", the original behavior): "alumni" pre-creates accounts for every
+// directory person with status Alumni and an email on file, so a Message to
+// any alumnus always reaches a real account (delivered when they claim it).
+// An explicit { emails } list always wins over audience.
 
 import { requireAdmin } from "../_shared/requireAdmin.ts";
 
@@ -67,9 +73,11 @@ Deno.serve(async (req) => {
   // full roster -- also what makes this function safely testable at all
   // without touching real members' accounts for real.
   let requestedEmails: string[] | null = null;
+  let audience = "roster";
   try {
     const body = await req.json();
     if (Array.isArray(body?.emails)) requestedEmails = body.emails;
+    if (body?.audience === "alumni" || body?.audience === "all" || body?.audience === "roster") audience = body.audience;
   } catch {
     // No body / not JSON -- fine, falls through to the full-roster default.
   }
@@ -78,10 +86,26 @@ Deno.serve(async (req) => {
   if (requestedEmails) {
     emails = requestedEmails;
   } else {
-    const { data: rosterRows, error: rosterError } = await adminClient.from("roster").select("email");
-    if (rosterError) return jsonResponse({ error: rosterError.message }, 500);
-    emails = (rosterRows ?? []).map((r) => r.email as string);
+    emails = [];
+    if (audience === "roster" || audience === "all") {
+      const { data: rosterRows, error: rosterError } = await adminClient.from("roster").select("email");
+      if (rosterError) return jsonResponse({ error: rosterError.message }, 500);
+      emails.push(...(rosterRows ?? []).map((r) => r.email as string));
+    }
+    if (audience === "alumni" || audience === "all") {
+      const { data: alumniRows, error: alumniError } = await adminClient
+        .from("people")
+        .select("email")
+        .eq("status", "Alumni")
+        .not("email", "is", null);
+      if (alumniError) return jsonResponse({ error: alumniError.message }, 500);
+      emails.push(...(alumniRows ?? []).map((r) => r.email as string));
+    }
   }
+
+  // Normalize + dedupe, and drop blanks (a directory person with no email
+  // on file can't have an account created for them).
+  emails = [...new Set(emails.map((e) => (e ?? "").trim().toLowerCase()).filter(Boolean))];
 
   const created: string[] = [];
   const alreadyExists: string[] = [];
