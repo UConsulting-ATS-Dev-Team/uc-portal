@@ -52,7 +52,7 @@ function Brand() {
 }
 
 function StepYou({ resumeFileName, resumeUploading, resumeError, onAttach, kicker = "Step 1 of 5" }) {
-  const { profileOverrides } = useAppState();
+  const { profileOverrides, accountEmail } = useAppState();
   // Reads profileOverrides directly here, NOT through resolvedClassYear/
   // resolvedMajors/resolvedUcCommittee -- those fall back to mockUser.js's
   // fake "Test Account" defaults (Class of 2027, "Business Economics,
@@ -76,7 +76,7 @@ function StepYou({ resumeFileName, resumeUploading, resumeError, onAttach, kicke
         Let us know if anything's out of date at a GM.
       </p>
       <ul className="auth__meta-list">
-        <li>{displayName(currentUser, profileOverrides)}</li>
+        <li>{displayName(profileOverrides, accountEmail)}</li>
         <li>{classYear ? `Class of ${classYear}` : "Class year not on file — add it on My Profile"}</li>
         <li>{majors || "Major not on file — add it on My Profile"}</li>
         <li>{ucCommittee || "Committee not on file — add it on My Profile"}</li>
@@ -348,12 +348,13 @@ function StepTimeline({ preferences, onSetCycle, onToggleHelp, onToggleFlag }) {
 }
 
 function Completion({ preferences, profileOverrides, stats, firstTrackTitle, onFinish }) {
+  const { accountEmail } = useAppState();
   const featuredIndustry = preferences.industries[0] || "your target industry";
   // First name only, for a greeting -- displayName() gives the full name
-  // (real override or the mock currentUser fallback), same as every other
+  // (real override, else the account email's local part), same as every other
   // avatar in the app reads through, but "You're set up, Test Account"
   // reads stiffer than "You're set up, Test" for this one greeting.
-  const firstName = displayName(currentUser, profileOverrides).split(" ")[0];
+  const firstName = displayName(profileOverrides, accountEmail).split(" ")[0];
 
   return (
     <>

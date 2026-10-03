@@ -138,6 +138,9 @@ export function AppStateProvider({ children }) {
   // null until resolved, treated as "not alumni" by default (same
   // fail-safe direction realRole/isAdmin already uses).
   const [realMemberStatus, setRealMemberStatus] = useState(null);
+  // The signed-in account's own email, so displayName() has an honest fallback
+  // (its local part) for accounts with no full_name instead of a fake identity.
+  const [accountEmail, setAccountEmail] = useState(null);
 
   // Real admin "view as" simulation -- direct ask: instead of creating a
   // separate throwaway account for every member type, a real admin can
@@ -193,7 +196,9 @@ export function AppStateProvider({ children }) {
   useEffect(() => {
     fetchRealRole().then(setRealRole);
     fetchRealMemberStatus().then(setRealMemberStatus);
+    supabase.auth.getSession().then(({ data }) => setAccountEmail(data.session?.user?.email ?? null));
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAccountEmail(session?.user?.email ?? null);
       if (!session) {
         setRealRole(null);
         setRealMemberStatus(null);
@@ -610,6 +615,7 @@ export function AppStateProvider({ children }) {
         realIsAdmin,
         isAdmin,
         realMemberStatus,
+        accountEmail,
         isAlumni,
         isIntern,
         viewAsOverride: simulatingView ? viewAsOverride : null,

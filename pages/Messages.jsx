@@ -352,7 +352,7 @@ export default function Messages() {
           {TABS.map((t) => {
             const count =
               t === "All"
-                ? conversations.filter((c) => !c.archived).length
+                ? conversations.filter((c) => !c.archived).length + pendingConversations.length
                 : t === "Archived"
                 ? conversations.filter((c) => c.archived).length
                 : conversations.filter((c) => !c.archived && c.unreadCount > 0).length;
@@ -365,9 +365,9 @@ export default function Messages() {
         </div>
         <div className="conversation-list__rows">
           {conversationsLoading && <p className="meta" style={{ padding: "var(--space-4)" }}>Loading…</p>}
-          {!conversationsLoading && filtered.length === 0 && (
+          {!conversationsLoading && filtered.length === 0 && visiblePending.length === 0 && (
             <p className="meta" style={{ padding: "var(--space-4)" }}>
-              {conversations.length === 0 ? "No conversations yet — start one with \"New.\"" : "Nothing here."}
+              {conversations.length === 0 && pendingConversations.length === 0 ? "No conversations yet — start one with \"New.\"" : "Nothing here."}
             </p>
           )}
           {visiblePending.map((c) => (

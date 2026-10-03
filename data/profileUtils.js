@@ -8,8 +8,12 @@
 // app (TopBar, Home, Feed, My Profile) should read through this rather than
 // currentUser directly, so a saved name change is reflected everywhere
 // consistently instead of only on the page where it was edited.
-export function displayName(currentUser, profileOverrides) {
-  return profileOverrides?.fullName?.trim() || `${currentUser.firstName} ${currentUser.lastName}`;
+// The member's own saved name, else the local part of their account email (the
+// same fallback Messages uses), else a neutral "Member" while no session has
+// loaded yet. Never a made-up identity: this feeds real, permanent records
+// (feed post authors, feature requests, contributions).
+export function displayName(profileOverrides, accountEmail) {
+  return profileOverrides?.fullName?.trim() || accountEmail?.split("@")[0] || "Member";
 }
 
 // Same fallback pattern as displayName() above, for the other three

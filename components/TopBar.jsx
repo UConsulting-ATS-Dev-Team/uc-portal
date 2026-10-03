@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
 import { supabase } from "../data/supabaseClient.js";
 import { fetchUnreadCount } from "../data/messagesSync.js";
@@ -21,7 +20,7 @@ const SIGNUPS_LAST_SEEN_KEY = "uc-portal-admin-signups-last-seen";
 export default function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showRequestFeature, setShowRequestFeature] = useState(false);
-  const { profileOverrides, needsActionCount, isAdmin, isAlumni, isIntern, realIsAdmin } = useAppState();
+  const { profileOverrides, accountEmail, needsActionCount, isAdmin, isAlumni, isIntern, realIsAdmin } = useAppState();
   const { availableTours, start: startTour } = useTour();
   // Real ask: the navy mark gets mostly masked out against a dark
   // background -- swaps to the same real artwork's white export
@@ -74,7 +73,7 @@ export default function TopBar() {
   // ever covered admins). Shows the real thing for every account type.
   const accountStatusLabel = isAdmin ? "Admin" : isIntern ? "Intern" : isAlumni ? "Alumni" : "Member";
 
-  const fullName = displayName(currentUser, profileOverrides);
+  const fullName = displayName(profileOverrides, accountEmail);
   const navigate = useNavigate();
 
   function handleSearchSubmit(event) {

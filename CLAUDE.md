@@ -450,6 +450,8 @@ which are chronological and not rewritten when later work supersedes them.
   style selects with `background-color`, never the `background` shorthand (it
   erases the drawn arrow). Load heavy libraries (`pdfjs-dist`, `mammoth`) with
   dynamic `import()`.
+- Never fall back to the mock `currentUser` identity for anything shown or stored: `displayName(profileOverrides, accountEmail)`
+  uses the saved name, else the email's local part. The old fallback leaked "Test Account" into real posts.
 - `check-job-links` is sensitive to invocation frequency (past false-positive
   bursts); don't invoke it repeatedly by hand.
 

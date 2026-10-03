@@ -1,7 +1,6 @@
 import { useState } from "react";
 import Modal from "../Modal.jsx";
 import { supabase } from "../../data/supabaseClient.js";
-import { currentUser } from "../../data/mockUser.js";
 import { useAppState } from "../../data/store.jsx";
 import { displayName } from "../../data/profileUtils.js";
 import "../../styles/onboarding.css";
@@ -21,7 +20,7 @@ const CATEGORIES = ["Jobs & search", "Applications tracker", "Network & messagin
 // point (per the admin side of this feature) is that an admin sees
 // exactly who asked for what, so getting the real name right matters.
 export default function RequestFeatureModal({ onClose }) {
-  const { profileOverrides } = useAppState();
+  const { profileOverrides, accountEmail } = useAppState();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0]);
@@ -39,7 +38,7 @@ export default function RequestFeatureModal({ onClose }) {
 
     const { error } = await supabase.from("feature_requests").insert({
       submitted_by: user.id,
-      submitted_by_name: displayName(currentUser, profileOverrides),
+      submitted_by_name: displayName(profileOverrides, accountEmail),
       title: title.trim(),
       description: description.trim(),
       category,

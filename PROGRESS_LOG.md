@@ -4784,3 +4784,22 @@ longer breaks down to phone width either.
   Noted, not fixed: the top-bar avatar shows "TA" for an account with no `full_name` (a leftover "Test Account"
   fallback in the initials source); Messages' "All (N)" count omits waiting-to-join threads that the list does
   show; Admin > Members shows the email in the name column for accounts with no `full_name`.
+
+- **2026-10-03: the three noted minor issues fixed** --
+  (1) **Fake "Test Account" identity.** `displayName()` fell back to `mockUser.js`'s fake name, so an account with
+  no saved name showed a "TA" avatar and a "Welcome ... Test" greeting, and -- worse -- that name was written into
+  real records (feed post author, announcements, contributions, feature requests). `displayName(profileOverrides,
+  accountEmail)` now falls back to the account email's local part (the convention Messages already uses), then a
+  neutral "Member". The store keeps `accountEmail` in sync with the session (`getSession()` on mount plus
+  `onAuthStateChange`); all 12 call sites were updated and five now-unused `currentUser` imports removed.
+  (2) **Messages "All (N)"** now counts waiting-to-join threads, and the "No conversations yet" empty state no longer
+  shows above a waiting row. (3) **Admin > Members names:** migration `20261003400000_list_members_directory_name.sql`
+  makes `list_members()` prefer the directory name over the raw email (same chain as `list_messageable_members()`,
+  with a lateral `limit 1` so a duplicated directory email can't multiply rows); 4 of 6 accounts now show a real
+  name, the other two aren't in the directory. Verified live with a throwaway admin account that has no name set:
+  avatar "Q" and greeting "Welcome to UC Portal, qa-admin" instead of "TA"/"Test", "All (1)" with a waiting
+  message and no contradictory empty state, real names in the Members table, no failing requests across Home,
+  Network, Feed, Career Resources and Members. The `list_members()` change was also checked with a read-only
+  rollback diagnostic (no duplicate rows). Zero residue afterward (`roster_total=53 people_total=209`).
+  Console still shows a few "Failed to load resource" lines (one connection-refused, two 403s) that no `fetch`
+  call explains -- the same image-loading noise earlier sessions noted, not chased.

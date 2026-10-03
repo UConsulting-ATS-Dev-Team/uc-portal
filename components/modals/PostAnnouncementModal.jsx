@@ -1,7 +1,6 @@
 import { useState } from "react";
 import Modal from "../Modal.jsx";
 import { submitFeedPost } from "../../data/feedSync.js";
-import { currentUser } from "../../data/mockUser.js";
 import { useAppState } from "../../data/store.jsx";
 import { displayName } from "../../data/profileUtils.js";
 
@@ -14,7 +13,7 @@ import { displayName } from "../../data/profileUtils.js";
 // Feed.jsx pins Announcement posts to the top, same reasoning a real
 // club platform would.
 export default function PostAnnouncementModal({ onClose }) {
-  const { profileOverrides } = useAppState();
+  const { profileOverrides, accountEmail } = useAppState();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [posted, setPosted] = useState(false);
@@ -28,7 +27,7 @@ export default function PostAnnouncementModal({ onClose }) {
       await submitFeedPost({
         body: `${title.trim()}\n\n${body.trim()}`,
         postType: "Announcement",
-        authorName: displayName(currentUser, profileOverrides),
+        authorName: displayName(profileOverrides, accountEmail),
         authorRoleLine: "UC Exec",
         isEvent: false,
       });

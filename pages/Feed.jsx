@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
-import { currentUser } from "../data/mockUser.js";
 import { useAppState } from "../data/store.jsx";
 import { displayName } from "../data/profileUtils.js";
 import { fetchFeedPosts, submitFeedPost, updateFeedPost, deleteFeedPost, feedRowToPost } from "../data/feedSync.js";
@@ -25,7 +24,7 @@ const POST_TYPES = [
 ];
 
 export default function Feed() {
-  const { profileOverrides, isAlumni } = useAppState();
+  const { profileOverrides, accountEmail, isAlumni } = useAppState();
   const location = useLocation();
   const [tab, setTab] = useState("All");
   // "Ask the network" from Global search's no-results state hands off a
@@ -90,7 +89,7 @@ export default function Feed() {
       const row = await submitFeedPost({
         body: composerText.trim(),
         postType: selectedType,
-        authorName: displayName(currentUser, profileOverrides),
+        authorName: displayName(profileOverrides, accountEmail),
         // Not resolvedClassYear() -- that falls back to mockUser.js's fake
         // "2027" the moment a real member has no class year set, which
         // would have permanently written a fabricated fact into the real,
@@ -183,7 +182,7 @@ export default function Feed() {
         <div className="composer">
           <div className="composer__top">
             <div className="composer__avatar">
-              <Avatar name={displayName(currentUser, profileOverrides)} url={profileOverrides.avatarUrl} />
+              <Avatar name={displayName(profileOverrides, accountEmail)} url={profileOverrides.avatarUrl} />
             </div>
             <textarea
               placeholder="Share something with UC…"

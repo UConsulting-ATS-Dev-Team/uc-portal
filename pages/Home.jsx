@@ -29,6 +29,7 @@ export default function Home() {
   const {
     preferences,
     profileOverrides,
+    accountEmail,
     savedJobIds,
     toggleSavedJob,
     trackedJobs,
@@ -106,7 +107,7 @@ export default function Home() {
     const { pct } = computeProfileStrength(preferences, profileOverrides.linkedIn, profileOverrides.resumePath);
     return (
       <div className="empty-state">
-        <h1>Welcome to UC Portal, {displayName(currentUser, profileOverrides).split(" ")[0]}</h1>
+        <h1>Welcome to UC Portal, {displayName(profileOverrides, accountEmail).split(" ")[0]}</h1>
         {/* profileOverrides?.classYear directly, not resolvedClassYear() --
             that falls back to mockUser.js's fake "2027," which used to
             show on every real member's own welcome message as if it were
@@ -186,10 +187,10 @@ export default function Home() {
         <div>
           <div className="welcome-card__greeting">
             <div className="avatar-card__avatar" style={{ margin: 0 }}>
-              <Avatar name={displayName(currentUser, profileOverrides)} url={profileOverrides.avatarUrl} />
+              <Avatar name={displayName(profileOverrides, accountEmail)} url={profileOverrides.avatarUrl} />
             </div>
             <div>
-              <h1>Welcome back, {displayName(currentUser, profileOverrides).split(" ")[0]}</h1>
+              <h1>Welcome back, {displayName(profileOverrides, accountEmail).split(" ")[0]}</h1>
               {/* Built from profileOverrides directly (not resolvedClassYear/
                   resolvedMajors) and only the facts actually on file --
                   those two fall back to mockUser.js's fake "Class of 2027" /
