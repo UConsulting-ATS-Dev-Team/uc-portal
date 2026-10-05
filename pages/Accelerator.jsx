@@ -179,8 +179,8 @@ export default function Accelerator() {
           return (
             <div className={`step-row${isExpanded ? " is-current" : ""}`} key={lesson.id} style={{ display: "block" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-                <span>{isDone ? "✓" : "○"}</span>
-                <span className="step-row__number">Week {i + 1}</span>
+                <span className="step-row__status">{isDone ? "✓" : "○"}</span>
+                <span className="step-row__number step-row__number--week">Week {i + 1}</span>
                 <div className="step-row__body">
                   <div className="step-row__title">{lesson.title}</div>
                   <div className="step-row__detail meta">Due {formatLessonDate(lesson.lesson_date)}</div>
@@ -196,7 +196,7 @@ export default function Accelerator() {
                 </div>
               </div>
               {isExpanded && prevSubmitted && (
-                <div style={{ marginTop: "var(--space-5)", paddingLeft: "calc(var(--space-6) + 60px)" }}>
+                <div style={{ marginTop: "var(--space-5)", paddingLeft: "calc(16px + 56px + 2 * var(--space-3))" }}>
                   <p style={{ fontWeight: 700, marginBottom: "var(--space-2)" }}>Prep material</p>
                   <LessonMaterials lessonId={lesson.id} />
                   <SubmissionForm

@@ -245,8 +245,21 @@
   flex: 0 0 auto;
 }
 
+/* "Week 4" is wider than the 24px a bare step number needs; at 24px it spilled into the title next to it. */
+.step-row__number--week {
+  width: 56px;
+  white-space: nowrap;
+}
+
+/* Fixed width so the expanded panel can line up under the title (see pages/Accelerator.jsx). */
+.step-row__status {
+  width: 16px;
+  flex: 0 0 auto;
+}
+
 .step-row__body {
   flex: 1 1 auto;
+  min-width: 0;
 }
 
 .step-row__title {
