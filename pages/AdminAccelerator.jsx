@@ -588,7 +588,7 @@ export default function AdminAccelerator() {
         {lessons.map((lesson, i) => (
           <div key={lesson.id}>
           <div className="step-row">
-            <span className="step-row__number">Week {i + 1}</span>
+            <span className="step-row__number step-row__number--week">Week {i + 1}</span>
             <div className="step-row__body">
               <div className="step-row__title">{lesson.title}</div>
               <div className="step-row__detail meta">{new Date(`${lesson.lesson_date}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</div>
