@@ -88,12 +88,34 @@ export function mainItemsFor({ isIntern, isAlumni, isAdmin }) {
   return MAIN_ITEMS;
 }
 
+// The main rail is grouped the same way the Leadership menu is, so every heading folds away the same. Each item belongs to
+// the group named here; a group with nothing left for this account (e.g. Recruiting for an alumnus) is dropped.
+const MAIN_GROUP_ORDER = ["Recruiting", "Community", "Learning", "Account"];
+const MAIN_GROUP_OF = {
+  "/": "Recruiting",
+  "/jobs": "Recruiting",
+  "/applications": "Recruiting",
+  "/network": "Community",
+  "/feed": "Community",
+  "/companies": "Community",
+  "/resources": "Learning",
+  "/accelerator": "Learning",
+  "/profile": "Account",
+};
+
+export function mainSectionsFor(account) {
+  const items = mainItemsFor(account);
+  return MAIN_GROUP_ORDER.map((section) => ({ section, items: items.filter((item) => MAIN_GROUP_OF[item.to] === section) })).filter(
+    (group) => group.items.length > 0
+  );
+}
+
 // There is no separate admin home: an admin lands on the same Home as everyone else, and these are extra pages only
 // admins see. Grouped by what a person is trying to do, with the technical upkeep of the site last and apart.
 export const LEADERSHIP_SECTIONS = [
   {
     section: "People",
-    items: [{ label: "User management", to: "/admin/members", icon: UserCog }],
+    items: [{ label: "User Management", to: "/admin/members", icon: UserCog }],
   },
   {
     section: "Content",
@@ -106,19 +128,19 @@ export const LEADERSHIP_SECTIONS = [
   {
     section: "Communications",
     items: [
-      { label: "Master communications", to: "/admin/communications", icon: Mail },
-      { label: "Automatic emails", to: "/admin/automatic-emails", icon: MailOpen },
+      { label: "Master Communications", to: "/admin/communications", icon: Mail },
+      { label: "Automatic Emails", to: "/admin/automatic-emails", icon: MailOpen },
     ],
   },
   {
     section: "Insights",
-    items: [{ label: "Site analytics", to: "/admin/analytics", icon: BarChart3 }],
+    items: [{ label: "Site Analytics", to: "/admin/analytics", icon: BarChart3 }],
   },
   {
     section: "System",
     items: [
-      { label: "Job sources", to: "/admin/opportunities", icon: Database },
-      { label: "Pipeline and queues", to: "/admin/system", icon: Wrench },
+      { label: "Job Sources", to: "/admin/opportunities", icon: Database },
+      { label: "Pipeline and Queues", to: "/admin/system", icon: Wrench },
     ],
   },
 ];

@@ -5251,3 +5251,11 @@ longer breaks down to phone width either.
   views, cannot clear its own deactivation; the queue claims once, honors per-recipient overrides, excludes scheduled messages and
   reports "partial" correctly; deactivation sets the auth ban. Not exercised: a real send, the unsubscribe page (secret unset),
   reactivation in the UI. 282 tests pass.
+
+- **2026-10-06: left rail polish** -- "Master communications" wrapped onto two lines and the labels sat against the right edge. Labels are
+  now left-aligned after the icon, the rail is 240px (was 206) with 16px side padding, and the new admin items are title case (User
+  Management, Master Communications, Automatic Emails, Site Analytics, Job Sources, Pipeline and Queues). The everyday links are now
+  grouped under the same collapsible headings the Leadership menu has (Recruiting, Community, Learning, Account; empty groups are
+  dropped, so interns and alumni see fewer). Both menus share one `GroupedLinks` component in `NavRail.jsx`; folding is CSS-only and
+  applies only above 1100px, so the icon-only rail never hides a link. Tour steps that point at a link inside a folded group fall back
+  to a centered card. Checked live as the throwaway admin at desktop width and 1000px; tests and build pass.
