@@ -39,8 +39,10 @@ export async function fetchAllRows(
   const rows: Record<string, unknown>[] = [];
   let from = 0;
   while (true) {
-    let query = adminClient.from(table).select(columns).order(orderBy).range(from, from + PAGE_SIZE - 1);
+    let query = adminClient.from(table).select(columns).range(from, from + PAGE_SIZE - 1);
     if (applyFilters) query = applyFilters(query);
+    // Last, so it only breaks ties after any ordering a caller's filters asked for.
+    query = query.order(orderBy);
     const { data, error } = await query;
     if (error) throw new Error(`Fetching ${table} failed: ${error.message}`);
     rows.push(...(data ?? []));

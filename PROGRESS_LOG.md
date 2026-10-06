@@ -5149,3 +5149,34 @@ longer breaks down to phone width either.
   notifications can reuse it for saved searches. Saved searches are still local to the browser (not synced to the account).
   Tested as a throwaway plain member (removed: `roster_total=53 people_total=209`): onboarding checkbox, profile toggle, `prefer_yc`
   persisted, New tab (64 new, 14 at 70%+), YC saved-search alert and deep link. 211 server tests pass (12 new in `jobAlerts.test.ts`).
+
+- **2026-10-05: intern Accelerator tracker (calendar home, coffee chats, attendance, complete/incomplete grading), View-as redirect, ordered paged reads** --
+  Request: build the accelerator the program lead's requirements doc describes. Home with a calendar (GMs, accelerator, firm
+  events, socials; required vs optional) and three requirements with progress (coffee chats, attendance, assignments); a weekly
+  coffee-chat page (3 a week, at least 2 with UC members, 24 total over 8 weeks, with name, UC member's name/year/major, what
+  they talked about, a picture); a personal attendance tracker (GMs and firm sessions required, socials optional but flagged if
+  none attended); weekly assignments graded by the education committee with comments, interns seeing complete/incomplete (not a
+  grade) and fixing and resubmitting anything incomplete. Style chosen from three mockups: option A (calendar left, requirement
+  cards stacked on the right) on desktop, and on a phone the three cards stacked above an agenda list (this week, then coming up).
+  **Pages:** `/accelerator` (home), `/accelerator/coffee-chats`, `/accelerator/attendance`, `/accelerator/assignments` (the old lesson
+  list, now with status chips), joined by `components/AcceleratorTabs.jsx`. Admin (`/admin/accelerator`) gains an events manager with
+  per-event attendance marking, a coffee-chat reviewer (with photos), and an intern progress table with chats, required events and a
+  no-socials flag. **Calendar:** weeks run Sunday to Saturday; today has a quiet tint and accent day number; it opens on the current
+  month until today is in that month's last calendar row (the week holding its final day), then on the next month; prev/next/Today
+  buttons; clicking a day lists its items. Lessons appear on it automatically as "Week N". Logic is in `data/acceleratorLogic.js`
+  (pure, 23 tests).
+  **Schema (`20261011000000`):** `accelerator_events` (kind gm/accelerator/firm/uc_event/social + `required`), `accelerator_attendance`
+  (admin-marked; a row is "recorded", attended true/false), `accelerator_coffee_chats` (+ private `accelerator-chat-photos` bucket,
+  intern and admins only), `accelerator_submissions.status` complete/incomplete. The committee's numeric grade moved off the submissions
+  row into admin-only `accelerator_submission_scores` (an intern can read their own row, so a column there could not be hidden). A
+  trigger stops an intern writing status/feedback/graded_*; changing the work of an incomplete submission sends it back to review;
+  complete work is locked. Verified in SQL as the intern: self-grading is ignored, resubmitting resets to review, editing complete work
+  changes 0 rows, scores are unreadable, events are read-only. **Defaults I chose where the doc was silent (change if wrong):**
+  attendance is marked by an admin, not self-check-in; the coffee-chat target is 8 weeks x 3 = 24 even before all lessons exist (more
+  lessons stretch it); a week "needs 2 UC members" once 3 chats are logged with fewer than 2; a photo is required on each chat.
+  **Other:** admin View-as now navigates to `/` when the type changes (guards send interns to the Accelerator, alumni to the Feed). The
+  client `fetchAllRows()` had the same missing-ORDER-BY flaw as the Deno one (rows could duplicate or drop between pages); both now order
+  by a unique column after the caller's own ordering, and the six Edge Functions using the Deno helper were redeployed.
+  Tested as a throwaway intern at 1280 and 375 wide (calendar, Sunday start, today tint, day detail, chat validation, attendance groups,
+  assignment submit -> "Awaiting review", no horizontal overflow), then removed. Not exercised in a browser: the admin screens (no admin
+  session here) and uploading a coffee-chat photo.

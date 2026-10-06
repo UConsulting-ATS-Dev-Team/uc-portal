@@ -1,214 +1,256 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useAcceleratorData } from "../data/useAcceleratorData.js";
 import {
-  fetchLessons,
-  fetchMaterials,
-  fetchOwnSubmissions,
-  materialHref,
-  submitAssignment,
-  uploadSubmissionFile,
-} from "../data/acceleratorSync.js";
-import SubmissionCommentThread from "../components/SubmissionCommentThread.jsx";
-import "../styles/jobDetail.css";
-import "../styles/resources.css";
+  addDays,
+  assignmentProgress,
+  attendanceProgress,
+  calendarItems,
+  chipStyleFor,
+  coffeeChatProgress,
+  formatTime,
+  itemsByDate,
+  monthGrid,
+  monthToShow,
+  parseYmd,
+  programWeeks,
+  shiftMonth,
+  startOfWeek,
+  ymd,
+  CHATS_PER_WEEK,
+  UC_CHATS_PER_WEEK,
+} from "../data/acceleratorLogic.js";
+import AcceleratorTabs from "../components/AcceleratorTabs.jsx";
+import "../styles/accelerator.css";
 
-function formatLessonDate(dateStr) {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MAX_CHIPS = 3;
+
+function tagFor(item) {
+  const style = chipStyleFor(item);
+  return { className: `accel-tag accel-tag--${style}`, text: style === "accelerator" ? "Accelerator" : style === "required" ? "Required" : "Optional" };
 }
 
-// Real accelerator program timeline -- see the intern_accelerator
-// migration's own header comment. Sequential unlock (a lesson is locked
-// until the previous one has a real submission) mirrors the existing
-// Career Resources learning-track pattern, but progress here is a real
-// graded-or-not submission, not a client-side "mark done" toggle -- the
-// required submission itself is the anti-skip mechanism (direct
-// decision: no timer, a rushed/empty submission shows up plainly when an
-// admin grades it).
-function LessonMaterials({ lessonId }) {
-  const [materials, setMaterials] = useState([]);
-  useEffect(() => {
-    fetchMaterials(lessonId).then(setMaterials).catch(() => {});
-  }, [lessonId]);
-  if (materials.length === 0) return <p className="meta">No prep material added yet.</p>;
+function EventRow({ item, today }) {
+  const date = parseYmd(item.date);
+  const tag = tagFor(item);
+  const detail = [item.time ? formatTime(item.time) : null, item.location].filter(Boolean).join(" · ");
   return (
-    <ul style={{ margin: 0, paddingLeft: "var(--space-6)" }}>
-      {materials.map((m) => (
-        <li key={m.id}>
-          <a href={materialHref(m)} target="_blank" rel="noreferrer">
-            {m.file_name}
-          </a>
-          {m.link_url && <span className="meta"> (link)</span>}
-        </li>
-      ))}
-    </ul>
+    <div className={`accel-event${item.date < ymd(today) ? " is-past" : ""}`}>
+      <div className={`accel-event__date${item.required ? " is-required" : ""}`}>
+        <span className="accel-event__dow">{WEEKDAYS[date.getDay()]}</span>
+        <span className="accel-event__day">{date.getDate()}</span>
+      </div>
+      <div className="accel-event__body">
+        <div className="accel-event__title">{item.title}</div>
+        {detail && <div className="accel-event__meta">{detail}</div>}
+      </div>
+      <span className={tag.className}>{tag.text}</span>
+    </div>
   );
 }
 
-function SubmissionForm({ lesson, submission, onSubmitted }) {
-  const [body, setBody] = useState(submission?.body || "");
-  const [file, setFile] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const isGraded = submission?.graded_at != null;
-
-  async function handleSubmit() {
-    if (submitting) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      let filePath = submission?.file_path ?? null;
-      let fileName = submission?.file_name ?? null;
-      if (file) {
-        const uploaded = await uploadSubmissionFile(file);
-        filePath = uploaded.path;
-        fileName = uploaded.fileName;
-      }
-      const row = await submitAssignment(lesson.id, { body, filePath, fileName });
-      onSubmitted(row);
-      setFile(null);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  }
+function Calendar({ byDate, today }) {
+  const [view, setView] = useState(() => monthToShow(today));
+  const [selectedKey, setSelectedKey] = useState(null);
+  const weeks = useMemo(() => monthGrid(view.year, view.month), [view]);
+  const todayKey = ymd(today);
+  const selectedItems = selectedKey ? byDate.get(selectedKey) ?? [] : [];
 
   return (
-    <div style={{ marginTop: "var(--space-4)" }}>
-      {isGraded ? (
-        <div className="rail-card is-accent" style={{ marginBottom: "var(--space-4)" }}>
-          <div className="rail-card__title">Your score: {submission.score ?? "—"}</div>
-          {submission.feedback && <p style={{ margin: 0 }}>{submission.feedback}</p>}
+    <div className="accel-cal">
+      <div className="accel-cal__head">
+        <h2 className="accel-cal__title">
+          {MONTH_NAMES[view.month]} {view.year}
+        </h2>
+        <div className="accel-cal__nav">
+          <button type="button" className="btn btn-secondary" onClick={() => setView(monthToShow(today))}>
+            Today
+          </button>
+          <button type="button" className="btn btn-secondary" aria-label="Previous month" onClick={() => setView(shiftMonth(view, -1))}>
+            <ChevronLeft size={16} strokeWidth={1.5} aria-hidden="true" />
+          </button>
+          <button type="button" className="btn btn-secondary" aria-label="Next month" onClick={() => setView(shiftMonth(view, 1))}>
+            <ChevronRight size={16} strokeWidth={1.5} aria-hidden="true" />
+          </button>
         </div>
-      ) : submission ? (
-        <p className="meta">Submitted {new Date(submission.submitted_at).toLocaleDateString()} — waiting to be graded. You can still update it below.</p>
-      ) : null}
-      <div className="field">
-        <label>Your response</label>
-        <textarea rows={4} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write your response to this week's activity…" />
       </div>
-      <div className="field">
-        <label>Attach a file (optional)</label>
-        <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-        {submission?.file_name && !file && <p className="meta">Currently attached: {submission.file_name}</p>}
+      <div className="accel-cal__legend">
+        <span>
+          <span className="accel-chip accel-chip--required" style={{ display: "inline-block" }}>Required</span>
+        </span>
+        <span>
+          <span className="accel-chip accel-chip--optional" style={{ display: "inline-block" }}>Optional</span>
+        </span>
+        <span>
+          <span className="accel-chip accel-chip--accelerator" style={{ display: "inline-block" }}>Accelerator</span>
+        </span>
       </div>
-      {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
-      <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting || (!body.trim() && !file && !submission?.file_path)}>
-        {submitting ? "Submitting…" : submission ? "Update submission" : "Submit"}
-      </button>
-      {submission && (
-        <div style={{ marginTop: "var(--space-4)" }}>
-          <SubmissionCommentThread submissionId={submission.id} />
+      <div className="accel-cal__grid">
+        {WEEKDAYS.map((d) => (
+          <div className="accel-cal__dow" key={d}>
+            {d}
+          </div>
+        ))}
+        {weeks.flat().map((day) => {
+          const items = byDate.get(day.key) ?? [];
+          const shown = items.slice(0, MAX_CHIPS);
+          const extra = items.length - shown.length;
+          const classes = ["accel-cal__day", !day.inMonth && "is-outside", day.key === todayKey && "is-today", day.key === selectedKey && "is-selected"].filter(Boolean).join(" ");
+          return (
+            <button
+              type="button"
+              key={day.key}
+              className={classes}
+              aria-pressed={day.key === selectedKey}
+              aria-label={`${MONTH_NAMES[day.date.getMonth()]} ${day.date.getDate()}${day.key === todayKey ? ", today" : ""}${items.length ? `, ${items.length} item${items.length === 1 ? "" : "s"}` : ""}`}
+              onClick={() => setSelectedKey(day.key === selectedKey ? null : day.key)}
+            >
+              <span className="accel-cal__num">{day.date.getDate()}</span>
+              {shown.map((item) => (
+                <span key={item.id} className={`accel-chip accel-chip--${chipStyleFor(item)}`} title={item.title}>
+                  {item.title}
+                </span>
+              ))}
+              {extra > 0 && <span className="accel-cal__more">+{extra} more</span>}
+            </button>
+          );
+        })}
+      </div>
+      {selectedKey && (
+        <div className="accel-cal__selected">
+          <h3>{parseYmd(selectedKey).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</h3>
+          {selectedItems.length === 0 ? <p className="meta" style={{ margin: 0 }}>Nothing scheduled.</p> : selectedItems.map((item) => <EventRow key={item.id} item={item} today={today} />)}
         </div>
       )}
     </div>
   );
 }
 
-export default function Accelerator() {
-  const [lessons, setLessons] = useState([]);
-  const [submissions, setSubmissions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState(null);
+// The phone view of the calendar: this week's items, then what's coming up after it.
+function Agenda({ items, today }) {
+  const weekStart = ymd(startOfWeek(today));
+  const weekEnd = ymd(addDays(startOfWeek(today), 6));
+  const thisWeek = items.filter((i) => i.date >= weekStart && i.date <= weekEnd);
+  const later = items.filter((i) => i.date > weekEnd).slice(0, 8);
+  return (
+    <div>
+      <h2 className="accel-agenda__heading">This week</h2>
+      {thisWeek.length === 0 ? <p className="meta">Nothing scheduled this week.</p> : thisWeek.map((item) => <EventRow key={item.id} item={item} today={today} />)}
+      {later.length > 0 && (
+        <>
+          <h2 className="accel-agenda__heading">Coming up</h2>
+          {later.map((item) => (
+            <EventRow key={item.id} item={item} today={today} />
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
 
-  function load() {
-    setLoading(true);
-    Promise.all([fetchLessons(), fetchOwnSubmissions()])
-      .then(([l, s]) => {
-        setLessons(l);
-        setSubmissions(s);
-      })
-      .finally(() => setLoading(false));
+function RequirementCard({ to, kicker, figure, of, percent, note, flag }) {
+  return (
+    <Link to={to} className="accel-req">
+      <div className="accel-req__kicker">{kicker}</div>
+      <div className="accel-req__figure">
+        {figure} <span className="accel-req__of">{of}</span>
+      </div>
+      <div className="accel-req__bar" aria-hidden="true">
+        <span style={{ width: `${Math.min(100, Math.max(0, percent))}%` }} />
+      </div>
+      <p className={`accel-req__note${flag ? " is-flag" : ""}`}>{note}</p>
+      <span className="accel-req__more">View details</span>
+    </Link>
+  );
+}
+
+export default function Accelerator() {
+  const { lessons, events, submissions, attendance, chats, loading, error } = useAcceleratorData();
+  const today = useMemo(() => new Date(), []);
+
+  const items = useMemo(() => calendarItems(events, lessons), [events, lessons]);
+  const byDate = useMemo(() => itemsByDate(items), [items]);
+
+  const weeks = useMemo(() => programWeeks(lessons, chats, today), [lessons, chats, today]);
+  const chatProgress = useMemo(() => coffeeChatProgress(chats, weeks, today), [chats, weeks, today]);
+  const attendanceStats = useMemo(() => attendanceProgress(events, attendance, today), [events, attendance, today]);
+  const assignments = useMemo(() => assignmentProgress(lessons, submissions), [lessons, submissions]);
+
+  const current = chatProgress.current;
+  let chatNote = "Log your first coffee chat to get started.";
+  let chatFlag = false;
+  if (chatProgress.behind.length > 0) {
+    const n = chatProgress.behind.length;
+    chatNote = `${n} past week${n === 1 ? "" : "s"} short of ${CHATS_PER_WEEK} chats with ${UC_CHATS_PER_WEEK} UC members`;
+    chatFlag = true;
+  } else if (current) {
+    chatNote = `This week: ${current.total} of ${CHATS_PER_WEEK}, ${current.uc} with UC members (need ${UC_CHATS_PER_WEEK})`;
+  } else if (chatProgress.counted > 0) {
+    chatNote = "Every week of the program so far is on track.";
   }
 
-  useEffect(() => {
-    load();
-  }, []);
+  const attendanceNote = attendanceStats.noSocials
+    ? "No socials attended yet"
+    : attendanceStats.requiredSoFar === 0
+      ? "No required events yet"
+      : `${attendanceStats.socialsAttended} social${attendanceStats.socialsAttended === 1 ? "" : "s"} attended`;
 
-  const submissionByLesson = new Map(submissions.map((s) => [s.lesson_id, s]));
-  const submittedCount = lessons.filter((l) => submissionByLesson.has(l.id)).length;
+  const assignmentNote =
+    assignments.incomplete > 0
+      ? `${assignments.incomplete} incomplete, fix and resubmit`
+      : assignments.awaitingReview > 0
+        ? `${assignments.awaitingReview} awaiting review`
+        : assignments.total === 0
+          ? "No assignments yet"
+          : assignments.complete === assignments.total
+            ? "Every assignment is complete"
+            : `${assignments.notStarted} not started`;
 
-  // Real "due soon" notification -- the one surface an intern has for this,
-  // since the dedicated Notifications page is route-guarded away from them
-  // (components/RequireNotIntern.jsx). Same unlocked-and-not-yet-submitted
-  // gate as the lesson list itself, and the same <=7-day window
-  // jobUtils.js's isUrgent() already uses elsewhere in this app.
-  const dueSoon = lessons
-    .map((lesson, i) => ({ lesson, i, prevSubmitted: i === 0 || submissionByLesson.has(lessons[i - 1]?.id) }))
-    .filter(({ lesson, prevSubmitted }) => prevSubmitted && !submissionByLesson.has(lesson.id))
-    .map(({ lesson, i }) => ({ lesson, i, days: Math.ceil((new Date(`${lesson.lesson_date}T00:00:00`) - new Date()) / 86400000) }))
-    .filter(({ days }) => days <= 7);
+  const pct = (n, d) => (d > 0 ? (n / d) * 100 : 0);
 
   return (
     <div>
-      <div className="detail-header" style={{ display: "block" }}>
-        <h1>Accelerator</h1>
-        <p>A weekly curriculum to get you up to speed on how UC operates and how real consulting/recruiting work.</p>
-        <div className="progress-bar-track" style={{ maxWidth: "300px" }}>
-          <div className="progress-bar-fill" style={{ width: lessons.length ? `${(submittedCount / lessons.length) * 100}%` : "0%" }} />
-        </div>
-        <p className="meta">
-          {submittedCount} / {lessons.length} lessons submitted
-        </p>
-      </div>
+      <AcceleratorTabs />
+      <h1>Accelerator</h1>
+      {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
 
-      {dueSoon.map(({ lesson, i, days }) => (
-        <div key={lesson.id} className="rail-card is-accent" style={{ marginBottom: "var(--space-4)" }}>
-          <div className="rail-card__title">
-            {days < 0
-              ? `Week ${i + 1} — "${lesson.title}" is overdue`
-              : days === 0
-                ? `Week ${i + 1} — "${lesson.title}" is due today`
-                : `Week ${i + 1} — "${lesson.title}" is due in ${days} day${days === 1 ? "" : "s"}`}
-          </div>
-          <p style={{ margin: 0 }} className="meta">
-            Due {formatLessonDate(lesson.lesson_date)} — scroll down and submit below.
-          </p>
-        </div>
-      ))}
+      <div className="accel-home">
+        <div className="accel-home__calendar">{loading ? <p className="meta">Loading…</p> : <Calendar byDate={byDate} today={today} />}</div>
 
-      <div className="detail-section">
-        {loading && <p className="meta">Loading…</p>}
-        {!loading && lessons.length === 0 && <p className="meta">No lessons have been added yet — check back soon.</p>}
-        {lessons.map((lesson, i) => {
-          const submission = submissionByLesson.get(lesson.id);
-          const isDone = !!submission;
-          // Locked until the previous lesson has a real submission -- the
-          // first lesson (i === 0) is always open.
-          const prevSubmitted = i === 0 || submissionByLesson.has(lessons[i - 1].id);
-          const isExpanded = expandedId === lesson.id;
-          return (
-            <div className={`step-row${isExpanded ? " is-current" : ""}`} key={lesson.id} style={{ display: "block" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-                <span className="step-row__status">{isDone ? "✓" : "○"}</span>
-                <span className="step-row__number step-row__number--week">Week {i + 1}</span>
-                <div className="step-row__body">
-                  <div className="step-row__title">{lesson.title}</div>
-                  <div className="step-row__detail meta">Due {formatLessonDate(lesson.lesson_date)}</div>
-                  {lesson.topic_overview && <div className="step-row__detail">{lesson.topic_overview}</div>}
-                </div>
-                <div className="step-row__state">
-                  {!prevSubmitted && "Locked until the previous lesson is submitted"}
-                  {prevSubmitted && (
-                    <button className="btn btn-secondary" onClick={() => setExpandedId(isExpanded ? null : lesson.id)}>
-                      {isExpanded ? "Close" : isDone ? "View" : "Start"}
-                    </button>
-                  )}
-                </div>
-              </div>
-              {isExpanded && prevSubmitted && (
-                <div style={{ marginTop: "var(--space-5)", paddingLeft: "calc(16px + 56px + 2 * var(--space-3))" }}>
-                  <p style={{ fontWeight: 700, marginBottom: "var(--space-2)" }}>Prep material</p>
-                  <LessonMaterials lessonId={lesson.id} />
-                  <SubmissionForm
-                    lesson={lesson}
-                    submission={submission}
-                    onSubmitted={(row) => setSubmissions((prev) => [...prev.filter((s) => s.lesson_id !== row.lesson_id), row])}
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })}
+        <div className="accel-home__requirements">
+          <RequirementCard
+            to="/accelerator/coffee-chats"
+            kicker="Coffee chats"
+            figure={chatProgress.counted}
+            of={`/ ${chatProgress.target}`}
+            percent={pct(chatProgress.counted, chatProgress.target)}
+            note={chatNote}
+            flag={chatFlag}
+          />
+          <RequirementCard
+            to="/accelerator/attendance"
+            kicker="Attendance"
+            figure={attendanceStats.requiredAttended}
+            of={`/ ${attendanceStats.requiredSoFar} required`}
+            percent={pct(attendanceStats.requiredAttended, attendanceStats.requiredSoFar)}
+            note={attendanceNote}
+            flag={attendanceStats.noSocials}
+          />
+          <RequirementCard
+            to="/accelerator/assignments"
+            kicker="Assignments"
+            figure={assignments.complete}
+            of={`/ ${assignments.total} complete`}
+            percent={pct(assignments.complete, assignments.total)}
+            note={assignmentNote}
+            flag={assignments.incomplete > 0}
+          />
+        </div>
+
+        <div className="accel-home__agenda">{loading ? null : <Agenda items={items} today={today} />}</div>
       </div>
     </div>
   );

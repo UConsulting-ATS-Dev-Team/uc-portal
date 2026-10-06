@@ -37,6 +37,9 @@ const AdminDashboard = lazy(() => import("./pages/AdminDashboard.jsx"));
 const AdminMembers = lazy(() => import("./pages/AdminMembers.jsx"));
 const SourceManagement = lazy(() => import("./pages/SourceManagement.jsx"));
 const AdminAccelerator = lazy(() => import("./pages/AdminAccelerator.jsx"));
+const AcceleratorCoffeeChats = lazy(() => import("./pages/AcceleratorCoffeeChats.jsx"));
+const AcceleratorAttendance = lazy(() => import("./pages/AcceleratorAttendance.jsx"));
+const AcceleratorAssignments = lazy(() => import("./pages/AcceleratorAssignments.jsx"));
 const AdminContent = lazy(() => import("./pages/AdminContent.jsx"));
 const AdminLibrary = lazy(() => import("./pages/AdminLibrary.jsx"));
 
@@ -311,6 +314,30 @@ function AppRoutes() {
         element={
           <NavShell>
             <Accelerator />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/accelerator/coffee-chats"
+        element={
+          <NavShell>
+            <LazyPage Component={AcceleratorCoffeeChats} />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/accelerator/attendance"
+        element={
+          <NavShell>
+            <LazyPage Component={AcceleratorAttendance} />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/accelerator/assignments"
+        element={
+          <NavShell>
+            <LazyPage Component={AcceleratorAssignments} />
           </NavShell>
         }
       />

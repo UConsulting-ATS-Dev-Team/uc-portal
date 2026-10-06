@@ -353,6 +353,15 @@ which are chronological and not rewritten when later work supersedes them.
   sessionStorage-backed simulation of member/alumni/intern. It only changes
   `isAdmin`/`isAlumni`/`isIntern`; real RLS and `is_admin()` RPCs always use the
   true session, and the control itself gates on `realIsAdmin`.
+- **Intern accelerator (2026-10-05).** Pages `/accelerator` (calendar + the three requirements), `/accelerator/coffee-chats`,
+  `/accelerator/attendance`, `/accelerator/assignments`. Logic is pure and tested in `data/acceleratorLogic.js` (weeks run
+  Sunday to Saturday; the calendar opens on next month once today is in the current month's last calendar row); data access in
+  `data/acceleratorSync.js`. Tables: `accelerator_events` (admin-managed calendar, `required` counts toward attendance),
+  `accelerator_attendance` (admin-marked), `accelerator_coffee_chats` (+ private photo bucket), `accelerator_submissions.status`
+  (complete/incomplete; interns never see a number). The committee's numeric grade lives in admin-only
+  `accelerator_submission_scores`. A trigger (`accelerator_submission_guard`) stops interns writing grading columns, and
+  complete work is locked; an intern can fix and resubmit incomplete work. Coffee-chat target: 3 a week, at least 2 with UC
+  members, 24 over the 8-week minimum program. Admin side lives on `/admin/accelerator`.
 - **Admin surface:** `/admin` (dashboard: pipeline health, review queues,
   company tiers, signups, feature requests, client errors, weekly-digest
   preview), `/admin/opportunities` (job sources), `/admin/members` (roles, mark
@@ -501,7 +510,8 @@ which are chronological and not rewritten when later work supersedes them.
 - `auth.users.email` is `varchar(255)`: cast `::text` in any security-definer
   function that returns it (hit four times).
 - PostgREST silently truncates at 1000 rows: use `data/fetchAllRows.js` for any
-  unbounded read.
+  unbounded read. It pages in a fixed order (`id`, after any ordering the caller asked for; pass another unique column as
+  the 4th argument if the table has no `id`): unordered LIMIT/OFFSET can repeat or drop rows between pages.
 - `upsert` on an RLS table needs INSERT privilege even when it resolves to an
   UPDATE — use `.update().eq(...)` when the row always exists.
 - Anything loaded for the signed-in member belongs in the user-keyed hydration effect in `data/store.jsx`, never in a

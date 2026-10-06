@@ -137,7 +137,7 @@ export default function TopBar() {
         )}
 
         {isIntern && (
-          <Link className="topbar__notifications" to="/accelerator" aria-label="Accelerator deadlines">
+          <Link className="topbar__notifications" to="/accelerator/assignments" aria-label="Accelerator deadlines">
             🔔
             {internDueCount > 0 && <span className="topbar__notifications-count">{internDueCount}</span>}
           </Link>

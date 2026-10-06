@@ -13,12 +13,18 @@ import { supabase } from "./supabaseClient.js";
 // should go through this instead of a bare .select().
 const PAGE_SIZE = 1000;
 
-export async function fetchAllRows(table, columns, applyFilters) {
+//
+// Pages are read in a fixed order: without an ORDER BY, Postgres may return rows in a different order for each
+// page, so a row can land on two pages or none (the same bug that made the pipeline's paged reads collide on
+// insert; see supabase/functions/_shared/dedupeHelpers.ts). `orderBy` (a unique column, `id` by default) is applied
+// after the caller's filters so it only breaks ties behind any ordering they asked for.
+export async function fetchAllRows(table, columns, applyFilters, orderBy = "id") {
   const rows = [];
   let from = 0;
   while (true) {
     let query = supabase.from(table).select(columns).range(from, from + PAGE_SIZE - 1);
     if (applyFilters) query = applyFilters(query);
+    query = query.order(orderBy);
     const { data, error } = await query;
     if (error) throw new Error(`Fetching ${table} failed: ${error.message}`);
     rows.push(...(data ?? []));

@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient.js";
 import { fetchAllRows } from "./fetchAllRows.js";
+import { assignmentProgress, attendanceProgress, coffeeChatProgress, programWeeks } from "./acceleratorLogic.js";
 
 // Real accelerator program (freshmen onboarding) -- see the
 // intern_accelerator migration's own header comment for the full
@@ -183,10 +184,13 @@ export async function fetchInternProgress() {
   // of bug that already bit the Jobs board, the Companies grid, and
   // feed_posts once each in this project's history -- cheap to apply
   // proactively rather than wait for a fourth real incident.
-  const [{ data: members, error: membersError }, lessons, allSubmissions] = await Promise.all([
+  const [{ data: members, error: membersError }, lessons, allSubmissions, events, allAttendance, allChats] = await Promise.all([
     supabase.rpc("list_members"),
     fetchLessons(),
     fetchAllRows("accelerator_submissions", "*"),
+    fetchEvents(),
+    fetchAllRows("accelerator_attendance", "*", undefined, "event_id"),
+    fetchAllRows("accelerator_coffee_chats", "id, profile_id, chat_date, is_uc_member"),
   ]);
   if (membersError) throw new Error(membersError.message);
 
@@ -201,7 +205,24 @@ export async function fetchInternProgress() {
     const own = allSubmissions.filter((s) => s.profile_id === intern.member_id);
     const weeksSubmitted = own.map((s) => lessonByWeek.get(s.lesson_id)).filter((w) => w != null);
     const graded = own.filter((s) => s.graded_at != null);
+    const assignments = assignmentProgress(lessons, own);
+    const attendance = attendanceProgress(
+      events,
+      allAttendance.filter((a) => a.profile_id === intern.member_id),
+      new Date()
+    );
+    const ownChats = allChats.filter((c) => c.profile_id === intern.member_id);
+    const chats = coffeeChatProgress(ownChats, programWeeks(lessons, ownChats), new Date());
     return {
+      assignmentsComplete: assignments.complete,
+      assignmentsIncomplete: assignments.incomplete,
+      assignmentsAwaiting: assignments.awaitingReview,
+      chatsCounted: chats.counted,
+      chatsTarget: chats.target,
+      weeksBehindOnChats: chats.behind.length,
+      requiredAttended: attendance.requiredAttended,
+      requiredSoFar: attendance.requiredSoFar,
+      noSocials: attendance.noSocials,
       memberId: intern.member_id,
       displayName: intern.display_name,
       email: intern.email,
@@ -220,15 +241,34 @@ export async function fetchSubmissionsForLesson(lessonId) {
   return data ?? [];
 }
 
-export async function gradeSubmission(id, { score, feedback }) {
+// The committee marks a submission complete or incomplete and leaves comments (the intern sees both). The numeric
+// grade is the committee's own and lives in a separate admin-only table, so an intern can't read it.
+export async function gradeSubmission(id, { status, score, feedback }) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const { error } = await supabase
     .from("accelerator_submissions")
-    .update({ score, feedback: feedback?.trim() || null, graded_by: user.id, graded_at: new Date().toISOString() })
+    .update({ status, feedback: feedback?.trim() || null, graded_by: user.id, graded_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw new Error(error.message);
+
+  if (score === null || score === undefined) {
+    const { error: deleteError } = await supabase.from("accelerator_submission_scores").delete().eq("submission_id", id);
+    if (deleteError) throw new Error(deleteError.message);
+  } else {
+    const { error: scoreError } = await supabase
+      .from("accelerator_submission_scores")
+      .upsert({ submission_id: id, score, updated_by: user.id, updated_at: new Date().toISOString() }, { onConflict: "submission_id" });
+    if (scoreError) throw new Error(scoreError.message);
+  }
+}
+
+export async function fetchScoresForSubmissions(submissionIds) {
+  if (submissionIds.length === 0) return new Map();
+  const { data, error } = await supabase.from("accelerator_submission_scores").select("submission_id, score").in("submission_id", submissionIds);
+  if (error) throw new Error(error.message);
+  return new Map((data ?? []).map((r) => [r.submission_id, r.score]));
 }
 
 export async function fetchInternRoster() {
@@ -328,4 +368,173 @@ export async function fetchUpcomingDeadlineCount() {
 export async function graduateIntern(profileId) {
   const { error } = await supabase.from("profiles").update({ member_status: "current_member" }).eq("id", profileId);
   if (error) throw new Error(error.message);
+}
+
+
+// ---- Calendar events, attendance and coffee chats (tracker) ----------------------------------------------
+
+export async function fetchEvents() {
+  const { data, error } = await supabase
+    .from("accelerator_events")
+    .select("*")
+    .order("event_date", { ascending: true })
+    .order("start_time", { ascending: true, nullsFirst: true });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function fetchOwnAttendance() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase.from("accelerator_attendance").select("*").eq("profile_id", user.id);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function fetchOwnCoffeeChats() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from("accelerator_coffee_chats")
+    .select("*")
+    .eq("profile_id", user.id)
+    .order("chat_date", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+// Private bucket, own-folder RLS: the photo is only readable by the intern and admins.
+export async function uploadChatPhoto(file) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in.");
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from("accelerator-chat-photos").upload(path, file, { contentType: file.type || undefined });
+  if (error) throw new Error(error.message);
+  return path;
+}
+
+export async function chatPhotoUrl(path) {
+  const { data, error } = await supabase.storage.from("accelerator-chat-photos").createSignedUrl(path, 3600);
+  if (error) throw new Error(error.message);
+  return data.signedUrl;
+}
+
+export async function addCoffeeChat({ chatDate, contactName, isUcMember, memberYear, memberMajor, summary, photoPath }) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in.");
+  const { data, error } = await supabase
+    .from("accelerator_coffee_chats")
+    .insert({
+      profile_id: user.id,
+      chat_date: chatDate,
+      contact_name: contactName.trim(),
+      is_uc_member: isUcMember,
+      member_year: isUcMember ? memberYear.trim() : null,
+      member_major: isUcMember ? memberMajor.trim() : null,
+      summary: summary.trim(),
+      photo_path: photoPath ?? null,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function deleteCoffeeChat(chat) {
+  if (chat.photo_path) await supabase.storage.from("accelerator-chat-photos").remove([chat.photo_path]);
+  const { error } = await supabase.from("accelerator_coffee_chats").delete().eq("id", chat.id);
+  if (error) throw new Error(error.message);
+}
+
+// ---- Admin-only (RLS backs every one of these) ----
+
+export async function createEvent({ title, eventDate, startTime, kind, required, location, description }) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from("accelerator_events")
+    .insert({
+      title: title.trim(),
+      event_date: eventDate,
+      start_time: startTime || null,
+      kind,
+      required,
+      location: location?.trim() || null,
+      description: description?.trim() || null,
+      created_by: user.id,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function updateEvent(id, { title, eventDate, startTime, kind, required, location, description }) {
+  const { error } = await supabase
+    .from("accelerator_events")
+    .update({
+      title: title.trim(),
+      event_date: eventDate,
+      start_time: startTime || null,
+      kind,
+      required,
+      location: location?.trim() || null,
+      description: description?.trim() || null,
+    })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteEvent(id) {
+  const { error } = await supabase.from("accelerator_events").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function fetchAttendanceForEvent(eventId) {
+  const { data, error } = await supabase.from("accelerator_attendance").select("*").eq("event_id", eventId);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+// attended: true / false records it; null clears the record (back to "not recorded").
+export async function setAttendance(eventId, profileId, attended) {
+  if (attended === null) {
+    const { error } = await supabase.from("accelerator_attendance").delete().eq("event_id", eventId).eq("profile_id", profileId);
+    if (error) throw new Error(error.message);
+    return;
+  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { error } = await supabase
+    .from("accelerator_attendance")
+    .upsert({ event_id: eventId, profile_id: profileId, attended, marked_by: user.id, marked_at: new Date().toISOString() }, { onConflict: "event_id,profile_id" });
+  if (error) throw new Error(error.message);
+}
+
+export async function fetchChatsForIntern(profileId) {
+  const { data, error } = await supabase
+    .from("accelerator_coffee_chats")
+    .select("*")
+    .eq("profile_id", profileId)
+    .order("chat_date", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function fetchInterns() {
+  const { data, error } = await supabase.rpc("list_members");
+  if (error) throw new Error(error.message);
+  return (data ?? []).filter((m) => m.member_status === "intern").map((m) => ({ memberId: m.member_id, displayName: m.display_name, email: m.email }));
 }

@@ -1,0 +1,533 @@
+/* Intern accelerator tracker: home (calendar + requirements), coffee chats, attendance.
+   Breakpoints follow the app's scale (styles/shell.css): the calendar and requirements sit side by side above
+   900px, stack below it, and on a phone (640px) the month grid gives way to an agenda list with the
+   requirement cards stacked above it. */
+
+.accel-tabs {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: var(--border-hairline);
+  margin-bottom: var(--space-7);
+  overflow-x: auto;
+}
+
+.accel-tabs__tab {
+  padding: var(--space-3) var(--space-5);
+  color: var(--color-text-muted);
+  font-size: var(--text-body);
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.accel-tabs__tab:hover {
+  color: var(--color-text);
+}
+
+.accel-tabs__tab.is-active {
+  color: var(--color-text);
+  font-weight: 700;
+  border-bottom-color: var(--color-accent);
+}
+
+/* Expanded assignment panel: lines up under the lesson title (status mark + week label + gaps). */
+.accel-step-panel {
+  margin-top: var(--space-5);
+  padding-left: calc(16px + 56px + 2 * var(--space-3));
+}
+
+/* ---- Home layout ---- */
+
+.accel-home {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+  grid-template-areas: "calendar requirements";
+  gap: var(--space-7);
+  align-items: start;
+}
+
+.accel-home__calendar {
+  grid-area: calendar;
+}
+
+.accel-home__requirements {
+  grid-area: requirements;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.accel-home__agenda {
+  grid-area: agenda;
+  display: none;
+}
+
+/* ---- Requirement cards ---- */
+
+.accel-req {
+  display: block;
+  padding: var(--space-5) var(--space-6);
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.accel-req:hover {
+  border-color: var(--color-accent);
+}
+
+.accel-req__kicker {
+  font-size: var(--text-kicker);
+  letter-spacing: var(--tracking-kicker);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.accel-req__figure {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.accel-req__of {
+  font-size: var(--text-body);
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.accel-req__bar {
+  height: 5px;
+  margin: var(--space-2) 0 var(--space-1);
+  background: var(--color-border-inner);
+}
+
+.accel-req__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+}
+
+.accel-req__note {
+  font-size: var(--text-secondary);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.accel-req__note.is-flag {
+  color: var(--color-danger);
+}
+
+.accel-req__more {
+  display: block;
+  margin-top: var(--space-2);
+  font-size: var(--text-meta);
+  color: var(--color-accent);
+}
+
+/* ---- Calendar ---- */
+
+.accel-cal {
+  background: var(--color-surface);
+  border: var(--border-hairline);
+}
+
+.accel-cal__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: var(--border-hairline);
+}
+
+.accel-cal__title {
+  margin: 0;
+  font-size: 16px;
+  flex: 1 1 auto;
+}
+
+.accel-cal__nav {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.accel-cal__legend {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-border-inner);
+  font-size: var(--text-meta);
+  color: var(--color-text-muted);
+}
+
+.accel-cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.accel-cal__dow {
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-table-header);
+  border-bottom: 1px solid var(--color-border-inner);
+  font-size: var(--text-kicker);
+  letter-spacing: var(--tracking-kicker);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.accel-cal__day {
+  min-height: 84px;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-right: 1px solid var(--color-border-inner);
+  border-bottom: 1px solid var(--color-border-inner);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.accel-cal__day:nth-child(7n) {
+  border-right: 0;
+}
+
+.accel-cal__day:hover {
+  background: var(--color-table-header);
+}
+
+.accel-cal__day.is-outside {
+  background: var(--color-ground);
+  color: var(--color-placeholder);
+}
+
+/* Today: a quiet tint and an accent day number, enough to find your place without competing with the events. */
+.accel-cal__day.is-today {
+  background: var(--color-accent-tint);
+}
+
+.accel-cal__day.is-selected {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.accel-cal__num {
+  font-size: var(--text-secondary);
+}
+
+.accel-cal__day.is-today .accel-cal__num {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.accel-chip {
+  display: block;
+  padding: 1px var(--space-1);
+  font-size: var(--text-meta);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.accel-chip--required {
+  background: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.accel-chip--optional {
+  border: 1px dashed var(--color-neutral);
+  color: var(--color-text);
+}
+
+.accel-chip--accelerator {
+  background: var(--color-accent);
+  color: var(--color-surface);
+}
+
+.accel-cal__more {
+  font-size: var(--text-meta);
+  color: var(--color-text-muted);
+}
+
+.accel-cal__selected {
+  padding: var(--space-4) var(--space-5);
+  border-top: var(--border-hairline);
+}
+
+.accel-cal__selected h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-body);
+}
+
+/* ---- Event rows (selected day, agenda, attendance) ---- */
+
+.accel-event {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border-inner);
+}
+
+.accel-event:last-child {
+  border-bottom: 0;
+}
+
+.accel-event__date {
+  flex: 0 0 auto;
+  width: 40px;
+  text-align: center;
+  border: 1px solid var(--color-border);
+  padding: 2px 0;
+  line-height: 1.2;
+}
+
+.accel-event__date.is-required {
+  border-color: var(--color-primary);
+}
+
+.accel-event__dow {
+  display: block;
+  font-size: var(--text-kicker);
+  letter-spacing: var(--tracking-kicker);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.accel-event__day {
+  font-weight: 700;
+}
+
+.accel-event__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.accel-event__title {
+  font-weight: 700;
+}
+
+.accel-event__meta {
+  font-size: var(--text-secondary);
+  color: var(--color-text-muted);
+}
+
+.accel-tag {
+  flex: 0 0 auto;
+  padding: 1px var(--space-2);
+  font-size: var(--text-meta);
+  border: 1px solid var(--color-primary);
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.accel-tag--optional {
+  border: 1px dashed var(--color-neutral);
+  color: var(--color-text-muted);
+}
+
+.accel-tag--accelerator {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.accel-tag--good {
+  background: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.accel-tag--flag {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.accel-agenda__heading {
+  margin: var(--space-5) 0 var(--space-1);
+  font-size: var(--text-kicker);
+  letter-spacing: var(--tracking-kicker);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.accel-event.is-past {
+  opacity: 0.6;
+}
+
+/* ---- Coffee chats ---- */
+
+.accel-weeks {
+  background: var(--color-surface);
+  border: var(--border-hairline);
+}
+
+.accel-week {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-border-inner);
+}
+
+.accel-week:last-child {
+  border-bottom: 0;
+}
+
+.accel-week.is-current {
+  background: var(--color-accent-tint);
+}
+
+.accel-week__label {
+  flex: 0 0 64px;
+  font-weight: 700;
+}
+
+.accel-week__range {
+  flex: 1 1 auto;
+  font-size: var(--text-secondary);
+  color: var(--color-text-muted);
+  min-width: 0;
+}
+
+.accel-slots {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 3px;
+}
+
+/* One square per chat slot: navy for a UC member, blue for anyone else, empty for not yet logged. */
+.accel-slot {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--color-primary);
+}
+
+.accel-slot--uc {
+  background: var(--color-primary);
+}
+
+.accel-slot--other {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.accel-chat {
+  display: flex;
+  gap: var(--space-5);
+  padding: var(--space-5) 0;
+  border-bottom: 1px solid var(--color-border-inner);
+}
+
+.accel-chat__photo {
+  flex: 0 0 96px;
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  background: var(--color-ground);
+  border: 1px solid var(--color-border-inner);
+}
+
+.accel-chat__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.accel-chat__summary {
+  margin: var(--space-2) 0 0;
+  white-space: pre-wrap;
+}
+
+.accel-form {
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  padding: var(--space-6);
+  margin-bottom: var(--space-7);
+}
+
+.accel-form__row {
+  display: flex;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.accel-form__row > .field {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.accel-section {
+  margin-bottom: var(--space-8);
+}
+
+.accel-section h2 {
+  margin-bottom: var(--space-3);
+}
+
+/* ---- Breakpoints ---- */
+
+@media (max-width: 900px) {
+  .accel-home {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "requirements" "calendar";
+  }
+
+  .accel-home__requirements {
+    flex-direction: row;
+  }
+
+  .accel-home__requirements > * {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .accel-tabs {
+    gap: 0;
+  }
+
+  .accel-tabs__tab {
+    padding: var(--space-3) var(--space-2);
+    font-size: var(--text-secondary);
+  }
+
+  .accel-step-panel {
+    padding-left: 0;
+  }
+
+  .accel-home {
+    grid-template-areas: "requirements" "agenda";
+  }
+
+  .accel-home__requirements {
+    flex-direction: column;
+  }
+
+  .accel-home__calendar {
+    display: none;
+  }
+
+  .accel-home__agenda {
+    display: block;
+  }
+
+  .accel-chat {
+    flex-direction: column;
+  }
+
+  .accel-chat__photo {
+    width: 100%;
+    flex-basis: auto;
+    height: 180px;
+  }
+
+  .accel-week {
+    flex-wrap: wrap;
+  }
+}

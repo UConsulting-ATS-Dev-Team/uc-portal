@@ -13,6 +13,7 @@ import {
   fetchSubmissionsForLesson,
   getSubmissionFileSignedUrl,
   gradeSubmission,
+  fetchScoresForSubmissions,
   fetchInternRoster,
   addInternRosterEntry,
   removeInternRosterEntry,
@@ -20,6 +21,8 @@ import {
   fetchInternProgress,
 } from "../data/acceleratorSync.js";
 import SubmissionCommentThread from "../components/SubmissionCommentThread.jsx";
+import AdminAcceleratorEvents from "../components/AdminAcceleratorEvents.jsx";
+import AdminAcceleratorChats from "../components/AdminAcceleratorChats.jsx";
 import "../styles/jobDetail.css";
 import "../styles/admin.css";
 
@@ -141,9 +144,13 @@ function InternRoster() {
   );
 }
 
-function GradeRow({ submission, displayName, namesById, onGraded }) {
-  const [score, setScore] = useState(submission.score ?? "");
+// Complete or incomplete plus comments are what the intern sees. The numeric grade is the committee's own and
+// stays admin-only (its own table), so an intern can't read it.
+function GradeRow({ submission, score: savedScore, displayName, namesById, onGraded }) {
+  const [status, setStatus] = useState(submission.status ?? "");
+  const [score, setScore] = useState(savedScore ?? "");
   const [feedback, setFeedback] = useState(submission.feedback ?? "");
+  const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [fileUrl, setFileUrl] = useState(null);
 
@@ -154,10 +161,17 @@ function GradeRow({ submission, displayName, namesById, onGraded }) {
   }, [submission.file_path]);
 
   async function save() {
+    if (!status) {
+      setError("Choose complete or incomplete.");
+      return;
+    }
     setSaving(true);
+    setError(null);
     try {
-      await gradeSubmission(submission.id, { score: score === "" ? null : Number(score), feedback });
+      await gradeSubmission(submission.id, { status, score: score === "" ? null : Number(score), feedback });
       onGraded();
+    } catch (err) {
+      setError(err.message);
     } finally {
       setSaving(false);
     }
@@ -181,19 +195,27 @@ function GradeRow({ submission, displayName, namesById, onGraded }) {
           )}
         </td>
         <td>
-          <input type="number" style={{ width: 64 }} value={score} onChange={(e) => setScore(e.target.value)} placeholder="—" />
+          <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
+            <option value="">Not reviewed</option>
+            <option value="complete">Complete</option>
+            <option value="incomplete">Incomplete</option>
+          </select>
         </td>
         <td>
-          <input type="text" value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Feedback (optional)" />
+          <input type="number" aria-label="Grade (committee only)" style={{ width: 64 }} value={score} onChange={(e) => setScore(e.target.value)} placeholder="—" />
+        </td>
+        <td>
+          <input type="text" value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Comments for the intern" />
+          {error && <div className="meta" style={{ color: "var(--color-danger)" }}>{error}</div>}
         </td>
         <td>
           <button className="btn btn-secondary" onClick={save} disabled={saving}>
-            {saving ? "Saving…" : submission.graded_at ? "Update" : "Grade"}
+            {saving ? "Saving…" : submission.graded_at ? "Update" : "Save"}
           </button>
         </td>
       </tr>
       <tr>
-        <td colSpan={7} style={{ background: "var(--color-ground)" }}>
+        <td colSpan={8} style={{ background: "var(--color-ground)" }}>
           <SubmissionCommentThread submissionId={submission.id} resolveAuthorName={(id) => namesById.get(id) ?? id} />
         </td>
       </tr>
@@ -219,8 +241,10 @@ function InternProgress() {
           <thead>
             <tr>
               <th>Intern</th>
-              <th>Submitted</th>
-              <th>Graded</th>
+              <th>Assignments complete</th>
+              <th>Coffee chats</th>
+              <th>Required events</th>
+              <th>Socials</th>
               <th>Furthest week</th>
               <th>Last submission</th>
             </tr>
@@ -228,14 +252,14 @@ function InternProgress() {
           <tbody>
             {progress === null && (
               <tr>
-                <td colSpan={5} className="meta">
+                <td colSpan={7} className="meta">
                   Loading…
                 </td>
               </tr>
             )}
             {progress?.length === 0 && (
               <tr>
-                <td colSpan={5} className="meta">
+                <td colSpan={7} className="meta">
                   No real intern accounts have signed up yet.
                 </td>
               </tr>
@@ -246,9 +270,18 @@ function InternProgress() {
                   {p.displayName} <span className="meta">({p.email})</span>
                 </td>
                 <td>
-                  {p.submittedCount} / {p.totalLessons}
+                  {p.assignmentsComplete} / {p.totalLessons}
+                  {p.assignmentsIncomplete > 0 && <span className="meta" style={{ color: "var(--color-danger)" }}> · {p.assignmentsIncomplete} incomplete</span>}
+                  {p.assignmentsAwaiting > 0 && <span className="meta"> · {p.assignmentsAwaiting} to review</span>}
                 </td>
-                <td>{p.gradedCount}</td>
+                <td>
+                  {p.chatsCounted} / {p.chatsTarget}
+                  {p.weeksBehindOnChats > 0 && <span className="meta" style={{ color: "var(--color-danger)" }}> · {p.weeksBehindOnChats} wk behind</span>}
+                </td>
+                <td>
+                  {p.requiredAttended} / {p.requiredSoFar}
+                </td>
+                <td>{p.noSocials ? <span style={{ color: "var(--color-danger)" }}>None attended</span> : "OK"}</td>
                 <td>{p.highestWeek || "—"}</td>
                 <td className="meta">{p.lastSubmittedAt ? new Date(p.lastSubmittedAt).toLocaleDateString() : "Never"}</td>
               </tr>
@@ -267,6 +300,7 @@ function LessonManager({ lesson, onChanged }) {
   const [linkUrl, setLinkUrl] = useState("");
   const [addingLink, setAddingLink] = useState(false);
   const [submissions, setSubmissions] = useState([]);
+  const [scores, setScores] = useState(new Map());
   const [namesById, setNamesById] = useState(new Map());
   const [error, setError] = useState(null);
 
@@ -274,7 +308,12 @@ function LessonManager({ lesson, onChanged }) {
     fetchMaterials(lesson.id).then(setMaterials).catch((e) => setError(e.message));
   }
   function loadSubmissions() {
-    fetchSubmissionsForLesson(lesson.id).then(setSubmissions).catch((e) => setError(e.message));
+    fetchSubmissionsForLesson(lesson.id)
+      .then(async (rows) => {
+        setScores(await fetchScoresForSubmissions(rows.map((r) => r.id)));
+        setSubmissions(rows);
+      })
+      .catch((e) => setError(e.message));
   }
 
   useEffect(() => {
@@ -367,18 +406,19 @@ function LessonManager({ lesson, onChanged }) {
               <th>Submitted</th>
               <th>Response</th>
               <th>File</th>
-              <th>Score</th>
-              <th>Feedback</th>
+              <th>Status</th>
+              <th>Grade (committee only)</th>
+              <th>Comments</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {submissions.map((s) => (
-              <GradeRow key={s.id} submission={s} displayName={namesById.get(s.profile_id) ?? s.profile_id} namesById={namesById} onGraded={loadSubmissions} />
+              <GradeRow key={`${s.id}-${s.graded_at ?? ""}-${s.submitted_at}`} submission={s} score={scores.get(s.id)} displayName={namesById.get(s.profile_id) ?? s.profile_id} namesById={namesById} onGraded={loadSubmissions} />
             ))}
             {submissions.length === 0 && (
               <tr>
-                <td colSpan={7} className="meta">
+                <td colSpan={8} className="meta">
                   No one has submitted yet.
                 </td>
               </tr>
@@ -503,6 +543,10 @@ export default function AdminAccelerator() {
       <InternRoster />
 
       <InternProgress />
+
+      <AdminAcceleratorEvents />
+
+      <AdminAcceleratorChats />
 
       <div className="detail-section">
         <p style={{ fontWeight: 700 }}>{editingId ? "Edit lesson" : "Add a lesson"}</p>
