@@ -136,10 +136,10 @@ export default function CareerResources() {
         <div className="resources-header">
           <div>
             <h1>Career Resources</h1>
-            <p className="meta">The education hub — recruiting prep, skills, and free certifications.</p>
+            <p className="meta">The education hub for recruiting prep, skills, and free certifications.</p>
           </div>
           <div style={{ display: "flex", gap: "var(--space-3)" }}>
-            <input type="text" placeholder="Search Resources" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input className="resources-search" type="text" placeholder="Search resources" aria-label="Search resources" value={search} onChange={(e) => setSearch(e.target.value)} />
             <span className="chip chip-accent">My Saved ({savedResourceIds.length})</span>
             <button className="btn btn-primary" onClick={() => setShowContributeModal(true)}>+ Contribute</button>
           </div>
@@ -187,7 +187,7 @@ export default function CareerResources() {
 
             <CasePartnerFinder />
 
-            {LEARNING_TRACKS.length > 0 && <h2>Learning tracks — structured, start to finish</h2>}
+            {LEARNING_TRACKS.length > 0 && <h2>Learning Tracks</h2>}
             <div className="track-card-grid">
               {LEARNING_TRACKS.map((t) => {
                 const completed = trackProgress[t.id] || 0;

@@ -220,7 +220,7 @@ export default function CasePartnerFinder() {
             </div>
           )}
 
-          <h3 style={{ marginBottom: "var(--space-3)" }}>Browse case partners</h3>
+          <h3 style={{ margin: "var(--space-7) 0 var(--space-4)" }}>Browse case partners</h3>
           {ranked.length === 0 ? (
             <p className="meta">No other members have opted in yet -- check back once more members join the pool.</p>
           ) : (
@@ -252,7 +252,7 @@ export default function CasePartnerFinder() {
             </div>
           )}
 
-          <h3 style={{ margin: "var(--space-6) 0 var(--space-3)" }}>My case partners</h3>
+          <h3 style={{ margin: "var(--space-7) 0 var(--space-4)" }}>My case partners</h3>
           {accepted.length === 0 && otherPending.length === 0 ? (
             <p className="meta">No requests sent yet -- browse above and send your first one.</p>
           ) : (

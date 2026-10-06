@@ -55,6 +55,22 @@ textarea {
   font-size: inherit;
 }
 
+/* Baseline for text controls that no page rule styles. A bare <input type="text"> used to fall through to the
+   browser's own 1-2px padding, so its placeholder sat against the left edge of the box (the Career Resources search).
+   :where() keeps this at zero specificity, so every class-based rule above it (.field input, .network-filters input,
+   .modal__body input, ...) still wins untouched; this only fills in where nothing else said anything. */
+:where(
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"], [type="submit"], [type="button"], [type="image"]),
+  textarea,
+  select
+) {
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-hairline);
+  border-radius: var(--radius);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
 /* Every <select> in the app -- the native dropdown arrow doesn't respect
    a custom box's padding in every browser (reported: "the dropdown arrow
    next to 'best match' is slightly not inside the box"), since nothing

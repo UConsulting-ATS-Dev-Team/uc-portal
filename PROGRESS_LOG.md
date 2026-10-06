@@ -5207,3 +5207,15 @@ longer breaks down to phone width either.
   Tested as a throwaway intern at 1280 and 375 wide (slot cards, disabled intern option, due time from a recurring series, photo upload
   -> Attended with thumbnail, no overflow) and in SQL; the admin dialogs were built and compile but not driven in a browser (no admin
   session here). Throwaway data removed (`roster_total=53 people_total=209`, photo objects 0). 250 server tests pass.
+
+- **2026-10-06: spacing pass on Career Resources, base styling for bare form controls** --
+  Report: "Find a case partner" and "Learning tracks" headings were tight, the Career Resources search box's text sat against its left
+  edge, and the Learning Tracks title read as AI-written. Cause: headings are `margin: 0` globally and the Career Resources section
+  headings had no rule of their own, so they butted against the card above and the grid below; and a bare `<input type="text">` (no
+  `.field` or page rule) fell through to the browser's 1-2px padding. Fixes: `.resources-main > h2/h3` get a shared rhythm; the case-partner
+  h3s got real top margins; the title is now "Learning Tracks" and the page subtitle lost its em dash; the Messages search padding matches
+  the other search fields (9/11px). A zero-specificity `:where()` baseline in `global.css` now gives every text input, textarea and select
+  that nothing else styles the same padding, border and colors, so no page can ship a bare box again; every existing class rule still wins.
+  Verified by rendering the real stylesheet in the browser (24px above and 14px below each heading, 11px left padding in the search box).
+  Not done: a page-by-page visual pass of the signed-in app (the Supabase CLI session expired mid-task, so no throwaway account could be
+  created), and the ~79 other em dashes in user-visible copy.

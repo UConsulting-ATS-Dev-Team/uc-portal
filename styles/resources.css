@@ -83,6 +83,21 @@
   margin-top: var(--space-5);
 }
 
+/* Section headings sit directly in the main column with no margin of their own (headings are margin 0 globally), so they
+   butted against the card above and the grid or table below. One rhythm for all of them: room above, less below. */
+.resources-main > h2 {
+  margin: var(--space-8) 0 var(--space-5);
+}
+
+.resources-main > h3 {
+  margin: var(--space-7) 0 var(--space-4);
+}
+
+.resources-search {
+  width: 240px;
+  max-width: 100%;
+}
+
 .progress-bar-track {
   height: 6px;
   background: var(--color-border-inner);
