@@ -22,6 +22,7 @@ import {
 } from "../data/acceleratorSync.js";
 import SubmissionCommentThread from "../components/SubmissionCommentThread.jsx";
 import AdminAcceleratorEvents from "../components/AdminAcceleratorEvents.jsx";
+import Modal from "../components/Modal.jsx";
 import AdminAcceleratorChats from "../components/AdminAcceleratorChats.jsx";
 import "../styles/jobDetail.css";
 import "../styles/admin.css";
@@ -34,10 +35,9 @@ function InternRoster() {
   const [name, setName] = useState("");
   const [error, setError] = useState(null);
   const [adding, setAdding] = useState(false);
-  const [showBulk, setShowBulk] = useState(false);
+  const [open, setOpen] = useState(false);
   const [bulkText, setBulkText] = useState("");
-  const [bulkAdding, setBulkAdding] = useState(false);
-  const [bulkResult, setBulkResult] = useState(null);
+  const [result, setResult] = useState(null);
 
   function load() {
     fetchInternRoster().then(setEntries).catch((e) => setError(e.message));
@@ -47,14 +47,32 @@ function InternRoster() {
     load();
   }, []);
 
+  function close() {
+    setOpen(false);
+    setError(null);
+    setResult(null);
+  }
+
+  // One person from the fields above the divider, and/or a whole cohort pasted below it.
   async function add() {
-    if (!email.trim()) return;
+    if (!email.trim() && !bulkText.trim()) {
+      setError("Enter an email, or paste a list.");
+      return;
+    }
     setAdding(true);
     setError(null);
+    setResult(null);
     try {
-      await addInternRosterEntry(email, name);
+      let count = 0;
+      if (email.trim()) {
+        await addInternRosterEntry(email, name);
+        count += 1;
+      }
+      if (bulkText.trim()) count += await bulkAddInternRoster(bulkText);
       setEmail("");
       setName("");
+      setBulkText("");
+      setResult(`Added or updated ${count} email${count === 1 ? "" : "s"}.`);
       load();
     } catch (err) {
       setError(err.message);
@@ -68,67 +86,20 @@ function InternRoster() {
     load();
   }
 
-  async function bulkAdd() {
-    if (!bulkText.trim()) return;
-    setBulkAdding(true);
-    setError(null);
-    setBulkResult(null);
-    try {
-      const count = await bulkAddInternRoster(bulkText);
-      setBulkResult(`Added/updated ${count} email${count === 1 ? "" : "s"}.`);
-      setBulkText("");
-      load();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBulkAdding(false);
-    }
-  }
-
   return (
     <div className="detail-section">
-      <p style={{ fontWeight: 700 }}>Who can sign up as an intern</p>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", flexWrap: "wrap" }}>
+        <p style={{ fontWeight: 700, margin: 0, flex: 1 }}>Who can sign up as an intern</p>
+        <button className="btn btn-primary" onClick={() => setOpen(true)}>
+          Add interns
+        </button>
+      </div>
       <p className="meta">
         Incoming freshmen aren't on the roster or in the Directory yet -- add their email here before they try to
         sign up.
       </p>
-      <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "flex-end" }}>
-        <div className="field" style={{ flex: "1 1 220px" }}>
-          <label>Email</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@ucla.edu" />
-        </div>
-        <div className="field" style={{ flex: "1 1 220px" }}>
-          <label>Name (optional)</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
-        </div>
-        <button className="btn btn-primary" onClick={add} disabled={adding || !email.trim()}>
-          {adding ? "Adding…" : "Add"}
-        </button>
-        <button className="btn-link" onClick={() => setShowBulk((s) => !s)}>
-          {showBulk ? "Hide bulk add" : "Bulk add a whole cohort"}
-        </button>
-      </div>
-
-      {showBulk && (
-        <div style={{ marginTop: "var(--space-4)" }}>
-          <div className="field">
-            <label>One per line -- "email" or "email, name"</label>
-            <textarea
-              rows={6}
-              value={bulkText}
-              onChange={(e) => setBulkText(e.target.value)}
-              placeholder={"freshman1@ucla.edu, Jane Doe\nfreshman2@ucla.edu"}
-            />
-          </div>
-          <button className="btn btn-primary" onClick={bulkAdd} disabled={bulkAdding || !bulkText.trim()}>
-            {bulkAdding ? "Adding…" : "Add all"}
-          </button>
-          {bulkResult && <p className="meta">{bulkResult}</p>}
-        </div>
-      )}
-
-      {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
-      <ul style={{ marginTop: "var(--space-4)" }}>
+      {error && !open && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
+      <ul>
         {entries.map((e) => (
           <li key={e.email}>
             {e.name ? `${e.name} — ` : ""}
@@ -140,6 +111,46 @@ function InternRoster() {
         ))}
         {entries.length === 0 && <li className="meta">No one on this list yet.</li>}
       </ul>
+
+      {open && (
+        <Modal
+          title="Add interns"
+          onClose={close}
+          footer={
+            <>
+              <button className="btn btn-secondary" onClick={close} disabled={adding}>
+                Done
+              </button>
+              <button className="btn btn-primary" onClick={add} disabled={adding}>
+                {adding ? "Adding…" : "Add"}
+              </button>
+            </>
+          }
+        >
+          {error && <p className="meta" style={{ color: "var(--color-danger)", marginTop: 0 }}>{error}</p>}
+          {result && <p className="meta" style={{ marginTop: 0 }}>{result}</p>}
+          <div className="field-row">
+            <div className="field">
+              <label htmlFor="intern-email">Email</label>
+              <input id="intern-email" type="text" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@ucla.edu" />
+            </div>
+            <div className="field">
+              <label htmlFor="intern-name">Name (optional)</label>
+              <input id="intern-name" type="text" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+          </div>
+          <div className="field">
+            <label htmlFor="intern-bulk">Or paste a whole cohort, one per line: "email" or "email, name"</label>
+            <textarea
+              id="intern-bulk"
+              rows={6}
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+              placeholder={"freshman1@ucla.edu, Jane Doe\nfreshman2@ucla.edu"}
+            />
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -430,21 +441,19 @@ function LessonManager({ lesson, onChanged }) {
   );
 }
 
-export default function AdminAccelerator() {
-  const [lessons, setLessons] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [editingId, setEditingId] = useState(null);
-  const [selectedId, setSelectedId] = useState(null);
-  const [error, setError] = useState(null);
-  // Prep material queued while filling in the Add form -- uploaded/attached
-  // the moment the lesson is created, so adding a lesson and its slides/PDFs
-  // is one step instead of a separate hunt for the Manage panel.
+// Adding or editing a lesson happens in a dialog so it is the only thing on screen. A new lesson can have its prep
+// material queued here: files and links are attached the moment the lesson is created, so adding a lesson and its
+// slides is one step instead of a separate hunt for the Manage panel.
+function LessonModal({ editing, onClose, onSaved }) {
+  const [form, setForm] = useState(
+    editing ? { lessonDate: editing.lesson_date, title: editing.title, topicOverview: editing.topic_overview || "" } : EMPTY_FORM
+  );
   const [pendingFiles, setPendingFiles] = useState([]);
   const [pendingLinks, setPendingLinks] = useState([]);
   const [draftLinkLabel, setDraftLinkLabel] = useState("");
   const [draftLinkUrl, setDraftLinkUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
   function queueLink() {
     if (!draftLinkUrl.trim()) return;
@@ -453,9 +462,143 @@ export default function AdminAccelerator() {
     setDraftLinkUrl("");
   }
 
+  async function save() {
+    setError(null);
+    if (!form.lessonDate || !form.title.trim()) {
+      setError("Date and title are required.");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (editing) {
+        await updateLesson(editing.id, { lessonDate: form.lessonDate, title: form.title.trim(), topicOverview: form.topicOverview.trim() });
+        await onSaved(null, null);
+        onClose();
+        return;
+      }
+      const created = await createLesson({ lessonDate: form.lessonDate, title: form.title.trim(), topicOverview: form.topicOverview.trim() });
+      // A failed attachment shouldn't lose the lesson that was just created: collect failures and surface them
+      // while still opening Manage so the admin can retry from there.
+      const failures = [];
+      for (const file of pendingFiles) {
+        try {
+          await uploadMaterial(created.id, file);
+        } catch (err) {
+          failures.push(`${file.name}: ${err.message}`);
+        }
+      }
+      for (const link of pendingLinks) {
+        try {
+          await addMaterialLink(created.id, link.label, link.url);
+        } catch (err) {
+          failures.push(`${link.url}: ${err.message}`);
+        }
+      }
+      await onSaved(created.id, failures.length ? `Lesson added, but some material failed to attach: ${failures.join("; ")}` : null);
+      onClose();
+    } catch (err) {
+      setError(err.message);
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal
+      title={editing ? "Edit lesson" : "Add a lesson"}
+      onClose={onClose}
+      width={680}
+      footer={
+        <>
+          <button className="btn btn-secondary" onClick={onClose} disabled={saving}>
+            Cancel
+          </button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>
+            {saving ? "Saving…" : editing ? "Save" : "Add lesson"}
+          </button>
+        </>
+      }
+    >
+      {error && <p className="meta" style={{ color: "var(--color-danger)", marginTop: 0 }}>{error}</p>}
+      <div className="field-row">
+        <div className="field">
+          <label htmlFor="lesson-date">Date</label>
+          <input id="lesson-date" type="date" value={form.lessonDate} onChange={(e) => setForm({ ...form, lessonDate: e.target.value })} />
+        </div>
+        <div className="field" style={{ flex: 2 }}>
+          <label htmlFor="lesson-title">Title</label>
+          <input id="lesson-title" type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+        </div>
+      </div>
+      <div className="field">
+        <label htmlFor="lesson-topic">Topic overview</label>
+        <input id="lesson-topic" type="text" value={form.topicOverview} onChange={(e) => setForm({ ...form, topicOverview: e.target.value })} />
+      </div>
+
+      {!editing && (
+        <div style={{ marginTop: "var(--space-5)" }}>
+          <p style={{ fontWeight: 700, marginBottom: "var(--space-2)" }}>Prep material (optional)</p>
+          <p className="meta" style={{ marginTop: 0 }}>
+            Attach slideshows, PDFs, or spreadsheets, or link to a deck. They're added when you click Add lesson; you can also add or remove
+            more later from the lesson's Manage panel.
+          </p>
+          <input
+            type="file"
+            multiple
+            accept=".pdf,.ppt,.pptx,.xls,.xlsx"
+            onChange={(e) => {
+              setPendingFiles([...pendingFiles, ...Array.from(e.target.files ?? [])]);
+              e.target.value = "";
+            }}
+          />
+          <div className="field-row" style={{ marginTop: "var(--space-4)", alignItems: "flex-end" }}>
+            <div className="field">
+              <label htmlFor="lesson-link-label">Link label (optional)</label>
+              <input id="lesson-link-label" type="text" value={draftLinkLabel} onChange={(e) => setDraftLinkLabel(e.target.value)} placeholder="e.g. Slide deck" />
+            </div>
+            <div className="field" style={{ flex: 2 }}>
+              <label htmlFor="lesson-link-url">Link URL</label>
+              <input id="lesson-link-url" type="url" value={draftLinkUrl} onChange={(e) => setDraftLinkUrl(e.target.value)} placeholder="https://…" />
+            </div>
+            <button type="button" className="btn btn-secondary" onClick={queueLink} disabled={!draftLinkUrl.trim()} style={{ marginBottom: "var(--space-4)" }}>
+              Add link
+            </button>
+          </div>
+          {(pendingFiles.length > 0 || pendingLinks.length > 0) && (
+            <ul style={{ marginTop: "var(--space-2)" }}>
+              {pendingFiles.map((f, i) => (
+                <li key={`f${i}`}>
+                  {f.name}{" "}
+                  <button type="button" className="btn-link" onClick={() => setPendingFiles(pendingFiles.filter((_, j) => j !== i))}>
+                    Remove
+                  </button>
+                </li>
+              ))}
+              {pendingLinks.map((l, i) => (
+                <li key={`l${i}`}>
+                  {l.label || l.url} <span className="meta">(link)</span>{" "}
+                  <button type="button" className="btn-link" onClick={() => setPendingLinks(pendingLinks.filter((_, j) => j !== i))}>
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+export default function AdminAccelerator() {
+  const [lessons, setLessons] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [lessonModal, setLessonModal] = useState(null); // null | { editing: lesson | null }
+  const [selectedId, setSelectedId] = useState(null);
+  const [error, setError] = useState(null);
+
   function load() {
     setLoading(true);
-    fetchLessons()
+    return fetchLessons()
       .then(setLessons)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -465,63 +608,12 @@ export default function AdminAccelerator() {
     load();
   }, []);
 
-  function startEdit(lesson) {
-    setEditingId(lesson.id);
-    setForm({ lessonDate: lesson.lesson_date, title: lesson.title, topicOverview: lesson.topic_overview || "" });
-  }
-
-  function cancelEdit() {
-    setEditingId(null);
-    setForm(EMPTY_FORM);
-  }
-
-  async function saveLesson() {
-    setError(null);
-    setSaving(true);
-    try {
-      if (!form.lessonDate || !form.title.trim()) {
-        setError("Date and title are required.");
-        return;
-      }
-      if (editingId) {
-        await updateLesson(editingId, { lessonDate: form.lessonDate, title: form.title.trim(), topicOverview: form.topicOverview.trim() });
-        cancelEdit();
-        load();
-      } else {
-        // Jump straight into that lesson's own Manage panel once created --
-        // real ask: attaching files/links should feel like one continuous
-        // flow right after title/topic, not a separate click to find it.
-        const created = await createLesson({ lessonDate: form.lessonDate, title: form.title.trim(), topicOverview: form.topicOverview.trim() });
-        // A failed attachment shouldn't lose the lesson that was just
-        // created -- collect failures and surface them while still
-        // opening Manage so the admin can retry from there.
-        const failures = [];
-        for (const file of pendingFiles) {
-          try {
-            await uploadMaterial(created.id, file);
-          } catch (err) {
-            failures.push(`${file.name}: ${err.message}`);
-          }
-        }
-        for (const link of pendingLinks) {
-          try {
-            await addMaterialLink(created.id, link.label, link.url);
-          } catch (err) {
-            failures.push(`${link.url}: ${err.message}`);
-          }
-        }
-        if (failures.length) setError(`Lesson added, but some material failed to attach -- ${failures.join("; ")}`);
-        setPendingFiles([]);
-        setPendingLinks([]);
-        cancelEdit();
-        load();
-        setSelectedId(created.id);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
-    }
+  // Jump straight into a new lesson's own Manage panel once it is created, so attaching files and links feels like
+  // one continuous flow.
+  async function lessonSaved(createdId, warning) {
+    setError(warning);
+    await load();
+    if (createdId) setSelectedId(createdId);
   }
 
   async function removeLesson(id) {
@@ -549,111 +641,41 @@ export default function AdminAccelerator() {
       <AdminAcceleratorChats />
 
       <div className="detail-section">
-        <p style={{ fontWeight: 700 }}>{editingId ? "Edit lesson" : "Add a lesson"}</p>
-        <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "flex-end" }}>
-          <div className="field" style={{ width: 160 }}>
-            <label>Date</label>
-            <input type="date" value={form.lessonDate} onChange={(e) => setForm({ ...form, lessonDate: e.target.value })} />
-          </div>
-          <div className="field" style={{ flex: "1 1 240px" }}>
-            <label>Title</label>
-            <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          </div>
-          <div className="field" style={{ flex: "1 1 320px" }}>
-            <label>Topic overview</label>
-            <input type="text" value={form.topicOverview} onChange={(e) => setForm({ ...form, topicOverview: e.target.value })} />
-          </div>
-          <button className="btn btn-primary" onClick={saveLesson} disabled={saving}>
-            {saving ? "Saving…" : editingId ? "Save" : "Add"}
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", flexWrap: "wrap" }}>
+          <p style={{ fontWeight: 700, margin: 0, flex: 1 }}>Lessons</p>
+          <button className="btn btn-primary" onClick={() => setLessonModal({ editing: null })}>
+            Add lesson
           </button>
-          {editingId && (
-            <button className="btn btn-secondary" onClick={cancelEdit}>
-              Cancel
-            </button>
-          )}
         </div>
-
-        {!editingId && (
-          <div style={{ marginTop: "var(--space-5)" }}>
-            <p style={{ fontWeight: 700, marginBottom: "var(--space-2)" }}>Prep material (optional)</p>
-            <p className="meta" style={{ marginTop: 0 }}>
-              Attach slideshows, PDFs, or spreadsheets, or link to a deck. They're added when you click Add; you can
-              also add or remove more later from the lesson's Manage panel.
-            </p>
-            <input
-              type="file"
-              multiple
-              accept=".pdf,.ppt,.pptx,.xls,.xlsx"
-              onChange={(e) => {
-                setPendingFiles([...pendingFiles, ...Array.from(e.target.files ?? [])]);
-                e.target.value = "";
-              }}
-            />
-            <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "flex-end", marginTop: "var(--space-4)" }}>
-              <div className="field" style={{ flex: "1 1 180px" }}>
-                <label>Link label (optional)</label>
-                <input type="text" value={draftLinkLabel} onChange={(e) => setDraftLinkLabel(e.target.value)} placeholder="e.g. Slide deck" />
-              </div>
-              <div className="field" style={{ flex: "1 1 260px" }}>
-                <label>Link URL</label>
-                <input type="url" value={draftLinkUrl} onChange={(e) => setDraftLinkUrl(e.target.value)} placeholder="https://…" />
-              </div>
-              <button type="button" className="btn btn-secondary" onClick={queueLink} disabled={!draftLinkUrl.trim()}>
-                Add link
-              </button>
-            </div>
-            {(pendingFiles.length > 0 || pendingLinks.length > 0) && (
-              <ul style={{ marginTop: "var(--space-4)" }}>
-                {pendingFiles.map((f, i) => (
-                  <li key={`f${i}`}>
-                    {f.name}{" "}
-                    <button type="button" className="btn-link" onClick={() => setPendingFiles(pendingFiles.filter((_, j) => j !== i))}>
-                      Remove
-                    </button>
-                  </li>
-                ))}
-                {pendingLinks.map((l, i) => (
-                  <li key={`l${i}`}>
-                    {l.label || l.url} <span className="meta">(link)</span>{" "}
-                    <button type="button" className="btn-link" onClick={() => setPendingLinks(pendingLinks.filter((_, j) => j !== i))}>
-                      Remove
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="detail-section">
         {loading && <p className="meta">Loading…</p>}
-        {!loading && lessons.length === 0 && <p className="meta">No lessons yet — add the first one above.</p>}
+        {!loading && lessons.length === 0 && <p className="meta">No lessons yet. Add the first one.</p>}
         {lessons.map((lesson, i) => (
           <div key={lesson.id}>
-          <div className="step-row">
-            <span className="step-row__number step-row__number--week">Week {i + 1}</span>
-            <div className="step-row__body">
-              <div className="step-row__title">{lesson.title}</div>
-              <div className="step-row__detail meta">{new Date(`${lesson.lesson_date}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</div>
-              {lesson.topic_overview && <div className="step-row__detail">{lesson.topic_overview}</div>}
+            <div className="step-row">
+              <span className="step-row__number step-row__number--week">Week {i + 1}</span>
+              <div className="step-row__body">
+                <div className="step-row__title">{lesson.title}</div>
+                <div className="step-row__detail meta">{new Date(`${lesson.lesson_date}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</div>
+                {lesson.topic_overview && <div className="step-row__detail">{lesson.topic_overview}</div>}
+              </div>
+              <div className="step-row__state" style={{ display: "flex", gap: "var(--space-2)" }}>
+                <button className="btn btn-secondary" onClick={() => setSelectedId(selectedId === lesson.id ? null : lesson.id)}>
+                  {selectedId === lesson.id ? "Close" : "Manage"}
+                </button>
+                <button className="btn-link" onClick={() => setLessonModal({ editing: lesson })}>
+                  Edit
+                </button>
+                <button className="btn-link" onClick={() => removeLesson(lesson.id)}>
+                  Delete
+                </button>
+              </div>
             </div>
-            <div className="step-row__state" style={{ display: "flex", gap: "var(--space-2)" }}>
-              <button className="btn btn-secondary" onClick={() => setSelectedId(selectedId === lesson.id ? null : lesson.id)}>
-                {selectedId === lesson.id ? "Close" : "Manage"}
-              </button>
-              <button className="btn-link" onClick={() => startEdit(lesson)}>
-                Edit
-              </button>
-              <button className="btn-link" onClick={() => removeLesson(lesson.id)}>
-                Delete
-              </button>
-            </div>
-          </div>
-          {selectedId === lesson.id && <LessonManager lesson={lesson} onChanged={load} />}
+            {selectedId === lesson.id && <LessonManager lesson={lesson} onChanged={load} />}
           </div>
         ))}
       </div>
+
+      {lessonModal && <LessonModal editing={lessonModal.editing} onClose={() => setLessonModal(null)} onSaved={lessonSaved} />}
     </div>
   );
 }

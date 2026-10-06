@@ -129,6 +129,7 @@
 .modal__body input[type="text"],
 .modal__body input[type="number"],
 .modal__body input[type="date"],
+.modal__body input[type="time"],
 .modal__body input[type="url"] {
   width: 100%;
   padding: var(--space-3) var(--space-4);

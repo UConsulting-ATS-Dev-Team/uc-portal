@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { addCoffeeChat, deleteCoffeeChat, uploadChatPhoto } from "../data/acceleratorSync.js";
-import { CHATS_PER_WEEK, UC_CHATS_PER_WEEK, coffeeChatProgress, parseYmd, programWeeks, ymd } from "../data/acceleratorLogic.js";
+import { CHATS_PER_WEEK, CLUB_CHATS_PER_WEEK, coffeeChatProgress, parseYmd, programPeriods, ymd } from "../data/acceleratorLogic.js";
 import { useAcceleratorData } from "../data/useAcceleratorData.js";
 import AcceleratorChatPhoto from "../components/AcceleratorChatPhoto.jsx";
 import AcceleratorTabs from "../components/AcceleratorTabs.jsx";
@@ -10,10 +10,30 @@ import "../styles/accelerator.css";
 const YEARS = ["Freshman", "Sophomore", "Junior", "Senior", "Alumni"];
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 
-const shortDate = (key) => parseYmd(key).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+const dayLabel = (key) => parseYmd(key).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 
-function ChatForm({ onLogged }) {
-  const blank = { chatDate: ymd(new Date()), contactName: "", isUc: true, year: "", major: "", summary: "" };
+function SlotCard({ slot }) {
+  const chat = slot.chat;
+  return (
+    <div className={`accel-slotcard${chat ? " is-filled" : ""}`}>
+      <div className="accel-slotcard__label">{slot.label}</div>
+      {chat ? (
+        <>
+          <div className="accel-slotcard__name">{chat.contact_name}</div>
+          <div className="accel-slotcard__meta">
+            {chat.is_uc_member ? "Club member" : "Another intern"} · {dayLabel(chat.chat_date)}
+          </div>
+        </>
+      ) : (
+        <div className="accel-slotcard__empty">Not logged yet</div>
+      )}
+    </div>
+  );
+}
+
+function ChatForm({ week, onLogged }) {
+  const defaultIsClub = week.canLogClub;
+  const blank = { chatDate: ymd(new Date()), contactName: "", isClub: defaultIsClub, year: "", major: "", summary: "" };
   const [form, setForm] = useState(blank);
   const [photo, setPhoto] = useState(null);
   const [fileKey, setFileKey] = useState(0);
@@ -21,11 +41,15 @@ function ChatForm({ onLogged }) {
   const [error, setError] = useState(null);
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+  // The chosen type may have stopped being allowed since it was picked (its slot just filled).
+  const isClub = form.isClub ? week.canLogClub : !week.canLogIntern;
 
   function validate() {
+    if (isClub && !week.canLogClub) return "This week's club member and intern slots are all taken.";
+    if (!isClub && !week.canLogIntern) return "Your intern slot this week is taken. Log a chat with a club member instead.";
     if (!form.contactName.trim()) return "Enter the name of the person you met.";
-    if (form.isUc && !form.year) return "Choose the UC member's year.";
-    if (form.isUc && !form.major.trim()) return "Enter the UC member's major.";
+    if (isClub && !form.year) return "Choose the club member's year.";
+    if (isClub && !form.major.trim()) return "Enter the club member's major.";
     if (!form.summary.trim()) return "Say what you talked about.";
     if (!photo) return "Add a picture from the chat.";
     if (photo.size > MAX_PHOTO_BYTES) return "That picture is over 10 MB. Choose a smaller one.";
@@ -42,19 +66,18 @@ function ChatForm({ onLogged }) {
     }
     setSaving(true);
     setError(null);
-    let photoPath = null;
     try {
-      photoPath = await uploadChatPhoto(photo);
+      const photoPath = await uploadChatPhoto(photo);
       await addCoffeeChat({
         chatDate: form.chatDate,
         contactName: form.contactName,
-        isUcMember: form.isUc,
+        isUcMember: isClub,
         memberYear: form.year,
         memberMajor: form.major,
         summary: form.summary,
         photoPath,
       });
-      setForm({ ...blank, chatDate: form.chatDate });
+      setForm({ ...blank, chatDate: form.chatDate, isClub: true });
       setPhoto(null);
       setFileKey((k) => k + 1);
       await onLogged();
@@ -67,22 +90,28 @@ function ChatForm({ onLogged }) {
 
   return (
     <form className="accel-form" onSubmit={submit}>
-      <h2 style={{ marginTop: 0 }}>Log a coffee chat</h2>
+      <h3 style={{ marginTop: 0 }}>Log a coffee chat for week {week.number}</h3>
+      <fieldset className="accel-form__type">
+        <legend className="meta">Who did you meet?</legend>
+        <label className={!week.canLogClub ? "is-disabled" : ""}>
+          <input type="radio" name="chat-type" checked={isClub} disabled={!week.canLogClub} onChange={() => set({ isClub: true })} /> Club member
+        </label>
+        <label className={!week.canLogIntern ? "is-disabled" : ""}>
+          <input type="radio" name="chat-type" checked={!isClub} disabled={!week.canLogIntern} onChange={() => set({ isClub: false })} /> Another intern
+        </label>
+      </fieldset>
+      {!week.canLogIntern && week.canLogClub && <p className="meta">Your intern slot this week is taken, so this one needs to be a club member.</p>}
       <div className="accel-form__row">
         <div className="field">
           <label htmlFor="chat-date">Date</label>
           <input id="chat-date" type="date" value={form.chatDate} max={ymd(new Date())} onChange={(e) => set({ chatDate: e.target.value })} />
         </div>
         <div className="field">
-          <label htmlFor="chat-name">Who did you meet?</label>
+          <label htmlFor="chat-name">Name</label>
           <input id="chat-name" type="text" value={form.contactName} onChange={(e) => set({ contactName: e.target.value })} />
         </div>
       </div>
-      <div className="checkbox-row" style={{ margin: "var(--space-3) 0" }}>
-        <input id="chat-uc" type="checkbox" checked={form.isUc} onChange={() => set({ isUc: !form.isUc })} />
-        <label htmlFor="chat-uc">They're a UC member</label>
-      </div>
-      {form.isUc && (
+      {isClub && (
         <div className="accel-form__row">
           <div className="field">
             <label htmlFor="chat-year">Their year</label>
@@ -118,11 +147,22 @@ function ChatForm({ onLogged }) {
 }
 
 export default function AcceleratorCoffeeChats() {
-  const { lessons, chats, loading, error, reload } = useAcceleratorData();
-  const today = useMemo(() => new Date(), []);
-  const weeks = useMemo(() => programWeeks(lessons, chats, today), [lessons, chats, today]);
-  const progress = useMemo(() => coffeeChatProgress(chats, weeks, today), [chats, weeks, today]);
+  const { events, lessons, chats, loading, error, reload } = useAcceleratorData();
+  const now = useMemo(() => new Date(), []);
+  const periods = useMemo(() => programPeriods(events, { lessons, chats, today: now }), [events, lessons, chats, now]);
+  const progress = useMemo(() => coffeeChatProgress(chats, periods, now), [chats, periods, now]);
   const [deleteError, setDeleteError] = useState(null);
+  const current = progress.current;
+
+  // Which chats fill a slot (and so count) versus extras that don't, and which week each belongs to.
+  const chatInfo = useMemo(() => {
+    const info = new Map();
+    for (const week of progress.perWeek) {
+      const countedIds = new Set(week.slots.filter((s) => s.chat).map((s) => s.chat.id));
+      for (const chat of week.chats) info.set(chat.id, { week, counts: countedIds.has(chat.id) });
+    }
+    return info;
+  }, [progress]);
 
   async function remove(chat) {
     if (!window.confirm(`Delete your coffee chat with ${chat.contact_name}?`)) return;
@@ -138,39 +178,69 @@ export default function AcceleratorCoffeeChats() {
   return (
     <div>
       <AcceleratorTabs />
-      <h1>Coffee chats</h1>
+      <h1 className="accel-title">Coffee chats</h1>
       <p className="meta">
-        {CHATS_PER_WEEK} a week, at least {UC_CHATS_PER_WEEK} of them with UC members. {progress.counted} of {progress.target} done.
+        {CHATS_PER_WEEK} a week, due at every accelerator meeting: {CLUB_CHATS_PER_WEEK} with club members, and one with another intern or a third club member.{" "}
+        {progress.counted} of {progress.target} done.
       </p>
+      {!periods[0]?.byMeeting && (
+        <p className="meta">No accelerator meetings are on the calendar yet, so weeks run Sunday to Saturday for now.</p>
+      )}
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
 
-      <ChatForm onLogged={reload} />
+      {current ? (
+        <div className="accel-section">
+          <h2>
+            This week <span className="meta">Week {current.number}, due {current.dueLabel}</span>
+          </h2>
+          <div className="accel-slotcards">
+            {current.slots.map((slot, i) => (
+              <SlotCard key={i} slot={slot} />
+            ))}
+          </div>
+          {current.done ? (
+            <p className="meta" style={{ marginTop: "var(--space-4)" }}>
+              All three are logged. Next week opens right after the accelerator meeting, so a chat logged before then counts toward this week and one logged after counts toward the next.
+            </p>
+          ) : (
+            <div style={{ marginTop: "var(--space-5)" }}>
+              <ChatForm key={`${current.number}-${current.counted}`} week={current} onLogged={reload} />
+            </div>
+          )}
+        </div>
+      ) : (
+        !loading && (
+          <p className="meta">The last accelerator meeting has passed, so there are no more weeks to log chats for.</p>
+        )
+      )}
 
       <div className="accel-section">
-        <h2>By week</h2>
-        <p className="meta" style={{ marginTop: 0 }}>
-          Filled navy: a UC member. Filled blue: someone else. Empty: not logged yet.
-        </p>
+        <h2>All weeks</h2>
         <div className="accel-weeks">
-          {progress.perWeek.map((week) => {
-            const slots = Array.from({ length: CHATS_PER_WEEK }, (_, i) => week.chats[i] ?? null);
-            return (
-              <div key={week.index} className={`accel-week${week.isCurrent ? " is-current" : ""}`}>
+          {progress.perWeek.map((week) => (
+            <div key={week.index} className={`accel-week accel-week--stack${week.isCurrent ? " is-current" : ""}`}>
+              <div className="accel-week__head">
                 <span className="accel-week__label">Week {week.number}</span>
                 <span className="accel-week__range">
-                  {shortDate(week.startKey)} to {shortDate(week.endKey)}
-                </span>
-                <span className="accel-slots" role="img" aria-label={`${week.total} of ${CHATS_PER_WEEK} chats, ${week.uc} with UC members`}>
-                  {slots.map((chat, i) => (
-                    <span key={i} className={`accel-slot${chat ? (chat.is_uc_member ? " accel-slot--uc" : " accel-slot--other") : ""}`} />
-                  ))}
+                  {week.isPast ? "Closed" : "Due"} {week.dueLabel}
+                  {week.projected && " (projected)"}
                 </span>
                 {week.done && <span className="accel-tag accel-tag--good">Done</span>}
-                {week.needsUc && <span className="accel-tag accel-tag--flag">Needs {UC_CHATS_PER_WEEK} UC members</span>}
-                {!week.done && !week.needsUc && week.isPast && <span className="accel-tag accel-tag--flag">Short</span>}
+                {!week.done && week.isPast && <span className="accel-tag accel-tag--flag">Short</span>}
+                {week.isCurrent && !week.done && <span className="accel-tag accel-tag--accelerator">This week</span>}
               </div>
-            );
-          })}
+              {(week.isPast || week.isCurrent) && (
+                <div className="accel-pills">
+                  {week.slots.map((slot, i) => (
+                    <span key={i} className={`accel-pill${slot.chat ? " is-filled" : ""}`}>
+                      <span className="accel-pill__label">{slot.label}</span>
+                      {slot.chat ? slot.chat.contact_name : "Open"}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -179,25 +249,31 @@ export default function AcceleratorCoffeeChats() {
         {deleteError && <p className="meta" style={{ color: "var(--color-danger)" }}>{deleteError}</p>}
         {loading && <p className="meta">Loading…</p>}
         {!loading && chats.length === 0 && <p className="meta">No chats logged yet. Add your first above.</p>}
-        {chats.map((chat) => (
-          <div className="accel-chat" key={chat.id}>
-            {chat.photo_path ? <AcceleratorChatPhoto path={chat.photo_path} /> : <div className="accel-chat__photo" />}
-            <div className="accel-chat__body">
-              <div>
-                <strong>{chat.contact_name}</strong>{" "}
-                <span className={`accel-tag${chat.is_uc_member ? " accel-tag--good" : " accel-tag--optional"}`}>{chat.is_uc_member ? "UC member" : "Not UC"}</span>
+        {chats.map((chat) => {
+          const info = chatInfo.get(chat.id);
+          return (
+            <div className="accel-chat" key={chat.id}>
+              {chat.photo_path ? <AcceleratorChatPhoto path={chat.photo_path} /> : <div className="accel-chat__photo" />}
+              <div className="accel-chat__body">
+                <div>
+                  <strong>{chat.contact_name}</strong>{" "}
+                  <span className={`accel-tag${chat.is_uc_member ? " accel-tag--good" : " accel-tag--optional"}`}>{chat.is_uc_member ? "Club member" : "Another intern"}</span>{" "}
+                  {info && (info.counts ? <span className="accel-tag">Week {info.week.number}</span> : <span className="accel-tag accel-tag--flag">Doesn't count, slot taken</span>)}
+                </div>
+                <div className="meta">
+                  {parseYmd(chat.chat_date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                  {chat.is_uc_member && ` · ${chat.member_year}, ${chat.member_major}`}
+                </div>
+                <p className="accel-chat__summary">{chat.summary}</p>
+                {info?.week.isCurrent && (
+                  <button type="button" className="btn-link" onClick={() => remove(chat)}>
+                    Delete
+                  </button>
+                )}
               </div>
-              <div className="meta">
-                {parseYmd(chat.chat_date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
-                {chat.is_uc_member && ` · ${chat.member_year}, ${chat.member_major}`}
-              </div>
-              <p className="accel-chat__summary">{chat.summary}</p>
-              <button type="button" className="btn-link" onClick={() => remove(chat)}>
-                Delete
-              </button>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

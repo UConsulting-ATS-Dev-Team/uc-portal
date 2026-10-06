@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import Modal from "../components/Modal.jsx";
 import { useLibrary } from "../data/useLibrary.js";
 import {
   createLibraryResource,
@@ -31,6 +32,9 @@ export default function AdminLibrary() {
   const [editingResourceId, setEditingResourceId] = useState(null);
   const [trackForm, setTrackForm] = useState(EMPTY_TRACK);
   const [editingTrackId, setEditingTrackId] = useState(null);
+  // The add/edit forms open in a dialog so they are the only thing on screen while in use.
+  const [resourceOpen, setResourceOpen] = useState(false);
+  const [trackOpen, setTrackOpen] = useState(false);
 
   async function run(action) {
     setError(null);
@@ -46,6 +50,7 @@ export default function AdminLibrary() {
   }
 
   function startEditResource(r) {
+    setResourceOpen(true);
     setEditingResourceId(r.id);
     setResourceForm({
       title: r.title,
@@ -60,6 +65,7 @@ export default function AdminLibrary() {
   }
 
   function cancelResource() {
+    setResourceOpen(false);
     setEditingResourceId(null);
     setResourceForm(EMPTY_RESOURCE);
   }
@@ -86,6 +92,7 @@ export default function AdminLibrary() {
   }
 
   function startEditTrack(t) {
+    setTrackOpen(true);
     setEditingTrackId(t.id);
     setTrackForm({
       title: t.title,
@@ -98,6 +105,7 @@ export default function AdminLibrary() {
   }
 
   function cancelTrack() {
+    setTrackOpen(false);
     setEditingTrackId(null);
     setTrackForm(EMPTY_TRACK);
   }
@@ -138,7 +146,81 @@ export default function AdminLibrary() {
       )}
 
       <div className="detail-section">
-        <p style={{ fontWeight: 700 }}>{editingResourceId ? "Edit resource" : "Add a resource"}</p>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", flexWrap: "wrap" }}>
+          <p style={{ fontWeight: 700, margin: 0, flex: 1 }}>Resources ({resources.length})</p>
+          <button className="btn btn-primary" onClick={() => setResourceOpen(true)}>
+            Add resource
+          </button>
+        </div>
+        {loading && <p className="meta">Loading…</p>}
+        {!loading && resources.length === 0 && <p className="meta">Nothing yet. Add the first resource.</p>}
+        {resources.map((r) => (
+          <div className="step-row" key={r.id}>
+            <div className="step-row__body">
+              <div className="step-row__title">{r.title}</div>
+              <div className="step-row__detail meta">
+                {r.category} · {r.format} · updated {r.updated}
+              </div>
+            </div>
+            <div className="step-row__state" style={{ display: "flex", gap: "var(--space-3)" }}>
+              <Link to={`/resources/${r.id}`} className="btn btn-secondary">
+                Open / upload file
+              </Link>
+              <button className="btn-link" onClick={() => startEditResource(r)}>
+                Edit
+              </button>
+              <button className="btn-link" onClick={() => removeResource(r)}>
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="detail-section">
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", flexWrap: "wrap" }}>
+          <p style={{ fontWeight: 700, margin: 0, flex: 1 }}>Learning tracks ({tracks.length})</p>
+          <button className="btn btn-primary" onClick={() => setTrackOpen(true)}>
+            Add learning track
+          </button>
+        </div>
+        {!loading && tracks.length === 0 && <p className="meta">No tracks yet.</p>}
+        {tracks.map((t) => (
+          <div className="step-row" key={t.id}>
+            <div className="step-row__body">
+              <div className="step-row__title">{t.title}</div>
+              <div className="step-row__detail meta">
+                {t.category} · {t.steps.length} step{t.steps.length === 1 ? "" : "s"}
+              </div>
+            </div>
+            <div className="step-row__state" style={{ display: "flex", gap: "var(--space-3)" }}>
+              <button className="btn-link" onClick={() => startEditTrack(t)}>
+                Edit
+              </button>
+              <button className="btn-link" onClick={() => removeTrack(t)}>
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {resourceOpen && (
+        <Modal
+          title={editingResourceId ? "Edit resource" : "Add a resource"}
+          onClose={cancelResource}
+          width={720}
+          footer={
+            <>
+              <button className="btn btn-secondary" onClick={cancelResource} disabled={saving}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={saveResource} disabled={saving}>
+                {saving ? "Saving…" : editingResourceId ? "Save" : "Add resource"}
+              </button>
+            </>
+          }
+        >
+          {error && <p className="meta" style={{ color: "var(--color-danger)", marginTop: 0 }}>{error}</p>}
         <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap" }}>
           <div className="field" style={{ flex: "2 1 260px" }}>
             <label>Title</label>
@@ -185,47 +267,26 @@ export default function AdminLibrary() {
           <label>UC-specific notes (optional)</label>
           <textarea rows={2} value={resourceForm.notes} onChange={(e) => setResourceForm({ ...resourceForm, notes: e.target.value })} />
         </div>
-        <div style={{ display: "flex", gap: "var(--space-3)" }}>
-          <button className="btn btn-primary" onClick={saveResource} disabled={saving}>
-            {saving ? "Saving…" : editingResourceId ? "Save" : "Add resource"}
-          </button>
-          {editingResourceId && (
-            <button className="btn btn-secondary" onClick={cancelResource}>
-              Cancel
-            </button>
-          )}
-        </div>
-      </div>
+        </Modal>
+      )}
 
-      <div className="detail-section">
-        <p style={{ fontWeight: 700 }}>Resources ({resources.length})</p>
-        {loading && <p className="meta">Loading…</p>}
-        {!loading && resources.length === 0 && <p className="meta">Nothing yet — add the first resource above.</p>}
-        {resources.map((r) => (
-          <div className="step-row" key={r.id}>
-            <div className="step-row__body">
-              <div className="step-row__title">{r.title}</div>
-              <div className="step-row__detail meta">
-                {r.category} · {r.format} · updated {r.updated}
-              </div>
-            </div>
-            <div className="step-row__state" style={{ display: "flex", gap: "var(--space-3)" }}>
-              <Link to={`/resources/${r.id}`} className="btn btn-secondary">
-                Open / upload file
-              </Link>
-              <button className="btn-link" onClick={() => startEditResource(r)}>
-                Edit
+      {trackOpen && (
+        <Modal
+          title={editingTrackId ? "Edit learning track" : "Add a learning track"}
+          onClose={cancelTrack}
+          width={820}
+          footer={
+            <>
+              <button className="btn btn-secondary" onClick={cancelTrack} disabled={saving}>
+                Cancel
               </button>
-              <button className="btn-link" onClick={() => removeResource(r)}>
-                Delete
+              <button className="btn btn-primary" onClick={saveTrack} disabled={saving}>
+                {saving ? "Saving…" : editingTrackId ? "Save track" : "Add track"}
               </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="detail-section">
-        <p style={{ fontWeight: 700 }}>{editingTrackId ? "Edit learning track" : "Add a learning track"}</p>
+            </>
+          }
+        >
+          {error && <p className="meta" style={{ color: "var(--color-danger)", marginTop: 0 }}>{error}</p>}
         <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap" }}>
           <div className="field" style={{ flex: "2 1 260px" }}>
             <label>Title</label>
@@ -284,40 +345,8 @@ export default function AdminLibrary() {
         <button type="button" className="btn btn-secondary" onClick={() => setTrackForm({ ...trackForm, steps: [...trackForm.steps, { ...EMPTY_STEP }] })}>
           + Add step
         </button>
-        <div style={{ display: "flex", gap: "var(--space-3)", marginTop: "var(--space-4)" }}>
-          <button className="btn btn-primary" onClick={saveTrack} disabled={saving}>
-            {saving ? "Saving…" : editingTrackId ? "Save track" : "Add track"}
-          </button>
-          {editingTrackId && (
-            <button className="btn btn-secondary" onClick={cancelTrack}>
-              Cancel
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="detail-section">
-        <p style={{ fontWeight: 700 }}>Learning tracks ({tracks.length})</p>
-        {!loading && tracks.length === 0 && <p className="meta">No tracks yet.</p>}
-        {tracks.map((t) => (
-          <div className="step-row" key={t.id}>
-            <div className="step-row__body">
-              <div className="step-row__title">{t.title}</div>
-              <div className="step-row__detail meta">
-                {t.category} · {t.steps.length} step{t.steps.length === 1 ? "" : "s"}
-              </div>
-            </div>
-            <div className="step-row__state" style={{ display: "flex", gap: "var(--space-3)" }}>
-              <button className="btn-link" onClick={() => startEditTrack(t)}>
-                Edit
-              </button>
-              <button className="btn-link" onClick={() => removeTrack(t)}>
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+        </Modal>
+      )}
     </div>
   );
 }

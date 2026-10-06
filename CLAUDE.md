@@ -360,8 +360,12 @@ which are chronological and not rewritten when later work supersedes them.
   `accelerator_attendance` (admin-marked), `accelerator_coffee_chats` (+ private photo bucket), `accelerator_submissions.status`
   (complete/incomplete; interns never see a number). The committee's numeric grade lives in admin-only
   `accelerator_submission_scores`. A trigger (`accelerator_submission_guard`) stops interns writing grading columns, and
-  complete work is locked; an intern can fix and resubmit incomplete work. Coffee-chat target: 3 a week, at least 2 with UC
-  members, 24 over the 8-week minimum program. Admin side lives on `/admin/accelerator`.
+  complete work is locked; an intern can fix and resubmit incomplete work. Coffee chats: 3 slots a week (two club
+  members, then another intern or a third club member), 24 over the 8-week minimum. A "week" closes at the exact date and time of
+  each accelerator meeting (events of kind `accelerator`), and a chat counts toward the week it was LOGGED in (`created_at`, which
+  interns can't write: column grants), so don't change that without revisiting the grants. Events can recur (`series_id`) and each
+  has an `attendance_method`: `admin` (committee marks it) or `photo` (the intern submits a photo, stored in the private
+  `accelerator-event-photos` bucket). Admin side lives on `/admin/accelerator`.
 - **Admin surface:** `/admin` (dashboard: pipeline health, review queues,
   company tiers, signups, feature requests, client errors, weekly-digest
   preview), `/admin/opportunities` (job sources), `/admin/members` (roles, mark
@@ -521,6 +525,8 @@ which are chronological and not rewritten when later work supersedes them.
 - Logic mirrored across Deno / Node / browser (`TIER_CAPS`, `companyCap`, `normalizeLocation()`) must be changed in every
   copy; run `npm run test:server` after touching it. The app's live matcher is `data/jobMatch.js`; `server/src/match.ts` is
   a test-only mirror that has NOT kept up (no title patterns, skill inference or multi-place locations).
+- Add/edit forms open in `components/Modal.jsx` (dimmed backdrop, focus trap, Escape, page scroll locked), not inline in the page,
+  so the form is the only thing to look at. Chat-style inputs (Feed composer, Messages) stay inline.
 - CSS: colors come only from tokens in `styles/tokens.css` (light and dark);
   style selects with `background-color`, never the `background` shorthand (it
   erases the drawn arrow). Load heavy libraries (`pdfjs-dist`, `mammoth`) with

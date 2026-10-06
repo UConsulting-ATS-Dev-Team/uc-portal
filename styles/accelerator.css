@@ -37,6 +37,115 @@
   padding-left: calc(16px + 56px + 2 * var(--space-3));
 }
 
+/* Page title: room between it and the calendar or first block under it. */
+.accel-title {
+  margin: 0 0 var(--space-7);
+}
+
+/* ---- Coffee-chat slots ---- */
+
+.accel-slotcards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.accel-slotcard {
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-surface);
+  border: 1px dashed var(--color-neutral);
+  min-width: 0;
+}
+
+.accel-slotcard.is-filled {
+  border: var(--border-hairline);
+  border-left: var(--border-accent-emphasis);
+}
+
+.accel-slotcard__label {
+  font-size: var(--text-kicker);
+  letter-spacing: var(--tracking-kicker);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.accel-slotcard__name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.accel-slotcard__meta,
+.accel-slotcard__empty {
+  font-size: var(--text-secondary);
+  color: var(--color-text-muted);
+}
+
+.accel-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.accel-pill {
+  padding: 2px var(--space-3);
+  border: 1px dashed var(--color-neutral);
+  color: var(--color-text-muted);
+  font-size: var(--text-secondary);
+}
+
+.accel-pill.is-filled {
+  border: 1px solid var(--color-primary);
+  color: var(--color-text);
+}
+
+.accel-pill__label {
+  margin-right: var(--space-2);
+  font-size: var(--text-meta);
+  color: var(--color-text-muted);
+}
+
+.accel-week--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.accel-week__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.accel-form__type {
+  border: 0;
+  padding: 0;
+  margin: 0 0 var(--space-3);
+  display: flex;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.accel-form__type legend {
+  padding: 0;
+  margin-bottom: var(--space-2);
+}
+
+.accel-form__type label.is-disabled {
+  color: var(--color-placeholder);
+}
+
+/* Attendance photo evidence */
+.accel-photo-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border: 1px solid var(--color-border-inner);
+  background: var(--color-ground);
+  flex: 0 0 auto;
+}
+
 /* ---- Home layout ---- */
 
 .accel-home {
@@ -305,6 +414,15 @@
   font-weight: 700;
 }
 
+.accel-event__action {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .accel-event__body {
   flex: 1 1 auto;
   min-width: 0;
@@ -488,6 +606,18 @@
 }
 
 @media (max-width: 640px) {
+  .accel-event {
+    flex-wrap: wrap;
+  }
+
+  .accel-event__body {
+    flex-basis: calc(100% - 100px);
+  }
+
+  .accel-slotcards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .accel-tabs {
     gap: 0;
   }

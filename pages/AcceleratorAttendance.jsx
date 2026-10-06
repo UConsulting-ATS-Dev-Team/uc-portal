@@ -1,11 +1,14 @@
-import { useMemo } from "react";
-import { attendanceProgress, attendanceStatus, calendarItems, formatTime, parseYmd } from "../data/acceleratorLogic.js";
+import { useMemo, useState } from "react";
+import { submitEventPhoto } from "../data/acceleratorSync.js";
+import { attendanceProgress, attendanceStatus, calendarItems, formatTime, parseYmd, ymd } from "../data/acceleratorLogic.js";
 import { useAcceleratorData } from "../data/useAcceleratorData.js";
+import AcceleratorEventPhoto from "../components/AcceleratorEventPhoto.jsx";
 import AcceleratorTabs from "../components/AcceleratorTabs.jsx";
 import "../styles/accelerator.css";
 
 const GROUPS = [
   { key: "gm", title: "General meetings", note: "Required for everyone." },
+  { key: "accelerator", title: "Accelerator meetings", note: "Required for everyone." },
   { key: "firm", title: "Firm info sessions", note: "Required for everyone." },
   { key: "social", title: "Socials", note: "Optional, but go to at least one." },
   { key: "other", title: "Other events", note: null },
@@ -19,23 +22,70 @@ const STATUS = {
   upcoming: { text: "Upcoming", className: "accel-tag accel-tag--optional" },
 };
 
-function groupKeyFor(event) {
-  return ["gm", "firm", "social"].includes(event.kind) ? event.kind : "other";
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+
+function groupKeyFor(item) {
+  return ["gm", "accelerator", "firm", "social"].includes(item.kind) ? item.kind : "other";
+}
+
+// Meetings the committee sits in on are marked by the committee. For everything else the intern submits a photo
+// from the event: it records them as there, and is how the committee can confirm it when they can't find them.
+function PhotoControl({ item, record, started, onDone }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function onFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.size > MAX_PHOTO_BYTES) {
+      setError("That picture is over 10 MB. Choose a smaller one.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await submitEventPhoto(item.id, file);
+      await onDone();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const canEdit = !record || record.source === "photo";
+  return (
+    <div className="accel-event__action">
+      {record?.photo_path && <AcceleratorEventPhoto path={record.photo_path} />}
+      {started && canEdit && (
+        <label className="btn btn-secondary" style={{ cursor: busy ? "wait" : "pointer" }}>
+          {busy ? "Uploading…" : record?.photo_path ? "Replace photo" : "Add photo"}
+          <input type="file" accept="image/*" onChange={onFile} disabled={busy} style={{ display: "none" }} />
+        </label>
+      )}
+      {error && <span className="meta" style={{ color: "var(--color-danger)" }}>{error}</span>}
+    </div>
+  );
 }
 
 export default function AcceleratorAttendance() {
-  const { events, attendance, loading, error } = useAcceleratorData();
+  const { events, attendance, loading, error, reload } = useAcceleratorData();
   const today = useMemo(() => new Date(), []);
+  const todayKey = ymd(today);
   const progress = useMemo(() => attendanceProgress(events, attendance, today), [events, attendance, today]);
+  const recordByEvent = useMemo(() => new Map(attendance.map((a) => [a.event_id, a])), [attendance]);
   // Lessons are the Assignments page's business; this page is only about events a person goes to.
   const items = useMemo(() => calendarItems(events, []), [events]);
 
   return (
     <div>
       <AcceleratorTabs />
-      <h1>Attendance</h1>
+      <h1 className="accel-title">Attendance</h1>
       <p className="meta">
-        {progress.requiredAttended} of {progress.requiredSoFar} required events attended so far. A committee member marks attendance after each event.
+        {progress.requiredAttended} of {progress.requiredSoFar} required events attended so far. The committee marks attendance at general and
+        accelerator meetings. At company visits, fireside chats and socials, add a photo from the event, so there's a record you were there if
+        the committee doesn't get to find you.
       </p>
       {progress.noSocials && (
         <p className="meta" style={{ color: "var(--color-danger)" }}>
@@ -61,6 +111,8 @@ export default function AcceleratorAttendance() {
                 const status = STATUS[attendanceStatus({ id: item.id, event_date: item.date }, progress, today)];
                 const date = parseYmd(item.date);
                 const detail = [item.time ? formatTime(item.time) : null, item.location].filter(Boolean).join(" · ");
+                const record = recordByEvent.get(item.id);
+                const started = item.date <= todayKey;
                 return (
                   <div className="accel-event" key={item.id}>
                     <div className={`accel-event__date${item.required ? " is-required" : ""}`}>
@@ -73,7 +125,12 @@ export default function AcceleratorAttendance() {
                         {date.toLocaleDateString(undefined, { month: "long", day: "numeric" })}
                         {detail && ` · ${detail}`}
                       </div>
+                      <div className="accel-event__meta">
+                        {item.method === "photo" ? "Add a photo from the event" : "The committee marks attendance"}
+                        {record?.source === "photo" && " · photo submitted"}
+                      </div>
                     </div>
+                    {item.method === "photo" && <PhotoControl item={item} record={record} started={started} onDone={reload} />}
                     <span className={status.className}>{status.text}</span>
                   </div>
                 );

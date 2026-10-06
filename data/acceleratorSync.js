@@ -1,6 +1,6 @@
 import { supabase } from "./supabaseClient.js";
 import { fetchAllRows } from "./fetchAllRows.js";
-import { assignmentProgress, attendanceProgress, coffeeChatProgress, programWeeks } from "./acceleratorLogic.js";
+import { assignmentProgress, attendanceProgress, coffeeChatProgress, programPeriods } from "./acceleratorLogic.js";
 
 // Real accelerator program (freshmen onboarding) -- see the
 // intern_accelerator migration's own header comment for the full
@@ -190,7 +190,7 @@ export async function fetchInternProgress() {
     fetchAllRows("accelerator_submissions", "*"),
     fetchEvents(),
     fetchAllRows("accelerator_attendance", "*", undefined, "event_id"),
-    fetchAllRows("accelerator_coffee_chats", "id, profile_id, chat_date, is_uc_member"),
+    fetchAllRows("accelerator_coffee_chats", "id, profile_id, chat_date, is_uc_member, created_at"),
   ]);
   if (membersError) throw new Error(membersError.message);
 
@@ -212,7 +212,7 @@ export async function fetchInternProgress() {
       new Date()
     );
     const ownChats = allChats.filter((c) => c.profile_id === intern.member_id);
-    const chats = coffeeChatProgress(ownChats, programWeeks(lessons, ownChats), new Date());
+    const chats = coffeeChatProgress(ownChats, programPeriods(events, { lessons, chats: ownChats }), new Date());
     return {
       assignmentsComplete: assignments.complete,
       assignmentsIncomplete: assignments.incomplete,
@@ -458,46 +458,63 @@ export async function deleteCoffeeChat(chat) {
 
 // ---- Admin-only (RLS backs every one of these) ----
 
-export async function createEvent({ title, eventDate, startTime, kind, required, location, description }) {
+function eventRow({ title, eventDate, startTime, kind, required, attendanceMethod, location, description }) {
+  return {
+    title: title.trim(),
+    event_date: eventDate,
+    start_time: startTime || null,
+    kind,
+    required,
+    attendance_method: attendanceMethod,
+    location: location?.trim() || null,
+    description: description?.trim() || null,
+  };
+}
+
+export async function createEvent(fields) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const { data, error } = await supabase
     .from("accelerator_events")
-    .insert({
-      title: title.trim(),
-      event_date: eventDate,
-      start_time: startTime || null,
-      kind,
-      required,
-      location: location?.trim() || null,
-      description: description?.trim() || null,
-      created_by: user.id,
-    })
+    .insert({ ...eventRow(fields), created_by: user.id })
     .select()
     .single();
   if (error) throw new Error(error.message);
   return data;
 }
 
-export async function updateEvent(id, { title, eventDate, startTime, kind, required, location, description }) {
-  const { error } = await supabase
-    .from("accelerator_events")
-    .update({
-      title: title.trim(),
-      event_date: eventDate,
-      start_time: startTime || null,
-      kind,
-      required,
-      location: location?.trim() || null,
-      description: description?.trim() || null,
-    })
-    .eq("id", id);
+// A recurring event is one row per date, all sharing a series_id so the series can be edited or removed together.
+export async function createEventSeries(fields, dates) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const seriesId = crypto.randomUUID();
+  const rows = dates.map((date) => ({ ...eventRow({ ...fields, eventDate: date }), series_id: seriesId, created_by: user.id }));
+  const { error } = await supabase.from("accelerator_events").insert(rows);
+  if (error) throw new Error(error.message);
+  return rows.length;
+}
+
+export async function updateEvent(id, fields) {
+  const { error } = await supabase.from("accelerator_events").update(eventRow(fields)).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+// Everything except each occurrence's own date.
+export async function updateEventSeries(seriesId, fields) {
+  const { event_date: _date, ...rest } = eventRow(fields);
+  const { error } = await supabase.from("accelerator_events").update(rest).eq("series_id", seriesId);
   if (error) throw new Error(error.message);
 }
 
 export async function deleteEvent(id) {
   const { error } = await supabase.from("accelerator_events").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteEventSeries(seriesId) {
+  const { error } = await supabase.from("accelerator_events").delete().eq("series_id", seriesId);
   if (error) throw new Error(error.message);
 }
 
@@ -519,7 +536,7 @@ export async function setAttendance(eventId, profileId, attended) {
   } = await supabase.auth.getUser();
   const { error } = await supabase
     .from("accelerator_attendance")
-    .upsert({ event_id: eventId, profile_id: profileId, attended, marked_by: user.id, marked_at: new Date().toISOString() }, { onConflict: "event_id,profile_id" });
+    .upsert({ event_id: eventId, profile_id: profileId, attended, source: "admin", marked_by: user.id, marked_at: new Date().toISOString() }, { onConflict: "event_id,profile_id" });
   if (error) throw new Error(error.message);
 }
 
@@ -537,4 +554,37 @@ export async function fetchInterns() {
   const { data, error } = await supabase.rpc("list_members");
   if (error) throw new Error(error.message);
   return (data ?? []).filter((m) => m.member_status === "intern").map((m) => ({ memberId: m.member_id, displayName: m.display_name, email: m.email }));
+}
+
+
+// ---- Event photos (the intern's own attendance evidence) ------------------------------------------------
+
+// For events the committee doesn't take attendance at (company visits, fireside chats, socials): the intern submits a
+// photo from the event, which records them as attending. The committee can still change it.
+export async function submitEventPhoto(eventId, file) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not signed in.");
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+  const { error: uploadError } = await supabase.storage.from("accelerator-event-photos").upload(path, file, { contentType: file.type || undefined });
+  if (uploadError) throw new Error(uploadError.message);
+  const { error } = await supabase
+    .from("accelerator_attendance")
+    .upsert(
+      { event_id: eventId, profile_id: user.id, attended: true, source: "photo", photo_path: path, marked_at: new Date().toISOString() },
+      { onConflict: "event_id,profile_id" }
+    );
+  if (error) {
+    await supabase.storage.from("accelerator-event-photos").remove([path]);
+    throw new Error(error.message.includes("row-level security") ? "The committee has already recorded your attendance for this event." : error.message);
+  }
+  return path;
+}
+
+export async function eventPhotoUrl(path) {
+  const { data, error } = await supabase.storage.from("accelerator-event-photos").createSignedUrl(path, 3600);
+  if (error) throw new Error(error.message);
+  return data.signedUrl;
 }

@@ -5180,3 +5180,30 @@ longer breaks down to phone width either.
   Tested as a throwaway intern at 1280 and 375 wide (calendar, Sunday start, today tint, day detail, chat validation, attendance groups,
   assignment submit -> "Awaiting review", no horizontal overflow), then removed. Not exercised in a browser: the admin screens (no admin
   session here) and uploading a coffee-chat photo.
+
+- **2026-10-06: recurring events, photo attendance, coffee-chat weeks that close at accelerator meetings, add/edit dialogs** --
+  Follow-ups from the program lead. **Recurring events:** the admin event form can repeat weekly or every 2 weeks to an end date
+  (capped at 60); each occurrence is its own `accelerator_events` row sharing a `series_id`, so attendance stays per occurrence and a
+  series can be edited ("apply to all", never the dates) or deleted together. **Attendance method per event:** `attendance_method` is
+  `admin` (the committee marks it: GMs and accelerator meetings, ~10 people in a room) or `photo` (company visits, fireside chats,
+  socials: the intern submits a photo from the event). A photo records them as attending (`accelerator_attendance.source = 'photo'`,
+  `photo_path`, private `accelerator-event-photos` bucket); the committee sees the photo beside the intern's name and can still change
+  the mark, after which the intern can't edit it. Policies: an intern can only insert or replace their own photo row for a photo-method
+  event that has started (a day of slack), never mark themselves absent, set `marked_by`, or touch a committee-marked row. A QR check-in
+  link was discussed for the weekly slideshows and not built (it needs a per-event code and a check-in route; a clean next step).
+  **Coffee chats:** shown as three labeled slots every week (two club members, then another intern or a third club member), and the form
+  steers an intern to a chat that will count (an intern chat while the intern slot is taken is refused; an extra chat shows "doesn't
+  count"). Weeks are no longer calendar weeks: they close at the exact date and time of each accelerator meeting (events of kind
+  `accelerator`), and a chat counts toward the week it was LOGGED in, so one logged before a meeting counts toward the week that meeting
+  closes. Fewer than eight meetings are projected a week apart so the target is 24 from day one; with no accelerator meeting on the
+  calendar it falls back to Sunday-Saturday weeks from the first lesson. The form is only offered for the current week, so the 24 can't
+  be done early. Because the logging time decides the week, `created_at` is not writable by interns (column-level grants on
+  `accelerator_coffee_chats`, verified: backdating is refused, normal inserts and edits work). The "week" of a chat is its logging time,
+  not `chat_date`; if the lead would rather use the date the chat happened, that needs a time-of-day field on the form.
+  **Dialogs:** the shared `components/Modal.jsx` (already used by the member action modals) now also locks page scroll behind it. The
+  admin add/edit forms moved into it: accelerator lessons (with prep-material attachments) and events, interns to add, Library
+  resources and learning tracks. Left inline on purpose: the Feed composer and Messages input (chat-style, typed in place), and My
+  Profile (a settings page of many small edits). The accelerator page titles also got breathing room above the first block.
+  Tested as a throwaway intern at 1280 and 375 wide (slot cards, disabled intern option, due time from a recurring series, photo upload
+  -> Attended with thumbnail, no overflow) and in SQL; the admin dialogs were built and compile but not driven in a browser (no admin
+  session here). Throwaway data removed (`roster_total=53 people_total=209`, photo objects 0). 250 server tests pass.

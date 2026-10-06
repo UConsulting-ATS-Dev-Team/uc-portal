@@ -95,54 +95,165 @@ describe("calendar items", () => {
   });
 });
 
-describe("coffee chats", () => {
-  const lessons = Array.from({ length: 3 }, (_, i) => ({ id: String(i), title: `L${i}`, lesson_date: L.ymd(d(2026, 10, 12 + i * 7)) }));
-  const weeks = L.programWeeks(lessons, [], d(2026, 10, 13));
-  const chat = (date: string, uc: boolean) => ({ chat_date: date, is_uc_member: uc });
-
-  it("runs eight Sunday-to-Saturday weeks from the first lesson's week, even with fewer lessons so far", () => {
-    expect(weeks).toHaveLength(8);
-    expect(weeks[0].startKey).toBe("2026-10-11");
-    expect(weeks[0].endKey).toBe("2026-10-17");
-    expect(weeks[2].startKey).toBe("2026-10-25");
+describe("recurring events", () => {
+  it("repeats weekly up to and including the end date", () => {
+    const dates = L.expandRecurrence("2026-10-14", "2026-12-02", 1);
+    expect(dates).toHaveLength(8);
+    expect(dates[0]).toBe("2026-10-14");
+    expect(dates[7]).toBe("2026-12-02");
   });
 
-  it("grows past eight when the curriculum has more lessons", () => {
-    const many = Array.from({ length: 10 }, (_, i) => ({ id: String(i), title: "L", lesson_date: L.ymd(d(2026, 10, 12 + i * 7)) }));
-    expect(L.programWeeks(many, [], d(2026, 10, 13))).toHaveLength(10);
+  it("repeats every other week", () => {
+    expect(L.expandRecurrence("2026-10-14", "2026-12-02", 2)).toEqual(["2026-10-14", "2026-10-28", "2026-11-11", "2026-11-25"]);
   });
 
-  it("falls back to eight weeks before any lesson exists", () => {
-    expect(L.programWeeks([], [], d(2026, 10, 14))).toHaveLength(8);
-    expect(L.ymd(L.programWeeks([], [], d(2026, 10, 14))[0].start)).toBe("2026-10-11");
+  it("makes one event when the end is the start, and none when the end is before it", () => {
+    expect(L.expandRecurrence("2026-10-14", "2026-10-14")).toEqual(["2026-10-14"]);
+    expect(L.expandRecurrence("2026-10-14", "2026-10-13")).toEqual([]);
   });
 
-  it("targets three chats a week and caps each week at three", () => {
-    const chats = [chat("2026-10-12", true), chat("2026-10-13", true), chat("2026-10-14", false), chat("2026-10-15", true), chat("2026-10-26", true)];
-    const p = L.coffeeChatProgress(chats, weeks, d(2026, 10, 20));
+  it("caps a runaway end date", () => {
+    expect(L.expandRecurrence("2026-01-01", "2030-01-01")).toHaveLength(L.MAX_RECURRING_EVENTS);
+  });
+
+  it("keeps the same weekday across a daylight saving change", () => {
+    const dates = L.expandRecurrence("2026-10-28", "2026-11-18", 1); // clocks go back Nov 1
+    expect(dates.map((k: string) => L.parseYmd(k).getDay())).toEqual([3, 3, 3, 3]);
+  });
+
+  it("takes attendance by committee for meetings and by photo for everything else", () => {
+    expect(L.defaultAttendanceMethod("gm")).toBe("admin");
+    expect(L.defaultAttendanceMethod("accelerator")).toBe("admin");
+    for (const kind of ["firm", "uc_event", "social"]) expect(L.defaultAttendanceMethod(kind)).toBe("photo");
+  });
+});
+
+describe("coffee-chat weeks close at each accelerator meeting", () => {
+  // Wednesday meetings at 6 PM: Oct 14, 21, 28.
+  const meeting = (date: string, time: string | null = "18:00:00") => ({ id: date, event_date: date, start_time: time, kind: "accelerator" });
+  const events = [meeting("2026-10-14"), meeting("2026-10-21"), meeting("2026-10-28"), { id: "gm", event_date: "2026-10-12", start_time: "19:00:00", kind: "gm" }];
+  const at = (y: number, m: number, day: number, h: number, min = 0) => new Date(y, m - 1, day, h, min);
+  const chat = (when: Date, uc: boolean, name = "x") => ({ id: `${name}-${when.getTime()}`, created_at: when.toISOString(), chat_date: L.ymd(when), is_uc_member: uc, contact_name: name });
+
+  it("uses the exact date and time of each meeting, ignoring other event types", () => {
+    const periods = L.programPeriods(events);
+    expect(periods[0].startMs).toBe(-Infinity);
+    expect(periods[0].endMs).toBe(at(2026, 10, 14, 18).getTime());
+    expect(periods[1].startMs).toBe(at(2026, 10, 14, 18).getTime());
+    expect(periods[1].endMs).toBe(at(2026, 10, 21, 18).getTime());
+    expect(periods[0].dueLabel).toContain("6:00 PM");
+    expect(periods[0].byMeeting).toBe(true);
+  });
+
+  it("projects the remaining weeks so the target is 24 from day one", () => {
+    const periods = L.programPeriods(events);
+    expect(periods).toHaveLength(8);
+    expect(periods.slice(0, 3).every((p: { projected: boolean }) => !p.projected)).toBe(true);
+    expect(periods.slice(3).every((p: { projected: boolean }) => p.projected)).toBe(true);
+    expect(periods[3].endMs).toBe(at(2026, 11, 4, 18).getTime());
+  });
+
+  it("treats a meeting without a time as closing at the end of its day", () => {
+    const periods = L.programPeriods([meeting("2026-10-14", null)]);
+    expect(periods[0].endMs).toBe(new Date(2026, 9, 14, 23, 59, 59, 999).getTime());
+    expect(periods[0].dueLabel).toContain("end of day");
+  });
+
+  it("counts a chat logged before the meeting toward that week, and one logged after toward the next", () => {
+    const periods = L.programPeriods(events);
+    const before = chat(at(2026, 10, 14, 17, 59), true, "before");
+    const after = chat(at(2026, 10, 14, 18, 1), true, "after");
+    const p = L.coffeeChatProgress([before, after], periods, at(2026, 10, 15, 9));
+    expect(p.perWeek[0].chats.map((c: { contact_name: string }) => c.contact_name)).toEqual(["before"]);
+    expect(p.perWeek[1].chats.map((c: { contact_name: string }) => c.contact_name)).toEqual(["after"]);
+  });
+
+  it("counts a chat logged exactly at the meeting time toward the week it closes", () => {
+    const periods = L.programPeriods(events);
+    const p = L.coffeeChatProgress([chat(at(2026, 10, 14, 18, 0), true)], periods, at(2026, 10, 15));
+    expect(p.perWeek[0].chats.length).toBe(1);
+  });
+
+  it("caps each week at three, so an early burst can't pre-fill later weeks", () => {
+    const periods = L.programPeriods(events);
+    const burst = Array.from({ length: 10 }, (_, i) => chat(at(2026, 10, 8, 9, i), i < 6, `c${i}`));
+    const p = L.coffeeChatProgress(burst, periods, at(2026, 10, 9));
+    expect(p.perWeek[0].counted).toBe(3);
+    expect(p.perWeek[1].counted).toBe(0);
+    expect(p.counted).toBe(3);
     expect(p.target).toBe(24);
-    expect(p.perWeek[0].counted).toBe(3); // four chats, three count
-    expect(p.perWeek[2].counted).toBe(1);
-    expect(p.counted).toBe(4);
   });
 
-  it("requires two UC members among a week's chats", () => {
-    const ok = L.coffeeChatProgress([chat("2026-10-12", true), chat("2026-10-13", true), chat("2026-10-14", false)], weeks, d(2026, 10, 14));
-    expect(ok.perWeek[0].done).toBe(true);
-    const short = L.coffeeChatProgress([chat("2026-10-12", true), chat("2026-10-13", false), chat("2026-10-14", false)], weeks, d(2026, 10, 14));
-    expect(short.perWeek[0].done).toBe(false);
-    expect(short.perWeek[0].needsUc).toBe(true);
-  });
-
-  it("finds this week and the past weeks that fell short", () => {
-    const p = L.coffeeChatProgress([chat("2026-10-12", true)], weeks, d(2026, 10, 20));
+  it("finds this week, closed weeks that fell short, and ignores chats after the last week", () => {
+    const periods = L.programPeriods(events);
+    const p = L.coffeeChatProgress([chat(at(2026, 10, 10, 9), true), chat(at(2027, 3, 1, 9), true)], periods, at(2026, 10, 15, 9));
     expect(p.current.number).toBe(2);
     expect(p.behind.map((w: { number: number }) => w.number)).toEqual([1]);
+    expect(p.counted).toBe(1);
   });
 
-  it("ignores chats outside the program's weeks", () => {
-    const p = L.coffeeChatProgress([chat("2026-09-01", true), chat("2027-02-01", true)], weeks, d(2026, 10, 14));
-    expect(p.counted).toBe(0);
+  it("has no current week once the last meeting has passed", () => {
+    const periods = L.programPeriods(events);
+    expect(L.coffeeChatProgress([], periods, at(2027, 3, 1, 9)).current).toBe(null);
+  });
+
+  it("falls back to Sunday-to-Saturday weeks from the first lesson when no meeting is scheduled", () => {
+    const periods = L.programPeriods([], { lessons: [{ id: "a", title: "L", lesson_date: "2026-10-12" }], today: at(2026, 10, 13, 9) });
+    expect(periods).toHaveLength(8);
+    expect(periods[0].byMeeting).toBe(false);
+    expect(periods[0].endMs).toBe(new Date(2026, 9, 17, 23, 59, 59, 999).getTime()); // Saturday after Sun Oct 11
+    expect(periods[1].startMs).toBe(new Date(2026, 9, 18).getTime() - 1);
+  });
+});
+
+describe("coffee-chat slots: two with club members, one with an intern or a third club member", () => {
+  const c = (n: number, uc: boolean) => ({ id: String(n), created_at: new Date(2026, 9, 10, 9, n).toISOString(), is_uc_member: uc, contact_name: `p${n}` });
+  const names = (slots: Array<{ chat: { contact_name: string } | null }>) => slots.map((s) => s.chat?.contact_name ?? null);
+
+  it("labels the three slots", () => {
+    expect(L.coffeeChatSlots([]).slots.map((s: { label: string }) => s.label)).toEqual(["Club member", "Club member", "Intern or club member"]);
+  });
+
+  it("starts with everything open", () => {
+    const r = L.coffeeChatSlots([]);
+    expect(r.counted).toBe(0);
+    expect(r.canLogClub).toBe(true);
+    expect(r.canLogIntern).toBe(true);
+  });
+
+  it("fills club slots first, then the third with an intern", () => {
+    const r = L.coffeeChatSlots([c(1, true), c(2, true), c(3, false)]);
+    expect(names(r.slots)).toEqual(["p1", "p2", "p3"]);
+    expect(r.done).toBe(true);
+    expect(r.canLogClub).toBe(false);
+    expect(r.canLogIntern).toBe(false);
+  });
+
+  it("lets a third club member take the third slot", () => {
+    const r = L.coffeeChatSlots([c(1, true), c(2, true), c(3, true)]);
+    expect(r.done).toBe(true);
+  });
+
+  it("puts an early intern chat in the third slot, leaving the club slots open", () => {
+    const r = L.coffeeChatSlots([c(1, false)]);
+    expect(names(r.slots)).toEqual([null, null, "p1"]);
+    expect(r.counted).toBe(1);
+    expect(r.canLogIntern).toBe(false); // the intern slot is used
+    expect(r.canLogClub).toBe(true);
+  });
+
+  it("does not count a second intern chat while club slots are still open", () => {
+    const r = L.coffeeChatSlots([c(1, false), c(2, false), c(3, true)]);
+    expect(names(r.slots)).toEqual(["p3", null, "p1"]);
+    expect(r.counted).toBe(2);
+    expect(r.done).toBe(false);
+  });
+
+  it("keeps one club and one intern open to the right kind of chat", () => {
+    const r = L.coffeeChatSlots([c(1, true), c(2, false)]);
+    expect(r.counted).toBe(2);
+    expect(r.canLogClub).toBe(true); // a second club slot is open
+    expect(r.canLogIntern).toBe(false);
   });
 });
 

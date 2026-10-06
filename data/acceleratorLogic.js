@@ -5,8 +5,13 @@
 // `new Date("2026-10-12")` would parse as UTC midnight and show as the 11th west of Greenwich.
 
 export const CHATS_PER_WEEK = 3;
-export const UC_CHATS_PER_WEEK = 2;
+export const CLUB_CHATS_PER_WEEK = 2;
 export const DEFAULT_PROGRAM_WEEKS = 8;
+export const MAX_RECURRING_EVENTS = 60;
+
+// The three coffee-chat slots every week: two with club members, and a third with another intern or a third
+// club member.
+export const CHAT_SLOT_LABELS = ["Club member", "Club member", "Intern or club member"];
 
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -64,6 +69,22 @@ export function monthGrid(year, month) {
   return weeks;
 }
 
+// ---- Recurring events ---------------------------------------------------------------------------------
+
+// The dates a recurring event falls on: the start date, then every `everyWeeks` weeks, up to and including the end
+// date, capped so a typo in the end date can't create thousands of rows.
+export function expandRecurrence(startKey, endKey, everyWeeks = 1, max = MAX_RECURRING_EVENTS) {
+  const dates = [];
+  const end = parseYmd(endKey);
+  for (let d = parseYmd(startKey); d <= end && dates.length < max; d = addDays(d, 7 * everyWeeks)) dates.push(ymd(d));
+  return dates;
+}
+
+// Meetings of a few people in a room are marked by the committee; trips out and socials rely on a photo.
+export function defaultAttendanceMethod(kind) {
+  return kind === "gm" || kind === "accelerator" ? "admin" : "photo";
+}
+
 // ---- Calendar items ----------------------------------------------------------------------------------
 
 // Lessons are on the calendar as "Week N" items alongside the admin-managed events. `lessons` must already be
@@ -76,6 +97,7 @@ export function calendarItems(events, lessons) {
     time: null,
     kind: "lesson",
     required: true,
+    method: "admin",
     location: null,
   }));
   const eventItems = events.map((e) => ({
@@ -85,6 +107,7 @@ export function calendarItems(events, lessons) {
     time: e.start_time ? e.start_time.slice(0, 5) : null,
     kind: e.kind,
     required: e.required,
+    method: e.attendance_method ?? "admin",
     location: e.location,
   }));
   return [...eventItems, ...lessonItems].sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? "").localeCompare(b.time ?? ""));
@@ -112,52 +135,106 @@ export function formatTime(time) {
   return `${hour}:${pad(m)} ${h < 12 ? "AM" : "PM"}`;
 }
 
-// ---- Program weeks and coffee chats ---------------------------------------------------------------
-
-// The program is eight Sunday-to-Saturday weeks (more if the curriculum has more lessons), starting with the week
-// of the first lesson, so the coffee-chat target is 24 from day one rather than growing as lessons are added.
-// Before any lesson exists weeks start at the first chat (or today).
-export function programWeeks(lessons, chats = [], today = new Date()) {
-  const count = Math.max(lessons.length, DEFAULT_PROGRAM_WEEKS);
-  let anchor;
-  if (lessons.length) anchor = parseYmd(lessons[0].lesson_date);
-  else if (chats.length) anchor = parseYmd([...chats].map((c) => c.chat_date).sort()[0]);
-  else anchor = startOfDay(today);
-  const start = startOfWeek(anchor);
-  return Array.from({ length: count }, (_, i) => {
-    const weekStart = addDays(start, i * 7);
-    return { index: i, number: i + 1, start: weekStart, end: addDays(weekStart, 6), startKey: ymd(weekStart), endKey: ymd(addDays(weekStart, 6)) };
-  });
+// "Wed, Oct 14, 6:00 PM", or "Wed, Oct 14, end of day" for an accelerator meeting added without a time.
+export function formatDue(date, hasTime) {
+  const day = date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  return hasTime ? `${day}, ${formatTime(`${pad(date.getHours())}:${pad(date.getMinutes())}`)}` : `${day}, end of day`;
 }
 
-export function coffeeChatProgress(chats, weeks, today = new Date()) {
-  const todayKey = ymd(today);
-  const perWeek = weeks.map((week) => {
-    const inWeek = chats.filter((c) => c.chat_date >= week.startKey && c.chat_date <= week.endKey);
-    const uc = inWeek.filter((c) => c.is_uc_member).length;
-    const counted = Math.min(CHATS_PER_WEEK, inWeek.length);
-    const done = inWeek.length >= CHATS_PER_WEEK && uc >= UC_CHATS_PER_WEEK;
-    // Three chats logged but fewer than two with UC members: the week's rule isn't met.
-    const needsUc = inWeek.length >= CHATS_PER_WEEK && uc < UC_CHATS_PER_WEEK;
+// ---- Coffee-chat weeks ------------------------------------------------------------------------------
+
+function meetingInfo(event) {
+  const day = parseYmd(event.event_date);
+  if (event.start_time) {
+    const [h, m] = event.start_time.split(":").map(Number);
+    return { date: new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m), hasTime: true };
+  }
+  return { date: new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59, 999), hasTime: false };
+}
+
+// A coffee-chat "week" is the stretch between accelerator meetings, because the three chats are due at each one: a
+// chat logged before a meeting (even earlier the same day) counts toward the week that meeting closes, one logged
+// after it counts toward the next. So week boundaries are the exact date and time of each accelerator meeting
+// (events of kind "accelerator"). If fewer than eight are scheduled the rest are projected a week apart, so the
+// target is 24 from day one. With no accelerator meetings on the calendar yet it falls back to eight Sunday-to-
+// Saturday weeks from the first lesson (or first chat, or today).
+export function programPeriods(events, { lessons = [], chats = [], today = new Date() } = {}) {
+  const meetings = events
+    .filter((e) => e.kind === "accelerator")
+    .map(meetingInfo)
+    .sort((a, b) => a.date - b.date);
+
+  if (meetings.length === 0) {
+    let anchor = startOfDay(today);
+    if (lessons.length) anchor = parseYmd(lessons[0].lesson_date);
+    else if (chats.length) anchor = startOfDay(new Date([...chats].map((c) => c.created_at).sort()[0]));
+    const start = startOfWeek(anchor);
+    return Array.from({ length: DEFAULT_PROGRAM_WEEKS }, (_, i) => {
+      const weekStart = addDays(start, i * 7);
+      const end = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6, 23, 59, 59, 999);
+      return { index: i, number: i + 1, startMs: weekStart.getTime() - 1, endMs: end.getTime(), end, dueLabel: formatDue(end, false).replace(", end of day", ""), projected: false, byMeeting: false };
+    });
+  }
+
+  const ends = meetings.map((m) => ({ ...m, projected: false }));
+  while (ends.length < DEFAULT_PROGRAM_WEEKS) {
+    const last = ends[ends.length - 1];
+    ends.push({ date: new Date(last.date.getFullYear(), last.date.getMonth(), last.date.getDate() + 7, last.date.getHours(), last.date.getMinutes(), last.date.getSeconds(), last.date.getMilliseconds()), hasTime: last.hasTime, projected: true });
+  }
+  return ends.map((m, i) => ({
+    index: i,
+    number: i + 1,
+    startMs: i === 0 ? -Infinity : ends[i - 1].date.getTime(),
+    endMs: m.date.getTime(),
+    end: m.date,
+    dueLabel: formatDue(m.date, m.hasTime),
+    projected: m.projected,
+    byMeeting: true,
+  }));
+}
+
+// One week's three slots. Club members fill the two club slots first; the third takes a leftover club member or,
+// failing that, an intern. A chat with an intern while the third slot is already used fills nothing, so the form
+// uses canLogClub / canLogIntern to steer an intern toward a chat that will count.
+export function coffeeChatSlots(chatsInWeek) {
+  const ordered = [...chatsInWeek].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const club = ordered.filter((c) => c.is_uc_member);
+  const interns = ordered.filter((c) => !c.is_uc_member);
+  const filled = [club[0] ?? null, club[1] ?? null, club[2] ?? interns[0] ?? null];
+  const counted = filled.filter(Boolean).length;
+  return {
+    slots: filled.map((chat, i) => ({ label: CHAT_SLOT_LABELS[i], chat })),
+    counted,
+    clubCount: club.length,
+    done: counted === CHATS_PER_WEEK,
+    canLogClub: club.length < CLUB_CHATS_PER_WEEK || filled[2] === null,
+    canLogIntern: filled[2] === null,
+  };
+}
+
+export function coffeeChatProgress(chats, periods, now = new Date()) {
+  const nowMs = now.getTime();
+  const perWeek = periods.map((period) => {
+    const inWeek = chats.filter((c) => {
+      const t = Date.parse(c.created_at);
+      return t > period.startMs && t <= period.endMs;
+    });
+    const slots = coffeeChatSlots(inWeek);
     return {
-      ...week,
+      ...period,
+      ...slots,
       chats: inWeek,
-      total: inWeek.length,
-      uc,
-      counted,
-      done,
-      needsUc,
-      isCurrent: todayKey >= week.startKey && todayKey <= week.endKey,
-      isPast: todayKey > week.endKey,
+      isCurrent: nowMs > period.startMs && nowMs <= period.endMs,
+      isPast: nowMs > period.endMs,
     };
   });
   const counted = perWeek.reduce((sum, w) => sum + w.counted, 0);
   return {
     perWeek,
     counted,
-    target: weeks.length * CHATS_PER_WEEK,
+    target: periods.length * CHATS_PER_WEEK,
     current: perWeek.find((w) => w.isCurrent) ?? null,
-    // Past weeks that ended short of 3 chats or without enough UC members.
+    // Closed weeks that ended without all three slots filled.
     behind: perWeek.filter((w) => w.isPast && !w.done),
   };
 }

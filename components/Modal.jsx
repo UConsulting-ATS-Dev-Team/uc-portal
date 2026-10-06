@@ -19,6 +19,16 @@ export default function Modal({ title, onClose, children, footer, width = 600 })
   const modalRef = useRef(null);
   const previouslyFocusedRef = useRef(null);
 
+  // The page behind is dimmed by the backdrop and should not scroll under the dialog either: the modal is the only
+  // thing to look at and interact with until it is closed.
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, []);
+
   useEffect(() => {
     previouslyFocusedRef.current = document.activeElement;
 

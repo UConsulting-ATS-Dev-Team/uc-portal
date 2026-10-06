@@ -14,12 +14,12 @@ import {
   monthGrid,
   monthToShow,
   parseYmd,
-  programWeeks,
+  programPeriods,
   shiftMonth,
   startOfWeek,
   ymd,
   CHATS_PER_WEEK,
-  UC_CHATS_PER_WEEK,
+  CLUB_CHATS_PER_WEEK,
 } from "../data/acceleratorLogic.js";
 import AcceleratorTabs from "../components/AcceleratorTabs.jsx";
 import "../styles/accelerator.css";
@@ -174,8 +174,9 @@ export default function Accelerator() {
   const items = useMemo(() => calendarItems(events, lessons), [events, lessons]);
   const byDate = useMemo(() => itemsByDate(items), [items]);
 
-  const weeks = useMemo(() => programWeeks(lessons, chats, today), [lessons, chats, today]);
-  const chatProgress = useMemo(() => coffeeChatProgress(chats, weeks, today), [chats, weeks, today]);
+  const now = useMemo(() => new Date(), []);
+  const periods = useMemo(() => programPeriods(events, { lessons, chats, today }), [events, lessons, chats, today]);
+  const chatProgress = useMemo(() => coffeeChatProgress(chats, periods, now), [chats, periods, now]);
   const attendanceStats = useMemo(() => attendanceProgress(events, attendance, today), [events, attendance, today]);
   const assignments = useMemo(() => assignmentProgress(lessons, submissions), [lessons, submissions]);
 
@@ -184,10 +185,10 @@ export default function Accelerator() {
   let chatFlag = false;
   if (chatProgress.behind.length > 0) {
     const n = chatProgress.behind.length;
-    chatNote = `${n} past week${n === 1 ? "" : "s"} short of ${CHATS_PER_WEEK} chats with ${UC_CHATS_PER_WEEK} UC members`;
+    chatNote = `${n} past week${n === 1 ? "" : "s"} short of ${CHATS_PER_WEEK} chats${current ? `. This week: ${current.counted} of ${CHATS_PER_WEEK}, due ${current.dueLabel}` : ""}`;
     chatFlag = true;
   } else if (current) {
-    chatNote = `This week: ${current.total} of ${CHATS_PER_WEEK}, ${current.uc} with UC members (need ${UC_CHATS_PER_WEEK})`;
+    chatNote = `Week ${current.number}: ${current.counted} of ${CHATS_PER_WEEK} logged, ${Math.min(CLUB_CHATS_PER_WEEK, current.clubCount)} of ${CLUB_CHATS_PER_WEEK} with club members. Due ${current.dueLabel}`;
   } else if (chatProgress.counted > 0) {
     chatNote = "Every week of the program so far is on track.";
   }
@@ -214,7 +215,7 @@ export default function Accelerator() {
   return (
     <div>
       <AcceleratorTabs />
-      <h1>Accelerator</h1>
+      <h1 className="accel-title">Accelerator</h1>
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
 
       <div className="accel-home">
