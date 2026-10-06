@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { MoreHorizontal, X } from "lucide-react";
-import { LEADERSHIP_ITEMS, BOTTOM_BAR_PRIMARY_KEYS, mainItemsFor } from "../data/navItems.js";
+import { LEADERSHIP_SECTIONS, BOTTOM_BAR_PRIMARY_KEYS, mainItemsFor } from "../data/navItems.js";
 import { useAppState } from "../data/store.jsx";
 
 // Phone-UX pass: below 640px (styles/shell.css's phone tier), this
@@ -95,25 +95,22 @@ export default function BottomTabBar() {
               ))}
             </ul>
 
-            {isAdmin && (
-              <>
-                <div className="bottom-tab-bar__more-kicker">Leadership</div>
-                <ul className="bottom-tab-bar__more-list">
-                  {LEADERSHIP_ITEMS.map(({ label, to, icon: Icon }) => (
-                    <li key={to}>
-                      {/* "/admin" is a real path-prefix of every other
-                          Leadership route -- without "end" it stayed
-                          highlighted on all of them, same bug as
-                          NavRail.jsx's identical fix. */}
-                      <NavLink to={to} end={to === "/admin"} role="menuitem" onClick={() => setMoreOpen(false)} className={({ isActive }) => (isActive ? "is-active" : "")}>
-                        <Icon size={18} strokeWidth={1.5} aria-hidden="true" />
-                        <span>{label}</span>
-                      </NavLink>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
+            {isAdmin &&
+              LEADERSHIP_SECTIONS.map((group) => (
+                <div key={group.section}>
+                  <div className="bottom-tab-bar__more-kicker">{group.section}</div>
+                  <ul className="bottom-tab-bar__more-list">
+                    {group.items.map(({ label, to, icon: Icon }) => (
+                      <li key={to}>
+                        <NavLink to={to} role="menuitem" onClick={() => setMoreOpen(false)} className={({ isActive }) => (isActive ? "is-active" : "")}>
+                          <Icon size={18} strokeWidth={1.5} aria-hidden="true" />
+                          <span>{label}</span>
+                        </NavLink>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
           </div>
         </>
       )}

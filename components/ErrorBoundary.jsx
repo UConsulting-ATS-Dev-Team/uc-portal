@@ -31,7 +31,7 @@ export default class ErrorBoundary extends Component {
       return (
         <div className="empty-state" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <h1>Something went wrong</h1>
-          <p>This page hit an unexpected error. Reloading usually fixes it -- if it keeps happening, let Exec know.</p>
+          <p>This page hit an unexpected error. Reloading usually fixes it. If it keeps happening, let Exec know.</p>
           <div style={{ display: "flex", gap: "var(--space-3)", justifyContent: "center", marginTop: "var(--space-5)" }}>
             <button className="btn btn-primary" onClick={() => window.location.reload()}>
               Reload

@@ -116,7 +116,7 @@ export default function TopBar() {
 
       <div className="topbar__actions">
         {isAdmin && (
-          <Link className="topbar__notifications" to="/admin" aria-label="New signups" onClick={handleSignupsBadgeClick}>
+          <Link className="topbar__notifications" to="/admin/members" aria-label="New signups" onClick={handleSignupsBadgeClick}>
             👥
             {newSignupsCount > 0 && <span className="topbar__notifications-count">{newSignupsCount}</span>}
           </Link>

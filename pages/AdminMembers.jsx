@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../data/supabaseClient.js";
 import { graduateIntern } from "../data/acceleratorSync.js";
 import AccountSetupPanel from "../components/admin/AccountSetupPanel.jsx";
+import AdminDashboard from "./AdminDashboard.jsx";
 import "../styles/jobDetail.css";
 import "../styles/admin.css";
 
@@ -105,8 +106,7 @@ export default function AdminMembers() {
     <div>
       <h1>Members</h1>
       <p className="meta">
-        Every real signed-up account. Admins can post/edit jobs, review submitted opportunities and feature
-        requests, and manage sources. Everyone else is a regular member.{" "}
+        Every real signed-up account. Admins can post and edit jobs, review submissions and manage sources. Everyone else is a regular member.{" "}
         {loading ? "" : `${members.length} real account${members.length === 1 ? "" : "s"} exist today.`}
       </p>
 
@@ -198,6 +198,8 @@ export default function AdminMembers() {
           </table>
         </div>
       </div>
+
+      <AdminDashboard view="people" />
     </div>
   );
 }

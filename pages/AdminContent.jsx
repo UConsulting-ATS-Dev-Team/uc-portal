@@ -52,7 +52,7 @@ export default function AdminContent() {
       <h1>Content management</h1>
       <p className="meta">
         Every real, member-submitted post, interview write-up, and library contribution, with a real "Remove" action
-        on each -- the actual capability this page exists to provide. Removing here is permanent and visible to
+        on each. Removing here is permanent and visible to
         every member immediately.
       </p>
 

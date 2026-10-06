@@ -366,16 +366,23 @@ which are chronological and not rewritten when later work supersedes them.
   interns can't write: column grants), so don't change that without revisiting the grants. Events can recur (`series_id`) and each
   has an `attendance_method`: `admin` (committee marks it) or `photo` (the intern submits a photo, stored in the private
   `accelerator-event-photos` bucket). Admin side lives on `/admin/accelerator`.
-- **Admin surface:** `/admin` (dashboard: pipeline health, review queues,
-  company tiers, signups, feature requests, client errors, weekly-digest
-  preview), `/admin/opportunities` (job sources), `/admin/members` (roles, mark
-  alumni, graduate intern, account setup), `/admin/content` (moderation),
-  `/admin/library`, `/admin/accelerator`.
+- **Admin surface (restructured 2026-10-06):** there is no admin-only home page; admins land on the same Home as
+  everyone else and get a grouped, collapsible **Leadership** menu (`LEADERSHIP_SECTIONS` in `data/navItems.js`, rendered by
+  `NavRail`'s `LeadershipMenu` and the phone More sheet). People: `/admin/members` (roles, mark alumni, graduate intern,
+  plus access requests, account setup and recent signups). Content: `/admin/content`, `/admin/library`,
+  `/admin/accelerator`. Communications: `/admin/communications` (announcements, weekly digest preview). Insights:
+  `/admin/analytics` (member engagement). System, the technical side kept apart from everyday admin work:
+  `/admin/opportunities` (job sources) and `/admin/system` (pipeline health, opportunity and duplicate queues, job quality,
+  broken links, company tiers, feature requests, client errors). `/admin` redirects to Members. The old dashboard is one
+  component, `pages/AdminDashboard.jsx`, rendered with a `view` prop (`system`, `people`, `insights`, `communications`) by
+  thin wrapper pages. Planned and not built: user management upgrades (edit, deactivate, add user), master communications
+  (email/Slack/iMessage with templates, drafts, scheduling, audience filters, logs, unsubscribes), automatic emails, and
+  site/email analytics, modeled on the UConsulting ATS (`uc-ats` repo).
 - **Scheduled work:** 7 pg_cron jobs call Edge Functions (Greenhouse, Lever,
   Ashby, Deloitte, link-health, board snapshot, weekly digest), each guarded by an
   `X-Cron-Secret` header (secret in Supabase Vault and as an Edge Function
   secret). `pg_net` delivers each call twice; `cron_run_locks` suppresses the
-  duplicate. Health shows on Admin Dashboard's "Pipeline health". Pipeline
+  duplicate. Health shows on Admin > System ("Pipeline health"). Pipeline
   detail lives in [JOB_ENGINE_ARCHITECTURE.md](JOB_ENGINE_ARCHITECTURE.md).
   Greenhouse runs in batches (`{"batch": 20}` every 2 hours; Ashby `{"batch": 8}` hourly at :47; stalest companies first;
   size a batch so batch x runs/day covers every enabled company inside the 26h coverage window) because one

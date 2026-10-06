@@ -1,5 +1,5 @@
 import { Suspense, lazy } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import RequireAuth from "./components/RequireAuth.jsx";
 import RequireCurrentMember from "./components/RequireCurrentMember.jsx";
 import RequireNotIntern from "./components/RequireNotIntern.jsx";
@@ -33,7 +33,9 @@ import TourOverlay from "./components/tour/TourOverlay.jsx";
 // mounted and stable during the chunk fetch instead of the whole page
 // flashing to a fallback.
 const Onboarding = lazy(() => import("./pages/Onboarding.jsx"));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard.jsx"));
+const AdminAnalytics = lazy(() => import("./pages/AdminAnalytics.jsx"));
+const AdminSystem = lazy(() => import("./pages/AdminSystem.jsx"));
+const AdminCommunications = lazy(() => import("./pages/AdminCommunications.jsx"));
 const AdminMembers = lazy(() => import("./pages/AdminMembers.jsx"));
 const SourceManagement = lazy(() => import("./pages/SourceManagement.jsx"));
 const AdminAccelerator = lazy(() => import("./pages/AdminAccelerator.jsx"));
@@ -254,11 +256,30 @@ function AppRoutes() {
           gate and components/RequireAdmin.jsx for the actual route-level
           enforcement (hiding the link was never enough on its own). */}
       <Route element={<RequireAdmin />}>
+      {/* No admin-only home page: /admin (and the old dashboard bookmark) goes to the Members page. The pieces that
+          lived on the dashboard are pages of their own. */}
+      <Route path="/admin" element={<Navigate to="/admin/members" replace />} />
       <Route
-        path="/admin"
+        path="/admin/analytics"
         element={
           <NavShell>
-            <LazyPage Component={AdminDashboard} />
+            <LazyPage Component={AdminAnalytics} />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/admin/system"
+        element={
+          <NavShell>
+            <LazyPage Component={AdminSystem} />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/admin/communications"
+        element={
+          <NavShell>
+            <LazyPage Component={AdminCommunications} />
           </NavShell>
         }
       />

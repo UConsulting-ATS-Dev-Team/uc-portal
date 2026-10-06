@@ -137,7 +137,7 @@ export default function SourceManagement() {
         <div>
           <h1>Job sources</h1>
           <p className="meta">
-            Every job on the board traces back to one of these -- a disabled or unapproved source can't
+            Every job on the board traces back to one of these. A disabled or unapproved source can't
             contribute a single row, regardless of what any submission form or scheduled fetch tries to do.
           </p>
         </div>
@@ -146,7 +146,7 @@ export default function SourceManagement() {
       <div className="detail-section">
         <h2 className="detail-section__title">Requested companies</h2>
         <p className="meta" style={{ marginTop: 0 }}>
-          Companies members follow that aren't a supported source yet -- the real prioritization signal for
+          Companies members follow that aren't a supported source yet. It's the real prioritization signal for
           which company to research next, aggregated so no individual member's preferences are exposed.
         </p>
         {demandError && <p className="meta" style={{ color: "var(--color-danger)" }}>{demandError}</p>}
@@ -168,7 +168,7 @@ export default function SourceManagement() {
             {!demandLoading && demand.length === 0 && (
               <tr>
                 <td colSpan={2} className="meta">
-                  No requests yet -- every company members currently follow is already a known source.
+                  No requests yet. Every company members currently follow is already a known source.
                 </td>
               </tr>
             )}

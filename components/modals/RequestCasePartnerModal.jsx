@@ -63,7 +63,7 @@ export default function RequestCasePartnerModal({ candidate, onClose, onSent }) 
       </div>
 
       <p className="meta" style={{ marginBottom: "var(--space-4)" }}>
-        This only sends a request -- you're not paired up until {candidate.displayName.split(" ")[0]} accepts it themselves.
+        This only sends a request. You're not paired up until {candidate.displayName.split(" ")[0]} accepts it themselves.
         You'll see it under "My case partners" either way.
       </p>
 

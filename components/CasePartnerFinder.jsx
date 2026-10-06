@@ -180,7 +180,7 @@ export default function CasePartnerFinder() {
           <div className="rail-card__title">Practice cases with another UC member</div>
           <p className="meta" style={{ marginBottom: "var(--space-4)" }}>
             Moved from the club's manual "Case Partners" spreadsheet into the app. Opting in lists you as available and lets
-            you browse other opted-in members filtered by your target industries, roles, and recruiting timeline -- nobody
+            you browse other opted-in members filtered by your target industries, roles, and recruiting timeline. Nobody
             is ever paired automatically. You send a request, they accept it, and only then are you matched.
           </p>
           <button className="btn btn-primary" disabled={busy} onClick={handleJoin}>
@@ -191,7 +191,7 @@ export default function CasePartnerFinder() {
         <>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-3)" }}>
             <p className="meta" style={{ margin: 0 }}>
-              You're in the pool -- {candidates.length} other member{candidates.length === 1 ? "" : "s"} opted in.
+              You're in the pool, with {candidates.length} other member{candidates.length === 1 ? "" : "s"} opted in.
             </p>
             <button className="btn btn-secondary" disabled={busy} onClick={handleLeave}>
               Leave pool
@@ -222,7 +222,7 @@ export default function CasePartnerFinder() {
 
           <h3 style={{ margin: "var(--space-7) 0 var(--space-4)" }}>Browse case partners</h3>
           {ranked.length === 0 ? (
-            <p className="meta">No other members have opted in yet -- check back once more members join the pool.</p>
+            <p className="meta">No other members have opted in yet. Check back once more members join the pool.</p>
           ) : (
             <div className="resource-card-grid">
               {ranked.map((c) => {
@@ -254,7 +254,7 @@ export default function CasePartnerFinder() {
 
           <h3 style={{ margin: "var(--space-7) 0 var(--space-4)" }}>My case partners</h3>
           {accepted.length === 0 && otherPending.length === 0 ? (
-            <p className="meta">No requests sent yet -- browse above and send your first one.</p>
+            <p className="meta">No requests sent yet. Browse above and send your first one.</p>
           ) : (
             <>
               {accepted.map((r) => {

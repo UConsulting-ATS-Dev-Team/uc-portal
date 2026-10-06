@@ -8,8 +8,6 @@ import { capForCompanyTier } from "../data/companyTiers.js";
 import { fetchRecentSignups } from "../data/adminNotificationsSync.js";
 import { fetchWeeklyDigestLog } from "../data/digestSync.js";
 import { fetchCronHealth, fetchDeadSources, disableDeadSource } from "../data/cronHealthSync.js";
-import { ACCESS_CONTROL } from "../data/mockAdmin.js";
-import DemoDataBadge from "../components/DemoDataBadge.jsx";
 import "../styles/jobs.css";
 import "../styles/jobDetail.css";
 import "../styles/network.css";
@@ -29,7 +27,35 @@ const FEATURE_REQUEST_STATUS_LABEL = {
 // submission into a real jobs row. Everything else on this page (KPIs,
 // industry interest, etc.) is still the mock-data prototype layer; only the
 // queue has a real backend behind it so far.
-export default function AdminDashboard() {
+// One of four views of what used to be a single admin dashboard. There is no admin-only home page any more: admins land
+// where everyone else does, and these are pages in the Leadership menu.
+//   system          the technical side of running the site (scheduled jobs, review queues, sources, errors)
+//   people          access requests and account setup, shown on the Members page
+//   insights        member engagement (the Analytics page)
+//   communications  announcements and the weekly digest
+const SECTION_VIEW = {
+  pipeline: "system",
+  queue: "system",
+  duplicates: "system",
+  quality: "system",
+  links: "system",
+  tiers: "system",
+  features: "system",
+  errors: "system",
+  access: "people",
+  precreate: "people",
+  engagement: "insights",
+  digest: "communications",
+};
+
+const VIEW_HEADER = {
+  system: { title: "System", subtitle: "How the job board and the site are running: scheduled jobs, review queues, sources and errors. Most admins won't need this page." },
+  insights: { title: "Analytics", subtitle: "Aggregate interest and engagement. Never an individual member's application list." },
+  communications: { title: "Communications", subtitle: "Announcements to members and the weekly digest." },
+};
+
+export default function AdminDashboard({ view = "system" }) {
+  const show = (key) => SECTION_VIEW[key] === view;
   const [showPostModal, setShowPostModal] = useState(false);
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [queue, setQueue] = useState([]);
@@ -504,7 +530,7 @@ export default function AdminDashboard() {
     } else if (data?.outcome === "confirmed_duplicate") {
       const kept = keepJobId === candidate.job_id_a ? candidate.jobA : candidate.jobB;
       const mergedNote = data.mergedFields?.length > 0 ? ` Merged in from the duplicate: ${data.mergedFields.join(", ")}.` : "";
-      setDuplicatesNote(`Kept "${kept?.title ?? "the selected listing"}" -- the duplicate was deactivated and its sources reassigned.${mergedNote}`);
+      setDuplicatesNote(`Kept "${kept?.title ?? "the selected listing"}": the duplicate was deactivated and its sources reassigned.${mergedNote}`);
     } else {
       setDuplicatesNote("Marked as not a duplicate.");
     }
@@ -533,9 +559,9 @@ export default function AdminDashboard() {
       const detail = await error.context?.json?.().catch(() => null);
       setQueueError(detail?.error ?? error.message);
     } else if (data?.outcome === "merged") {
-      setQueueNote(`Matched an existing listing (score ${data.matchedScore}) -- attached as an additional source instead of creating a duplicate.`);
+      setQueueNote(`Matched an existing listing (score ${data.matchedScore}), attached as an additional source instead of creating a duplicate.`);
     } else if (data?.outcome === "live_flagged_duplicate") {
-      setQueueNote(`Live, but flagged as a possible duplicate (score ${data.duplicateScore}) -- see the duplicate review queue.`);
+      setQueueNote(`Live, but flagged as a possible duplicate (score ${data.duplicateScore}). See the duplicate review queue.`);
     }
 
     await loadQueue();
@@ -562,31 +588,39 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <div className="jobs-header" style={{ marginBottom: "var(--space-6)" }}>
-        <div>
-          <h1>Admin Dashboard</h1>
-          <p className="meta">Aggregate interest and engagement. Never an individual member's application list.</p>
+      {VIEW_HEADER[view] && (
+        <div className="jobs-header" style={{ marginBottom: "var(--space-6)" }}>
+          <div>
+            <h1>{VIEW_HEADER[view].title}</h1>
+            <p className="meta">{VIEW_HEADER[view].subtitle}</p>
+          </div>
+          <div className="jobs-header__actions">
+            {view === "system" && (
+              <button className="btn btn-primary" onClick={() => setShowPostModal(true)}>
+                Post opportunity
+              </button>
+            )}
+            {view === "communications" && (
+              <button className="btn btn-primary" onClick={() => setShowAnnouncementModal(true)}>
+                Post announcement
+              </button>
+            )}
+          </div>
         </div>
-        <div className="jobs-header__actions">
-          <select defaultValue="Fall 2026">
-            <option>Fall 2026</option>
-            <option>Spring 2026</option>
-          </select>
-          <button className="btn btn-primary" onClick={() => setShowPostModal(true)}>+ Post opportunity</button>
-        </div>
-      </div>
+      )}
 
       <div className="detail-layout">
         <div className="detail-main">
+          {show("pipeline") && (
           <div className="detail-section">
             <h2 className="detail-section__title">Pipeline health</h2>
             <p className="meta" style={{ marginTop: 0 }}>
               Real last-run status for every scheduled job (the ingestion and maintenance adapters + the
-              weekly digest), computed from each function's own logged outcome -- not just whether pg_cron
-              fired, but whether the run itself actually succeeded. A row flagged "Stale" hasn't completed
+              weekly digest), computed from each function's own logged outcome, not just whether pg_cron
+              fired but whether the run itself actually succeeded. A row flagged "Stale" hasn't completed
               successfully within its expected cadence and is worth checking directly. Greenhouse, Lever and Ashby run
-              in batches, so they report coverage instead -- how many companies had a successful fetch in the
-              last 24 hours -- and go stale when that drops below 90%.
+              in batches, so they report coverage instead: how many companies had a successful fetch in the
+              last 24 hours. They go stale when that drops below 90%.
             </p>
             {cronHealthError && <p className="meta" style={{ color: "var(--color-danger)" }}>{cronHealthError}</p>}
             <div className="queue-table__scroll">
@@ -693,7 +727,9 @@ export default function AdminDashboard() {
               </div>
             )}
           </div>
+          )}
 
+          {show("queue") && (
           <div className="detail-section" data-tour="admin-opportunity-queue">
             <h2 className="detail-section__title">Opportunity queue</h2>
             {queueError && <p className="meta" style={{ color: "var(--color-danger)" }}>{queueError}</p>}
@@ -761,12 +797,14 @@ export default function AdminDashboard() {
             </table>
             </div>
           </div>
+          )}
 
+          {show("duplicates") && (
           <div className="detail-section">
             <h2 className="detail-section__title">Duplicate review queue</h2>
             <p className="meta" style={{ marginTop: 0 }}>
               Flagged by dedup scoring (70–89 confidence band) on either a member/admin submission or an
-              automated source -- not auto-merged, since the signals weren't strong enough to be certain.
+              automated source. Not auto-merged, since the signals weren't strong enough to be certain.
             </p>
             {duplicatesError && <p className="meta" style={{ color: "var(--color-danger)" }}>{duplicatesError}</p>}
             {duplicatesNote && <p className="meta">{duplicatesNote}</p>}
@@ -839,13 +877,15 @@ export default function AdminDashboard() {
             </table>
             </div>
           </div>
+          )}
 
+          {show("quality") && (
           <div className="detail-section">
             <h2 className="detail-section__title">Job quality</h2>
             <p className="meta" style={{ marginTop: 0 }}>
-              Active postings scoring below 0.5 on completeness/confidence (computed at ingestion) --
+              Active postings scoring below 0.5 on completeness/confidence (computed at ingestion):
               missing fields worth checking, not necessarily broken. Dead application links are a
-              separate, live signal now -- see "Broken links" below.
+              separate, live signal now. See "Broken links" below.
             </p>
             {lowQualityError && <p className="meta" style={{ color: "var(--color-danger)" }}>{lowQualityError}</p>}
             <div className="queue-table__scroll">
@@ -872,7 +912,7 @@ export default function AdminDashboard() {
                 {!lowQualityLoading && lowQualityJobs.length === 0 && (
                   <tr>
                     <td colSpan={4} className="meta">
-                      No active postings currently score below 0.5 -- nothing needs a closer look.
+                      No active postings currently score below 0.5. Nothing needs a closer look.
                     </td>
                   </tr>
                 )}
@@ -887,17 +927,19 @@ export default function AdminDashboard() {
             </table>
             </div>
           </div>
+          )}
 
+          {show("links") && (
           <div className="detail-section">
             <h2 className="detail-section__title">Broken links</h2>
             <p className="meta" style={{ marginTop: 0 }}>
               Active postings whose application_url has failed 3+ consecutive daily checks (check-job-links,
-              scheduled via pg_cron) -- HEAD, falling back to GET, plus a redirect check that catches a real
+              scheduled via pg_cron): HEAD, falling back to GET, plus a redirect check that catches a real
               gap plain status codes miss: several ATS-hosted job pages return HTTP 200 but silently redirect
               a removed posting's URL to the company's generic careers page. A single failed check never
-              flags anything here -- one transient timeout is still plausibly a blip, not a dead link. Jobs
+              flags anything here, since one transient timeout is still plausibly a blip, not a dead link. Jobs
               behind bot/CAPTCHA challenges that block automated requests entirely (confirmed live: Carvana)
-              are deliberately left out of this list rather than mass-flagged -- there's no reliable way to
+              are deliberately left out of this list rather than mass-flagged, because there's no reliable way to
               tell a blocked-but-live posting apart from a genuinely dead one from the response alone.
             </p>
             {brokenLinkError && <p className="meta" style={{ color: "var(--color-danger)" }}>{brokenLinkError}</p>}
@@ -929,7 +971,7 @@ export default function AdminDashboard() {
                         className="btn btn-secondary"
                         disabled={actioningId === j.id}
                         onClick={() => handleDeactivateBrokenLink(j.id)}
-                        title="Confirms this posting is actually gone -- pulls it from the board"
+                        title="Confirms this posting is actually gone and pulls it from the board"
                       >
                         {actioningId === j.id ? "Deactivating…" : "Deactivate"}
                       </button>
@@ -954,7 +996,9 @@ export default function AdminDashboard() {
             </table>
             </div>
           </div>
+          )}
 
+          {show("tiers") && (
           <div className="detail-section">
             {/* data-tour lives on just the header, not the whole section -- every
                 real company renders inline here with no pagination, so the full
@@ -967,9 +1011,9 @@ export default function AdminDashboard() {
               <p className="meta" style={{ marginTop: 0 }}>
                 Every real company's active-job cap (data/companyTiers.js's TIER_CAPS: tier 0 "core consulting" 25,
                 tier 1 "other elite name-brand" 15, tier 2 "recognizable corporate/finance-adjacent" 10, tier 3
-                "everyone else" 5) -- enforced on ingestion by every fetch-* source and reflected on the Jobs
+                "everyone else" 5), enforced on ingestion by every fetch-* source and reflected on the Jobs
                 board's own per-company display cap. Reclassifying a company here takes effect on its next
-                scheduled fetch, not immediately -- this only changes company_tiers, not any job row directly.
+                scheduled fetch, not immediately. This only changes company_tiers, not any job row directly.
                 Companies with real active postings but no row here yet (defaulted to tier 3, flagged "Not yet
                 classified") are the ones most worth reviewing first.
               </p>
@@ -1003,10 +1047,10 @@ export default function AdminDashboard() {
                         disabled={updatingCompanyName === c.company_name}
                         onChange={(e) => handleTierChange(c.company_name, Number(e.target.value))}
                       >
-                        <option value={0}>0 -- core consulting</option>
-                        <option value={1}>1 -- other elite name-brand</option>
-                        <option value={2}>2 -- recognizable corporate</option>
-                        <option value={3}>3 -- everyone else</option>
+                        <option value={0}>0: core consulting</option>
+                        <option value={1}>1: other elite name-brand</option>
+                        <option value={2}>2: recognizable corporate</option>
+                        <option value={3}>3: everyone else</option>
                       </select>
                     </td>
                     <td>{capForCompanyTier(c.tier)}</td>
@@ -1030,14 +1074,16 @@ export default function AdminDashboard() {
             </table>
             </div>
           </div>
+          )}
 
+          {show("access") && (
           <div className="detail-section">
             <h2 className="detail-section__title">Access requests</h2>
             <p className="meta" style={{ marginTop: 0 }}>
               Real submissions from Sign-in's "Alumni request access" flow, or anyone whose sign-up
               was rejected by the real roster check. Approve adds the email to the roster (the same
               real gate a future sign-up attempt checks) and lets them sign up immediately; Decline
-              just records the review -- their email stays gated exactly as before.
+              just records the review. Their email stays gated exactly as before.
             </p>
             {accessRequestsError && <p className="meta" style={{ color: "var(--color-danger)" }}>{accessRequestsError}</p>}
             <div className="queue-table__scroll">
@@ -1102,7 +1148,9 @@ export default function AdminDashboard() {
             </table>
             </div>
           </div>
+          )}
 
+          {show("precreate") && (
           <div className="detail-section">
             <h2 className="detail-section__title">Pre-create accounts</h2>
             <p className="meta" style={{ marginTop: 0 }}>
@@ -1132,15 +1180,17 @@ export default function AdminDashboard() {
               {provisioning ? "Creating accounts…" : "Pre-create accounts for roster"}
             </button>
           </div>
+          )}
 
+          {show("engagement") && (
           <div className="detail-section">
             <h2 className="detail-section__title">Member engagement</h2>
             <p className="meta" style={{ marginTop: 0 }}>
               Real signed-up accounts, ranked least-active first. "Last active" is the most recent of: signing
               in, editing preferences/profile, tracker activity, saving a job, or a coffee-chat/connection
-              update -- presence only, never what a member actually did. This never surfaces an individual's
+              update. Presence only, never what a member actually did. This never surfaces an individual's
               application list or its contents, only whether they've touched the platform at all.{" "}
-              {engagementLoading ? "" : `${engagement.length} real account${engagement.length === 1 ? "" : "s"} exist today -- this list is genuinely small until real members sign up.`}
+              {engagementLoading ? "" : `${engagement.length} real account${engagement.length === 1 ? "" : "s"} exist today. This list is small until real members sign up.`}
             </p>
             {engagementError && <p className="meta" style={{ color: "var(--color-danger)" }}>{engagementError}</p>}
             <div className="queue-table__scroll">
@@ -1184,7 +1234,9 @@ export default function AdminDashboard() {
             </table>
             </div>
           </div>
+          )}
 
+          {show("features") && (
           <div className="detail-section">
             <h2 className="detail-section__title">Feature requests</h2>
             {featureRequestsError && <p className="meta" style={{ color: "var(--color-danger)" }}>{featureRequestsError}</p>}
@@ -1261,11 +1313,13 @@ export default function AdminDashboard() {
             </table>
             </div>
           </div>
+          )}
 
+          {show("errors") && (
           <div className="detail-section">
             <h2 className="detail-section__title">Client errors</h2>
             <p className="meta" style={{ marginTop: 0 }}>
-              Real crashes and failures reported from members' own browsers -- the error boundary,
+              Real crashes and failures reported from members' own browsers: the error boundary,
               a page/promise failure outside it, or a member clicking "Report to Exec" on an empty
               state. Most recent 50.
             </p>
@@ -1311,13 +1365,15 @@ export default function AdminDashboard() {
             </table>
             </div>
           </div>
+          )}
 
+          {show("digest") && (
           <div className="detail-section">
             <h2 className="detail-section__title">Weekly digest preview</h2>
             <p className="meta" style={{ marginTop: 0 }}>
-              Real computed content from the weekly digest run (every Monday) -- new matches, upcoming
+              Real computed content from the weekly digest run (every Monday): new matches, upcoming
               deadlines, unread messages, and new feed posts, per real member. Not yet actually emailed
-              (waiting on real SMTP) -- this is here to sanity-check the content is correct before it is.
+              (waiting on real SMTP). This is here to sanity-check the content is correct before it is.
               A member with nothing to report that week has no row.
             </p>
             {weeklyDigestsError && <p className="meta" style={{ color: "var(--color-danger)" }}>{weeklyDigestsError}</p>}
@@ -1341,7 +1397,7 @@ export default function AdminDashboard() {
                 {!weeklyDigestsLoading && weeklyDigests.length === 0 && (
                   <tr>
                     <td colSpan={3} className="meta">
-                      No digest content yet -- runs every Monday, or nothing was worth reporting.
+                      No digest content yet. It runs every Monday, or nothing was worth reporting.
                     </td>
                   </tr>
                 )}
@@ -1356,9 +1412,12 @@ export default function AdminDashboard() {
             </table>
             </div>
           </div>
+          )}
         </div>
 
-        <div className="detail-rail">
+        {(view === "people" || view === "insights") && (
+          <div className="detail-rail">
+            {view === "people" && (
           <div className="rail-card">
             <div className="rail-card__title">Recent signups</div>
             {recentSignupsError && <p className="meta" style={{ color: "var(--color-danger)" }}>{recentSignupsError}</p>}
@@ -1373,8 +1432,8 @@ export default function AdminDashboard() {
             ))}
             {recentSignupsLoading && <p className="meta" style={{ margin: 0 }}>Loading…</p>}
           </div>
-
-
+            )}
+            {view === "insights" && (
           <div className="rail-card">
             <div className="rail-card__title">Member engagement</div>
             {engagementError && <p className="meta" style={{ color: "var(--color-danger)" }}>{engagementError}</p>}
@@ -1386,44 +1445,10 @@ export default function AdminDashboard() {
               <span>No activity in 14+ days</span>
               <span>{engagementLoading ? "…" : disengagedCount}</span>
             </div>
-            <p className="meta" style={{ marginTop: "var(--space-3)" }}>
-              Full list, real names, below.
-            </p>
           </div>
-
-          <div className="rail-card">
-            <div className="rail-card__title">Content management</div>
-            <Link to="/resources" className="content-mgmt-link">
-              <span>Add resource</span>
-            </Link>
-            <Link to="/companies" className="content-mgmt-link">
-              <span>Manage company pages</span>
-            </Link>
-            <Link to="/admin/content" className="content-mgmt-link">
-              <span>Moderate content</span>
-            </Link>
-            <button
-              type="button"
-              className="content-mgmt-link"
-              onClick={() => setShowAnnouncementModal(true)}
-              style={{ background: "none", border: "none", borderBottom: "var(--border-hairline)", width: "100%", textAlign: "left", cursor: "pointer" }}
-            >
-              <span>Post announcement</span>
-            </button>
-            <Link to="/admin/members" className="content-mgmt-link">
-              <span>Manage member access</span>
-            </Link>
+            )}
           </div>
-
-          <div className="rail-card">
-            <div className="rail-card__title">
-              Access control <DemoDataBadge label="Illustrative" title="'Roster-provisioned' and the access mechanism line are real (see the Access requests queue above and the roster/alumni-accounts migrations); 'pending removals' is a placeholder figure, not a real tracked count" />
-            </div>
-            <p className="meta" style={{ marginBottom: "var(--space-2)" }}>{ACCESS_CONTROL.provisioned}</p>
-            <p className="meta" style={{ marginBottom: "var(--space-2)" }}>{ACCESS_CONTROL.accessMechanism}</p>
-            <p className="meta" style={{ marginBottom: 0 }}>{ACCESS_CONTROL.pendingRemovals} pending removals</p>
-          </div>
-        </div>
+        )}
       </div>
 
       {showPostModal && <PostOpportunityModal onClose={() => setShowPostModal(false)} />}

@@ -7,12 +7,14 @@ import {
   Building2,
   GraduationCap,
   CircleUserRound,
-  LayoutDashboard,
   Database,
   UserCog,
   FileText,
   Rocket,
   BookOpen,
+  Mail,
+  BarChart3,
+  Wrench,
 } from "lucide-react";
 
 // Extracted out of components/NavRail.jsx so components/BottomTabBar.jsx
@@ -85,14 +87,39 @@ export function mainItemsFor({ isIntern, isAlumni, isAdmin }) {
   return MAIN_ITEMS;
 }
 
-export const LEADERSHIP_ITEMS = [
-  { label: "Admin Dashboard", to: "/admin", icon: LayoutDashboard },
-  { label: "Job sources", to: "/admin/opportunities", icon: Database },
-  { label: "Members", to: "/admin/members", icon: UserCog },
-  { label: "Content", to: "/admin/content", icon: FileText },
-  { label: "Library", to: "/admin/library", icon: BookOpen },
-  { label: "Accelerator", to: "/admin/accelerator", icon: Rocket },
+// There is no separate admin home: an admin lands on the same Home as everyone else, and these are extra pages only
+// admins see. Grouped by what a person is trying to do, with the technical upkeep of the site last and apart.
+export const LEADERSHIP_SECTIONS = [
+  {
+    section: "People",
+    items: [{ label: "Members", to: "/admin/members", icon: UserCog }],
+  },
+  {
+    section: "Content",
+    items: [
+      { label: "Content", to: "/admin/content", icon: FileText },
+      { label: "Library", to: "/admin/library", icon: BookOpen },
+      { label: "Accelerator", to: "/admin/accelerator", icon: Rocket },
+    ],
+  },
+  {
+    section: "Communications",
+    items: [{ label: "Communications", to: "/admin/communications", icon: Mail }],
+  },
+  {
+    section: "Insights",
+    items: [{ label: "Analytics", to: "/admin/analytics", icon: BarChart3 }],
+  },
+  {
+    section: "System",
+    items: [
+      { label: "Job sources", to: "/admin/opportunities", icon: Database },
+      { label: "Pipeline and queues", to: "/admin/system", icon: Wrench },
+    ],
+  },
 ];
+
+export const LEADERSHIP_ITEMS = LEADERSHIP_SECTIONS.flatMap((group) => group.items);
 
 // The 4 highest-priority destinations for the phone-width bottom tab bar
 // (native mobile convention: ~4 primary slots + one "More"), rather than

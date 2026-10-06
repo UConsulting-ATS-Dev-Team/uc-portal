@@ -95,7 +95,7 @@ function InternRoster() {
         </button>
       </div>
       <p className="meta">
-        Incoming freshmen aren't on the roster or in the Directory yet -- add their email here before they try to
+        Incoming freshmen aren't on the roster or in the Directory yet. Add their email here before they try to
         sign up.
       </p>
       {error && !open && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
@@ -245,7 +245,7 @@ function InternProgress() {
   return (
     <div className="detail-section">
       <p style={{ fontWeight: 700 }}>Intern progress</p>
-      <p className="meta">Every real intern account, at a glance -- who's on track and who's stalled.</p>
+      <p className="meta">Every real intern account, at a glance: who's on track and who's stalled.</p>
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
       <div className="queue-table__scroll">
         <table className="queue-table">
@@ -626,7 +626,7 @@ export default function AdminAccelerator() {
     <div>
       <h1>Accelerator</h1>
       <p className="meta">
-        Manage the accelerator curriculum -- one evergreen sequence of weekly lessons, editable any time so it can
+        Manage the accelerator curriculum: one evergreen sequence of weekly lessons, editable any time so it can
         change slightly year to year without a code change.
       </p>
 

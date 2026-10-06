@@ -191,20 +191,20 @@ export const TOURS = {
     label: "Admin tools",
     steps: [
       {
-        route: "/admin",
+        route: "/admin/members",
         target: null,
-        title: "Admin Dashboard",
-        body: "Everything here is real, live data -- not illustrative mock figures (those are labeled with an amber \"Illustrative\" tag where they still appear). Skip anytime, and replay this later from your avatar menu.",
+        title: "Leadership menu",
+        body: "Everything only admins see lives under Leadership in the left menu: people, content, communications, analytics, and a System section for the technical side. Skip anytime, and replay this later from your avatar menu.",
       },
       {
-        route: "/admin",
+        route: "/admin/system",
         target: "[data-tour='admin-opportunity-queue']",
         placement: "bottom",
         title: "Opportunity queue",
         body: "Postings submitted by members or through Post an Opportunity land here for review before going live.",
       },
       {
-        route: "/admin",
+        route: "/admin/system",
         target: "[data-tour='admin-company-tiers']",
         placement: "bottom",
         title: "Company tiers",
@@ -218,7 +218,7 @@ export const TOURS = {
         body: "Promote a member to admin, or graduate an intern to full current-member access, from here.",
       },
       {
-        route: "/admin",
+        route: "/admin/members",
         target: null,
         title: "That's the admin toolset",
         body: "Replay this tour anytime from your avatar menu, top right.",

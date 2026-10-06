@@ -20,5 +20,5 @@ export async function preProvisionAccounts(audience) {
 }
 
 export function inviteMessage() {
-  return `Hi! UConsulting now has a members-and-alumni portal at ${window.location.origin} -- jobs, an alumni directory, and messaging.\n\nI've already created an account for you. To claim it: go to ${window.location.origin}/sign-in, click "Forgot your password?", enter this email address, and follow the link in the email to set a password.`;
+  return `Hi! UConsulting now has a members-and-alumni portal at ${window.location.origin}, with jobs, an alumni directory, and messaging.\n\nI've already created an account for you. To claim it: go to ${window.location.origin}/sign-in, click "Forgot your password?", enter this email address, and follow the link in the email to set a password.`;
 }

@@ -264,6 +264,35 @@
   margin-bottom: var(--space-3);
 }
 
+/* Leadership groups: each heading is a button that folds its items away. */
+.rail__group {
+  margin-bottom: var(--space-3);
+}
+
+.rail__kicker--toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.rail__kicker--toggle:hover {
+  color: var(--color-text);
+}
+
+.rail__chevron {
+  transition: transform 0.12s ease;
+}
+
+.rail__chevron.is-collapsed {
+  transform: rotate(-90deg);
+}
+
 .rail__spacer {
   flex: 1 1 auto;
 }

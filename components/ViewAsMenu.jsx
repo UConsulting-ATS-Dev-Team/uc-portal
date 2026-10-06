@@ -35,7 +35,7 @@ export default function ViewAsMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        title={viewAsOverride ? "Simulated view -- your real account is still an admin" : "Click to preview another member type's view"}
+        title={viewAsOverride ? "Simulated view. Your real account is still an admin" : "Click to preview another member type's view"}
       >
         {viewAsOverride ? `Viewing as: ${current.label}` : "Admin"}
         {/* Real ask: nothing about a plain chip read as clickable --

@@ -1,6 +1,8 @@
-import { NavLink } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
+import { ChevronDown } from "lucide-react";
 import { clubStats } from "../data/mockUser.js";
-import { LEADERSHIP_ITEMS, mainItemsFor } from "../data/navItems.js";
+import { LEADERSHIP_SECTIONS, mainItemsFor } from "../data/navItems.js";
 import { useAppState } from "../data/store.jsx";
 
 // Lucide, stroke-width 1.5, per CLAUDE.md's icon spec ("wireframes use text
@@ -22,7 +24,7 @@ function RailLink({ label, to, icon: Icon, badge }) {
     <li data-tour-nav={to}>
       <NavLink
         to={to}
-        end={to === "/" || to === "/admin"}
+        end={to === "/"}
         className={({ isActive }) => `rail__link${isActive ? " is-active" : ""}`}
         title={label}
       >
@@ -31,6 +33,74 @@ function RailLink({ label, to, icon: Icon, badge }) {
         {badge && badge() > 0 && <span className="rail__badge">{badge()}</span>}
       </NavLink>
     </li>
+  );
+}
+
+const COLLAPSED_KEY = "uc-portal-leadership-collapsed";
+
+function readCollapsed() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(COLLAPSED_KEY) ?? "[]"));
+  } catch {
+    return new Set();
+  }
+}
+
+// The Leadership menu, grouped by what an admin is trying to do. Each group collapses on its own and the choice is
+// remembered, so the rail stays as short as the work in front of you. Going to a page inside a collapsed group opens it.
+function LeadershipMenu() {
+  const location = useLocation();
+  const [collapsed, setCollapsed] = useState(readCollapsed);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...collapsed]));
+    } catch {
+      // storage unavailable: the menu still works, it just won't remember
+    }
+  }, [collapsed]);
+
+  useEffect(() => {
+    const owner = LEADERSHIP_SECTIONS.find((g) => g.items.some((item) => location.pathname.startsWith(item.to)));
+    if (!owner) return;
+    setCollapsed((prev) => {
+      if (!prev.has(owner.section)) return prev;
+      const next = new Set(prev);
+      next.delete(owner.section);
+      return next;
+    });
+  }, [location.pathname]);
+
+  function toggle(section) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(section)) next.delete(section);
+      else next.add(section);
+      return next;
+    });
+  }
+
+  return (
+    <div className="rail__section">
+      {LEADERSHIP_SECTIONS.map((group) => {
+        const isCollapsed = collapsed.has(group.section);
+        return (
+          <div className="rail__group" key={group.section}>
+            <button type="button" className="rail__kicker rail__kicker--toggle" onClick={() => toggle(group.section)} aria-expanded={!isCollapsed}>
+              <ChevronDown size={12} strokeWidth={1.5} className={`rail__chevron${isCollapsed ? " is-collapsed" : ""}`} aria-hidden="true" />
+              {group.section}
+            </button>
+            {!isCollapsed && (
+              <ul className="rail__items">
+                {group.items.map((item) => (
+                  <RailLink key={item.to} {...item} />
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -49,16 +119,7 @@ export default function NavRail() {
         ))}
       </ul>
 
-      {isAdmin && (
-        <div className="rail__section">
-          <div className="rail__kicker">Leadership</div>
-          <ul className="rail__items">
-            {LEADERSHIP_ITEMS.map((item) => (
-              <RailLink key={item.to} {...item} />
-            ))}
-          </ul>
-        </div>
-      )}
+      {isAdmin && <LeadershipMenu />}
 
       <div className="rail__spacer" />
 

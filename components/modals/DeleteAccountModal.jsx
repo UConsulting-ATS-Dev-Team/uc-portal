@@ -27,7 +27,7 @@ export default function DeleteAccountModal({ onClose }) {
 
     if (fnError) {
       setDeleting(false);
-      setError(fnError.message || "Something went wrong -- your account was not deleted.");
+      setError(fnError.message || "Something went wrong, so your account was not deleted.");
       return;
     }
 

@@ -238,7 +238,7 @@ export default function CompanyPage() {
             {!company.isReal && (
               <DemoDataBadge
                 label="Demo company"
-                title="One of 8 hand-authored companies from before the real pipeline existed -- a real company, but this page isn't auto-sourced from live postings the way the rest of the directory is"
+                title="One of 8 hand-authored companies from before the real pipeline existed. A real company, but this page isn't auto-sourced from live postings the way the rest of the directory is"
               />
             )}
           </div>

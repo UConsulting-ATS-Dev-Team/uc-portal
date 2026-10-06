@@ -5224,3 +5224,16 @@ longer breaks down to phone width either.
   (pages, components, notification headlines, odds-model notes), rewording with periods, colons or commas, and `Company · Role` or
   `Role at Company` for job labels. Em dashes used only as an empty-cell placeholder ("—" for no value) and the start/end-year ranges
   were left. The Sign-in button now reads "Alumni request access". 250 tests pass.
+
+- **2026-10-06: no admin dashboard; Leadership menu split by purpose; double-hyphen sweep** --
+  Request: admins shouldn't have a dashboard full of technical panels; just tabs others can't see, with the technical work kept apart.
+  The single admin dashboard (pipeline health, opportunity queue, duplicates, job quality, broken links, company tiers, access requests,
+  account setup, member engagement, feature requests, client errors, weekly digest) is now one component rendered in four views:
+  System, People (on the Members page), Insights (Analytics) and Communications. The Leadership menu is grouped and collapsible
+  (People, Content, Communications, Insights, System), remembered per browser, and the phone More sheet groups the same way. `/admin`
+  redirects to Members; the signups bell goes there too; the admin tour was rewritten for the new pages. Removed from the old page: the
+  fake "Fall 2026" selector, the "Illustrative" Access control card (placeholder numbers), and the Content management shortcut card
+  (the menu covers it). The ~45 visible ` -- ` dashes used in place of em dashes were reworded too (including the copy-paste invite
+  message admins send). Compiled and unit-tested only: the admin pages were not driven in a browser (no admin session, and the Supabase CLI
+  login expired, so no throwaway admin could be created). The new sections from the ATS (user management upgrades, master communications,
+  automatic emails, site/email analytics) are scoped in CLAUDE.md and not built.
