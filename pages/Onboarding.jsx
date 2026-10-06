@@ -79,9 +79,9 @@ function StepYou({ resumeFileName, resumeUploading, resumeError, onAttach, kicke
       </p>
       <ul className="auth__meta-list">
         <li>{displayName(profileOverrides, accountEmail)}</li>
-        <li>{classYear ? `Class of ${classYear}` : "Class year not on file — add it on My Profile"}</li>
-        <li>{majors || "Major not on file — add it on My Profile"}</li>
-        <li>{ucCommittee || "Committee not on file — add it on My Profile"}</li>
+        <li>{classYear ? `Class of ${classYear}` : "Class year not on file. Add it on My Profile"}</li>
+        <li>{majors || "Major not on file. Add it on My Profile"}</li>
+        <li>{ucCommittee || "Committee not on file. Add it on My Profile"}</li>
       </ul>
       {/* A real <label> wrapping the file input, not a div+ref+onClick --
           the standard accessible pattern for a custom-styled file picker:
@@ -102,7 +102,7 @@ function StepYou({ resumeFileName, resumeUploading, resumeError, onAttach, kicke
           ? "Uploading…"
           : resumeFileName
             ? `Attached: ${resumeFileName}`
-            : "Drop your resume here (optional) — it pre-fills later steps"}
+            : "Drop your resume here (optional). It pre-fills later steps"}
         <input
           type="file"
           accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -128,7 +128,7 @@ function StepIndustries({ industries, onToggle, onReorder }) {
     <>
       <div className="onboarding__kicker">Step 2 of 5</div>
       <h1 className="onboarding__title">Pick up to 3 industries</h1>
-      <p className="onboarding__subtitle">Ranked — put what you care about most first.</p>
+      <p className="onboarding__subtitle">Ranked: put what you care about most first.</p>
 
       <ul className="ranked-list">
         {industries.map((name, i) => {
@@ -155,7 +155,7 @@ function StepIndustries({ industries, onToggle, onReorder }) {
         {Array.from({ length: 3 - industries.length }).map((_, i) => (
           <li className="ranked-list__empty-slot" key={`empty-${i}`}>
             <span className="ranked-list__rank">{industries.length + i + 1}</span>
-            Open slot — pick another below
+            Open slot. Pick another below
           </li>
         ))}
       </ul>
@@ -177,7 +177,7 @@ function StepRoles({ preferences, stats, onToggleRole, onToggleLocation, onToggl
     <>
       <div className="onboarding__kicker">Step 3 of 5</div>
       <h1 className="onboarding__title">Roles & locations</h1>
-      <p className="onboarding__subtitle">Suggested based on your industries — pick up to 5 roles.</p>
+      <p className="onboarding__subtitle">Suggested based on your industries. Pick up to 5 roles.</p>
 
       <ChipPicker
         options={ROLES}
@@ -243,7 +243,7 @@ function StepCompanies({ followed, onToggleFollow, people, realJobs, preferYc, o
     <>
       <div className="onboarding__kicker">Step 4 of 5</div>
       <h1 className="onboarding__title">Companies</h1>
-      <p className="onboarding__subtitle">Suggested by UC alumni presence — follow the ones you're tracking.</p>
+      <p className="onboarding__subtitle">Suggested by UC alumni presence. Follow the ones you're tracking.</p>
 
       <div className="checkbox-row" style={{ marginBottom: "var(--space-4)" }}>
         <input type="checkbox" id="prefer-yc" checked={!!preferYc} onChange={() => onToggleFlag("preferYc")} />
@@ -371,8 +371,8 @@ function Completion({ preferences, profileOverrides, stats, firstTrackTitle, onF
       </div>
 
       <ul className="completion__actions">
-        {stats.deadlines > 0 && <li>You have {stats.deadlines} matched deadlines coming up — worth a look this week.</li>}
-        {stats.alumni > 0 && <li>Meet a UC alum who shares your industries, locations or target companies — {stats.alumni} {stats.alumni === 1 ? "is" : "are"} one message away.</li>}
+        {stats.deadlines > 0 && <li>You have {stats.deadlines} matched deadlines coming up. Worth a look this week.</li>}
+        {stats.alumni > 0 && <li>Meet a UC alum who shares your industries, locations or target companies. {stats.alumni} {stats.alumni === 1 ? "is" : "are"} one message away.</li>}
         <li>{firstTrackTitle ? `Start the ${firstTrackTitle} track in Career Resources.` : "Browse the guides and tracks in Career Resources."}</li>
       </ul>
 

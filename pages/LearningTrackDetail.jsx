@@ -63,7 +63,7 @@ export default function LearningTrackDetail() {
               className="btn btn-primary"
               onClick={() => advanceTrackStep(track.id, track.steps.length)}
             >
-              Continue — step {completed + 1}
+              Continue to step {completed + 1}
             </button>
           )}
           {/* Same real components/modals/LogPrepModal.jsx as Job detail --

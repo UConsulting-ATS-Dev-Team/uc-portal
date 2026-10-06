@@ -296,7 +296,7 @@ export default function MyProfile() {
   async function handleViewResume() {
     const url = await getResumeSignedUrl(profileOverrides.resumePath);
     if (url) window.open(url, "_blank", "noopener,noreferrer");
-    else setResumeError("Couldn't open the resume right now — try again.");
+    else setResumeError("Couldn't open the resume right now. Try again.");
   }
 
   function startAddWorkHistory() {
@@ -633,7 +633,7 @@ export default function MyProfile() {
                   )}
                   {resumeFoundFields.length > 0 && (
                     <p className="meta" style={{ marginTop: "var(--space-2)" }}>
-                      Found in your resume and filled in below: {resumeFoundFields.join(", ")} — double-check before
+                      Found in your resume and filled in below: {resumeFoundFields.join(", ")}. Double-check before
                       saving.
                     </p>
                   )}
@@ -656,12 +656,12 @@ export default function MyProfile() {
                           ))}
                       </ul>
                       <p className="meta" style={{ marginTop: "var(--space-2)" }}>
-                        Automated, heuristic suggestions — not a substitute for a real review, just a quick first pass.
+                        Automated, heuristic suggestions. Not a substitute for a real review, just a quick first pass.
                       </p>
                     </div>
                   )}
                   <p className="meta" style={{ marginTop: "var(--space-2)" }}>
-                    PDF or Word (.docx). Private to you — never shown to other members.
+                    PDF or Word (.docx). Private to you. Never shown to other members.
                   </p>
                 </div>
               </div>
@@ -672,7 +672,7 @@ export default function MyProfile() {
             <div className="detail-section">
               <h2 className="detail-section__title">Work History</h2>
               <p className="meta" style={{ marginTop: "calc(-1 * var(--space-4))" }}>
-                Your own past roles, self-reported — never pulled from LinkedIn or anywhere else. Visible to other UC
+                Your own past roles, self-reported. Never pulled from LinkedIn or anywhere else. Visible to other UC
                 members so they can find real referral/insight connections before they apply somewhere.
               </p>
 
@@ -682,7 +682,7 @@ export default function MyProfile() {
                     You haven't added any work history yet
                   </p>
                   <p className="meta">
-                    Other members can't see where you've worked until you add it — even one entry helps someone
+                    Other members can't see where you've worked until you add it. Even one entry helps someone
                     considering the same company.
                   </p>
                 </div>
@@ -702,7 +702,7 @@ export default function MyProfile() {
                           ? `${interestCounts[entry.company]} member${interestCounts[entry.company] === 1 ? "" : "s"} ${
                               interestCounts[entry.company] === 1 ? "is" : "are"
                             } interested in ${entry.company} right now.`
-                          : `No members have ${entry.company} on their radar yet — you might be the first insight they get.`}
+                          : `No members have ${entry.company} on their radar yet. You might be the first insight they get.`}
                       </p>
                     )}
                   </div>
@@ -799,7 +799,7 @@ export default function MyProfile() {
             <div className="detail-section">
               <h2 className="detail-section__title">Projects</h2>
               <p className="meta" style={{ marginTop: "calc(-1 * var(--space-4))" }}>
-                UC-affiliated projects you've worked on — case competitions, pro-bono consulting, committee work, client
+                UC-affiliated projects you've worked on: case competitions, pro-bono consulting, committee work, client
                 projects. Self-reported, visible to other UC members, and kept for the club's own long-term record.
               </p>
 
@@ -924,7 +924,7 @@ export default function MyProfile() {
                 {Array.from({ length: 3 - preferences.industries.length }).map((_, i) => (
                   <li className="ranked-list__empty-slot" key={`empty-${i}`}>
                     <span className="ranked-list__rank">{preferences.industries.length + i + 1}</span>
-                    Open slot — pick another below
+                    Open slot. Pick another below
                   </li>
                 ))}
               </ul>
@@ -1196,7 +1196,7 @@ export default function MyProfile() {
             <div className="detail-section">
               <h2 className="detail-section__title">Privacy</h2>
               <ul className="auth__meta-list">
-                <li>Exec sees aggregate interest only — never your individual application list.</li>
+                <li>Exec sees aggregate interest only. Never your individual application list.</li>
                 <li>
                   Alumni can see your recruiting status only if "Let alumni see I'm recruiting" is on (Recruiting
                   settings tab).

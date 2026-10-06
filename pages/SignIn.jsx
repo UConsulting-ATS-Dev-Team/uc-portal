@@ -24,7 +24,7 @@ import "../styles/auth.css";
 // own header comment. A BEFORE INSERT trigger on auth.users
 // (supabase/migrations/20260913010000_roster_gating.sql) still backstops
 // this at the database layer for any direct API call that skips the
-// pre-check. "Alumni — request access" writes a real row to
+// pre-check. "Alumni request access" writes a real row to
 // access_requests (admin-reviewable on Admin Dashboard) instead of just a
 // local state transition -- now genuinely a fallback for someone not
 // found in the real Directory at all, since a real alumnus who *is* in it
@@ -466,7 +466,7 @@ export default function SignIn() {
               </button>
             )}
             <button className="btn-link" onClick={requestAccess}>
-              Alumni — request access
+              Alumni request access
             </button>
           </div>
         </div>

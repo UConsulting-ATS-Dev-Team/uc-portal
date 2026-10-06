@@ -72,7 +72,7 @@ export default function DeleteAccountModal({ onClose }) {
       </p>
       <p>
         Feature requests, opportunities you've posted, and interview write-ups you've shared stay up for other
-        members — the name attached to them at the time you posted stays too, the same way it would if you'd
+        members. The name attached to them at the time you posted stays too, the same way it would if you'd
         posted it under a name you later changed. Messages you've sent stay in the other person's inbox, but will
         show as sent by a "Former member" instead of your name.
       </p>

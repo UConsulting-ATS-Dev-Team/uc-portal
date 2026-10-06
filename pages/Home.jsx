@@ -122,7 +122,7 @@ export default function Home() {
           {profileOverrides?.classYear ? `Class of ${profileOverrides.classYear} · ` : ""}
           new member · nothing tracked yet
         </p>
-        <p>You don't need to be recruiting yet to use this — browse jobs, meet alumni, or start a learning track whenever you're ready.</p>
+        <p>You don't need to be recruiting yet to use this. Browse jobs, meet alumni, or start a learning track whenever you're ready.</p>
         <p className="meta">Profile strength: {pct}%</p>
         <div className="empty-state__tiles">
           <div className="empty-state__tile">
@@ -181,7 +181,7 @@ export default function Home() {
   // directory), so there's no real equivalent to match on; dropped rather
   // than faked. The rail below covers the real "who's open to meet"
   // signal instead, just without a company tie-in.
-  actions.push({ title: "Update your interests", detail: "Last confirmed this spring — takes 90 seconds", to: "/onboarding" });
+  actions.push({ title: "Update your interests", detail: "Last confirmed this spring. Takes 90 seconds", to: "/onboarding" });
 
   const suggestedPeople = openToCoffeeChat.slice(0, 3);
 
@@ -301,7 +301,7 @@ export default function Home() {
               <div className="progress-app-row" key={e.jobId}>
                 <span className="status-dot" />
                 <div className="progress-app-row__body">
-                  <strong>{e.job.company}</strong> — {e.job.role}
+                  <strong>{e.job.company}</strong> · {e.job.role}
                   <div className="progress-app-row__timing">{deadlineLabel(e.job)}</div>
                 </div>
                 <span className="chip">{e.stage}</span>
@@ -318,7 +318,7 @@ export default function Home() {
           </div>
           {recentPosts.length === 0 && (
             <p className="meta" style={{ margin: 0 }}>
-              Nothing posted yet — be the first to share something with UC.
+              Nothing posted yet. Be the first to share something with UC.
             </p>
           )}
           {recentPosts.map((post) => (
@@ -352,7 +352,7 @@ export default function Home() {
             <div className="rail-card__title">Open to a coffee chat</div>
             {suggestedPeople.length === 0 && (
               <p className="meta" style={{ margin: 0 }}>
-                No one's turned this on yet — it's a real setting (My Profile → Recruiting Settings) once someone
+                No one's turned this on yet. It's a real setting (My Profile → Recruiting Settings) once someone
                 does.
               </p>
             )}

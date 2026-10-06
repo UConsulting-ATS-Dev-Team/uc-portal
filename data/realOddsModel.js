@@ -181,7 +181,7 @@ export function computeRealOdds(inputs, { extraPrepHours = 0 } = {}) {
       // components/OddsModel.jsx for how the two render differently.
       industryBaseline: hasNoRealData,
       industryBaselineNote: hasNoRealData
-        ? `Industry-typical rate for ${industryBaseline.tierLabel} — not based on UC applicants yet`
+        ? `Industry-typical rate for ${industryBaseline.tierLabel}, not based on UC applicants yet`
         : undefined,
     },
     {
@@ -252,12 +252,12 @@ export function computeRealOdds(inputs, { extraPrepHours = 0 } = {}) {
     // same never-confusable-with-real-data requirement as the
     // factor-level industryBaselineNote below.
     methodologyNote =
-      "No UC applicants are on record for this company yet, so the estimate below uses a researched industry-typical baseline instead of real UC outcomes — see the \"UC track record\" factor for what that baseline is.";
+      "No UC applicants are on record for this company yet, so the estimate below uses a researched industry-typical baseline instead of real UC outcomes. See the \"UC track record\" factor for what that baseline is.";
   } else if (hasOfferData) {
-    methodologyNote = "Based on real UC applicants' recorded outcomes — including at least one real offer on record, the strongest signal this model can use.";
+    methodologyNote = "Based on real UC applicants' recorded outcomes, including at least one real offer on record, the strongest signal this model can use.";
   } else {
     methodologyNote =
-      "Based on real UC applicants who reached an interview stage — no UC applicant has a recorded offer outcome for this company yet, so this measures interview-stage progress as the closest available proxy.";
+      "Based on real UC applicants who reached an interview stage. No UC applicant has a recorded offer outcome for this company yet, so this measures interview-stage progress as the closest available proxy.";
   }
 
   return {

@@ -102,7 +102,7 @@ function InternRoster() {
       <ul>
         {entries.map((e) => (
           <li key={e.email}>
-            {e.name ? `${e.name} — ` : ""}
+            {e.name ? `${e.name}, ` : ""}
             {e.email}{" "}
             <button className="btn-link" onClick={() => remove(e.email)}>
               Remove

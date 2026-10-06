@@ -156,7 +156,7 @@ export default function AddApplicationModal({ onClose, onAdded }) {
             </div>
           </div>
           <p className="meta">
-            We can't pull details from an outside link automatically — fill in company and role too, and
+            We can't pull details from an outside link automatically. Fill in company and role too, and
             we'll keep your link handy for a quick jump back to the real posting.
           </p>
         </>
@@ -175,7 +175,7 @@ export default function AddApplicationModal({ onClose, onAdded }) {
             </div>
           </div>
           <p className="meta">
-            Manually entered roles won't have an odds model or UC recruiting intelligence attached — there's
+            Manually entered roles won't have an odds model or UC recruiting intelligence attached, since there's
             no real posting on our board to compute it from.
           </p>
         </>

@@ -220,7 +220,7 @@ export default function Network() {
             <div className="empty-state">
               <h1 style={{ fontSize: "var(--text-title-min)" }}>You haven't met anyone here yet</h1>
               <p>
-                {alumniCount} UC alumni are in the directory — the Networking track walks you through sending your
+                {alumniCount} UC alumni are in the directory. The Networking track walks you through sending your
                 first message if that feels intimidating.
               </p>
               <div style={{ display: "flex", gap: "var(--space-3)", justifyContent: "center", marginTop: "var(--space-5)" }}>

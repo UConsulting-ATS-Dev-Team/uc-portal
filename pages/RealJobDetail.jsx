@@ -424,7 +424,7 @@ export default function RealJobDetail({ jobId: jobIdProp }) {
             {writeups === undefined && <Skeleton lines={3} />}
             {writeups?.length === 0 && (
               <p className="meta">
-                No one's shared an interview experience at {job.company} yet. Be the first — it strengthens the odds
+                No one's shared an interview experience at {job.company} yet. Be the first. It strengthens the odds
                 model for every UC member who applies here after you.
               </p>
             )}
@@ -501,7 +501,7 @@ export default function RealJobDetail({ jobId: jobIdProp }) {
             <div className="rail-card">
               <div className="rail-card__title">UC alumni who've worked at {job.company}</div>
               <p className="meta" style={{ marginTop: "calc(-1 * var(--space-2))" }}>
-                Self-reported by real members — a real way in for a referral or insight before you apply.
+                Self-reported by real members. A real way in for a referral or insight before you apply.
               </p>
               {workHistoryAtCompany.slice(0, 3).map((entry) => (
                 <div className="person-row" key={entry.profile_id}>

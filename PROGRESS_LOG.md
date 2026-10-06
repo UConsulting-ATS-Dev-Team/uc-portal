@@ -5219,3 +5219,8 @@ longer breaks down to phone width either.
   Verified by rendering the real stylesheet in the browser (24px above and 14px below each heading, 11px left padding in the search box).
   Not done: a page-by-page visual pass of the signed-in app (the Supabase CLI session expired mid-task, so no throwaway account could be
   created), and the ~79 other em dashes in user-visible copy.
+
+- **2026-10-06: em dash sweep** -- Removed the ~70 em dashes used as sentence connectors or tagline separators in member-facing text
+  (pages, components, notification headlines, odds-model notes), rewording with periods, colons or commas, and `Company · Role` or
+  `Role at Company` for job labels. Em dashes used only as an empty-cell placeholder ("—" for no value) and the start/end-year ranges
+  were left. The Sign-in button now reads "Alumni request access". 250 tests pass.

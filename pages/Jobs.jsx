@@ -531,7 +531,7 @@ export default function Jobs() {
             <p className="nl-search__feedback">
               {nlResult.understood
                 ? `Searched for: ${nlResult.matchedLabels.join(", ")}`
-                : "Didn't recognize anything specific in that — searching it as plain keywords instead."}
+                : "Didn't recognize anything specific in that, so searching it as plain keywords instead."}
             </p>
           )}
         </form>

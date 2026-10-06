@@ -5,7 +5,7 @@ export default function Placeholder({ title, screenId }) {
   return (
     <div>
       <h1>{title}</h1>
-      {screenId && <p className="meta">Wireframe {screenId} — not built yet.</p>}
+      {screenId && <p className="meta">Wireframe {screenId} is not built yet.</p>}
     </div>
   );
 }

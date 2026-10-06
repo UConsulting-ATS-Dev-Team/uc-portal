@@ -70,7 +70,7 @@ export default function TrackerTimeline({ applications, timelineShiftDays, onShi
         </span>
         <span>
           <span className="timeline-legend__swatch is-projected" />
-          Projected — drag to reschedule
+          Projected. Drag to reschedule
         </span>
         <span>
           <span className="timeline-legend__diamond" />
@@ -95,7 +95,7 @@ export default function TrackerTimeline({ applications, timelineShiftDays, onShi
           return (
             <div className="timeline-group" key={g.key}>
               <div className="timeline-group__header">
-                {g.label} — {g.rows.length}
+                {g.label} ({g.rows.length})
                 {urgentCount > 0 && ` · ${urgentCount} deadlines this week`}
               </div>
               {g.rows.map(({ jobId, job, ...app }) => {
@@ -145,7 +145,7 @@ export default function TrackerTimeline({ applications, timelineShiftDays, onShi
                             left: `${dateToPct(seg.start)}%`,
                             width: `${Math.max(dateToPct(seg.end) - dateToPct(seg.start), 0.5)}%`,
                           }}
-                          title={`${seg.stage} (projected — drag to reschedule)`}
+                          title={`${seg.stage} (projected, drag to reschedule)`}
                           onMouseDown={(e) => handleDragStart(e, jobId)}
                         />
                       ))}

@@ -90,7 +90,7 @@ export default function ContributeModal({ onClose, job }) {
         footer={<button className="btn btn-primary" onClick={onClose}>Done</button>}
       >
         <div className="modal-success">
-          Published — thanks for contributing.
+          Published. Thanks for contributing.
           <p className="meta" style={{ fontWeight: 400, marginTop: "var(--space-3)" }}>
             {isWriteup
               ? `${anonymous ? "Posted anonymously." : "Posted under your name."} Visible now on ${effectiveCompany}'s real job listings.`

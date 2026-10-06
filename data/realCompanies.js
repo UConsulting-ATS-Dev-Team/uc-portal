@@ -145,5 +145,5 @@ export function liveCharacterization({ ucAlumni, ucApplicants }) {
   if (ucAlumni > 0 && ucApplicants > 0) return `${alumniPhrase} on record here, and ${applicantPhrase}.`;
   if (ucAlumni > 0) return `${alumniPhrase} on record here.`;
   if (ucApplicants > 0) return `No UC alumni on record here yet, but ${applicantPhrase}.`;
-  return "No UC alumni or tracked applications on record here yet — you'd be one of the first.";
+  return "No UC alumni or tracked applications on record here yet. You'd be one of the first.";
 }

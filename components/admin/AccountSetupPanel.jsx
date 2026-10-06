@@ -75,7 +75,7 @@ export default function AccountSetupPanel({ onAccountsChanged }) {
     <div className="detail-section">
       <h2 className="detail-section__title">Account setup</h2>
       <p className="meta" style={{ marginTop: 0 }}>
-        Pre-create accounts so people only have to set a password when they get around to it. Nobody is emailed — people claim their account
+        Pre-create accounts so people only have to set a password when they get around to it. Nobody is emailed. People claim their account
         themselves with "Forgot your password?", or you can tell them directly. Messages sent to an unclaimed account are waiting for them when they
         do.
       </p>

@@ -81,7 +81,7 @@ export default function TrackerTable({ applications, sortColumn, sortDirection, 
                 <td>
                   <select
                     className="tracker-table__stage-select"
-                    aria-label={`Move ${job.company} — ${job.role} to a different stage`}
+                    aria-label={`Move ${job.role} at ${job.company} to a different stage`}
                     value={stage}
                     onChange={(e) => commitMove(jobId, e.target.value)}
                   >

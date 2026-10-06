@@ -8,7 +8,7 @@ import { useState } from "react";
 // this app's own existing "toggle the button's own label" pattern (e.g.
 // My Profile's "Save changes" -> "Saved ✓"), just reverting after a few
 // seconds since this isn't a one-time confirmation.
-export default function ComingSoonButton({ className, children, message = "Coming soon — we're working on it", onClick }) {
+export default function ComingSoonButton({ className, children, message = "Coming soon. We're working on it", onClick }) {
   const [showing, setShowing] = useState(false);
 
   function handleClick() {

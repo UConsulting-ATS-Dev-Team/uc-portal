@@ -363,7 +363,7 @@ export default function CompanyPage() {
                         // company-tier cap, see data/companyTiers.js), not that
                         // no source exists.
                         `${company.name} has an automated source, but it isn't returning any active postings right now.`
-                      : `${company.name} doesn't publish postings through a source UC can pull from automatically yet — no
+                      : `${company.name} doesn't publish postings through a source UC can pull from automatically yet. There is no
                     public API or syndicated feed we've verified. Rather than guess at specific openings, here's
                     their own careers page directly.`}
                   </p>

@@ -61,8 +61,8 @@ export default function RecordOutcomeModal({ jobId, job, currentOutcome, current
       }
     >
       <p className="meta" style={{ marginTop: 0, marginBottom: "var(--space-4)" }}>
-        {job ? `${job.company} — ${job.role} ` : "This application "}
-        moved to Closed. Recording what actually happened feeds UC's own real track-record data — the odds
+        {job ? `${job.role} at ${job.company} ` : "This application "}
+        moved to Closed. Recording what actually happened feeds UC's own real track-record data. The odds
         model's "UC track record" factor can only report a real offer rate once enough members log this.
       </p>
       <div className="chip-row">

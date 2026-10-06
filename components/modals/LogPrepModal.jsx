@@ -82,11 +82,11 @@ export default function LogPrepModal({ job, onClose, computeOddsFn }) {
         <>
           <label className="field-label">Which application</label>
           {trackedList.length === 0 ? (
-            <p className="meta">Nothing in your tracker yet — add an application first.</p>
+            <p className="meta">Nothing in your tracker yet. Add an application first.</p>
           ) : (
             <select value={selectedId || ""} onChange={(e) => setSelectedId(e.target.value)}>
               {trackedList.map((j) => (
-                <option key={j.id} value={j.id}>{j.company} — {j.role}</option>
+                <option key={j.id} value={j.id}>{j.company} · {j.role}</option>
               ))}
             </select>
           )}
@@ -126,7 +126,7 @@ export default function LogPrepModal({ job, onClose, computeOddsFn }) {
           )}
           {!effect && isRealJobId(selectedJob.id) && (
             <p className="meta">
-              Odds estimate isn't available from here — open {selectedJob.role} at {selectedJob.company} to see
+              Odds estimate isn't available from here. Open {selectedJob.role} at {selectedJob.company} to see
               its full odds model. This will still log your hours.
             </p>
           )}

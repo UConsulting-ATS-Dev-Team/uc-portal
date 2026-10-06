@@ -29,7 +29,7 @@ export default function JobCard({ job, saved, onToggleSave }) {
           )}
           {job.isNew && <span className="chip chip-accent">New</span>}
           {job.possiblyClosed && <span className="chip">Possibly no longer open</span>}
-          {job.closed && <span className="chip">Closed — no longer accepting applications</span>}
+          {job.closed && <span className="chip">Closed, no longer accepting applications</span>}
         </div>
         {/* .filter(Boolean), not a bare template join -- a real job with
             remote_type "in_person" but no city on file (data/realJobAdapter.js's
@@ -67,7 +67,7 @@ export default function JobCard({ job, saved, onToggleSave }) {
                 {job.pastCycleApplicants} UC members applied last cycle · {job.pastCycleOffers} received offers
               </span>
             )}
-            {job.whyLowerMatch && <span className="job-card__why">— {job.whyLowerMatch}</span>}
+            {job.whyLowerMatch && <span className="job-card__why">· {job.whyLowerMatch}</span>}
           </div>
         )}
       </div>

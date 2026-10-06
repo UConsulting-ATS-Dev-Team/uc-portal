@@ -367,7 +367,7 @@ export default function Messages() {
           {conversationsLoading && <p className="meta" style={{ padding: "var(--space-4)" }}>Loading…</p>}
           {!conversationsLoading && filtered.length === 0 && visiblePending.length === 0 && (
             <p className="meta" style={{ padding: "var(--space-4)" }}>
-              {conversations.length === 0 && pendingConversations.length === 0 ? "No conversations yet — start one with \"New.\"" : "Nothing here."}
+              {conversations.length === 0 && pendingConversations.length === 0 ? "No conversations yet. Start one with \"New.\"" : "Nothing here."}
             </p>
           )}
           {visiblePending.map((c) => (
@@ -481,7 +481,7 @@ export default function Messages() {
 
           <div className="thread-pane__messages">
             {threadLoading && <p className="meta">Loading…</p>}
-            {!threadLoading && thread.length === 0 && <p className="meta">No messages yet — say hello.</p>}
+            {!threadLoading && thread.length === 0 && <p className="meta">No messages yet. Say hello.</p>}
             {thread.map((m) => (
               <div className={`message-bubble-row${m.sender_id !== activeId ? " is-outgoing" : ""}`} key={m.id}>
                 <div className="message-bubble">

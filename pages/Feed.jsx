@@ -231,7 +231,7 @@ export default function Feed() {
         {!postsLoading && filtered.length === 0 && (
           <div className="skeleton-card" style={{ textAlign: "center", color: "var(--color-text-muted)" }}>
             {posts.length === 0
-              ? "Nothing posted yet — be the first to share something with UC."
+              ? "Nothing posted yet. Be the first to share something with UC."
               : "Nothing here yet."}
           </div>
         )}
@@ -339,7 +339,7 @@ export default function Feed() {
         <div className="rail-card is-accent">
           <div className="rail-card__title">Why this feed is different</div>
           <p style={{ margin: 0 }}>
-            Every post here comes from a UC member or alumnus — the referrals, write-ups, and advice below
+            Every post here comes from a UC member or alumnus. The referrals, write-ups, and advice below
             don't exist anywhere on the open internet.
           </p>
         </div>
@@ -358,7 +358,7 @@ export default function Feed() {
           <div className="rail-card">
             <div className="rail-card__title">Add your work history</div>
             <p className="meta" style={{ margin: 0 }}>
-              Other members can't see where you've worked until you add it — real referral/insight connections
+              Other members can't see where you've worked until you add it. Real referral and insight connections
               start there.
             </p>
             <Link to="/profile" className="btn btn-secondary" style={{ marginTop: "var(--space-3)" }}>
@@ -376,7 +376,7 @@ export default function Feed() {
           <div className="rail-card">
             <div className="rail-card__title">Add your photo</div>
             <p className="meta" style={{ margin: 0 }}>
-              Members recognize a face faster than a name — add yours so people you've never met can spot you.
+              Members recognize a face faster than a name. Add yours so people you've never met can spot you.
             </p>
             <Link to="/profile" className="btn btn-secondary" style={{ marginTop: "var(--space-3)" }}>
               Add on My Profile
@@ -388,7 +388,7 @@ export default function Feed() {
           <div className="rail-card__title">Open to a coffee chat</div>
           {openToCoffeeChat.length === 0 && (
             <p className="meta" style={{ margin: 0 }}>
-              No one's turned this on yet — a real setting (My Profile → Recruiting Settings).
+              No one's turned this on yet. It's a real setting (My Profile → Recruiting Settings).
             </p>
           )}
           {openToCoffeeChat.slice(0, 3).map((p) => (

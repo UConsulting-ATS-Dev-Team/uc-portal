@@ -138,7 +138,7 @@ export default function RealMemberProfile({ personId }) {
               ))
             )}
             <p className="meta" style={{ marginTop: "var(--space-5)" }}>
-              This profile is built from UConsulting's own member/alumni directory, not a generated bio — it only
+              This profile is built from UConsulting's own member/alumni directory, not a generated bio. It only
               shows what the club actually has on file.
             </p>
           </div>

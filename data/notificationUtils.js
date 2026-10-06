@@ -62,7 +62,7 @@ export function buildNotifications({
       needsAction.push({
         id: `deadline-${jobId}`,
         category: "Deadlines",
-        headline: `${job.company} — ${job.role} closes in ${days} day${days === 1 ? "" : "s"}`,
+        headline: `${job.role} at ${job.company} closes in ${days} day${days === 1 ? "" : "s"}`,
         detail: `Applications tracker · ${info.stage}`,
         actions: ["Apply", "Snooze"],
         icon: job.logoInitials,
@@ -76,7 +76,7 @@ export function buildNotifications({
         needsAction.push({
           id: `prep-${jobId}`,
           category: "Deadlines",
-          headline: `${job.company} ${info.stage.toLowerCase()} is coming up — you're at ${hours} of 26 median prep hours`,
+          headline: `${job.company} ${info.stage.toLowerCase()} is coming up. You're at ${hours} of 26 median prep hours`,
           detail: days !== null ? `${Math.max(days, 0)} days out` : "Prep before your interview",
           actions: ["Prep now"],
           icon: job.logoInitials,
@@ -97,7 +97,7 @@ export function buildNotifications({
     needsAction.push({
       id: `deadline-${jobId}`,
       category: "Deadlines",
-      headline: `${job.company} — ${job.role} closes in ${days} day${days === 1 ? "" : "s"}`,
+      headline: `${job.role} at ${job.company} closes in ${days} day${days === 1 ? "" : "s"}`,
       detail: "Saved, not yet applied",
       actions: ["View", "Add to tracker"],
       icon: job.logoInitials,
@@ -111,7 +111,7 @@ export function buildNotifications({
     needsAction.push({
       id: `chat-${personId}`,
       category: "Network",
-      headline: `${person.name} — coffee chat ${status.toLowerCase()}`,
+      headline: `Coffee chat with ${person.name}: ${status.toLowerCase()}`,
       detail: `${person.role} · ${person.company || "UC"}`,
       actions: status === "Follow-up due" ? ["Follow up", "Snooze"] : ["Confirm", "Reschedule"],
       icon: person.name.split(" ").map((p) => p[0]).join(""),

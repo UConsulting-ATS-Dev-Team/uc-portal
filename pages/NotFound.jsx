@@ -24,7 +24,7 @@ export default function NotFound() {
         <div className="auth__card">
           <h1 className="auth__title">Page not found</h1>
           <p className="auth__subtitle">
-            There's no page at this address — it may be mistyped or an old
+            There's no page at this address. It may be mistyped or an old
             bookmark to a link that's since changed.
           </p>
           <div className="auth__actions">

@@ -147,7 +147,7 @@ export default function Applications() {
         <div className="empty-state">
           <h1 style={{ fontSize: "var(--text-title-min)" }}>Nothing tracked yet</h1>
           <p>
-            Add a role you're just considering, not only ones you've already applied to — the tracker is
+            Add a role you're just considering, not only ones you've already applied to. The tracker is
             useful before you apply, not just after.
           </p>
           <div style={{ display: "flex", gap: "var(--space-3)", justifyContent: "center", marginTop: "var(--space-5)" }}>

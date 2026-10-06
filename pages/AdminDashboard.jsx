@@ -565,7 +565,7 @@ export default function AdminDashboard() {
       <div className="jobs-header" style={{ marginBottom: "var(--space-6)" }}>
         <div>
           <h1>Admin Dashboard</h1>
-          <p className="meta">Aggregate interest and engagement — never an individual member's application list.</p>
+          <p className="meta">Aggregate interest and engagement. Never an individual member's application list.</p>
         </div>
         <div className="jobs-header__actions">
           <select defaultValue="Fall 2026">
@@ -1034,7 +1034,7 @@ export default function AdminDashboard() {
           <div className="detail-section">
             <h2 className="detail-section__title">Access requests</h2>
             <p className="meta" style={{ marginTop: 0 }}>
-              Real submissions from Sign-in's "Alumni — request access" flow, or anyone whose sign-up
+              Real submissions from Sign-in's "Alumni request access" flow, or anyone whose sign-up
               was rejected by the real roster check. Approve adds the email to the roster (the same
               real gate a future sign-up attempt checks) and lets them sign up immediately; Decline
               just records the review -- their email stays gated exactly as before.
@@ -1106,7 +1106,7 @@ export default function AdminDashboard() {
           <div className="detail-section">
             <h2 className="detail-section__title">Pre-create accounts</h2>
             <p className="meta" style={{ marginTop: 0 }}>
-              Creates a real, usable account for every roster member who hasn't signed up yet — no email
+              Creates a real, usable account for every roster member who hasn't signed up yet. No email
               is sent. They claim it later through "Forgot your password?" on Sign-in, which sets a real
               password and lands them on "Confirm your info" already pre-filled from the Directory
               (name/major/LinkedIn), rather than a blank signup form.

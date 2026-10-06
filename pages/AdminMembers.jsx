@@ -106,7 +106,7 @@ export default function AdminMembers() {
       <h1>Members</h1>
       <p className="meta">
         Every real signed-up account. Admins can post/edit jobs, review submitted opportunities and feature
-        requests, and manage sources — everyone else is a regular member.{" "}
+        requests, and manage sources. Everyone else is a regular member.{" "}
         {loading ? "" : `${members.length} real account${members.length === 1 ? "" : "s"} exist today.`}
       </p>
 
@@ -156,7 +156,7 @@ export default function AdminMembers() {
                       <button
                         className="btn btn-secondary"
                         disabled={isBusy || isSelf}
-                        title={isSelf ? "You can't change your own admin status — ask another admin instead" : undefined}
+                        title={isSelf ? "You can't change your own admin status. Ask another admin instead" : undefined}
                         onClick={() => toggleRole(m)}
                       >
                         {isBusy ? "Saving…" : m.role === "admin" ? "Demote to member" : "Promote to admin"}
@@ -170,7 +170,7 @@ export default function AdminMembers() {
                         <button
                           className="btn btn-secondary"
                           disabled={isBusy || isSelf}
-                          title={isSelf ? "You can't mark your own account alumni — ask another admin instead" : undefined}
+                          title={isSelf ? "You can't mark your own account alumni. Ask another admin instead" : undefined}
                           onClick={() => markAlumni(m)}
                         >
                           Mark as alumni

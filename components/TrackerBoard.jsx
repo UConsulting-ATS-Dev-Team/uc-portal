@@ -186,7 +186,7 @@ export default function TrackerBoard({ applications, onMoveStage, onRequestOutco
                       {stage === "Closed"
                         ? outcome
                           ? outcome === "rejected" && rejectionStage
-                            ? `${outcomeLabel(outcome)} — ${rejectionStageLabel(rejectionStage)}`
+                            ? `${outcomeLabel(outcome)}: ${rejectionStageLabel(rejectionStage)}`
                             : outcomeLabel(outcome)
                           : "Closed"
                         : job.closed

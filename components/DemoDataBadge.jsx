@@ -10,7 +10,7 @@
 // suggest fake club data rather than an acknowledged estimate).
 export default function DemoDataBadge({ label = "Demo data", title }) {
   return (
-    <span className="chip chip-demo" title={title || `${label} — not from a real UC member or real club activity`}>
+    <span className="chip chip-demo" title={title || `${label}: not from a real UC member or real club activity`}>
       {label}
     </span>
   );
