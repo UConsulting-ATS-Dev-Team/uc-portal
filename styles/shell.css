@@ -94,7 +94,56 @@
   padding: 2px 4px;
 }
 
+/* Photo, name and role together, opening the account menu (the same arrangement the ATS uses). */
+.topbar__user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text);
+  font-family: inherit;
+  text-align: left;
+}
+
+.topbar__user-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.topbar__user-name {
+  font-weight: 700;
+  font-size: var(--text-body);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar__user-role {
+  font-size: var(--text-kicker);
+  letter-spacing: var(--tracking-kicker);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* The Log out button covers this on a wide screen; in the menu it is the phone-width way out. */
+.topbar__menu .topbar__menu-signout {
+  display: none;
+}
+
+.topbar__logout {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .topbar__avatar {
+  flex: 0 0 auto;
   width: 28px;
   height: 28px;
   border-radius: 50%;
@@ -398,10 +447,24 @@
   }
 }
 
+@media (max-width: 1099px) {
+  .topbar__user-text {
+    display: none;
+  }
+}
+
 @media (max-width: 899px) {
   .topbar {
     gap: var(--space-4);
     padding: 0 var(--space-5);
+  }
+
+  .topbar__logout {
+    display: none;
+  }
+
+  .topbar__menu .topbar__menu-signout {
+    display: block;
   }
 
   .topbar__wordmark {

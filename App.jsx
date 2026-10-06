@@ -36,6 +36,7 @@ const Onboarding = lazy(() => import("./pages/Onboarding.jsx"));
 const AdminAnalytics = lazy(() => import("./pages/AdminAnalytics.jsx"));
 const AdminSystem = lazy(() => import("./pages/AdminSystem.jsx"));
 const AdminCommunications = lazy(() => import("./pages/AdminCommunications.jsx"));
+const AdminAutomaticEmails = lazy(() => import("./pages/AdminAutomaticEmails.jsx"));
 const AdminMembers = lazy(() => import("./pages/AdminMembers.jsx"));
 const SourceManagement = lazy(() => import("./pages/SourceManagement.jsx"));
 const AdminAccelerator = lazy(() => import("./pages/AdminAccelerator.jsx"));
@@ -280,6 +281,14 @@ function AppRoutes() {
         element={
           <NavShell>
             <LazyPage Component={AdminCommunications} />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/admin/automatic-emails"
+        element={
+          <NavShell>
+            <LazyPage Component={AdminAutomaticEmails} />
           </NavShell>
         }
       />

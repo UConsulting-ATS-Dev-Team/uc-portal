@@ -375,9 +375,27 @@ which are chronological and not rewritten when later work supersedes them.
   `/admin/opportunities` (job sources) and `/admin/system` (pipeline health, opportunity and duplicate queues, job quality,
   broken links, company tiers, feature requests, client errors). `/admin` redirects to Members. The old dashboard is one
   component, `pages/AdminDashboard.jsx`, rendered with a `view` prop (`system`, `people`, `insights`, `communications`) by
-  thin wrapper pages. Planned and not built: user management upgrades (edit, deactivate, add user), master communications
-  (email/Slack/iMessage with templates, drafts, scheduling, audience filters, logs, unsubscribes), automatic emails, and
-  site/email analytics, modeled on the UConsulting ATS (`uc-ats` repo).
+  thin wrapper pages. Built 2026-10-06 (modeled on the UConsulting ATS, `uc-ats` repo):
+  - **User management** (`/admin/members`): account cards, filters, edit (role, status, class year, phone), add user (via the
+    `admin-user-management` Edge Function), deactivate/reactivate (`profiles.deactivated_at` plus an auth ban; refuses
+    self-deactivation and the last active admin). `profiles.phone` is new, member-entered, admin-readable PII.
+  - **Master communications** (`/admin/communications`): Email, Slack, iMessage, Drafts, Templates, Logs, Scheduled, Mailing list,
+    Unsubscribes, Announcements. Audiences are portal accounts plus imported mailing-list contacts (the alumni directory is NOT a
+    source); `send-communication` re-resolves the audience and needs the admin's `confirmCount` to match. Test sends go only to the
+    calling admin. iMessage is the ATS approach: the portal writes the text, the admin sends it from their own phone, and the
+    hand-off is logged. Delivery is a queue (`comm_messages`/`comm_recipients`, `claim_comm_recipients`) worked by
+    `process-comm-queue` (cron, every minute). Shared pure logic lives in `supabase/functions/_shared/comms/` (imported by both
+    Deno and the client: explicit `.ts` extensions, no `npm:` imports in anything tests or the client import).
+  - **Automatic emails** (`/admin/automatic-emails`): weekly digest, accelerator assignment due, coffee chats due. All OFF by
+    default, rewordable, deduped in `auto_email_log`, run daily by `run-automatic-emails`; turning one on sends no backlog.
+  - **Site analytics** (`/admin/analytics`): own `analytics_events` page-view table (client tracker in `NavShell`), 180-day
+    retention, Pacific-day RPCs, dependency-free SVG chart.
+  - **Plug-and-go, still unset (nothing sends until then):** email needs `AWS_REGION`, `AWS_ACCESS_KEY_ID`,
+    `AWS_SECRET_ACCESS_KEY`, `COMMS_FROM_EMAIL` (optional `COMMS_FROM_NAME`, `COMMS_REPLY_TO`) and `COMMS_UNSUBSCRIBE_SECRET`
+    (any long random string; bulk mail is refused without it); Slack needs `SLACK_BOT_TOKEN`. Set with `supabase secrets set`.
+    Until then send/test/schedule return HTTP 412 (`email_not_configured`, `slack_not_configured`,
+    `unsubscribe_secret_missing`), write nothing, and the buttons are disabled with an explanation. The `unsubscribe` function is
+    public, so deploy it with `--no-verify-jwt`. Not built: the ATS "Decisions" tab, deliverability page, open/click tracking.
 - **Scheduled work:** 7 pg_cron jobs call Edge Functions (Greenhouse, Lever,
   Ashby, Deloitte, link-health, board snapshot, weekly digest), each guarded by an
   `X-Cron-Secret` header (secret in Supabase Vault and as an Edge Function

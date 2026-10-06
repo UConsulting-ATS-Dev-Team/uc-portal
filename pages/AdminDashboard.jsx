@@ -54,7 +54,7 @@ const VIEW_HEADER = {
   communications: { title: "Communications", subtitle: "Announcements to members and the weekly digest." },
 };
 
-export default function AdminDashboard({ view = "system" }) {
+export default function AdminDashboard({ view = "system", embedded = false }) {
   const show = (key) => SECTION_VIEW[key] === view;
   const [showPostModal, setShowPostModal] = useState(false);
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
@@ -588,7 +588,15 @@ export default function AdminDashboard({ view = "system" }) {
 
   return (
     <div>
-      {VIEW_HEADER[view] && (
+      {embedded && view === "communications" && (
+        <div className="comms-toolbar">
+          <button className="btn btn-primary" onClick={() => setShowAnnouncementModal(true)}>
+            Post announcement
+          </button>
+          <span className="meta">An in-app announcement members see on their feed.</span>
+        </div>
+      )}
+      {VIEW_HEADER[view] && !embedded && (
         <div className="jobs-header" style={{ marginBottom: "var(--space-6)" }}>
           <div>
             <h1>{VIEW_HEADER[view].title}</h1>

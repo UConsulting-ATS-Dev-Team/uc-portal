@@ -5237,3 +5237,17 @@ longer breaks down to phone width either.
   message admins send). Compiled and unit-tested only: the admin pages were not driven in a browser (no admin session, and the Supabase CLI
   login expired, so no throwaway admin could be created). The new sections from the ATS (user management upgrades, master communications,
   automatic emails, site/email analytics) are scoped in CLAUDE.md and not built.
+
+- **2026-10-06: user management, master communications, automatic emails, site analytics, new top bar** --
+  Request: build the ATS-style admin sections in the portal's own design. Top bar now shows avatar, name and role plus a visible
+  Log out button. User management got edit/add/deactivate. Master communications has Email, Slack and iMessage composers with a
+  template, subject, audience builder (conditions, groups, ALL/ANY), previews, a test send to yourself and a confirm step; plus drafts,
+  templates, logs, scheduled, mailing list (CSV import) and unsubscribes. Automatic emails (off by default). Site analytics from an own
+  page-view table. Backend: three migrations (analytics, user management, communications), six Edge Functions deployed, signed
+  unsubscribe links, a queue with `skip locked` claiming. AWS SES (waiting on the club's SES details) and Slack credentials are not set,
+  so every send returns 412 and writes nothing; once the secrets in CLAUDE.md are set it is plug and go. Verified live as a throwaway
+  admin (every tab, create/edit/deactivate, import, drafts, templates, audience counts, previews, 412s), and in the database: a plain
+  account sees zero rows of every comm/analytics table, cannot call the admin RPCs or insert contacts, can record only its own page
+  views, cannot clear its own deactivation; the queue claims once, honors per-recipient overrides, excludes scheduled messages and
+  reports "partial" correctly; deactivation sets the auth ban. Not exercised: a real send, the unsubscribe page (secret unset),
+  reactivation in the UI. 282 tests pass.

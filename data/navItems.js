@@ -13,6 +13,7 @@ import {
   Rocket,
   BookOpen,
   Mail,
+  MailOpen,
   BarChart3,
   Wrench,
 } from "lucide-react";
@@ -92,7 +93,7 @@ export function mainItemsFor({ isIntern, isAlumni, isAdmin }) {
 export const LEADERSHIP_SECTIONS = [
   {
     section: "People",
-    items: [{ label: "Members", to: "/admin/members", icon: UserCog }],
+    items: [{ label: "User management", to: "/admin/members", icon: UserCog }],
   },
   {
     section: "Content",
@@ -104,11 +105,14 @@ export const LEADERSHIP_SECTIONS = [
   },
   {
     section: "Communications",
-    items: [{ label: "Communications", to: "/admin/communications", icon: Mail }],
+    items: [
+      { label: "Master communications", to: "/admin/communications", icon: Mail },
+      { label: "Automatic emails", to: "/admin/automatic-emails", icon: MailOpen },
+    ],
   },
   {
     section: "Insights",
-    items: [{ label: "Analytics", to: "/admin/analytics", icon: BarChart3 }],
+    items: [{ label: "Site analytics", to: "/admin/analytics", icon: BarChart3 }],
   },
   {
     section: "System",

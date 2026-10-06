@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { LogOut } from "lucide-react";
 import { useAppState } from "../data/store.jsx";
 import { supabase } from "../data/supabaseClient.js";
 import { fetchUnreadCount } from "../data/messagesSync.js";
@@ -150,12 +151,18 @@ export default function TopBar() {
         <div>
           <button
             type="button"
-            className="topbar__avatar"
+            className="topbar__user"
             onClick={() => setMenuOpen((open) => !open)}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
           >
-            <Avatar name={fullName} url={profileOverrides.avatarUrl} />
+            <span className="topbar__avatar">
+              <Avatar name={fullName} url={profileOverrides.avatarUrl} />
+            </span>
+            <span className="topbar__user-text">
+              <span className="topbar__user-name">{fullName}</span>
+              <span className="topbar__user-role">{accountStatusLabel}</span>
+            </span>
           </button>
           {menuOpen && (
             <div className="topbar__menu" role="menu" onMouseLeave={() => setMenuOpen(false)}>
@@ -188,12 +195,17 @@ export default function TopBar() {
               >
                 Request a feature
               </button>
-              <button type="button" role="menuitem" onClick={handleSignOut}>
+              <button type="button" role="menuitem" className="topbar__menu-signout" onClick={handleSignOut}>
                 Sign out
               </button>
             </div>
           )}
         </div>
+
+        <button type="button" className="btn btn-secondary topbar__logout" onClick={handleSignOut}>
+          <LogOut size={14} strokeWidth={1.5} aria-hidden="true" />
+          <span className="topbar__logout-label">Log out</span>
+        </button>
       </div>
 
       {showRequestFeature && <RequestFeatureModal onClose={() => setShowRequestFeature(false)} />}

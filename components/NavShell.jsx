@@ -1,6 +1,7 @@
 import TopBar from "./TopBar.jsx";
 import NavRail from "./NavRail.jsx";
 import BottomTabBar from "./BottomTabBar.jsx";
+import AnalyticsTracker from "./AnalyticsTracker.jsx";
 import "../styles/shell.css";
 
 // Shared shell for every authenticated screen (per CLAUDE.md's Navigation
@@ -14,6 +15,7 @@ import "../styles/shell.css";
 export default function NavShell({ children }) {
   return (
     <div className="shell">
+      <AnalyticsTracker />
       <TopBar />
       <div className="shell__body">
         <NavRail />
