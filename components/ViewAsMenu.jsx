@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import { useAppState } from "../data/store.jsx";
 
@@ -22,6 +23,7 @@ const OPTIONS = [
 // would see.
 export default function ViewAsMenu() {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   const { viewAsOverride, setViewAs } = useAppState();
   const current = OPTIONS.find((o) => o.value === viewAsOverride) ?? OPTIONS[0];
 
@@ -52,6 +54,9 @@ export default function ViewAsMenu() {
               onClick={() => {
                 setViewAs(opt.value);
                 setOpen(false);
+                // Switching type always lands on that type's own home so the change is visible: "/" is Home for
+                // members and admins, and the route guards send alumni on to /feed and interns to /accelerator.
+                navigate("/");
               }}
             >
               {opt.label}
