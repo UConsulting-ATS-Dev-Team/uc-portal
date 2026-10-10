@@ -75,7 +75,7 @@ function MeetingSchedule() {
         Interns owe 3 coffee chats a week, and the count starts over at this day and time. {loaded && !saved && "Not set yet, so weeks run Sunday to Saturday."}
       </p>
       <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "flex-end", flexWrap: "wrap" }}>
-        <div className="field">
+        <div className="field" style={{ marginBottom: 0 }}>
           <label htmlFor="meeting-day">Day</label>
           <select id="meeting-day" value={weekday} onChange={(e) => setWeekday(Number(e.target.value))}>
             {WEEKDAYS.map((d, i) => (
@@ -85,7 +85,7 @@ function MeetingSchedule() {
             ))}
           </select>
         </div>
-        <div className="field">
+        <div className="field" style={{ marginBottom: 0 }}>
           <label htmlFor="meeting-time">Time</label>
           <input id="meeting-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
         </div>
