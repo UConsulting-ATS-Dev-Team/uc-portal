@@ -169,16 +169,12 @@ function InternRoster() {
       title="Who can sign up as an intern"
       summary={`${entries.length + names.length} listed${names.some((n) => !n.claimed_at) ? `, ${names.filter((n) => !n.claimed_at).length} by name only and not signed up yet` : ""}`}
     >
-      <div className="collapsible__actions">
+      <div className="collapsible__intro">
+        <p className="meta">Add an email, or just a name if you don't have one yet. Each entry works for one sign-up.</p>
         <button className="btn btn-primary" onClick={() => setOpen(true)}>
           Add interns
         </button>
       </div>
-      <p className="meta">
-        Incoming freshmen aren't on the roster or in the Directory yet. Add their email here before they try to
-        sign up, or just their name if you don't have an email: they type that full name when creating their account
-        and it works once.
-      </p>
       {error && !open && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
       <ul>
         {entries.map((e) => (
@@ -726,7 +722,8 @@ export default function AdminAccelerator() {
       <AdminAcceleratorChats />
 
       <CollapsibleSection title="Lessons" summary={loading ? "Loading…" : `${lessons.length} week${lessons.length === 1 ? "" : "s"}`}>
-        <div className="collapsible__actions">
+        <div className="collapsible__intro">
+          <p className="meta">Each lesson is due at that week's accelerator.</p>
           <button className="btn btn-primary" onClick={() => setLessonModal({ editing: null })}>
             Add lesson
           </button>

@@ -379,16 +379,12 @@ export default function AdminAcceleratorEvents() {
       title="Calendar events and attendance"
       summary={loading ? "Loading…" : `${events.filter((e) => e.event_date >= todayKey).length} upcoming, ${events.length} in all`}
     >
-      <div className="collapsible__actions">
+      <div className="collapsible__intro">
+        <p className="meta">What's on the interns' calendar. Required events count toward attendance.</p>
         <button className="btn btn-primary" onClick={() => setModal({ editing: null })}>
           Add event
         </button>
       </div>
-      <p className="meta">
-        What appears on the interns' calendar: GMs, accelerator meetings, firm info sessions, UC events and socials. Weekly meetings can repeat
-        until an end date. Required events count toward each intern's attendance. Weekly lessons show on the calendar automatically, and
-        accelerator meetings are what close each week's coffee chats.
-      </p>
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
 
       <div>

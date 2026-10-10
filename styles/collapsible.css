@@ -74,3 +74,22 @@
     padding: var(--space-2) var(--space-5) var(--space-5);
   }
 }
+
+/* A line of explanation with the section's main action on the same row, instead of the button taking a row of its own. */
+.collapsible__intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  margin: var(--space-5) 0;
+}
+
+.collapsible__intro .meta {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .collapsible__intro {
+    flex-wrap: wrap;
+  }
+}
