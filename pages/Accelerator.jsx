@@ -229,7 +229,7 @@ export default function Accelerator() {
         <div className="accel-home__requirements">
           <RequirementCard
             to="/accelerator/coffee-chats"
-            kicker="Coffee chats"
+            kicker="Coffee Chats"
             figure={current ? current.counted : 0}
             of={`/ ${CHATS_PER_WEEK} this week`}
             percent={pct(current ? current.counted : 0, CHATS_PER_WEEK)}

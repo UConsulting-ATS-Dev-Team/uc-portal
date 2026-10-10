@@ -34,7 +34,7 @@ export default function AdminAcceleratorChats() {
 
   return (
     <div className="detail-section">
-      <p style={{ fontWeight: 700 }}>Coffee chats</p>
+      <p style={{ fontWeight: 700 }}>Coffee Chats</p>
       <p className="meta">What each intern logged: who they met, what they talked about, and the picture. Three a week, at least two with UC members.</p>
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
       <div className="field" style={{ maxWidth: 360 }}>

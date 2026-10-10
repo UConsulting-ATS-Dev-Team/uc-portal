@@ -178,7 +178,7 @@ export default function AcceleratorCoffeeChats() {
   return (
     <div>
       <AcceleratorTabs />
-      <h1 className="accel-title">Coffee chats</h1>
+      <h1 className="accel-title">Coffee Chats</h1>
       <p className="meta">
         {CHATS_PER_WEEK} a week, due at every accelerator meeting: {CLUB_CHATS_PER_WEEK} with club members, and one with another intern or a third club member.{" "}
         {current ? `This week: ${current.counted} of ${CHATS_PER_WEEK}.` : ""}

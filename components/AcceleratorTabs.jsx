@@ -3,7 +3,7 @@ import "../styles/accelerator.css";
 
 const TABS = [
   { to: "/accelerator", label: "Overview", end: true },
-  { to: "/accelerator/coffee-chats", label: "Coffee chats" },
+  { to: "/accelerator/coffee-chats", label: "Coffee Chats" },
   { to: "/accelerator/attendance", label: "Attendance" },
   { to: "/accelerator/assignments", label: "Assignments" },
 ];

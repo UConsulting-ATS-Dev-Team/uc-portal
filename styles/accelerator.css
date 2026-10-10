@@ -8,7 +8,6 @@
   gap: var(--space-2);
   border-bottom: var(--border-hairline);
   margin-bottom: var(--space-7);
-  overflow-x: auto;
 }
 
 .accel-tabs__tab {
@@ -625,8 +624,16 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* Four short tabs normally fit; if a very narrow phone can't, they scroll sideways without a visible bar. */
   .accel-tabs {
     gap: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  .accel-tabs__tab {
+    margin-bottom: 0;
   }
 
   .accel-tabs__tab {
