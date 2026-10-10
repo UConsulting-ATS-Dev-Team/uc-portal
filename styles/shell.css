@@ -136,10 +136,19 @@
   display: none;
 }
 
-.topbar__logout {
+/* Two classes so this beats .btn (loaded later), which would otherwise force display: inline-block and let the icon and label
+   sit on different baselines. */
+.topbar .topbar__logout {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.topbar .topbar__logout svg {
+  flex: 0 0 auto;
 }
 
 .topbar__avatar {
