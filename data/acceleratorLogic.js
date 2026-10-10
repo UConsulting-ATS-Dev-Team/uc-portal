@@ -142,6 +142,19 @@ export function formatTimeRange(start, end) {
   return end ? `${formatTime(start)} to ${formatTime(end)}` : formatTime(start);
 }
 
+// Compact for calendar cells: "6-7:30 PM", "11:30 AM-1 PM", or just "6 PM" with no end.
+export function formatTimeShort(start, end) {
+  if (!start) return "";
+  const part = (t) => {
+    const [h, m] = t.split(":").map(Number);
+    return { text: `${h % 12 === 0 ? 12 : h % 12}${m ? `:${pad(m)}` : ""}`, ampm: h < 12 ? "AM" : "PM" };
+  };
+  const a = part(start);
+  if (!end) return `${a.text} ${a.ampm}`;
+  const b = part(end);
+  return a.ampm === b.ampm ? `${a.text}-${b.text} ${b.ampm}` : `${a.text} ${a.ampm}-${b.text} ${b.ampm}`;
+}
+
 // "Wed, Oct 14, 6:00 PM", or "Wed, Oct 14, end of day" for an accelerator meeting added without a time.
 export function formatDue(date, hasTime) {
   const day = date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });

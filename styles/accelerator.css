@@ -345,6 +345,13 @@
   text-overflow: ellipsis;
 }
 
+.accel-chip__time {
+  display: block;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .accel-chip--required {
   background: var(--color-primary);
   color: var(--color-surface);

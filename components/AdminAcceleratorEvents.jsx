@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import {
   createEvent,
   createEventSeries,
@@ -40,7 +41,10 @@ const EMPTY_FORM = {
   applyToSeries: false,
 };
 
-const REPEAT_WEEKS = { weekly: 1, biweekly: 2 };
+// Events listed before the rest fold into a "show more" toggle.
+const PREVIEW_COUNT = 3;
+
+const REPEAT_WEEKS ={ weekly: 1, biweekly: 2 };
 
 function dayRange(dates) {
   const fmt = (key) => parseYmd(key).toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -86,11 +90,11 @@ function EventModal({ editing, seriesCount, onClose, onSaved }) {
       setError("Title and date are required.");
       return;
     }
-    if (form.startTime && !form.endTime) {
-      setError("Add an end time.");
+    if (!form.startTime || !form.endTime) {
+      setError("Add a start time and an end time.");
       return;
     }
-    if (form.startTime && form.endTime <= form.startTime) {
+    if (form.endTime <= form.startTime) {
       setError("The end time has to be after the start time.");
       return;
     }
@@ -165,14 +169,9 @@ function EventModal({ editing, seriesCount, onClose, onSaved }) {
         </div>
         <div className="field">
           <label htmlFor="ev-end">End time</label>
-          <input id="ev-end" type="time" value={form.endTime} disabled={!form.startTime} onChange={(e) => set({ endTime: e.target.value })} />
+          <input id="ev-end" type="time" value={form.endTime} onChange={(e) => set({ endTime: e.target.value })} />
         </div>
       </div>
-      {form.kind === "accelerator" && !form.startTime && (
-        <p className="meta" style={{ marginTop: 0 }}>
-          Accelerator meetings close each week's coffee chats, so give this one a time. Without one it closes at the end of the day.
-        </p>
-      )}
 
       {!editing && (
         <div className="field-row">
@@ -326,6 +325,7 @@ export default function AdminAcceleratorEvents() {
   const [modal, setModal] = useState(null); // null | { editing: event | null }
   const [openId, setOpenId] = useState(null);
   const [showPast, setShowPast] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [error, setError] = useState(null);
 
   async function load() {
@@ -392,7 +392,7 @@ export default function AdminAcceleratorEvents() {
         {loading && <p className="meta">Loading…</p>}
         {!loading && events.length === 0 && <p className="meta">No events yet. Add the first one.</p>}
         {!loading && events.length > 0 && visible.length === 0 && <p className="meta">No upcoming events.</p>}
-        {visible.map((event) => {
+        {(expanded ? visible : visible.slice(0, PREVIEW_COUNT)).map((event) => {
           const date = parseYmd(event.event_date);
           const seriesCount = event.series_id ? seriesCounts.get(event.series_id) : 0;
           return (
@@ -434,6 +434,12 @@ export default function AdminAcceleratorEvents() {
             </div>
           );
         })}
+        {visible.length > PREVIEW_COUNT && (
+          <button type="button" className="btn btn-secondary" style={{ marginTop: "var(--space-3)", display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }} aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>
+            {expanded ? <ChevronUp size={16} strokeWidth={1.5} aria-hidden="true" /> : <ChevronDown size={16} strokeWidth={1.5} aria-hidden="true" />}
+            {expanded ? "Show fewer events" : `Show ${visible.length - PREVIEW_COUNT} more event${visible.length - PREVIEW_COUNT === 1 ? "" : "s"}`}
+          </button>
+        )}
         {pastCount > 0 && (
           <button className="btn-link" style={{ marginTop: "var(--space-3)" }} onClick={() => setShowPast((v) => !v)}>
             {showPast ? "Hide past events" : `Show ${pastCount} past event${pastCount === 1 ? "" : "s"}`}

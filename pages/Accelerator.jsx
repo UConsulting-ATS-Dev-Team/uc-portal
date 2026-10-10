@@ -10,6 +10,7 @@ import {
   chipStyleFor,
   coffeeChatProgress,
   formatTimeRange,
+  formatTimeShort,
   itemsByDate,
   monthGrid,
   monthToShow,
@@ -110,7 +111,8 @@ function Calendar({ byDate, today }) {
             >
               <span className="accel-cal__num">{day.date.getDate()}</span>
               {shown.map((item) => (
-                <span key={item.id} className={`accel-chip accel-chip--${chipStyleFor(item)}`} title={item.title}>
+                <span key={item.id} className={`accel-chip accel-chip--${chipStyleFor(item)}`} title={[item.title, item.time ? formatTimeRange(item.time, item.endTime) : null].filter(Boolean).join(", ")}>
+                  {item.time && <span className="accel-chip__time">{formatTimeShort(item.time, item.endTime)}</span>}
                   {item.title}
                 </span>
               ))}
