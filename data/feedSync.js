@@ -17,6 +17,7 @@ export function feedRowToPost(row) {
     roleLine: row.author_role_line,
     timestamp: relativeTime(row.created_at),
     body: row.body,
+    pinned: row.pinned ?? false,
     isEvent: row.is_event,
     eventLabel: row.event_label,
     helpfulCount: 0,
@@ -62,7 +63,7 @@ export async function searchFeedPosts(query) {
   return rows.filter((r) => r.body.toLowerCase().includes(q) || r.author_name.toLowerCase().includes(q)).map(feedRowToPost);
 }
 
-export async function submitFeedPost({ body, postType, authorName, authorRoleLine, isEvent, eventLabel }) {
+export async function submitFeedPost({ body, postType, authorName, authorRoleLine, isEvent, eventLabel, pinned = false }) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -73,6 +74,7 @@ export async function submitFeedPost({ body, postType, authorName, authorRoleLin
       author_name: authorName,
       author_role_line: authorRoleLine,
       post_type: postType,
+      pinned,
       body,
       is_event: isEvent,
       event_label: isEvent ? eventLabel : null,

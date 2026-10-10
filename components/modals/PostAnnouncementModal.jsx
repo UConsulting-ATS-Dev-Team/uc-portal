@@ -16,6 +16,7 @@ export default function PostAnnouncementModal({ onClose }) {
   const { profileOverrides, accountEmail } = useAppState();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [pinned, setPinned] = useState(false);
   const [posted, setPosted] = useState(false);
   const [posting, setPosting] = useState(false);
   const [postError, setPostError] = useState(null);
@@ -30,6 +31,7 @@ export default function PostAnnouncementModal({ onClose }) {
         authorName: displayName(profileOverrides, accountEmail),
         authorRoleLine: "UC Exec",
         isEvent: false,
+        pinned,
       });
       setPosted(true);
       setTimeout(onClose, 1200);
@@ -49,7 +51,7 @@ export default function PostAnnouncementModal({ onClose }) {
       width={560}
       footer={
         posted ? (
-          <span className="modal__footer-note">Posted to the real UC feed, pinned to the top.</span>
+          <span className="modal__footer-note">{pinned ? "Posted to the UC feed and pinned to the top." : "Posted to the UC feed."}</span>
         ) : (
           <>
             <span className="modal__footer-note">
@@ -68,6 +70,11 @@ export default function PostAnnouncementModal({ onClose }) {
 
       <label className="field-label">Details</label>
       <textarea rows={5} value={body} onChange={(e) => setBody(e.target.value)} placeholder="What members need to know" />
+
+      <div className="checkbox-row">
+        <input type="checkbox" id="pin-announcement" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
+        <label htmlFor="pin-announcement">Pin to the top of the feed</label>
+      </div>
     </Modal>
   );
 }

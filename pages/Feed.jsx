@@ -24,8 +24,8 @@ export default function Feed() {
   // prefilled prompt via router state rather than a URL param, since it's
   // one-time composer seeding, not a shareable/bookmarkable URL.
   const [composerText, setComposerText] = useState(location.state?.prefill || "");
-  // Admins can mark a post as an announcement: pinned to the top and labelled. Everyone else just posts.
-  const [asAnnouncement, setAsAnnouncement] = useState(false);
+  // Admins' posts here are announcements (labelled, in the Announcements tab); they can also pin one to the top of the feed.
+  const [pinPost, setPinPost] = useState(false);
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [postsError, setPostsError] = useState(null);
@@ -82,7 +82,8 @@ export default function Feed() {
       const row = await submitFeedPost({
         body: composerText.trim(),
         // The database wants a type on every post; ordinary posts carry the neutral one and show no label.
-        postType: asAnnouncement ? "Announcement" : "Advice",
+        postType: realIsAdmin ? "Announcement" : "Advice",
+        pinned: realIsAdmin && pinPost,
         authorName: displayName(profileOverrides, accountEmail),
         // Not resolvedClassYear() -- that falls back to mockUser.js's fake
         // "2027" the moment a real member has no class year set, which
@@ -97,7 +98,7 @@ export default function Feed() {
       });
       setPosts((prev) => [feedRowToPost(row), ...prev]);
       setComposerText("");
-      setAsAnnouncement(false);
+      setPinPost(false);
     } catch (err) {
       setPostsError(err.message);
     } finally {
@@ -120,7 +121,7 @@ export default function Feed() {
         if (tab === "Saved") return savedPosts.includes(p.id);
         return true;
       })
-      .sort((a, b) => (b.postType === "Announcement") - (a.postType === "Announcement")); // pinned to the top, real posts otherwise already in created_at desc order
+      .sort((a, b) => b.pinned - a.pinned); // pinned posts first, the rest already in created_at desc order
   }, [posts, tab, savedPosts]);
 
   // Real members who've opted in via MyProfile.jsx's "Open to coffee
@@ -155,7 +156,7 @@ export default function Feed() {
               <Avatar name={displayName(profileOverrides, accountEmail)} url={profileOverrides.avatarUrl} />
             </div>
             <textarea
-              placeholder="Share something with UC…"
+              placeholder={realIsAdmin ? "Post an announcement to UC…" : "Share something with UC…"}
               value={composerText}
               onChange={(e) => setComposerText(e.target.value)}
             />
@@ -163,9 +164,9 @@ export default function Feed() {
           <div className="composer__bottom">
             <div className="composer__types">
               {realIsAdmin && (
-                <label className="composer__announce">
-                  <input type="checkbox" checked={asAnnouncement} onChange={(e) => setAsAnnouncement(e.target.checked)} /> Post as an announcement
-                </label>
+                <button type="button" className={`btn btn-secondary${pinPost ? " is-saved" : ""}`} aria-pressed={pinPost} onClick={() => setPinPost((v) => !v)}>
+                  {pinPost ? "Pinned to the top of the feed" : "Pin to the top of the feed"}
+                </button>
               )}
             </div>
             <button className="btn btn-primary" onClick={handlePost} disabled={posting || !composerText.trim()}>
@@ -212,7 +213,7 @@ export default function Feed() {
             <div
               className="post-card"
               key={post.id}
-              style={isAnnouncement ? { borderLeft: "3px solid var(--color-accent)", background: "var(--color-surface)" } : undefined}
+              style={post.pinned ? { borderLeft: "3px solid var(--color-accent)", background: "var(--color-surface)" } : undefined}
             >
               <div className="post-card__header">
                 <div className="post-card__avatar">
@@ -220,6 +221,7 @@ export default function Feed() {
                 </div>
                 <span className="post-card__name">{post.author}</span>
                 {isAnnouncement && <span className="chip chip-accent">Announcement</span>}
+                {post.pinned && <span className="chip">Pinned</span>}
               </div>
               <p className="post-card__role-line">
                 {post.roleLine ? `${post.roleLine} · ` : ""}

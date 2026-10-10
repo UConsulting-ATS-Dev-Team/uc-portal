@@ -223,12 +223,3 @@
     overflow-x: auto;
   }
 }
-
-/* Admins only: mark a post as an announcement. */
-.composer__announce {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-secondary);
-  color: var(--color-text-secondary);
-}
