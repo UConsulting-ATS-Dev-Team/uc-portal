@@ -15,6 +15,7 @@ import {
 import { MAX_RECURRING_EVENTS, defaultAttendanceMethod, expandRecurrence, formatTimeRange, parseYmd, ymd } from "../data/acceleratorLogic.js";
 import AcceleratorEventPhoto from "./AcceleratorEventPhoto.jsx";
 import Modal from "./Modal.jsx";
+import CollapsibleSection from "./CollapsibleSection.jsx";
 import "../styles/accelerator.css";
 
 const KINDS = [
@@ -374,9 +375,11 @@ export default function AdminAcceleratorEvents() {
   }
 
   return (
-    <div className="detail-section">
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", flexWrap: "wrap" }}>
-        <p style={{ fontWeight: 700, margin: 0, flex: 1 }}>Calendar events and attendance</p>
+    <CollapsibleSection
+      title="Calendar events and attendance"
+      summary={loading ? "Loading…" : `${events.filter((e) => e.event_date >= todayKey).length} upcoming, ${events.length} in all`}
+    >
+      <div className="collapsible__actions">
         <button className="btn btn-primary" onClick={() => setModal({ editing: null })}>
           Add event
         </button>
@@ -455,6 +458,6 @@ export default function AdminAcceleratorEvents() {
           onSaved={load}
         />
       )}
-    </div>
+    </CollapsibleSection>
   );
 }

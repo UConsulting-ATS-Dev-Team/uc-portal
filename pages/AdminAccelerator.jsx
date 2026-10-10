@@ -26,6 +26,8 @@ import {
 import SubmissionCommentThread from "../components/SubmissionCommentThread.jsx";
 import AdminAcceleratorEvents from "../components/AdminAcceleratorEvents.jsx";
 import Modal from "../components/Modal.jsx";
+import CollapsibleSection from "../components/CollapsibleSection.jsx";
+import { formatTime } from "../data/acceleratorLogic.js";
 import AdminAcceleratorChats from "../components/AdminAcceleratorChats.jsx";
 import "../styles/jobDetail.css";
 import "../styles/admin.css";
@@ -70,8 +72,10 @@ function MeetingSchedule() {
   }
 
   return (
-    <div className="detail-section">
-      <p style={{ fontWeight: 700, margin: 0 }}>Weekly accelerator meeting</p>
+    <CollapsibleSection
+      title="Weekly accelerator meeting"
+      summary={loaded ? (saved ? `${WEEKDAYS[weekday]}s at ${formatTime(time)}` : "Not set yet, so weeks run Sunday to Saturday") : "Loading…"}
+    >
       <p className="meta">
         Interns owe 3 coffee chats a week, and the count starts over at this day and time. {loaded && !saved && "Not set yet, so weeks run Sunday to Saturday."}
       </p>
@@ -95,7 +99,7 @@ function MeetingSchedule() {
         </button>
       </div>
       {message && <p className="meta">{message}</p>}
-    </div>
+    </CollapsibleSection>
   );
 }
 
@@ -164,9 +168,11 @@ function InternRoster() {
   }
 
   return (
-    <div className="detail-section">
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", flexWrap: "wrap" }}>
-        <p style={{ fontWeight: 700, margin: 0, flex: 1 }}>Who can sign up as an intern</p>
+    <CollapsibleSection
+      title="Who can sign up as an intern"
+      summary={`${entries.length + names.length} listed${names.some((n) => !n.claimed_at) ? `, ${names.filter((n) => !n.claimed_at).length} by name only and not signed up yet` : ""}`}
+    >
+      <div className="collapsible__actions">
         <button className="btn btn-primary" onClick={() => setOpen(true)}>
           Add interns
         </button>
@@ -237,7 +243,7 @@ function InternRoster() {
           </div>
         </Modal>
       )}
-    </div>
+    </CollapsibleSection>
   );
 }
 
@@ -324,8 +330,14 @@ function InternProgress() {
   }, []);
 
   return (
-    <div className="detail-section">
-      <p style={{ fontWeight: 700 }}>Intern progress</p>
+    <CollapsibleSection
+      title="Intern progress"
+      summary={
+        progress === null
+          ? "Loading…"
+          : `${progress.length} intern${progress.length === 1 ? "" : "s"}${progress.filter((p) => p.assignmentsIncomplete > 0 || p.weeksBehindOnChats > 0 || p.noSocials).length ? `, ${progress.filter((p) => p.assignmentsIncomplete > 0 || p.weeksBehindOnChats > 0 || p.noSocials).length} need attention` : ""}`
+      }
+    >
       <p className="meta">Every real intern account, at a glance: who's on track and who's stalled.</p>
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
       <div className="queue-table__scroll">
@@ -381,7 +393,7 @@ function InternProgress() {
           </tbody>
         </table>
       </div>
-    </div>
+    </CollapsibleSection>
   );
 }
 
@@ -716,9 +728,8 @@ export default function AdminAccelerator() {
 
       <AdminAcceleratorChats />
 
-      <div className="detail-section">
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", flexWrap: "wrap" }}>
-          <p style={{ fontWeight: 700, margin: 0, flex: 1 }}>Lessons</p>
+      <CollapsibleSection title="Lessons" summary={loading ? "Loading…" : `${lessons.length} week${lessons.length === 1 ? "" : "s"}`}>
+        <div className="collapsible__actions">
           <button className="btn btn-primary" onClick={() => setLessonModal({ editing: null })}>
             Add lesson
           </button>
@@ -749,7 +760,7 @@ export default function AdminAccelerator() {
             {selectedId === lesson.id && <LessonManager lesson={lesson} onChanged={load} />}
           </div>
         ))}
-      </div>
+      </CollapsibleSection>
 
       {lessonModal && <LessonModal editing={lessonModal.editing} onClose={() => setLessonModal(null)} onSaved={lessonSaved} />}
     </div>
