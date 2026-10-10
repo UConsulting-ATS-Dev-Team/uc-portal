@@ -105,6 +105,7 @@ export function calendarItems(events, lessons) {
     title: e.title,
     date: e.event_date,
     time: e.start_time ? e.start_time.slice(0, 5) : null,
+    endTime: e.end_time ? e.end_time.slice(0, 5) : null,
     kind: e.kind,
     required: e.required,
     method: e.attendance_method ?? "admin",
@@ -133,6 +134,12 @@ export function formatTime(time) {
   const [h, m] = time.split(":").map(Number);
   const hour = h % 12 === 0 ? 12 : h % 12;
   return `${hour}:${pad(m)} ${h < 12 ? "AM" : "PM"}`;
+}
+
+// "6:00 PM", or "6:00 PM to 7:30 PM" when there is an end time; "" with no start.
+export function formatTimeRange(start, end) {
+  if (!start) return "";
+  return end ? `${formatTime(start)} to ${formatTime(end)}` : formatTime(start);
 }
 
 // "Wed, Oct 14, 6:00 PM", or "Wed, Oct 14, end of day" for an accelerator meeting added without a time.

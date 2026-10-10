@@ -9,7 +9,7 @@ import {
   calendarItems,
   chipStyleFor,
   coffeeChatProgress,
-  formatTime,
+  formatTimeRange,
   itemsByDate,
   monthGrid,
   monthToShow,
@@ -36,7 +36,7 @@ function tagFor(item) {
 function EventRow({ item, today }) {
   const date = parseYmd(item.date);
   const tag = tagFor(item);
-  const detail = [item.time ? formatTime(item.time) : null, item.location].filter(Boolean).join(" · ");
+  const detail = [item.time ? formatTimeRange(item.time, item.endTime) : null, item.location].filter(Boolean).join(" · ");
   return (
     <div className={`accel-event${item.date < ymd(today) ? " is-past" : ""}`}>
       <div className={`accel-event__date${item.required ? " is-required" : ""}`}>

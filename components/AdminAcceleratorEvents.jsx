@@ -11,7 +11,7 @@ import {
   updateEvent,
   updateEventSeries,
 } from "../data/acceleratorSync.js";
-import { MAX_RECURRING_EVENTS, defaultAttendanceMethod, expandRecurrence, formatTime, parseYmd, ymd } from "../data/acceleratorLogic.js";
+import { MAX_RECURRING_EVENTS, defaultAttendanceMethod, expandRecurrence, formatTimeRange, parseYmd, ymd } from "../data/acceleratorLogic.js";
 import AcceleratorEventPhoto from "./AcceleratorEventPhoto.jsx";
 import Modal from "./Modal.jsx";
 import "../styles/accelerator.css";
@@ -29,6 +29,7 @@ const EMPTY_FORM = {
   title: "",
   eventDate: "",
   startTime: "",
+  endTime: "",
   kind: "gm",
   required: true,
   attendanceMethod: "admin",
@@ -55,6 +56,7 @@ function EventModal({ editing, seriesCount, onClose, onSaved }) {
           title: editing.title,
           eventDate: editing.event_date,
           startTime: editing.start_time ? editing.start_time.slice(0, 5) : "",
+          endTime: editing.end_time ? editing.end_time.slice(0, 5) : "",
           kind: editing.kind,
           required: editing.required,
           attendanceMethod: editing.attendance_method,
@@ -82,6 +84,14 @@ function EventModal({ editing, seriesCount, onClose, onSaved }) {
     setError(null);
     if (!form.title.trim() || !form.eventDate) {
       setError("Title and date are required.");
+      return;
+    }
+    if (form.startTime && !form.endTime) {
+      setError("Add an end time.");
+      return;
+    }
+    if (form.startTime && form.endTime <= form.startTime) {
+      setError("The end time has to be after the start time.");
       return;
     }
     if (repeating) {
@@ -150,8 +160,12 @@ function EventModal({ editing, seriesCount, onClose, onSaved }) {
           <input id="ev-date" type="date" value={form.eventDate} onChange={(e) => set({ eventDate: e.target.value })} />
         </div>
         <div className="field">
-          <label htmlFor="ev-time">Time</label>
+          <label htmlFor="ev-time">Start time</label>
           <input id="ev-time" type="time" value={form.startTime} onChange={(e) => set({ startTime: e.target.value })} />
+        </div>
+        <div className="field">
+          <label htmlFor="ev-end">End time</label>
+          <input id="ev-end" type="time" value={form.endTime} disabled={!form.startTime} onChange={(e) => set({ endTime: e.target.value })} />
         </div>
       </div>
       {form.kind === "accelerator" && !form.startTime && (
@@ -391,7 +405,7 @@ export default function AdminAcceleratorEvents() {
                 <div className="accel-event__body">
                   <div className="accel-event__title">{event.title}</div>
                   <div className="accel-event__meta">
-                    {[date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" }), event.start_time ? formatTime(event.start_time) : null, event.location, KIND_LABEL[event.kind]]
+                    {[date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" }), event.start_time ? formatTimeRange(event.start_time.slice(0, 5), event.end_time?.slice(0, 5)) : null, event.location, KIND_LABEL[event.kind]]
                       .filter(Boolean)
                       .join(" · ")}
                   </div>

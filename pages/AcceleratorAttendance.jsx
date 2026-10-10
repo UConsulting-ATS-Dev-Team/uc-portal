@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { submitEventPhoto } from "../data/acceleratorSync.js";
-import { attendanceProgress, attendanceStatus, calendarItems, formatTime, parseYmd, ymd } from "../data/acceleratorLogic.js";
+import { attendanceProgress, attendanceStatus, calendarItems, formatTimeRange, parseYmd, ymd } from "../data/acceleratorLogic.js";
 import { useAcceleratorData } from "../data/useAcceleratorData.js";
 import AcceleratorEventPhoto from "../components/AcceleratorEventPhoto.jsx";
 import AcceleratorTabs from "../components/AcceleratorTabs.jsx";
@@ -110,7 +110,7 @@ export default function AcceleratorAttendance() {
               {groupItems.map((item) => {
                 const status = STATUS[attendanceStatus({ id: item.id, event_date: item.date }, progress, today)];
                 const date = parseYmd(item.date);
-                const detail = [item.time ? formatTime(item.time) : null, item.location].filter(Boolean).join(" · ");
+                const detail = [item.time ? formatTimeRange(item.time, item.endTime) : null, item.location].filter(Boolean).join(" · ");
                 const record = recordByEvent.get(item.id);
                 const started = item.date <= todayKey;
                 return (

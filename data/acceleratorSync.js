@@ -475,11 +475,12 @@ export async function deleteCoffeeChat(chat) {
 
 // ---- Admin-only (RLS backs every one of these) ----
 
-function eventRow({ title, eventDate, startTime, kind, required, attendanceMethod, location, description }) {
+function eventRow({ title, eventDate, startTime, endTime, kind, required, attendanceMethod, location, description }) {
   return {
     title: title.trim(),
     event_date: eventDate,
     start_time: startTime || null,
+    end_time: startTime && endTime ? endTime : null,
     kind,
     required,
     attendance_method: attendanceMethod,
