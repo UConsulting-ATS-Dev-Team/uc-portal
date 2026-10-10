@@ -1,6 +1,6 @@
 import { supabase } from "./supabaseClient.js";
 import { fetchAllRows } from "./fetchAllRows.js";
-import { assignmentProgress, attendanceProgress, coffeeChatProgress, programPeriods } from "./acceleratorLogic.js";
+import { assignmentProgress, attendanceProgress, coffeeChatProgress, lessonDue, lessonOpensAt, programPeriods } from "./acceleratorLogic.js";
 
 // Real accelerator program (freshmen onboarding) -- see the
 // intern_accelerator migration's own header comment for the full
@@ -358,15 +358,15 @@ export async function addSubmissionComment(submissionId, body) {
 // actually workable) and not yet submitted, with its real lesson_date
 // within 7 days -- same due-soon window as jobUtils.js's isUrgent().
 export async function fetchUpcomingDeadlineCount() {
-  const [lessons, submissions] = await Promise.all([fetchLessons(), fetchOwnSubmissions()]);
-  const submittedIds = new Set(submissions.map((s) => s.lesson_id));
+  const [lessons, submissions, schedule] = await Promise.all([fetchLessons(), fetchOwnSubmissions(), fetchMeetingSchedule()]);
+  const byLesson = new Map(submissions.map((s) => [s.lesson_id, s]));
+  const now = new Date();
   // Work sent back as incomplete needs the intern's attention too.
   let count = submissions.filter((s) => s.status === "incomplete").length;
   lessons.forEach((lesson, i) => {
-    if (submittedIds.has(lesson.id)) return;
-    const prevSubmitted = i === 0 || submittedIds.has(lessons[i - 1].id);
-    if (!prevSubmitted) return;
-    const days = Math.ceil((new Date(lesson.lesson_date) - new Date()) / 86400000);
+    if (byLesson.has(lesson.id)) return;
+    if (!lessonOpensAt(i, lessons, byLesson, schedule, now).open) return;
+    const days = Math.ceil((lessonDue(lesson, schedule).date - now) / 86400000);
     if (days <= 7) count++;
   });
   return count;

@@ -333,3 +333,35 @@ describe("due dates", () => {
     expect([0, 1, 4, -1, -3].map(L.dueWording)).toEqual(["today", "tomorrow", "in 4 days", "yesterday", "3 days ago"]);
   });
 });
+
+describe("assignments are due at the weekly accelerator", () => {
+  const at = (y: number, m: number, day: number, h = 0, min = 0) => new Date(y, m - 1, day, h, min);
+  const tuesday5 = { weekday: 2, time: "17:00" };
+  const lessons = [
+    { id: "a", lesson_date: "2026-10-12" }, // a Monday
+    { id: "b", lesson_date: "2026-10-19" },
+  ];
+
+  it("lands on the accelerator meeting on or after the lesson date, at its time", () => {
+    expect(L.lessonDue(lessons[0], tuesday5).date.getTime()).toBe(at(2026, 10, 13, 17).getTime());
+    expect(L.lessonDue({ lesson_date: "2026-10-13" }, tuesday5).date.getTime()).toBe(at(2026, 10, 13, 17).getTime());
+  });
+
+  it("falls back to the end of the date when no meeting time is set", () => {
+    const due = L.lessonDue(lessons[0], null);
+    expect(due.hasTime).toBe(false);
+    expect(due.date.getDate()).toBe(12);
+  });
+
+  it("opens the next assignment only after the previous one is in and its accelerator has passed", () => {
+    const none = new Map();
+    const submitted = new Map([["a", {}]]);
+    expect(L.lessonOpensAt(0, lessons, none, tuesday5, at(2026, 10, 10)).open).toBe(true);
+    expect(L.lessonOpensAt(1, lessons, none, tuesday5, at(2026, 10, 14)).open).toBe(false);
+    const early = L.lessonOpensAt(1, lessons, submitted, tuesday5, at(2026, 10, 13, 16));
+    expect(early.open).toBe(false);
+    expect(early.waitingForMeeting?.getTime()).toBe(at(2026, 10, 13, 17).getTime());
+    expect(L.lessonOpensAt(1, lessons, submitted, tuesday5, at(2026, 10, 13, 17, 1)).open).toBe(true);
+    expect(L.lessonOpensAt(1, lessons, submitted, null, at(2026, 10, 10)).open).toBe(true);
+  });
+});

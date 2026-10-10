@@ -11,8 +11,10 @@ import {
   coffeeChatProgress,
   daysUntil,
   dueWording,
+  formatDue,
   formatTimeRange,
   formatTimeShort,
+  lessonDue,
   itemsByDate,
   monthGrid,
   monthToShow,
@@ -215,7 +217,7 @@ export default function Accelerator() {
   const { lessons, events, submissions, attendance, chats, schedule, loading, error } = useAcceleratorData();
   const today = useMemo(() => new Date(), []);
 
-  const items = useMemo(() => calendarItems(events, lessons), [events, lessons]);
+  const items = useMemo(() => calendarItems(events, lessons, schedule), [events, lessons, schedule]);
   const byDate = useMemo(() => itemsByDate(items), [items]);
 
   const now = useMemo(() => new Date(), []);
@@ -260,7 +262,10 @@ export default function Accelerator() {
   // The next assignments to hand in, nearest first, and what the committee has said about the ones already handed in.
   const submissionByLesson = new Map(submissions.map((s) => [s.lesson_id, s]));
   const upcoming = lessons
-    .map((lesson, i) => ({ lesson, number: i + 1, days: daysUntil(lesson.lesson_date, today) }))
+    .map((lesson, i) => {
+      const due = lessonDue(lesson, schedule);
+      return { lesson, number: i + 1, due, days: daysUntil(ymd(due.date), today), overdue: due.date < now };
+    })
     .filter(({ lesson }) => !submissionByLesson.has(lesson.id))
     .slice(0, 3);
   const needsFix = lessons
@@ -298,12 +303,12 @@ export default function Accelerator() {
       {!loading && upcoming.length > 0 && (
         <div className="accel-due">
           <div className="accel-due__kicker">Assignments due</div>
-          {upcoming.map(({ lesson, number, days }) => (
-            <Link key={lesson.id} to={`/accelerator/assignments?lesson=${lesson.id}`} className={`accel-due__row${days < 0 ? " is-overdue" : days <= 3 ? " is-soon" : ""}`}>
+          {upcoming.map(({ lesson, number, due, days, overdue }) => (
+            <Link key={lesson.id} to={`/accelerator/assignments?lesson=${lesson.id}`} className={`accel-due__row${overdue ? " is-overdue" : days <= 3 ? " is-soon" : ""}`}>
               <span className="accel-due__title">Week {number}: {lesson.title}</span>
               <span className="accel-due__date">
-                {parseYmd(lesson.lesson_date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
-                <span className="accel-due__when">{days < 0 ? `overdue, was due ${dueWording(days)}` : `due ${dueWording(days)}`}</span>
+                {formatDue(due.date, due.hasTime)}
+                <span className="accel-due__when">{overdue ? `overdue, was due ${dueWording(days)}` : `due ${dueWording(days)}`}</span>
               </span>
             </Link>
           ))}

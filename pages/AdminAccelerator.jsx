@@ -597,7 +597,7 @@ function LessonModal({ editing, onClose, onSaved }) {
       {error && <p className="meta" style={{ color: "var(--color-danger)", marginTop: 0 }}>{error}</p>}
       <div className="field-row">
         <div className="field">
-          <label htmlFor="lesson-date">Date</label>
+          <label htmlFor="lesson-date">Week of</label>
           <input id="lesson-date" type="date" value={form.lessonDate} onChange={(e) => setForm({ ...form, lessonDate: e.target.value })} />
         </div>
         <div className="field" style={{ flex: 2 }}>
@@ -605,6 +605,9 @@ function LessonModal({ editing, onClose, onSaved }) {
           <input id="lesson-title" type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
         </div>
       </div>
+      <p className="meta" style={{ marginTop: 0 }}>
+        The assignment is due at that week's accelerator (the weekly meeting day and time set above), and the next assignment opens once that accelerator has passed.
+      </p>
       <div className="field">
         <label htmlFor="lesson-topic">Instructions</label>
         <textarea id="lesson-topic" rows={6} value={form.topicOverview} onChange={(e) => setForm({ ...form, topicOverview: e.target.value })} placeholder="What the intern should do this week. Shown to them in full; web links become clickable." />

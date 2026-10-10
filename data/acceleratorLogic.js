@@ -89,19 +89,22 @@ export function defaultAttendanceMethod(kind) {
 
 // Lessons are on the calendar as "Week N" items alongside the admin-managed events. `lessons` must already be
 // in date order (fetchLessons sorts them), which is also what numbers the weeks.
-export function calendarItems(events, lessons) {
-  const lessonItems = lessons.map((lesson, i) => ({
+export function calendarItems(events, lessons, schedule = null) {
+  const lessonItems = lessons.map((lesson, i) => {
+    const due = lessonDue(lesson, schedule);
+    return {
     id: `lesson-${lesson.id}`,
     title: `Week ${i + 1}: ${lesson.title}`,
-    date: lesson.lesson_date,
-    time: null,
+    date: schedule ? ymd(due.date) : lesson.lesson_date,
+    time: schedule ? `${pad(due.date.getHours())}:${pad(due.date.getMinutes())}` : null,
     kind: "lesson",
     lessonId: lesson.id,
     description: lesson.topic_overview ?? null,
     required: true,
     method: "admin",
     location: null,
-  }));
+    };
+  });
   const eventItems = events.map((e) => ({
     id: e.id,
     title: e.title,
@@ -332,6 +335,25 @@ export function attendanceStatus(event, progress, today = new Date()) {
 }
 
 // ---- Assignments ----
+
+// An assignment is due at the accelerator meeting on or after its lesson date, at the meeting's time, so it is done before
+// that week's accelerator. With no meeting day and time set yet it falls back to the end of the lesson date.
+export function lessonDue(lesson, schedule) {
+  const day = parseYmd(lesson.lesson_date);
+  if (!schedule) return { date: new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59, 999), hasTime: false };
+  return { date: nextMeeting(day, schedule.weekday, schedule.time), hasTime: true };
+}
+
+// The first lesson is always open. Each later one opens once the previous is handed in AND that week's accelerator has
+// happened (when the meeting time is set), so the next assignment starts after the accelerator.
+export function lessonOpensAt(index, lessons, submissionByLesson, schedule, now = new Date()) {
+  if (index === 0) return { open: true, waitingForMeeting: null };
+  const prev = lessons[index - 1];
+  if (!submissionByLesson.has(prev.id)) return { open: false, waitingForMeeting: null };
+  if (!schedule) return { open: true, waitingForMeeting: null };
+  const meeting = lessonDue(prev, schedule).date;
+  return now >= meeting ? { open: true, waitingForMeeting: null } : { open: false, waitingForMeeting: meeting };
+}
 
 // Days from today (local midnight) to a "YYYY-MM-DD" due date: negative once it has passed.
 export function daysUntil(dateKey, today = new Date()) {

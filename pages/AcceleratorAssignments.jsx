@@ -1,17 +1,13 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { fetchMaterials, materialHref, submitAssignment, uploadSubmissionFile } from "../data/acceleratorSync.js";
-import { assignmentProgress, submissionState } from "../data/acceleratorLogic.js";
+import { assignmentProgress, daysUntil, dueWording, formatDue, lessonDue, lessonOpensAt, submissionState, ymd } from "../data/acceleratorLogic.js";
 import { useAcceleratorData } from "../data/useAcceleratorData.js";
 import AcceleratorTabs from "../components/AcceleratorTabs.jsx";
 import SubmissionCommentThread from "../components/SubmissionCommentThread.jsx";
 import "../styles/jobDetail.css";
 import "../styles/resources.css";
 import "../styles/accelerator.css";
-
-function formatLessonDate(dateStr) {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
-}
 
 // Instructions are plain text an admin typed; keep their line breaks and turn web addresses into links.
 function Instructions({ text }) {
@@ -158,7 +154,8 @@ function SubmissionForm({ lesson, submission, onSubmitted }) {
 }
 
 export default function AcceleratorAssignments() {
-  const { lessons, submissions, loading, error, reload } = useAcceleratorData();
+  const { lessons, submissions, schedule, loading, error, reload } = useAcceleratorData();
+  const now = new Date();
   const [searchParams] = useSearchParams();
   // Arriving from the calendar or a notice (?lesson=<id>) opens that assignment.
   const [expandedId, setExpandedId] = useState(searchParams.get("lesson"));
@@ -172,11 +169,11 @@ export default function AcceleratorAssignments() {
   const submissionByLesson = new Map(submissions.map((s) => [s.lesson_id, s]));
   const progress = assignmentProgress(lessons, submissions);
 
-  // A lesson that is unlocked, not yet submitted and due within a week (or overdue) gets a banner.
+  // A lesson that is open, not yet submitted and due within a week (or overdue) gets a banner.
   const dueSoon = lessons
-    .map((lesson, i) => ({ lesson, i, prevSubmitted: i === 0 || submissionByLesson.has(lessons[i - 1]?.id) }))
-    .filter(({ lesson, prevSubmitted }) => prevSubmitted && !submissionByLesson.has(lesson.id))
-    .map(({ lesson, i }) => ({ lesson, i, days: Math.ceil((new Date(`${lesson.lesson_date}T00:00:00`) - new Date()) / 86400000) }))
+    .map((lesson, i) => ({ lesson, i, due: lessonDue(lesson, schedule), opens: lessonOpensAt(i, lessons, submissionByLesson, schedule, now) }))
+    .filter(({ lesson, opens }) => opens.open && !submissionByLesson.has(lesson.id))
+    .map((row) => ({ ...row, days: daysUntil(ymd(row.due.date), now), overdue: row.due.date < now }))
     .filter(({ days }) => days <= 7);
 
   return (
@@ -197,17 +194,13 @@ export default function AcceleratorAssignments() {
 
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
 
-      {dueSoon.map(({ lesson, i, days }) => (
+      {dueSoon.map(({ lesson, i, due, days, overdue }) => (
         <div key={lesson.id} className="rail-card is-accent" style={{ marginBottom: "var(--space-4)" }}>
           <div className="rail-card__title">
-            {days < 0
-              ? `Week ${i + 1}: "${lesson.title}" is overdue`
-              : days === 0
-                ? `Week ${i + 1}: "${lesson.title}" is due today`
-                : `Week ${i + 1}: "${lesson.title}" is due in ${days} day${days === 1 ? "" : "s"}`}
+            {overdue ? `Week ${i + 1}: "${lesson.title}" is overdue` : `Week ${i + 1}: "${lesson.title}" is due ${dueWording(days)}`}
           </div>
           <p style={{ margin: 0 }} className="meta">
-            Due {formatLessonDate(lesson.lesson_date)}. Scroll down and submit below.
+            Due {formatDue(due.date, due.hasTime)}. Scroll down and submit below.
           </p>
         </div>
       ))}
@@ -219,7 +212,8 @@ export default function AcceleratorAssignments() {
           const submission = submissionByLesson.get(lesson.id);
           const state = submissionState(submission);
           // Locked until the previous lesson has a real submission; the first lesson is always open.
-          const prevSubmitted = i === 0 || submissionByLesson.has(lessons[i - 1].id);
+          const opens = lessonOpensAt(i, lessons, submissionByLesson, schedule, now);
+          const prevSubmitted = opens.open;
           const isExpanded = expandedId === lesson.id;
           const label = STATE_LABEL[state];
           return (
@@ -229,11 +223,11 @@ export default function AcceleratorAssignments() {
                 <span className="step-row__number step-row__number--week">Week {i + 1}</span>
                 <div className="step-row__body">
                   <div className="step-row__title">{lesson.title}</div>
-                  <div className="step-row__detail meta">Due {formatLessonDate(lesson.lesson_date)}</div>
+                  <div className="step-row__detail meta">Due {formatDue(lessonDue(lesson, schedule).date, lessonDue(lesson, schedule).hasTime)}</div>
                 </div>
                 {label && <span className={label.className}>{label.text}</span>}
                 <div className="step-row__state">
-                  {!prevSubmitted && "Locked until the previous lesson is submitted"}
+                  {!prevSubmitted && (opens.waitingForMeeting ? `Opens after the accelerator, ${formatDue(opens.waitingForMeeting, true)}` : "Locked until the previous lesson is submitted")}
                   {prevSubmitted && (
                     <button className="btn btn-secondary" onClick={() => setExpandedId(isExpanded ? null : lesson.id)}>
                       {isExpanded ? "Close" : state === "not_started" ? "Start" : state === "incomplete" ? "Fix" : "View"}
