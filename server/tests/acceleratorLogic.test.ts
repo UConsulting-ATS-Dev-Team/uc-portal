@@ -322,6 +322,7 @@ describe("assignments", () => {
 });
 
 describe("due dates", () => {
+  const at = (y: number, m: number, day: number, h = 0) => new Date(y, m - 1, day, h);
   it("counts whole days from today to a due date", () => {
     expect(L.daysUntil("2026-10-14", at(2026, 10, 14, 15))).toBe(0);
     expect(L.daysUntil("2026-10-17", at(2026, 10, 14, 23))).toBe(3);
