@@ -317,6 +317,6 @@ describe("assignments", () => {
       { lesson_id: "b", status: "incomplete" },
       { lesson_id: "c", status: null },
     ]);
-    expect(p).toEqual({ total: 4, complete: 1, incomplete: 1, awaitingReview: 1, notStarted: 1 });
+    expect(p).toEqual({ total: 4, submitted: 2, complete: 1, incomplete: 1, awaitingReview: 1, notStarted: 1 });
   });
 });
