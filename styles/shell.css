@@ -321,12 +321,13 @@
 
 /* Leadership groups: each heading is a button that folds its items away. */
 .rail__group {
-  margin-bottom: var(--space-3);
+  /* More room above a heading than between it and its own links, so it reads as the top of its group, not the middle of a gap. */
+  margin-bottom: var(--space-6);
 }
 
 /* Home sits above the first group with the same gap every group leaves below itself. */
 .rail__home {
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-6);
 }
 
 .rail__kicker--toggle {
