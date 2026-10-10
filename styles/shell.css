@@ -324,6 +324,11 @@
   margin-bottom: var(--space-3);
 }
 
+/* Home sits above the first group with the same gap every group leaves below itself. */
+.rail__home {
+  margin-bottom: var(--space-3);
+}
+
 .rail__kicker--toggle {
   display: flex;
   align-items: center;
