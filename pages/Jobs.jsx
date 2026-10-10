@@ -50,8 +50,8 @@ const DEADLINE_BUCKETS = ["This week", "This month", "Rolling"];
 // available in git history if a future feature wants it back.
 const TABS = [
   { key: "recommended", label: "Recommended for you" },
-  { key: "new", label: "New since your last visit" },
   { key: "all", label: "All jobs" },
+  { key: "new", label: "New since your last visit" },
   { key: "saved", label: "Saved" },
 ];
 const TAB_KEYS = TABS.map((t) => t.key);
