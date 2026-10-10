@@ -184,6 +184,7 @@ export async function fetchInternProgress() {
   // of bug that already bit the Jobs board, the Companies grid, and
   // feed_posts once each in this project's history -- cheap to apply
   // proactively rather than wait for a fourth real incident.
+  const rosterNames = await rosterNamesByEmail();
   const [{ data: members, error: membersError }, lessons, allSubmissions, events, allAttendance, allChats, schedule] = await Promise.all([
     supabase.rpc("list_members"),
     fetchLessons(),
@@ -225,7 +226,7 @@ export async function fetchInternProgress() {
       requiredSoFar: attendance.requiredSoFar,
       noSocials: attendance.noSocials,
       memberId: intern.member_id,
-      displayName: intern.display_name,
+      displayName: nameFor(intern, rosterNames),
       email: intern.email,
       submittedCount: own.length,
       totalLessons: lessons.length,
@@ -568,10 +569,25 @@ export async function fetchChatsForIntern(profileId) {
   return data ?? [];
 }
 
+// An account with no saved name comes back from list_members with its email as the name. The name the admin typed on the
+// intern roster is the better label, so it stands in for the email.
+async function rosterNamesByEmail() {
+  const { data } = await supabase.from("intern_roster").select("email, name");
+  return new Map((data ?? []).filter((r) => r.name).map((r) => [r.email.toLowerCase(), r.name]));
+}
+
+function nameFor(member, rosterNames) {
+  const name = member.display_name;
+  return !name || name.includes("@") ? rosterNames.get((member.email ?? "").toLowerCase()) ?? name : name;
+}
+
 export async function fetchInterns() {
-  const { data, error } = await supabase.rpc("list_members");
+  const [{ data, error }, rosterNames] = await Promise.all([supabase.rpc("list_members"), rosterNamesByEmail()]);
   if (error) throw new Error(error.message);
-  return (data ?? []).filter((m) => m.member_status === "intern").map((m) => ({ memberId: m.member_id, displayName: m.display_name, email: m.email }));
+  return (data ?? [])
+    .filter((m) => m.member_status === "intern")
+    .map((m) => ({ memberId: m.member_id, displayName: nameFor(m, rosterNames), email: m.email }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
 
