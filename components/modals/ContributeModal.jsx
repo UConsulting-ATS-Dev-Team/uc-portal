@@ -6,7 +6,9 @@ import { useAppState } from "../../data/store.jsx";
 import { displayName } from "../../data/profileUtils.js";
 import "../../styles/onboarding.css";
 
-const TYPES = ["Interview write-up", "Company guide", "Resource / guide", "Question", "Event", "Job posting"];
+// Opened from a job page, the only thing to share is the interview write-up for that job, so there is no type to pick.
+// Opened from Career Resources it is one of the general types.
+const TYPES = ["Company guide", "Resource / guide", "Question", "Event", "Job posting"];
 const CATEGORIES = ["Resume", "Cover letter", "Consulting cases", "Behavioral", "Networking", "Recruiting timelines", "Industry guides", "Company guides"];
 const OUTCOMES = ["Offer", "Rejected", "Withdrew", "Still in process"];
 const NOTE_LIMIT = 1500;
@@ -28,7 +30,7 @@ const NOTE_LIMIT = 1500;
 // undefined and company stays the original free-text field.
 export default function ContributeModal({ onClose, job }) {
   const { profileOverrides, accountEmail } = useAppState();
-  const [type, setType] = useState(TYPES[0]);
+  const [type, setType] = useState(job ? "Interview write-up" : TYPES[0]);
   const [company, setCompany] = useState("");
   const [round, setRound] = useState("");
   const [outcome, setOutcome] = useState(OUTCOMES[0]);
@@ -118,14 +120,18 @@ export default function ContributeModal({ onClose, job }) {
         </>
       }
     >
-      <label className="field-label">Type</label>
-      <div className="chip-row">
-        {TYPES.map((t) => (
-          <button key={t} type="button" className={`chip-toggle${type === t ? " is-selected" : ""}`} onClick={() => setType(t)}>
-            {t}
-          </button>
-        ))}
-      </div>
+      {!job && (
+        <>
+          <label className="field-label">Type</label>
+          <div className="chip-row">
+            {TYPES.map((t) => (
+              <button key={t} type="button" className={`chip-toggle${type === t ? " is-selected" : ""}`} onClick={() => setType(t)}>
+                {t}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {type === "Interview write-up" && (
         <div className="field-row">
