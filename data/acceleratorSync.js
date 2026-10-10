@@ -313,7 +313,7 @@ export async function bulkAddInternRoster(text) {
 
 // Names cleared to sign up as interns (no email yet). claimed_at is set once someone has signed up with that name.
 export async function fetchInternNames() {
-  const { data, error } = await supabase.from("intern_name_roster").select("name_key, name, claimed_at").order("name");
+  const { data, error } = await supabase.from("intern_name_roster").select("name_key, name, claimed_at, claimed_as").order("name");
   if (error) throw new Error(error.message);
   return data ?? [];
 }

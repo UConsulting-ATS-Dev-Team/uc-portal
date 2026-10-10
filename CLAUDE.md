@@ -436,7 +436,7 @@ which are chronological and not rewritten when later work supersedes them.
 - **Interns by name, one account per name (2026-10-10).** The admin can list interns by name only (a line with no "@" in the
   Add interns box, table `intern_name_roster`). The sign-up form asks for a full name; `can_sign_up_with_name()` and the
   `reject_non_roster_signup` trigger accept an unclaimed matching name (case and spacing ignored), `handle_new_user()` makes the
-  account an intern with the listed name on the profile and marks the name used (one use; deleting the account does not free it,
+  account an intern with the listed name on the profile and marks the name used (typos, nicknames and shortened first names still match: `match_intern_name()`, trigram similarity plus first/last-name edit distance; `claimed_as` keeps what they typed so an admin can check it in person) (one use; deleting the account does not free it,
   remove and re-add). Real names go in with a temp migration or the admin box, never git. Separately, `signup_name_taken()` allows
   only one account per name (profile name, else the roster/directory/intern-list name for that email) unless an admin account
   carries that name, so admins can make test accounts under their own name. The accelerator's event end time and weekly
