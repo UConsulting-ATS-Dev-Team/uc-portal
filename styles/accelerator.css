@@ -668,3 +668,29 @@
     flex-wrap: wrap;
   }
 }
+
+/* The week's instructions are the main part of an assignment, so they lead the panel at full size and strength. */
+.accel-instructions {
+  margin-bottom: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-left: 3px solid var(--color-accent);
+}
+
+.accel-instructions__kicker {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-kicker);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.accel-instructions__body {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

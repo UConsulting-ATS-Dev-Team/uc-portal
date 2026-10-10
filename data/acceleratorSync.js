@@ -67,7 +67,7 @@ export async function uploadSubmissionFile(file) {
 
 // One real row per (lesson, intern) -- upsert so resubmitting before
 // grading just replaces it, rather than growing a history no one reads.
-export async function submitAssignment(lessonId, { body, filePath, fileName }) {
+export async function submitAssignment(lessonId, { body, linkUrl, filePath, fileName }) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -75,7 +75,7 @@ export async function submitAssignment(lessonId, { body, filePath, fileName }) {
   const { data, error } = await supabase
     .from("accelerator_submissions")
     .upsert(
-      { lesson_id: lessonId, profile_id: user.id, body: body?.trim() || null, file_path: filePath ?? null, file_name: fileName ?? null, submitted_at: new Date().toISOString() },
+      { lesson_id: lessonId, profile_id: user.id, body: body?.trim() || null, link_url: linkUrl?.trim() || null, file_path: filePath ?? null, file_name: fileName ?? null, submitted_at: new Date().toISOString() },
       { onConflict: "lesson_id,profile_id" }
     )
     .select()

@@ -12,6 +12,27 @@ function formatLessonDate(dateStr) {
   return new Date(`${dateStr}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
+// Instructions are plain text an admin typed; keep their line breaks and turn web addresses into links.
+function Instructions({ text }) {
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  return (
+    <div className="accel-instructions">
+      <div className="accel-instructions__kicker">Instructions</div>
+      <div className="accel-instructions__body">
+        {parts.map((part, i) =>
+          /^https?:\/\//.test(part) ? (
+            <a key={i} href={part} target="_blank" rel="noreferrer">
+              {part}
+            </a>
+          ) : (
+            part
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
 const STATE_LABEL = {
   complete: { text: "Complete", className: "accel-tag accel-tag--good" },
   incomplete: { text: "Incomplete", className: "accel-tag accel-tag--flag" },
@@ -43,14 +64,21 @@ function LessonMaterials({ lessonId }) {
 
 function SubmissionForm({ lesson, submission, onSubmitted }) {
   const [body, setBody] = useState(submission?.body || "");
+  const [linkUrl, setLinkUrl] = useState(submission?.link_url || "");
   const [file, setFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const state = submissionState(submission);
   const locked = state === "complete";
 
+  const linkLooksValid = !linkUrl.trim() || /^https?:\/\/\S+$/i.test(linkUrl.trim());
+
   async function handleSubmit() {
     if (submitting) return;
+    if (!linkLooksValid) {
+      setError("The link has to start with https://");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -61,7 +89,7 @@ function SubmissionForm({ lesson, submission, onSubmitted }) {
         filePath = uploaded.path;
         fileName = uploaded.fileName;
       }
-      await submitAssignment(lesson.id, { body, filePath, fileName });
+      await submitAssignment(lesson.id, { body, linkUrl, filePath, fileName });
       setFile(null);
       await onSubmitted();
     } catch (err) {
@@ -90,26 +118,32 @@ function SubmissionForm({ lesson, submission, onSubmitted }) {
       )}
 
       <div className="field">
-        <label>Your response</label>
-        <textarea
-          rows={4}
-          value={body}
+        <label htmlFor={`link-${lesson.id}`}>Link to your work</label>
+        <input
+          id={`link-${lesson.id}`}
+          type="url"
+          value={linkUrl}
           disabled={locked}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Write your response to this week's activity…"
+          onChange={(e) => setLinkUrl(e.target.value)}
+          placeholder="Paste the Google Doc, Sheet or Slides link"
         />
+        {!locked && <p className="meta">Set sharing so anyone with the link can view (or comment), or the committee won't be able to open it.</p>}
       </div>
       {!locked && (
         <div className="field">
-          <label>Attach a file (optional)</label>
+          <label>Or upload a file (Word, Excel, PowerPoint, PDF)</label>
           <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           {submission?.file_name && !file && <p className="meta">Currently attached: {submission.file_name}</p>}
         </div>
       )}
+      <div className="field">
+        <label htmlFor={`notes-${lesson.id}`}>Notes for the committee (optional)</label>
+        <textarea id={`notes-${lesson.id}`} rows={2} value={body} disabled={locked} onChange={(e) => setBody(e.target.value)} />
+      </div>
       {locked && submission?.file_name && <p className="meta">Attached: {submission.file_name}</p>}
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
       {!locked && (
-        <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting || (!body.trim() && !file && !submission?.file_path)}>
+        <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting || (!linkUrl.trim() && !body.trim() && !file && !submission?.file_path)}>
           {submitting ? "Submitting…" : state === "incomplete" ? "Resubmit" : submission ? "Update submission" : "Submit"}
         </button>
       )}
@@ -187,7 +221,6 @@ export default function AcceleratorAssignments() {
                 <div className="step-row__body">
                   <div className="step-row__title">{lesson.title}</div>
                   <div className="step-row__detail meta">Due {formatLessonDate(lesson.lesson_date)}</div>
-                  {lesson.topic_overview && <div className="step-row__detail">{lesson.topic_overview}</div>}
                 </div>
                 {label && <span className={label.className}>{label.text}</span>}
                 <div className="step-row__state">
@@ -201,6 +234,7 @@ export default function AcceleratorAssignments() {
               </div>
               {isExpanded && prevSubmitted && (
                 <div className="accel-step-panel">
+                  {lesson.topic_overview && <Instructions text={lesson.topic_overview} />}
                   <p style={{ fontWeight: 700, marginBottom: "var(--space-2)" }}>Prep material</p>
                   <LessonMaterials lessonId={lesson.id} />
                   <SubmissionForm lesson={lesson} submission={submission} onSubmitted={reload} />

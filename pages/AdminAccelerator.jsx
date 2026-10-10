@@ -492,8 +492,8 @@ function LessonManager({ lesson, onChanged }) {
             <tr>
               <th>Intern</th>
               <th>Submitted</th>
-              <th>Response</th>
-              <th>File</th>
+              <th>Notes</th>
+              <th>Work</th>
               <th>Status</th>
               <th>Comments</th>
               <th></th>
@@ -606,8 +606,8 @@ function LessonModal({ editing, onClose, onSaved }) {
         </div>
       </div>
       <div className="field">
-        <label htmlFor="lesson-topic">Topic overview</label>
-        <input id="lesson-topic" type="text" value={form.topicOverview} onChange={(e) => setForm({ ...form, topicOverview: e.target.value })} />
+        <label htmlFor="lesson-topic">Instructions</label>
+        <textarea id="lesson-topic" rows={6} value={form.topicOverview} onChange={(e) => setForm({ ...form, topicOverview: e.target.value })} placeholder="What the intern should do this week. Shown to them in full; web links become clickable." />
       </div>
 
       {!editing && (
