@@ -19,6 +19,7 @@ import Home from "./pages/Home.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import Messages from "./pages/Messages.jsx";
 import Accelerator from "./pages/Accelerator.jsx";
+import RequireInternOrAdmin from "./components/RequireInternOrAdmin.jsx";
 import NotFound from "./pages/NotFound.jsx";
 import { TourProvider } from "./components/tour/TourContext.jsx";
 import TourOverlay from "./components/tour/TourOverlay.jsx";
@@ -354,41 +355,43 @@ function AppRoutes() {
 
       </Route>
 
-      {/* Intern-accessible: /accelerator, /profile, /onboarding stay
+      {/* Intern-accessible: /accelerator (interns and admins only), /profile, /onboarding stay
           outside the RequireNotIntern block above -- an intern's own
           allowed set. */}
-      <Route
-        path="/accelerator"
-        element={
-          <NavShell>
-            <Accelerator />
-          </NavShell>
-        }
-      />
-      <Route
-        path="/accelerator/coffee-chats"
-        element={
-          <NavShell>
-            <LazyPage Component={AcceleratorCoffeeChats} />
-          </NavShell>
-        }
-      />
-      <Route
-        path="/accelerator/attendance"
-        element={
-          <NavShell>
-            <LazyPage Component={AcceleratorAttendance} />
-          </NavShell>
-        }
-      />
-      <Route
-        path="/accelerator/assignments"
-        element={
-          <NavShell>
-            <LazyPage Component={AcceleratorAssignments} />
-          </NavShell>
-        }
-      />
+      <Route element={<RequireInternOrAdmin />}>
+        <Route
+          path="/accelerator"
+          element={
+            <NavShell>
+              <Accelerator />
+            </NavShell>
+          }
+        />
+        <Route
+          path="/accelerator/coffee-chats"
+          element={
+            <NavShell>
+              <LazyPage Component={AcceleratorCoffeeChats} />
+            </NavShell>
+          }
+        />
+        <Route
+          path="/accelerator/attendance"
+          element={
+            <NavShell>
+              <LazyPage Component={AcceleratorAttendance} />
+            </NavShell>
+          }
+        />
+        <Route
+          path="/accelerator/assignments"
+          element={
+            <NavShell>
+              <LazyPage Component={AcceleratorAssignments} />
+            </NavShell>
+          }
+        />
+      </Route>
       <Route
         path="/profile"
         element={

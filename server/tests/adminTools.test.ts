@@ -26,7 +26,7 @@ describe("main nav groups", () => {
     expect(labels({ isIntern: false, isAlumni: false, isAdmin: false })).toEqual([
       ["Recruiting", ["Jobs", "Applications"]],
       ["Community", ["Network", "Feed", "Companies"]],
-      ["Learning", ["Career Resources", "Accelerator"]],
+      ["Learning", ["Career Resources"]],
       ["Account", ["My Profile"]],
     ]);
   });

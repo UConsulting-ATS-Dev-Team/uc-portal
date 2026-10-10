@@ -57,7 +57,7 @@ exported, so treat every "UC Career" in design/handoff/ as this product.
   the phone More sheet), with **Home** standing on its own above them (it is the landing
   page, not part of a group): **Recruiting** (Jobs · Applications with its count
   badge) · **Community** (Network · Feed · Companies) · **Learning** (Career
-  Resources · Accelerator) · **Account** (My Profile). Groups with nothing for
+  Resources) · **Account** (My Profile). Groups with nothing for
   that account are dropped (alumni and interns see fewer). Admins also get the
   grouped **Leadership** menu below a hairline: People (User Management, Audit
   Log) · Content (Content, Library, Accelerator) · Communications (Master
