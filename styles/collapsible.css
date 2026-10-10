@@ -7,8 +7,16 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  width: 100%;
-  padding: var(--space-6) var(--space-7);
+  padding-right: var(--space-6);
+}
+
+.collapsible__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--space-6) 0 var(--space-6) var(--space-7);
   background: none;
   border: 0;
   text-align: left;
@@ -16,8 +24,12 @@
   color: var(--color-text);
 }
 
-.collapsible__head:hover {
-  background: var(--color-accent-tint);
+.collapsible__toggle:hover .collapsible__title {
+  color: var(--color-accent-deep);
+}
+
+.collapsible__action {
+  flex: 0 0 auto;
 }
 
 .collapsible__chevron {
@@ -52,16 +64,14 @@
   border-top: var(--border-hairline);
 }
 
-.collapsible__actions {
-  display: flex;
-  justify-content: flex-end;
-  margin: var(--space-5) 0;
-}
-
 @media (max-width: 640px) {
   .collapsible__head {
+    padding-right: var(--space-5);
+  }
+
+  .collapsible__toggle {
     flex-wrap: wrap;
-    padding: var(--space-5);
+    padding: var(--space-5) 0 var(--space-5) var(--space-5);
   }
 
   .collapsible__summary {
@@ -72,24 +82,5 @@
 
   .collapsible__body {
     padding: var(--space-2) var(--space-5) var(--space-5);
-  }
-}
-
-/* A line of explanation with the section's main action on the same row, instead of the button taking a row of its own. */
-.collapsible__intro {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-5);
-  margin: var(--space-5) 0;
-}
-
-.collapsible__intro .meta {
-  margin: 0;
-}
-
-@media (max-width: 640px) {
-  .collapsible__intro {
-    flex-wrap: wrap;
   }
 }

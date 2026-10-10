@@ -165,16 +165,18 @@ function InternRoster() {
   }
 
   return (
+    <>
     <CollapsibleSection
       title="Who can sign up as an intern"
       summary={`${entries.length + names.length} listed${names.some((n) => !n.claimed_at) ? `, ${names.filter((n) => !n.claimed_at).length} by name only and not signed up yet` : ""}`}
-    >
-      <div className="collapsible__intro">
-        <p className="meta">Add an email, or just a name if you don't have one yet. Each entry works for one sign-up.</p>
+    
+      action={
         <button className="btn btn-primary" onClick={() => setOpen(true)}>
           Add interns
         </button>
-      </div>
+      }
+    >
+      <p className="meta">Add an email, or just a name if you don't have one yet. Each entry works for one sign-up.</p>
       {error && !open && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
       <ul>
         {entries.map((e) => (
@@ -197,6 +199,7 @@ function InternRoster() {
         {entries.length === 0 && names.length === 0 && <li className="meta">No one on this list yet.</li>}
       </ul>
 
+    </CollapsibleSection>
       {open && (
         <Modal
           title="Add interns"
@@ -236,7 +239,7 @@ function InternRoster() {
           </div>
         </Modal>
       )}
-    </CollapsibleSection>
+    </>
   );
 }
 
@@ -721,13 +724,16 @@ export default function AdminAccelerator() {
 
       <AdminAcceleratorChats />
 
-      <CollapsibleSection title="Lessons" summary={loading ? "Loading…" : `${lessons.length} week${lessons.length === 1 ? "" : "s"}`}>
-        <div className="collapsible__intro">
-          <p className="meta">Each lesson is due at that week's accelerator.</p>
+      <CollapsibleSection
+        title="Lessons"
+        summary={loading ? "Loading…" : `${lessons.length} week${lessons.length === 1 ? "" : "s"}`}
+        action={
           <button className="btn btn-primary" onClick={() => setLessonModal({ editing: null })}>
             Add lesson
           </button>
-        </div>
+        }
+      >
+        <p className="meta">Each lesson is due at that week's accelerator.</p>
         {loading && <p className="meta">Loading…</p>}
         {!loading && lessons.length === 0 && <p className="meta">No lessons yet. Add the first one.</p>}
         {lessons.map((lesson, i) => (
