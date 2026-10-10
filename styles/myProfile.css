@@ -108,3 +108,13 @@
     flex-wrap: wrap;
   }
 }
+
+.account-emails {
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.account-emails li {
+  padding: var(--space-1) 0;
+}

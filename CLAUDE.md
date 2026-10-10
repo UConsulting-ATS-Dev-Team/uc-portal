@@ -441,6 +441,14 @@ which are chronological and not rewritten when later work supersedes them.
   only one account per name (profile name, else the roster/directory/intern-list name for that email) unless an admin account
   carries that name, so admins can make test accounts under their own name. The accelerator's event end time and weekly
   meeting day/time (`accelerator_settings`, which resets the 3-a-week coffee chat count) were added the same day.
+- **More than one email per account, one account per person (2026-10-20).** An account's main email is `auth.users.email`;
+  `account_emails` holds extras (added on My Profile via `add_account_email`, max 5, refused if another account uses it or it
+  is on the roster/directory/intern list), and sign-in and password reset map an extra email to the main one through
+  `resolve_login_email()` before calling Supabase Auth. Sign-up with an email that is already an extra is refused. Only accounts
+  listed in `multi_account_owners` (no policies, filled in by hand: the site builder's two) may share a name with another
+  account, so everyone else gets one account and adds emails instead; `signup_name_taken()` no longer exempts admins. Admin
+  accounts for people who haven't signed up are pre-created from a temp migration with an unusable password (they claim it with
+  "Forgot your password?"), never committed.
 - **Phone number** is entered by the member on My Profile (`profiles.phone`, optional) and readable only by that member and
   admins; it exists so an exec can text them (iMessage tab).
 - **Alumni first run and offers (2026-10-09).** Alumni get a 3-step flow (welcome, confirm info, "how you can help"). What an

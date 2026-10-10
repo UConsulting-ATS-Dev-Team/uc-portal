@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Skeleton from "../components/Skeleton.jsx";
 import { useAppState } from "../data/store.jsx";
+import { resolveLoginEmail } from "../data/accountEmailsSync.js";
 import { supabase } from "../data/supabaseClient.js";
 import ThemeToggle from "../components/theme/ThemeToggle.jsx";
 import { useTheme } from "../components/theme/ThemeContext.jsx";
@@ -101,6 +102,12 @@ export default function SignIn() {
       // covers both current members (roster) and real alumni (a
       // people.status = 'Alumni' match) -- see the alumni-accounts
       // migration's own header comment for why this isn't just roster.
+      // An address that is already an extra email on someone's account can't start a second one.
+      if (await resolveLoginEmail(email)) {
+        setAuthError("That email is already attached to an account. Sign in instead, or reset your password if you've forgotten it.");
+        setState(STATE.SIGN_IN);
+        return;
+      }
       // Also passes the full name: an intern the admin could only list by name is cleared by it.
       const { data: onRoster, error: rosterCheckError } = await supabase.rpc("can_sign_up_with_name", { check_email: email, check_name: fullName.trim() });
       if (rosterCheckError) {
@@ -123,7 +130,7 @@ export default function SignIn() {
 
     const { data, error } =
       mode === "sign-in"
-        ? await supabase.auth.signInWithPassword({ email, password })
+        ? await supabase.auth.signInWithPassword({ email: (await resolveLoginEmail(email)) || email, password })
         : await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName.trim() } } });
 
     if (error) {
@@ -197,7 +204,7 @@ export default function SignIn() {
     event.preventDefault();
     setForgotError(null);
     setForgotSubmitting(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await supabase.auth.resetPasswordForEmail((await resolveLoginEmail(email)) || email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     setForgotSubmitting(false);

@@ -20,6 +20,7 @@ import { fetchOwnProjects, addProjectEntry, updateProjectEntry, removeProjectEnt
 import Avatar from "../components/Avatar.jsx";
 import { AlumniHelpSection } from "../components/AlumniOffersEditor.jsx";
 import DeleteAccountModal from "../components/modals/DeleteAccountModal.jsx";
+import AccountEmails from "../components/AccountEmails.jsx";
 import "../styles/jobDetail.css";
 import "../styles/onboarding.css";
 import "../styles/tracker.css";
@@ -81,6 +82,7 @@ export default function MyProfile() {
     profileLastUpdated,
     touchProfileUpdated,
     isAlumni,
+    accountEmail,
   } = useAppState();
   const navigate = useNavigate();
   const [tab, setTab] = useState("Personal");
@@ -609,6 +611,7 @@ export default function MyProfile() {
                     Only used when a UC exec texts you from their own phone. Admins can see it; other members can't.
                   </p>
                 </div>
+                <AccountEmails mainEmail={accountEmail} />
                 <div className="field">
                   <label>Resume</label>
                   <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", flexWrap: "wrap" }}>
