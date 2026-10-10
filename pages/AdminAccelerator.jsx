@@ -13,7 +13,6 @@ import {
   fetchSubmissionsForLesson,
   getSubmissionFileSignedUrl,
   gradeSubmission,
-  fetchScoresForSubmissions,
   fetchInternRoster,
   addInternRosterEntry,
   removeInternRosterEntry,
@@ -242,11 +241,9 @@ function InternRoster() {
   );
 }
 
-// Complete or incomplete plus comments are what the intern sees. The numeric grade is the committee's own and
-// stays admin-only (its own table), so an intern can't read it.
-function GradeRow({ submission, score: savedScore, displayName, namesById, onGraded }) {
+// Marked complete (looks decent, real effort) or incomplete (unfinished or poor), with comments the intern sees. No number.
+function GradeRow({ submission, displayName, namesById, onGraded }) {
   const [status, setStatus] = useState(submission.status ?? "");
-  const [score, setScore] = useState(savedScore ?? "");
   const [feedback, setFeedback] = useState(submission.feedback ?? "");
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -266,7 +263,7 @@ function GradeRow({ submission, score: savedScore, displayName, namesById, onGra
     setSaving(true);
     setError(null);
     try {
-      await gradeSubmission(submission.id, { status, score: score === "" ? null : Number(score), feedback });
+      await gradeSubmission(submission.id, { status, feedback });
       onGraded();
     } catch (err) {
       setError(err.message);
@@ -300,9 +297,6 @@ function GradeRow({ submission, score: savedScore, displayName, namesById, onGra
           </select>
         </td>
         <td>
-          <input type="number" aria-label="Grade (committee only)" style={{ width: 64 }} value={score} onChange={(e) => setScore(e.target.value)} placeholder="—" />
-        </td>
-        <td>
           <input type="text" value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Comments for the intern" />
           {error && <div className="meta" style={{ color: "var(--color-danger)" }}>{error}</div>}
         </td>
@@ -313,7 +307,7 @@ function GradeRow({ submission, score: savedScore, displayName, namesById, onGra
         </td>
       </tr>
       <tr>
-        <td colSpan={8} style={{ background: "var(--color-ground)" }}>
+        <td colSpan={7} style={{ background: "var(--color-ground)" }}>
           <SubmissionCommentThread submissionId={submission.id} resolveAuthorName={(id) => namesById.get(id) ?? id} />
         </td>
       </tr>
@@ -398,7 +392,6 @@ function LessonManager({ lesson, onChanged }) {
   const [linkUrl, setLinkUrl] = useState("");
   const [addingLink, setAddingLink] = useState(false);
   const [submissions, setSubmissions] = useState([]);
-  const [scores, setScores] = useState(new Map());
   const [namesById, setNamesById] = useState(new Map());
   const [error, setError] = useState(null);
 
@@ -407,10 +400,7 @@ function LessonManager({ lesson, onChanged }) {
   }
   function loadSubmissions() {
     fetchSubmissionsForLesson(lesson.id)
-      .then(async (rows) => {
-        setScores(await fetchScoresForSubmissions(rows.map((r) => r.id)));
-        setSubmissions(rows);
-      })
+      .then(setSubmissions)
       .catch((e) => setError(e.message));
   }
 
@@ -505,18 +495,17 @@ function LessonManager({ lesson, onChanged }) {
               <th>Response</th>
               <th>File</th>
               <th>Status</th>
-              <th>Grade (committee only)</th>
               <th>Comments</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {submissions.map((s) => (
-              <GradeRow key={`${s.id}-${s.graded_at ?? ""}-${s.submitted_at}`} submission={s} score={scores.get(s.id)} displayName={namesById.get(s.profile_id) ?? s.profile_id} namesById={namesById} onGraded={loadSubmissions} />
+              <GradeRow key={`${s.id}-${s.graded_at ?? ""}-${s.submitted_at}`} submission={s} displayName={namesById.get(s.profile_id) ?? s.profile_id} namesById={namesById} onGraded={loadSubmissions} />
             ))}
             {submissions.length === 0 && (
               <tr>
-                <td colSpan={8} className="meta">
+                <td colSpan={7} className="meta">
                   No one has submitted yet.
                 </td>
               </tr>

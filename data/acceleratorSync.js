@@ -243,9 +243,9 @@ export async function fetchSubmissionsForLesson(lessonId) {
   return data ?? [];
 }
 
-// The committee marks a submission complete or incomplete and leaves comments (the intern sees both). The numeric
-// grade is the committee's own and lives in a separate admin-only table, so an intern can't read it.
-export async function gradeSubmission(id, { status, score, feedback }) {
+// The committee marks a submission complete or incomplete and leaves comments (the intern sees both). There is no
+// numeric grade (the old admin-only accelerator_submission_scores table is no longer written).
+export async function gradeSubmission(id, { status, feedback }) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -254,23 +254,6 @@ export async function gradeSubmission(id, { status, score, feedback }) {
     .update({ status, feedback: feedback?.trim() || null, graded_by: user.id, graded_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw new Error(error.message);
-
-  if (score === null || score === undefined) {
-    const { error: deleteError } = await supabase.from("accelerator_submission_scores").delete().eq("submission_id", id);
-    if (deleteError) throw new Error(deleteError.message);
-  } else {
-    const { error: scoreError } = await supabase
-      .from("accelerator_submission_scores")
-      .upsert({ submission_id: id, score, updated_by: user.id, updated_at: new Date().toISOString() }, { onConflict: "submission_id" });
-    if (scoreError) throw new Error(scoreError.message);
-  }
-}
-
-export async function fetchScoresForSubmissions(submissionIds) {
-  if (submissionIds.length === 0) return new Map();
-  const { data, error } = await supabase.from("accelerator_submission_scores").select("submission_id, score").in("submission_id", submissionIds);
-  if (error) throw new Error(error.message);
-  return new Map((data ?? []).map((r) => [r.submission_id, r.score]));
 }
 
 export async function fetchInternRoster() {
