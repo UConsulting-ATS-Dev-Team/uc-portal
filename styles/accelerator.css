@@ -814,3 +814,31 @@
   color: var(--color-danger);
   font-weight: 700;
 }
+
+/* Handing in work: the link and the file upload are two ways of doing the same thing, so they share a row. */
+.accel-step-panel {
+  max-width: 860px;
+}
+
+.accel-submit {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  column-gap: var(--space-5);
+  align-items: start;
+  max-width: 760px;
+}
+
+.accel-submit__hint {
+  grid-column: 1 / -1;
+  margin: calc(-1 * var(--space-3)) 0 var(--space-4);
+}
+
+.accel-submit__notes {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+  .accel-submit {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -114,28 +114,34 @@ function SubmissionForm({ lesson, submission, onSubmitted }) {
         <p className="meta">Submitted {new Date(submission.submitted_at).toLocaleDateString()}, waiting for review. You can still update it below.</p>
       )}
 
-      <div className="field">
-        <label htmlFor={`link-${lesson.id}`}>Link to your work</label>
-        <input
-          id={`link-${lesson.id}`}
-          type="url"
-          value={linkUrl}
-          disabled={locked}
-          onChange={(e) => setLinkUrl(e.target.value)}
-          placeholder="Paste the Google Doc, Sheet or Slides link"
-        />
-        {!locked && <p className="meta">Set sharing so anyone with the link can view (or comment), or the committee won't be able to open it.</p>}
-      </div>
-      {!locked && (
+      <div className="accel-submit">
         <div className="field">
-          <label>Or upload a file (Word, Excel, PowerPoint, PDF)</label>
-          <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-          {submission?.file_name && !file && <p className="meta">Currently attached: {submission.file_name}</p>}
+          <label htmlFor={`link-${lesson.id}`}>Link to your work</label>
+          <input
+            id={`link-${lesson.id}`}
+            type="url"
+            value={linkUrl}
+            disabled={locked}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            placeholder="Google Doc, Sheet or Slides link"
+          />
         </div>
-      )}
-      <div className="field">
-        <label htmlFor={`notes-${lesson.id}`}>Notes for the committee (optional)</label>
-        <textarea id={`notes-${lesson.id}`} rows={2} value={body} disabled={locked} onChange={(e) => setBody(e.target.value)} />
+        {!locked && (
+          <div className="field">
+            <label htmlFor={`file-${lesson.id}`}>Or upload a file</label>
+            <input id={`file-${lesson.id}`} type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          </div>
+        )}
+        {!locked && (
+          <p className="meta accel-submit__hint">
+            Set a linked doc to "anyone with the link can view" so the committee can open it. Files can be Word, Excel, PowerPoint or PDF.
+            {submission?.file_name && !file && ` Currently attached: ${submission.file_name}.`}
+          </p>
+        )}
+        <div className="field accel-submit__notes">
+          <label htmlFor={`notes-${lesson.id}`}>Notes for the committee (optional)</label>
+          <textarea id={`notes-${lesson.id}`} rows={2} value={body} disabled={locked} onChange={(e) => setBody(e.target.value)} />
+        </div>
       </div>
       {locked && submission?.file_name && <p className="meta">Attached: {submission.file_name}</p>}
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
