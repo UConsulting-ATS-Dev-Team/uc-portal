@@ -202,15 +202,18 @@ export default function Accelerator() {
       : `${attendanceStats.socialsAttended} social${attendanceStats.socialsAttended === 1 ? "" : "s"} attended`;
 
   const assignmentNote =
-    assignments.incomplete > 0
-      ? `${assignments.incomplete} incomplete, fix and resubmit`
-      : assignments.awaitingReview > 0
-        ? `${assignments.awaitingReview} awaiting review`
-        : assignments.total === 0
-          ? "No assignments yet"
-          : assignments.complete === assignments.total
-            ? "Every assignment is complete"
-            : `${assignments.notStarted} not started`;
+    assignments.total === 0
+      ? "No assignments yet"
+      : assignments.complete === assignments.total
+        ? "Every assignment is complete"
+        : [
+            assignments.incomplete > 0 && `${assignments.incomplete} to fix and resubmit`,
+            assignments.notStarted > 0 && `${assignments.notStarted} not started`,
+            assignments.awaitingReview > 0 && `${assignments.awaitingReview} waiting for comments`,
+            assignments.incomplete === 0 && assignments.notStarted === 0 && assignments.awaitingReview === 0 && `${assignments.complete} complete`,
+          ]
+            .filter(Boolean)
+            .join(", ");
 
   const pct = (n, d) => (d > 0 ? (n / d) * 100 : 0);
 
@@ -245,9 +248,9 @@ export default function Accelerator() {
           <RequirementCard
             to="/accelerator/assignments"
             kicker="Assignments"
-            figure={assignments.complete}
-            of={`/ ${assignments.total} complete`}
-            percent={pct(assignments.complete, assignments.total)}
+            figure={assignments.submitted}
+            of={`/ ${assignments.total} submitted`}
+            percent={pct(assignments.submitted, assignments.total)}
             note={assignmentNote}
             flag={assignments.incomplete > 0}
           />

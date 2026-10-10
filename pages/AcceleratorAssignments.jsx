@@ -36,7 +36,7 @@ function Instructions({ text }) {
 const STATE_LABEL = {
   complete: { text: "Complete", className: "accel-tag accel-tag--good" },
   incomplete: { text: "Incomplete", className: "accel-tag accel-tag--flag" },
-  awaiting_review: { text: "Awaiting review", className: "accel-tag" },
+  awaiting_review: { text: "Submitted, awaiting review", className: "accel-tag" },
 };
 
 // Weekly assignments. A lesson stays locked until the previous one has a real submission (the submission itself,
@@ -177,7 +177,7 @@ export default function AcceleratorAssignments() {
         <h1 className="accel-title">Assignments</h1>
         <p>A weekly curriculum to get you up to speed on how UC operates and how real consulting and recruiting work.</p>
         <div className="progress-bar-track" style={{ maxWidth: "300px" }}>
-          <div className="progress-bar-fill" style={{ width: lessons.length ? `${(progress.complete / lessons.length) * 100}%` : "0%" }} />
+          <div className="progress-bar-fill" style={{ width: lessons.length ? `${(progress.submitted / lessons.length) * 100}%` : "0%" }} />
         </div>
         <p className="meta">
           {progress.complete} / {lessons.length} complete

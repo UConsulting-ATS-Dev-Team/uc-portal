@@ -343,6 +343,9 @@ export function assignmentProgress(lessons, submissions) {
   const count = (state) => states.filter((s) => s === state).length;
   return {
     total: lessons.length,
+    // Handed in and not waiting on the intern: complete, or submitted and waiting for the committee. Incomplete work is
+    // sent back, so it is not counted until it is fixed and resubmitted.
+    submitted: count("complete") + count("awaiting_review"),
     complete: count("complete"),
     incomplete: count("incomplete"),
     awaitingReview: count("awaiting_review"),
