@@ -48,8 +48,31 @@ const PAGE_LABEL = {
   "/accelerator/coffee-chats": "Accelerator: coffee chats",
   "/accelerator/attendance": "Accelerator: attendance",
   "/accelerator/assignments": "Accelerator: assignments",
+  "/search": "Search",
+  "/companies/:id": "A company page",
+  "/companies/real/:name": "A company page",
+  "/resources/:id": "A resource",
+  "/resources/tracks/:id": "A learning track",
+  "/admin/members": "User Management",
+  "/admin/communications": "Master Communications",
+  "/admin/automatic-emails": "Automatic Emails",
+  "/admin/analytics": "Site Analytics",
+  "/admin/content": "Content",
+  "/admin/library": "Library",
+  "/admin/accelerator": "Accelerator (admin)",
+  "/admin/opportunities": "Job Sources",
+  "/admin/system": "Pipeline and Queues",
+  "/onboarding": "Onboarding",
 };
-const pageLabel = (path) => PAGE_LABEL[path] ?? path;
+// Rows recorded before the tracker grouped detail pages hold the raw path, so these prefixes cover those too.
+const PREFIX_LABEL = [
+  ["/companies/", "A company page"],
+  ["/resources/tracks/", "A learning track"],
+  ["/resources/", "A resource"],
+  ["/network/", "A person's profile"],
+  ["/jobs/", "A job"],
+];
+const pageLabel = (path) => PAGE_LABEL[path] ?? PREFIX_LABEL.find(([prefix]) => path.startsWith(prefix))?.[1] ?? path;
 
 function StatCard({ label, value, note }) {
   return (

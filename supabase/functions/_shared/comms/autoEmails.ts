@@ -50,6 +50,17 @@ export const AUTO_EMAILS: AutoEmailDef[] = [
     subject: "Your coffee chats are due {{meetingTime}}",
     body: "Hi {{firstName}},\n\nYou've logged {{chatsLogged}} of 3 coffee chats for this week. They're due at the accelerator meeting on {{meetingTime}}: two with club members and one with another intern or a third club member. Log them in the portal under Accelerator, then Coffee chats.",
   },
+  {
+    key: "coffee_chat_followup",
+    label: "Coffee chat request follow-up",
+    when: "Daily, five days after a coffee chat request that still shows as sent",
+    who: "Current members with a coffee chat request still waiting. Each request is mentioned once.",
+    description: "A nudge to follow up on a coffee chat request that has had no update.",
+    fields: ["personNames"],
+    sample: { personNames: "Alex Rivera and Sam Lee" },
+    subject: "Following up on your coffee chat request",
+    body: "Hi {{firstName}},\n\nYour coffee chat request to {{personNames}} still shows as sent. If you haven't heard back, a short follow-up message is the next step. You can message them from Network in the portal.",
+  },
 ];
 
 export const autoEmailDef = (key: string) => AUTO_EMAILS.find((a) => a.key === key);

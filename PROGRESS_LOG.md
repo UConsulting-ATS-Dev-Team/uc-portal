@@ -5259,3 +5259,21 @@ longer breaks down to phone width either.
   dropped, so interns and alumni see fewer). Both menus share one `GroupedLinks` component in `NavRail.jsx`; folding is CSS-only and
   applies only above 1100px, so the icon-only rail never hides a link. Tour steps that point at a link inside a folded group fall back
   to a centered card. Checked live as the throwaway admin at desktop width and 1000px; tests and build pass.
+
+- **2026-10-09: sixteen follow-ups from the "what's next" list** --
+  Cleanup: the test accounts and rows left in the live database by the 2026-10-06 verification are gone (checked before deleting that every
+  remaining comm row was a test row; real analytics events untouched). Polish: analytics page labels and path grouping, the composer no longer
+  keeps a loaded draft after you leave it, the unused insights view was removed from the dashboard component, the phone More sheet and the
+  desktop rail now share one collapsible-groups hook, and guided tours open a folded group before pointing into it. Comms: "Send as" sender
+  presets (name and reply-to, copied onto each message), and mailing-list selection with bulk tags, bulk remove, CSV export and last emailed.
+  Member side: phone number on My Profile, saved searches kept on the account, a follow-up automatic email for stale coffee chat requests (off by
+  default), and a three-step alumni first run with "how you can help" and availability that members see on the alumnus's profile. Admin side: an
+  audit log written by database triggers, class rollover, and a Reports page (engagement, accelerator progress, aggregate application stages).
+  Docs: CLAUDE.md's Navigation shell section described the old rail and top bar; it is rewritten. Verified live as throwaway accounts (member,
+  alumnus, admin) and in the database: members can't read the audit log, senders or other people's offers or call the admin functions, can only
+  save searches for themselves; the alumni offer lookup returns only alumni; every audit trigger fires. That run caught a real bug before it
+  shipped: the profile-edit audit trigger used `text[] || 'name'`, which Postgres reads as an array literal and fails, so an admin editing
+  someone's name, class year or phone would have been rejected (fixed in 20261015900000). It also found that the top bar's Log out button never
+  hid on a phone because `.btn` out-ranked the media rule; an admin's phone-width page scrolled sideways. Fixed; the admin pages and the phone More
+  sheet were then checked at 375px with no overflow. Not exercised: a real email send, the unsubscribe page, the alumni offer rendering on a
+  profile page in the browser (the lookup is verified in SQL), and a real tour run into a folded group (the expand event is verified). 289 tests pass.

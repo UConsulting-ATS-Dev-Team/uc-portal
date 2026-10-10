@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Ban, Copy, Pencil, Plus, RotateCcw } from "lucide-react";
+import { Ban, Copy, GraduationCap, Pencil, Plus, RotateCcw } from "lucide-react";
 import { supabase } from "../data/supabaseClient.js";
 import { fetchAccounts, updateAccount, createAccount, deactivateAccount, reactivateAccount } from "../data/adminUsersSync.js";
 import { initialsFromName } from "../data/profileUtils.js";
 import AccountSetupPanel from "../components/admin/AccountSetupPanel.jsx";
+import ClassRolloverModal from "../components/admin/ClassRolloverModal.jsx";
 import Modal from "../components/Modal.jsx";
 import AdminDashboard from "./AdminDashboard.jsx";
 import "../styles/jobDetail.css";
@@ -261,6 +262,7 @@ export default function AdminMembers() {
   const [adding, setAdding] = useState(false);
   const [deactivating, setDeactivating] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [rollover, setRollover] = useState(false);
 
   async function load() {
     try {
@@ -352,6 +354,9 @@ export default function AdminMembers() {
           <button className="btn btn-secondary" onClick={copySignupLink}>
             <Copy size={14} strokeWidth={1.5} aria-hidden="true" /> {copied ? "Copied" : "Copy sign-up link"}
           </button>
+          <button className="btn btn-secondary" onClick={() => setRollover(true)}>
+            <GraduationCap size={14} strokeWidth={1.5} aria-hidden="true" /> Class rollover
+          </button>
           <button className="btn btn-primary" onClick={() => setAdding(true)}>
             <Plus size={14} strokeWidth={1.5} aria-hidden="true" /> Add new user
           </button>
@@ -422,6 +427,7 @@ export default function AdminMembers() {
 
       {editing && <EditModal account={editing} onClose={() => setEditing(null)} onSaved={load} />}
       {adding && <AddModal onClose={() => setAdding(false)} onSaved={load} />}
+      {rollover && <ClassRolloverModal accounts={accounts} onClose={() => setRollover(false)} onDone={load} />}
       {deactivating && (
         <Modal
           title="Deactivate account"

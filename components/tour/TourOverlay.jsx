@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useTour } from "./TourContext.jsx";
+import { EXPAND_EVENT } from "../useCollapsedGroups.js";
 import "../../styles/tour.css";
 
 function measure(selector) {
@@ -82,6 +83,9 @@ export default function TourOverlay() {
       setReady(true);
       return;
     }
+    // A nav link inside a folded group has no size to point at, so ask the menu to open that group first.
+    const navTarget = /^\[data-tour-nav=['"]([^'"]+)['"]\]$/.exec(step.target);
+    if (navTarget) window.dispatchEvent(new CustomEvent(EXPAND_EVENT, { detail: { to: navTarget[1] } }));
     let cancelled = false;
     let attempts = 0;
     function tick() {

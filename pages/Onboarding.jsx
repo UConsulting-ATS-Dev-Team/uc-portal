@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAppState } from "../data/store.jsx";
+import AlumniOffersEditor from "../components/AlumniOffersEditor.jsx";
+import { fetchOwnAlumniOffer, saveOwnAlumniOffer } from "../data/alumniOffers.js";
 import { currentUser } from "../data/mockUser.js";
 import { displayName, resolvedClassYear, resolvedGradMonth } from "../data/profileUtils.js";
 import { useRealJobs } from "../data/useRealJobs.js";
@@ -50,6 +52,24 @@ function Brand() {
         <span className="auth__wordmark-u">U</span>C Portal
       </span>
     </div>
+  );
+}
+
+// First screen of the alumni flow: what an alumni account can do here (the nav an alumnus sees is Network, Feed, Companies and
+// My Profile), so the next two steps make sense.
+function AlumniWelcome() {
+  return (
+    <>
+      <div className="onboarding__kicker">Step 1 of 3</div>
+      <h1 className="onboarding__title">Welcome back</h1>
+      <p className="onboarding__subtitle">Here's what you can do in the UC Portal as an alum.</p>
+      <ul className="auth__meta-list">
+        <li>Feed: read and post jobs, write-ups, questions and events for UC members.</li>
+        <li>Network: see where UC members and alumni work, and message them.</li>
+        <li>Companies: see which companies UC people have worked at.</li>
+        <li>Coffee chats: members can ask you for one. You choose what you're happy to help with, next.</li>
+      </ul>
+    </>
   );
 }
 
@@ -391,6 +411,10 @@ export default function Onboarding() {
   const location = useLocation();
   const [step, setStep] = useState(0);
   const [showCompletion, setShowCompletion] = useState(false);
+  const [alumniStep, setAlumniStep] = useState(0);
+  const [offer, setOffer] = useState({ topics: [], availability: "" });
+  const [offerSaving, setOfferSaving] = useState(false);
+  const [offerError, setOfferError] = useState(null);
   const [resumeUploading, setResumeUploading] = useState(false);
   const [resumeError, setResumeError] = useState(null);
   const { preferences, updatePreferences, updateProfileOverrides, completeOnboarding, profileOverrides, isAlumni: isAlumniFromStore } =
@@ -425,6 +449,28 @@ export default function Onboarding() {
       .catch(() => {})
       .finally(() => setPeopleLoading(false));
   }, [isAlumni]);
+  // Someone coming back to this flow sees what they chose last time.
+  useEffect(() => {
+    if (!isAlumni) return;
+    fetchOwnAlumniOffer().then((saved) => {
+      if (saved) setOffer({ topics: saved.helpTopics, availability: saved.availability });
+    });
+  }, [isAlumni]);
+
+  async function finishAlumni() {
+    setOfferError(null);
+    setOfferSaving(true);
+    try {
+      await saveOwnAlumniOffer({ helpTopics: offer.topics, availability: offer.availability });
+    } catch (err) {
+      setOfferError(err.message);
+      setOfferSaving(false);
+      return;
+    }
+    completeOnboarding();
+    navigate("/feed");
+  }
+
   const matched = matchedJobs(realJobs);
   const stats = {
     loading: jobsLoading || peopleLoading,
@@ -551,25 +597,40 @@ export default function Onboarding() {
           </button>
         </div>
         <div className="onboarding__content">
-          <StepYou
-            resumeFileName={profileOverrides.resumeFileName}
-            resumeUploading={resumeUploading}
-            resumeError={resumeError}
-            onAttach={handleAttachResume}
-            kicker="Welcome back"
-          />
+          {alumniStep === 0 && <AlumniWelcome />}
+          {alumniStep === 1 && (
+            <StepYou
+              resumeFileName={profileOverrides.resumeFileName}
+              resumeUploading={resumeUploading}
+              resumeError={resumeError}
+              onAttach={handleAttachResume}
+              kicker="Step 2 of 3"
+            />
+          )}
+          {alumniStep === 2 && (
+            <>
+              <div className="onboarding__kicker">Step 3 of 3</div>
+              <h1 className="onboarding__title">How you can help</h1>
+              <p className="onboarding__subtitle">Optional. Pick what you're happy to help members with.</p>
+              <AlumniOffersEditor topics={offer.topics} availability={offer.availability} onChange={({ topics, availability }) => setOffer({ topics, availability })} idPrefix="onboarding" />
+              {offerError && <p className="meta" style={{ color: "var(--color-danger)" }}>{offerError}</p>}
+            </>
+          )}
         </div>
         <div className="onboarding__footer">
-          <span />
-          <button
-            className="btn btn-primary"
-            onClick={() => {
-              completeOnboarding();
-              navigate("/feed");
-            }}
-          >
-            Finish
+          <button className="btn btn-secondary" disabled={alumniStep === 0} onClick={() => setAlumniStep((n) => n - 1)}>
+            Back
           </button>
+          <span className="onboarding__step-count">Step {alumniStep + 1} of 3</span>
+          {alumniStep < 2 ? (
+            <button className="btn btn-primary" onClick={() => setAlumniStep((n) => n + 1)}>
+              Continue
+            </button>
+          ) : (
+            <button className="btn btn-primary" disabled={offerSaving} onClick={finishAlumni}>
+              {offerSaving ? "Saving…" : "Finish"}
+            </button>
+          )}
         </div>
       </div>
     );

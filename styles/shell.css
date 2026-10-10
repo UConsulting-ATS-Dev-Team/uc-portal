@@ -471,7 +471,8 @@
     padding: 0 var(--space-5);
   }
 
-  .topbar__logout {
+  /* Two classes: .btn (loaded later) sets display too, and would otherwise win and keep the button on a phone. */
+  .topbar .topbar__logout {
     display: none;
   }
 
@@ -616,6 +617,22 @@
     text-transform: uppercase;
     color: var(--color-text-muted);
     border-top: var(--border-hairline);
+  }
+
+  /* The group headings in the sheet fold their links away, same as the desktop rail's. */
+  .bottom-tab-bar__more-kicker--toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    min-height: 44px;
+    background: none;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
   }
 }
 

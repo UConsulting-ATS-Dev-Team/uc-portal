@@ -102,6 +102,46 @@ async function chatCandidates(admin: Admin, interns: Account[]): Promise<Candida
     .map((i) => ({ profileId: i.member_id, ref: meeting.id, vars: { meetingTime: longDateTime(meeting.at), chatsLogged: String(Math.min(3, counts.get(i.member_id) ?? 0)) } }));
 }
 
+const FOLLOW_UP_AFTER_DAYS = 5;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function joinNames(names: string[]): string {
+  if (names.length <= 1) return names.join("");
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+// A member's coffee chat requests that still read "Request sent" five days on. One email lists the ones not mentioned before, and
+// each request is only ever mentioned once (the log keeps the person ids it covered).
+async function followUpCandidates(admin: Admin, members: Account[]): Promise<Candidate[]> {
+  if (members.length === 0) return [];
+  const cutoff = new Date(Date.now() - FOLLOW_UP_AFTER_DAYS * 86_400_000).toISOString();
+  const { data: rows } = await admin
+    .from("network_connections")
+    .select("member_id, person_id")
+    .eq("coffee_chat_status", "Request sent")
+    .lte("updated_at", cutoff)
+    .in("member_id", members.map((m) => m.member_id));
+  const pending = (rows ?? []).filter((r) => UUID.test(r.person_id as string));
+  if (pending.length === 0) return [];
+
+  const { data: people } = await admin.from("people").select("id, name").in("id", [...new Set(pending.map((r) => r.person_id as string))]);
+  const nameOf = new Map((people ?? []).map((p) => [p.id as string, p.name as string]));
+  const { data: logged } = await admin.from("auto_email_log").select("profile_id, ref").eq("key", "coffee_chat_followup").in("profile_id", members.map((m) => m.member_id));
+  const mentioned = new Set<string>();
+  for (const l of logged ?? []) for (const id of String(l.ref).split(",")) mentioned.add(`${l.profile_id}:${id}`);
+
+  const byMember = new Map<string, string[]>();
+  for (const r of pending) {
+    const id = r.person_id as string;
+    if (!nameOf.has(id) || mentioned.has(`${r.member_id}:${id}`)) continue;
+    byMember.set(r.member_id as string, [...(byMember.get(r.member_id as string) ?? []), id]);
+  }
+  return [...byMember.entries()].map(([profileId, ids]) => {
+    const sorted = [...ids].sort();
+    return { profileId, ref: sorted.join(","), vars: { personNames: joinNames(sorted.map((id) => nameOf.get(id)!)) } };
+  });
+}
+
 Deno.serve(async (req) => {
   const denied = requireCronSecret(req);
   if (denied) return denied;
@@ -116,6 +156,7 @@ Deno.serve(async (req) => {
   if (error) return jsonResponse({ error: error.message }, 500);
   const byId = new Map((accounts as Account[]).map((a) => [a.member_id, a]));
   const activeInterns = (accounts as Account[]).filter((a) => a.member_status === "intern" && !a.deactivated_at && a.email);
+  const activeMembers = (accounts as Account[]).filter((a) => a.member_status === "current_member" && !a.deactivated_at && a.email);
 
   const queued: Record<string, number> = {};
   for (const setting of settings) {
@@ -125,6 +166,7 @@ Deno.serve(async (req) => {
     if (def.key === "weekly_digest") candidates = await digestCandidates(admin);
     else if (def.key === "accelerator_assignment_due") candidates = await assignmentCandidates(admin, activeInterns);
     else if (def.key === "accelerator_chats_due") candidates = await chatCandidates(admin, activeInterns);
+    else if (def.key === "coffee_chat_followup") candidates = await followUpCandidates(admin, activeMembers);
 
     candidates = candidates.filter((c) => {
       const account = byId.get(c.profileId);

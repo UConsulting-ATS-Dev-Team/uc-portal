@@ -16,6 +16,8 @@ import {
   MailOpen,
   BarChart3,
   Wrench,
+  ScrollText,
+  FileSpreadsheet,
 } from "lucide-react";
 
 // Extracted out of components/NavRail.jsx so components/BottomTabBar.jsx
@@ -115,7 +117,10 @@ export function mainSectionsFor(account) {
 export const LEADERSHIP_SECTIONS = [
   {
     section: "People",
-    items: [{ label: "User Management", to: "/admin/members", icon: UserCog }],
+    items: [
+      { label: "User Management", to: "/admin/members", icon: UserCog },
+      { label: "Audit Log", to: "/admin/audit-log", icon: ScrollText },
+    ],
   },
   {
     section: "Content",
@@ -134,7 +139,10 @@ export const LEADERSHIP_SECTIONS = [
   },
   {
     section: "Insights",
-    items: [{ label: "Site Analytics", to: "/admin/analytics", icon: BarChart3 }],
+    items: [
+      { label: "Site Analytics", to: "/admin/analytics", icon: BarChart3 },
+      { label: "Reports", to: "/admin/reports", icon: FileSpreadsheet },
+    ],
   },
   {
     section: "System",

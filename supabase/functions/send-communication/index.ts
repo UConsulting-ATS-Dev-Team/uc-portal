@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
     slackTarget?: string | null;
     scheduledFor?: string | null;
     templateId?: string | null;
+    senderPresetId?: string | null;
     confirmCount?: number;
   };
   try {
@@ -92,12 +93,20 @@ Deno.serve(async (req) => {
   if (channel === "email" && !unsubscribeSecret()) return jsonResponse({ error: "unsubscribe_secret_missing" }, 412);
   if (channel === "slack" && !slackConfigured()) return jsonResponse({ error: "slack_not_configured" }, 412);
 
+  // The sender preset the admin picked (email only). Copied onto the message so later edits to the preset don't rewrite it.
+  let sender: { from_name: string | null; reply_to: string | null } = { from_name: null, reply_to: null };
+  if (channel === "email" && input.senderPresetId) {
+    const { data: preset } = await adminClient.from("comm_sender_presets").select("from_name, reply_to").eq("id", input.senderPresetId).maybeSingle();
+    if (!preset) return jsonResponse({ error: "That sender no longer exists. Pick another." }, 400);
+    sender = { from_name: preset.from_name as string, reply_to: preset.reply_to as string | null };
+  }
+
   // ---- test: one copy to the admin, nothing else ----
   if (action === "test") {
     if (!user.email) return jsonResponse({ error: "Your account has no email address to send a test to." }, 400);
     const { data: message, error: messageError } = await adminClient
       .from("comm_messages")
-      .insert({ channel, subject: subject || null, body, audience: {}, audience_label: "Test to you", status: "queued", is_test: true, created_by: user.id, started_at: new Date().toISOString(), recipient_count: 1, slack_target: null })
+      .insert({ channel, subject: subject || null, body, audience: {}, audience_label: "Test to you", status: "queued", is_test: true, created_by: user.id, started_at: new Date().toISOString(), recipient_count: 1, slack_target: null, ...sender })
       .select("id")
       .single();
     if (messageError) return jsonResponse({ error: messageError.message }, 500);
@@ -137,6 +146,7 @@ Deno.serve(async (req) => {
       created_by: user.id,
       started_at: action === "send" ? new Date().toISOString() : null,
       recipient_count: recipientCount,
+      ...sender,
     })
     .select("id")
     .single();

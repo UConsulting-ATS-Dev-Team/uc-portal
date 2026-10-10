@@ -23,6 +23,8 @@ interface Claimed {
   name: string | null;
   email: string | null;
   phone: string | null;
+  from_name: string | null;
+  reply_to: string | null;
 }
 
 export interface QueueResult {
@@ -49,7 +51,7 @@ async function deliver(item: Claimed): Promise<{ ok: boolean; skipped?: string; 
     const html = composeEmailHtml({ bodyHtml: fillMergeFieldsHtml(markdownToHtml(item.body), vars), unsubscribeUrl });
     const text = fillMergeFields(markdownToText(item.body), vars) + (unsubscribeUrl ? `\n\nUnsubscribe: ${unsubscribeUrl}` : "");
     const subject = fillMergeFields(item.subject ?? "", vars);
-    const result = await sendEmail({ to: item.email, subject: item.is_test ? `[Test] ${subject}` : subject, html, text, unsubscribeUrl });
+    const result = await sendEmail({ to: item.email, subject: item.is_test ? `[Test] ${subject}` : subject, html, text, unsubscribeUrl, fromName: item.from_name, replyTo: item.reply_to });
     return result;
   }
   // slack

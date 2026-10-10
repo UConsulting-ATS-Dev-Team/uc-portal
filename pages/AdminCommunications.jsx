@@ -76,6 +76,12 @@ export default function AdminCommunications() {
   }, [loadPeople, loadSaved, loadTemplates, loadScheduledCount]);
 
   // A draft or a template opens in the tab of its own channel (iMessage has no saved items: it is written fresh each time).
+  // Leaving the composer by any tab drops a draft or template that was loaded into it, so it doesn't come back on the next visit.
+  function changeTab(next) {
+    setPrefill({ email: null, slack: null });
+    setTab(next);
+  }
+
   function openDraft(draft) {
     if (draft.channel !== "imessage") setPrefill((p) => ({ ...p, [draft.channel]: draft }));
     setTab(draft.channel);
@@ -106,7 +112,7 @@ export default function AdminCommunications() {
       )}
       {peopleError && <p className="meta" style={{ color: "var(--color-danger)" }}>{peopleError}</p>}
 
-      <TabBar tabs={tabs} active={tab} onChange={setTab} label="Communications" />
+      <TabBar tabs={tabs} active={tab} onChange={changeTab} label="Communications" />
 
       <div className="comms-body">
         {(tab === "email" || tab === "slack") && (

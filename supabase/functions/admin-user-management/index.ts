@@ -81,6 +81,7 @@ Deno.serve(async (req) => {
     if (classYear) update.class_year = classYear;
     if (role === "admin") update.role = "admin";
     if (Object.keys(update).length > 0) await adminClient.from("profiles").update(update).eq("id", id);
+    await adminClient.rpc("log_admin_action", { p_action: "account_created", p_target_type: "account", p_target_id: id, p_target_label: name || email.split("@")[0], p_details: { membership: status, role }, p_actor: user.id });
     return jsonResponse({ memberId: id });
   }
 
@@ -103,6 +104,8 @@ Deno.serve(async (req) => {
       .update({ deactivated_at: deactivating ? new Date().toISOString() : null, deactivated_by: deactivating ? user.id : null })
       .eq("id", memberId);
     if (error) return jsonResponse({ error: error.message }, 500);
+    const { data: who } = await adminClient.rpc("audit_person_label", { p_id: memberId });
+    await adminClient.rpc("log_admin_action", { p_action: deactivating ? "account_deactivated" : "account_reactivated", p_target_type: "account", p_target_id: memberId, p_target_label: who ?? null, p_details: {}, p_actor: user.id });
     return jsonResponse({ ok: true });
   }
 

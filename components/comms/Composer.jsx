@@ -5,10 +5,11 @@ import { unknownMergeFields } from "../../supabase/functions/_shared/comms/rende
 import { deleteSavedAudience, saveAudience, saveDraft, sendCommunication } from "../../data/commsSync.js";
 import AudienceBuilder from "./AudienceBuilder.jsx";
 import MessageEditor from "./MessageEditor.jsx";
+import SenderPicker from "./SenderPicker.jsx";
 import Modal from "../Modal.jsx";
 import "../../styles/comms.css";
 
-const blank = () => ({ id: null, subject: "", body: "", audience: JSON.parse(JSON.stringify(EMPTY_AUDIENCE)), slackTarget: "", slackMode: "dm", scheduledFor: "", draftName: "", templateId: "" });
+const blank = () => ({ id: null, subject: "", body: "", audience: JSON.parse(JSON.stringify(EMPTY_AUDIENCE)), slackTarget: "", slackMode: "dm", scheduledFor: "", draftName: "", templateId: "", senderPresetId: "" });
 
 function fromInitial(initial) {
   if (!initial) return blank();
@@ -72,6 +73,7 @@ export default function Composer({ channel, people, suppressedEmails, status, ow
     audience: state.audience,
     slackTarget: channelPost ? state.slackTarget : null,
     templateId: state.templateId || null,
+    senderPresetId: isEmail ? state.senderPresetId || null : null,
   });
 
   async function run(action, extra = {}) {
@@ -213,6 +215,8 @@ export default function Composer({ channel, people, suppressedEmails, status, ow
           </select>
         </div>
       )}
+
+      {isEmail && <SenderPicker value={state.senderPresetId} onChange={(senderPresetId) => set({ senderPresetId })} fromEmail={status?.email?.fromEmail} />}
 
       {isEmail && (
         <div className="field">

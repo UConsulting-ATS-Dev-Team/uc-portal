@@ -22,7 +22,14 @@ function sessionId() {
 
 // /jobs/5e1f... -> /jobs/:id, so the top-pages list groups by page, not by individual job or person. Query strings never count.
 export function normalizePath(pathname) {
-  return pathname.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, ":id").replace(/\/+$/, "") || "/";
+  return (
+    pathname
+      .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, ":id")
+      .replace(/^\/companies\/real\/[^/]+/, "/companies/real/:name")
+      .replace(/^\/resources\/tracks\/[^/]+/, "/resources/tracks/:id")
+      .replace(/^\/(companies|resources|network|jobs)\/(?!real\/|tracks\/)[^/:][^/]*/, "/$1/:id")
+      .replace(/\/+$/, "") || "/"
+  );
 }
 
 // userType is the account's real type (an admin looking at the site "as" an intern is still an admin).

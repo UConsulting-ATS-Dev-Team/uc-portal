@@ -3,6 +3,7 @@ import { fetchRemotePreferences, syncPreferencesToRemote } from "./memberPrefere
 import { fetchRemoteTrackedApplications, syncTrackedApplicationToRemote } from "./trackerSync.js";
 import { fetchRemoteNetworkConnections, syncNetworkConnectionToRemote } from "./networkSync.js";
 import { fetchRemoteSavedJobs, syncSavedJobToRemote } from "./savedJobsSync.js";
+import { fetchRemoteSavedSearches, removeSavedSearchesFromRemote, syncSavedSearchesToRemote } from "./savedSearchesSync.js";
 import { fetchRealRole, fetchRealMemberStatus } from "./profileRoleSync.js";
 import { fetchRemoteProfileOverrides, syncProfileOverridesToRemote } from "./profileOverridesSync.js";
 import { fetchDirectoryPrefill } from "./directoryPrefillSync.js";
@@ -76,6 +77,7 @@ const DEFAULT_STATE = {
     majors: "",
     ucCommittee: "",
     linkedIn: "",
+    phone: "",
     resumeFileName: null,
     resumePath: null,
     avatarUrl: null,
@@ -128,6 +130,8 @@ export function AppStateProvider({ children }) {
   // fetch) -- see the Directory-prefill effect's own comment below for
   // why this exists.
   const [profileOverridesHydrated, setProfileOverridesHydrated] = useState(false);
+  // True once this account's saved searches have been read from the database and merged in (see the effect that follows them up).
+  const [savedSearchesHydrated, setSavedSearchesHydrated] = useState(false);
   // The real signed-in member's real profiles.role -- not part of `state`
   // (never persisted to localStorage or the mock-data blob; it's live
   // auth-derived data, re-fetched fresh each session). Replaces the fully
@@ -251,6 +255,7 @@ export function AppStateProvider({ children }) {
     if (sessionUserId === undefined) return; // first session check hasn't resolved yet
     setHydratedFromRemote(false);
     setProfileOverridesHydrated(false);
+    setSavedSearchesHydrated(false);
     setMemberDataReady(false);
 
     if (sessionUserId === null) {
@@ -269,7 +274,7 @@ export function AppStateProvider({ children }) {
     }
 
     let cancelled = false;
-    let outstanding = 5; // the five fetches below; each calls done() when it settles
+    let outstanding = 6; // the six fetches below; each calls done() when it settles
     const done = () => {
       outstanding -= 1;
       if (outstanding === 0 && !cancelled) setMemberDataReady(true);
@@ -350,10 +355,34 @@ export function AppStateProvider({ children }) {
       }));
     }).finally(done);
 
+    // Saved searches: the account's own list wins, and any that only exist in this browser are kept (the effect below uploads
+    // them). Newest first, capped at ten like the page's own save button.
+    fetchRemoteSavedSearches()
+      .then((remote) => {
+        if (cancelled || !remote) return;
+        setState((prev) => {
+          const byId = new Map(remote.map((s) => [s.id, s]));
+          for (const local of prev.savedSearches) if (!byId.has(local.id)) byId.set(local.id, local);
+          const merged = [...byId.values()].sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt))).slice(0, 10);
+          return { ...prev, savedSearches: merged };
+        });
+        setSavedSearchesHydrated(true);
+      })
+      .catch(() => {})
+      .finally(done);
+
     return () => {
       cancelled = true;
     };
   }, [sessionUserId]);
+
+  // Once the account's searches have been read, send up any that were saved before they lived there. An upsert by id, so
+  // repeating it is harmless, and it only runs after the fetch so it can never write an empty list over the real one.
+  useEffect(() => {
+    if (!savedSearchesHydrated) return;
+    syncSavedSearchesToRemote(state.savedSearches).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedSearchesHydrated]);
 
   // Background sync to Supabase whenever preferences actually change --
   // fire-and-forget, never blocks the UI. data/store.jsx stays the source
@@ -451,10 +480,14 @@ export function AppStateProvider({ children }) {
   function saveSearch(filters, label) {
     const search = { id: crypto.randomUUID(), label: label || "All jobs", filters, savedAt: new Date().toISOString() };
     setState((prev) => ({ ...prev, savedSearches: [search, ...prev.savedSearches].slice(0, 10) }));
+    syncSavedSearchesToRemote([search]).catch(() => {});
+    // The one that falls off the end of the ten is removed from the account too, or it would come back on the next sign-in.
+    removeSavedSearchesFromRemote([search, ...state.savedSearches].slice(10).map((s) => s.id)).catch(() => {});
   }
 
   function removeSavedSearch(id) {
     setState((prev) => ({ ...prev, savedSearches: prev.savedSearches.filter((s) => s.id !== id) }));
+    removeSavedSearchesFromRemote([id]).catch(() => {});
   }
 
   function completeOnboarding() {

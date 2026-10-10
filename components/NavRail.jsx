@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import { clubStats } from "../data/mockUser.js";
 import { LEADERSHIP_SECTIONS, mainSectionsFor } from "../data/navItems.js";
 import { useAppState } from "../data/store.jsx";
+import { useCollapsedGroups } from "./useCollapsedGroups.js";
 
 // Lucide, stroke-width 1.5, per CLAUDE.md's icon spec ("wireframes use text
 // labels as stand-ins; target system is Lucide"). Only actually needed once
@@ -36,51 +36,14 @@ function RailLink({ label, to, icon: Icon, badge }) {
   );
 }
 
-const COLLAPSED_KEY = "uc-portal-leadership-collapsed";
-
-function readCollapsed() {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(COLLAPSED_KEY) ?? "[]"));
-  } catch {
-    return new Set();
-  }
-}
+// Each menu keeps its own remembered folds, so the two never overwrite each other. (The Leadership key keeps its original name.)
+const MAIN_KEY = "uc-portal-nav-collapsed";
+const LEADERSHIP_KEY = "uc-portal-leadership-collapsed";
 
 // A rail of grouped links. Each group collapses on its own and the choice is remembered, so the rail stays as short as the work
-// in front of you. Going to a page inside a collapsed group opens it. Used for both the everyday links and the Leadership menu.
-function GroupedLinks({ sections, badgeFor }) {
-  const location = useLocation();
-  const [collapsed, setCollapsed] = useState(readCollapsed);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...collapsed]));
-    } catch {
-      // storage unavailable: the menu still works, it just won't remember
-    }
-  }, [collapsed]);
-
-  useEffect(() => {
-    const owner = sections.find((g) => g.items.some((item) => (item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to))));
-    if (!owner) return;
-    setCollapsed((prev) => {
-      if (!prev.has(owner.section)) return prev;
-      const next = new Set(prev);
-      next.delete(owner.section);
-      return next;
-    });
-    // only when the page changes: depending on `sections` would reopen a group the moment someone folds the one they are on
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
-
-  function toggle(section) {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(section)) next.delete(section);
-      else next.add(section);
-      return next;
-    });
-  }
+// in front of you. Used for both the everyday links and the Leadership menu.
+function GroupedLinks({ sections, badgeFor, storageKey }) {
+  const { collapsed, toggle } = useCollapsedGroups(sections, storageKey);
 
   return (
     <>
@@ -115,11 +78,11 @@ export default function NavRail() {
 
   return (
     <nav className="rail">
-      <GroupedLinks sections={sections} badgeFor={badgeFor} />
+      <GroupedLinks sections={sections} badgeFor={badgeFor} storageKey={MAIN_KEY} />
 
       {isAdmin && (
         <div className="rail__section">
-          <GroupedLinks sections={LEADERSHIP_SECTIONS} />
+          <GroupedLinks sections={LEADERSHIP_SECTIONS} storageKey={LEADERSHIP_KEY} />
         </div>
       )}
 

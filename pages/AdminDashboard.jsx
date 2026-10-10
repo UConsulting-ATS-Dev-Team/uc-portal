@@ -27,11 +27,10 @@ const FEATURE_REQUEST_STATUS_LABEL = {
 // submission into a real jobs row. Everything else on this page (KPIs,
 // industry interest, etc.) is still the mock-data prototype layer; only the
 // queue has a real backend behind it so far.
-// One of four views of what used to be a single admin dashboard. There is no admin-only home page any more: admins land
+// One of three views of what used to be a single admin dashboard. There is no admin-only home page any more: admins land
 // where everyone else does, and these are pages in the Leadership menu.
 //   system          the technical side of running the site (scheduled jobs, review queues, sources, errors)
 //   people          access requests and account setup, shown on the Members page
-//   insights        member engagement (the Analytics page)
 //   communications  announcements and the weekly digest
 const SECTION_VIEW = {
   pipeline: "system",
@@ -44,13 +43,11 @@ const SECTION_VIEW = {
   errors: "system",
   access: "people",
   precreate: "people",
-  engagement: "insights",
   digest: "communications",
 };
 
 const VIEW_HEADER = {
   system: { title: "System", subtitle: "How the job board and the site are running: scheduled jobs, review queues, sources and errors. Most admins won't need this page." },
-  insights: { title: "Analytics", subtitle: "Aggregate interest and engagement. Never an individual member's application list." },
   communications: { title: "Communications", subtitle: "Announcements to members and the weekly digest." },
 };
 
@@ -82,9 +79,6 @@ export default function AdminDashboard({ view = "system", embedded = false }) {
   const [featureRequestsLoading, setFeatureRequestsLoading] = useState(true);
   const [featureRequestsError, setFeatureRequestsError] = useState(null);
   const [updatingRequestId, setUpdatingRequestId] = useState(null);
-  const [engagement, setEngagement] = useState([]);
-  const [engagementLoading, setEngagementLoading] = useState(true);
-  const [engagementError, setEngagementError] = useState(null);
   const [accessRequests, setAccessRequests] = useState([]);
   const [accessRequestsLoading, setAccessRequestsLoading] = useState(true);
   const [accessRequestsError, setAccessRequestsError] = useState(null);
@@ -303,22 +297,6 @@ export default function AdminDashboard({ view = "system", embedded = false }) {
     setUpdatingCompanyName(null);
   }
 
-  // Real member-engagement visibility (member_engagement_report(), a
-  // security definer function -- see its own migration comment for the
-  // full privacy reasoning). This is a deliberately narrower carve-out
-  // from "admins see aggregate only" than the rest of this page: this
-  // story explicitly wants individual identity ("which members haven't
-  // engaged"), so the function returns a name/email + one last-active
-  // timestamp per member -- never *what* they did, no application or
-  // preference content, just presence/absence of activity.
-  async function loadEngagement() {
-    setEngagementLoading(true);
-    const { data, error } = await supabase.rpc("member_engagement_report", { inactive_threshold_days: 14 });
-    if (error) setEngagementError(error.message);
-    else setEngagement(data ?? []);
-    setEngagementLoading(false);
-  }
-
   // Real "new signups" visibility -- see list_recent_signups()
   // (20260914190000) for the full rationale. TopBar.jsx's badge is just a
   // count (a plain profiles query); this is the actual list with real
@@ -408,7 +386,6 @@ export default function AdminDashboard({ view = "system", embedded = false }) {
     loadFeatureRequests();
     loadLowQualityJobs();
     loadBrokenLinkJobs();
-    loadEngagement();
     loadCompanyTiers();
     loadAccessRequests();
     loadRecentSignups();
@@ -417,7 +394,6 @@ export default function AdminDashboard({ view = "system", embedded = false }) {
     loadCronHealth();
   }, []);
 
-  const disengagedCount = engagement.filter((m) => m.is_disengaged).length;
 
   // feature_requests grants admins direct update access via RLS (unlike
   // jobs/job_sources) since there's no equivalent trust boundary here --
@@ -1190,60 +1166,6 @@ export default function AdminDashboard({ view = "system", embedded = false }) {
           </div>
           )}
 
-          {show("engagement") && (
-          <div className="detail-section">
-            <h2 className="detail-section__title">Member engagement</h2>
-            <p className="meta" style={{ marginTop: 0 }}>
-              Real signed-up accounts, ranked least-active first. "Last active" is the most recent of: signing
-              in, editing preferences/profile, tracker activity, saving a job, or a coffee-chat/connection
-              update. Presence only, never what a member actually did. This never surfaces an individual's
-              application list or its contents, only whether they've touched the platform at all.{" "}
-              {engagementLoading ? "" : `${engagement.length} real account${engagement.length === 1 ? "" : "s"} exist today. This list is small until real members sign up.`}
-            </p>
-            {engagementError && <p className="meta" style={{ color: "var(--color-danger)" }}>{engagementError}</p>}
-            <div className="queue-table__scroll">
-            <table className="queue-table">
-              <thead>
-                <tr>
-                  <th>Member</th>
-                  <th>Last active</th>
-                  <th>Days inactive</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {engagement.map((m) => (
-                  <tr key={m.member_id}>
-                    <td>{m.display_name}</td>
-                    <td className="meta">
-                      {m.last_active_at
-                        ? new Date(m.last_active_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
-                        : "Never"}
-                    </td>
-                    <td>{m.days_inactive ?? "—"}</td>
-                    <td>{m.is_disengaged ? "Disengaged" : "Active"}</td>
-                  </tr>
-                ))}
-                {!engagementLoading && engagement.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="meta">
-                      No real signed-up accounts yet.
-                    </td>
-                  </tr>
-                )}
-                {engagementLoading && (
-                  <tr>
-                    <td colSpan={4} className="meta">
-                      Loading…
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-            </div>
-          </div>
-          )}
-
           {show("features") && (
           <div className="detail-section">
             <h2 className="detail-section__title">Feature requests</h2>
@@ -1423,7 +1345,7 @@ export default function AdminDashboard({ view = "system", embedded = false }) {
           )}
         </div>
 
-        {(view === "people" || view === "insights") && (
+        {view === "people" && (
           <div className="detail-rail">
             {view === "people" && (
           <div className="rail-card">
@@ -1439,20 +1361,6 @@ export default function AdminDashboard({ view = "system", embedded = false }) {
               </div>
             ))}
             {recentSignupsLoading && <p className="meta" style={{ margin: 0 }}>Loading…</p>}
-          </div>
-            )}
-            {view === "insights" && (
-          <div className="rail-card">
-            <div className="rail-card__title">Member engagement</div>
-            {engagementError && <p className="meta" style={{ color: "var(--color-danger)" }}>{engagementError}</p>}
-            <div className="engagement-row">
-              <span>Real signed-up accounts</span>
-              <span>{engagementLoading ? "…" : engagement.length}</span>
-            </div>
-            <div className="engagement-row is-accent">
-              <span>No activity in 14+ days</span>
-              <span>{engagementLoading ? "…" : disengagedCount}</span>
-            </div>
           </div>
             )}
           </div>

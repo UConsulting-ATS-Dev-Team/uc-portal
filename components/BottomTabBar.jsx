@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { MoreHorizontal, X } from "lucide-react";
-import { LEADERSHIP_SECTIONS, BOTTOM_BAR_PRIMARY_KEYS, mainItemsFor } from "../data/navItems.js";
+import { ChevronDown, MoreHorizontal, X } from "lucide-react";
+import { LEADERSHIP_SECTIONS, BOTTOM_BAR_PRIMARY_KEYS, mainItemsFor, mainSectionsFor } from "../data/navItems.js";
 import { useAppState } from "../data/store.jsx";
+import { useCollapsedGroups } from "./useCollapsedGroups.js";
 
 // Phone-UX pass: below 640px (styles/shell.css's phone tier), this
 // replaces the persistent icon-only .rail entirely -- live-audited at
@@ -36,7 +37,14 @@ export default function BottomTabBar() {
   // fit directly as primary tabs with no "More" overflow needed.
   const noOverflow = isAlumni || isIntern;
   const primaryItems = noOverflow ? availableItems : availableItems.filter((item) => BOTTOM_BAR_PRIMARY_KEYS.includes(item.to));
-  const moreItems = noOverflow ? [] : availableItems.filter((item) => !BOTTOM_BAR_PRIMARY_KEYS.includes(item.to));
+  // Everything that isn't a tab, under the same group headings (and the same fold-away behavior) as the desktop rail.
+  const moreSections = noOverflow
+    ? []
+    : mainSectionsFor({ isIntern, isAlumni, isAdmin })
+        .map((group) => ({ ...group, items: group.items.filter((item) => !BOTTOM_BAR_PRIMARY_KEYS.includes(item.to)) }))
+        .filter((group) => group.items.length > 0);
+  const sheetSections = isAdmin ? [...moreSections, ...LEADERSHIP_SECTIONS] : moreSections;
+  const { collapsed, toggle } = useCollapsedGroups(sheetSections, "uc-portal-sheet-collapsed");
   // "More" itself reads as active on any route not covered by a primary
   // tab (e.g. a job/company/resource detail page, or any /admin/* route)
   // so the bar always shows *something* selected instead of going blank.
@@ -83,34 +91,30 @@ export default function BottomTabBar() {
             onClick={() => setMoreOpen(false)}
           />
           <div className="bottom-tab-bar__more-panel" role="menu">
-            <ul className="bottom-tab-bar__more-list">
-              {moreItems.map(({ label, to, icon: Icon, badge }) => (
-                <li key={to}>
-                  <NavLink to={to} end={to === "/"} role="menuitem" onClick={() => setMoreOpen(false)} className={({ isActive }) => (isActive ? "is-active" : "")}>
-                    <Icon size={18} strokeWidth={1.5} aria-hidden="true" />
-                    <span>{label}</span>
-                    {badge && badge(trackedJobs) > 0 && <span className="bottom-tab-bar__badge">{badge(trackedJobs)}</span>}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-
-            {isAdmin &&
-              LEADERSHIP_SECTIONS.map((group) => (
+            {sheetSections.map((group) => {
+              const isCollapsed = collapsed.has(group.section);
+              return (
                 <div key={group.section}>
-                  <div className="bottom-tab-bar__more-kicker">{group.section}</div>
-                  <ul className="bottom-tab-bar__more-list">
-                    {group.items.map(({ label, to, icon: Icon }) => (
-                      <li key={to}>
-                        <NavLink to={to} role="menuitem" onClick={() => setMoreOpen(false)} className={({ isActive }) => (isActive ? "is-active" : "")}>
-                          <Icon size={18} strokeWidth={1.5} aria-hidden="true" />
-                          <span>{label}</span>
-                        </NavLink>
-                      </li>
-                    ))}
-                  </ul>
+                  <button type="button" className="bottom-tab-bar__more-kicker bottom-tab-bar__more-kicker--toggle" onClick={() => toggle(group.section)} aria-expanded={!isCollapsed}>
+                    <ChevronDown size={12} strokeWidth={1.5} className={`rail__chevron${isCollapsed ? " is-collapsed" : ""}`} aria-hidden="true" />
+                    {group.section}
+                  </button>
+                  {!isCollapsed && (
+                    <ul className="bottom-tab-bar__more-list">
+                      {group.items.map(({ label, to, icon: Icon, badge }) => (
+                        <li key={to}>
+                          <NavLink to={to} end={to === "/"} role="menuitem" onClick={() => setMoreOpen(false)} className={({ isActive }) => (isActive ? "is-active" : "")}>
+                            <Icon size={18} strokeWidth={1.5} aria-hidden="true" />
+                            <span>{label}</span>
+                            {badge && badge(trackedJobs) > 0 && <span className="bottom-tab-bar__badge">{badge(trackedJobs)}</span>}
+                          </NavLink>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-              ))}
+              );
+            })}
           </div>
         </>
       )}

@@ -38,6 +38,8 @@ const AdminSystem = lazy(() => import("./pages/AdminSystem.jsx"));
 const AdminCommunications = lazy(() => import("./pages/AdminCommunications.jsx"));
 const AdminAutomaticEmails = lazy(() => import("./pages/AdminAutomaticEmails.jsx"));
 const AdminMembers = lazy(() => import("./pages/AdminMembers.jsx"));
+const AdminAuditLog = lazy(() => import("./pages/AdminAuditLog.jsx"));
+const AdminReports = lazy(() => import("./pages/AdminReports.jsx"));
 const SourceManagement = lazy(() => import("./pages/SourceManagement.jsx"));
 const AdminAccelerator = lazy(() => import("./pages/AdminAccelerator.jsx"));
 const AcceleratorCoffeeChats = lazy(() => import("./pages/AcceleratorCoffeeChats.jsx"));
@@ -265,6 +267,22 @@ function AppRoutes() {
         element={
           <NavShell>
             <LazyPage Component={AdminAnalytics} />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/admin/reports"
+        element={
+          <NavShell>
+            <LazyPage Component={AdminReports} />
+          </NavShell>
+        }
+      />
+      <Route
+        path="/admin/audit-log"
+        element={
+          <NavShell>
+            <LazyPage Component={AdminAuditLog} />
           </NavShell>
         }
       />

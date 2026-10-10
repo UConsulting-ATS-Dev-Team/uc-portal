@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchRealPersonById } from "../data/realPeople.js";
 import { fetchMemberAvatars } from "../data/avatarSync.js";
+import { fetchAlumniOfferForEmail } from "../data/alumniOffers.js";
 import { useAppState } from "../data/store.jsx";
 import Placeholder from "./Placeholder.jsx";
 import Skeleton from "../components/Skeleton.jsx";
@@ -28,6 +29,7 @@ export default function RealMemberProfile({ personId }) {
   const { savedConnections, coffeeChatStatus, toggleSavedConnection } = useAppState();
   const [showChatModal, setShowChatModal] = useState(false);
   const [avatarsByEmail, setAvatarsByEmail] = useState(new Map());
+  const [offer, setOffer] = useState(null); // what an alumnus says they can help with, when they have said
 
   useEffect(() => {
     let cancelled = false;
@@ -41,6 +43,19 @@ export default function RealMemberProfile({ personId }) {
       cancelled = true;
     };
   }, [personId]);
+
+  // Only alumni can have set one; it is looked up by the address on their directory row.
+  const offerEmail = person && person.status !== "Current member" ? person.email : null;
+  useEffect(() => {
+    let cancelled = false;
+    setOffer(null);
+    fetchAlumniOfferForEmail(offerEmail).then((o) => {
+      if (!cancelled) setOffer(o);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [offerEmail]);
 
   if (person === undefined) {
     return <Skeleton />;
@@ -121,6 +136,22 @@ export default function RealMemberProfile({ personId }) {
 
       <div className="detail-layout">
         <div className="detail-main">
+          {offer && (
+            <div className="detail-section">
+              <h2 className="detail-section__title">Happy to help with</h2>
+              {offer.helpTopics.length > 0 && (
+                <div className="chip-row">
+                  {offer.helpTopics.map((topic) => (
+                    <span className="chip" key={topic}>
+                      {topic}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {offer.availability && <p className="meta" style={{ marginBottom: 0 }}>{offer.availability}</p>}
+            </div>
+          )}
+
           <div className="detail-section">
             <h2 className="detail-section__title">What UC knows</h2>
             {knownFacts.length === 0 ? (

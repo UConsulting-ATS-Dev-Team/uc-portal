@@ -177,6 +177,21 @@ export async function importContacts(rows) {
   return { added, updated, skipped };
 }
 export const deleteContact = (id) => unwrap(supabase.from("mailing_list_contacts").delete().eq("id", id));
+export async function deleteContacts(ids) {
+  for (let i = 0; i < ids.length; i += 200) await unwrap(supabase.from("mailing_list_contacts").delete().in("id", ids.slice(i, i + 200)));
+}
+// Adds and/or removes tags on many contacts in one step (a database function, so it is one change and one audit entry).
+export async function tagContacts(ids, { add = [], remove = [] }) {
+  const { data, error } = await supabase.rpc("admin_contacts_tag", { p_ids: ids, p_add: add, p_remove: remove });
+  if (error) throw new Error(error.message);
+  return data;
+}
+// Map of contact id -> { lastEmailedAt, timesEmailed } for contacts that have received a real email.
+export async function fetchContactActivity() {
+  const { data, error } = await supabase.rpc("admin_contacts_last_emailed");
+  if (error) throw new Error(error.message);
+  return new Map((data ?? []).map((r) => [r.contact_id, { lastEmailedAt: r.last_emailed_at, timesEmailed: r.times_emailed }]));
+}
 
 // ---- unsubscribes ----
 export const fetchSuppressions = () => unwrap(supabase.from("comm_suppressions").select("*").order("created_at", { ascending: false }).order("email"));
@@ -206,3 +221,18 @@ export async function saveAutoEmailSetting({ key, enabled, subject, body }) {
       .upsert({ key, enabled, subject: subject ?? null, body: body ?? null, updated_by: user.id, updated_at: new Date().toISOString() }, { onConflict: "key" })
   );
 }
+
+// ---- sender presets: who an email says it is from, and where replies go ----
+export const fetchSenderPresets = () => unwrap(supabase.from("comm_sender_presets").select("*").order("name"));
+export async function saveSenderPreset({ name, fromName, replyTo, isDefault }) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (isDefault) await unwrap(supabase.from("comm_sender_presets").update({ is_default: false }).eq("is_default", true));
+  await unwrap(supabase.from("comm_sender_presets").insert({ name: name.trim(), from_name: fromName.trim(), reply_to: replyTo?.trim() || null, is_default: Boolean(isDefault), created_by: user.id }));
+}
+export async function setDefaultSenderPreset(id) {
+  await unwrap(supabase.from("comm_sender_presets").update({ is_default: false }).eq("is_default", true));
+  if (id) await unwrap(supabase.from("comm_sender_presets").update({ is_default: true }).eq("id", id));
+}
+export const deleteSenderPreset = (id) => unwrap(supabase.from("comm_sender_presets").delete().eq("id", id));

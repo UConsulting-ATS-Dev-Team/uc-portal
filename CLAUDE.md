@@ -46,12 +46,26 @@ exported, so treat every "UC Career" in design/handoff/ as this product.
 
 - **Top bar** (~52px): UC Portal brandmark (left) → global search (~300px,
   "Search jobs, people, companies…", submits to Global search `3b`) →
-  notifications (unread count) → user avatar menu (profile/settings/sign out).
-- **Left nav rail** (~206px, full height): Home · Jobs · Applications (count
-  badge) · Network · Feed · Companies · Career Resources · My Profile. Below
-  a hairline + "LEADERSHIP" label, visible only to Exec/Careers Committee:
-  Admin Dashboard · Opportunities · Members · Content. Bottom: club stats
-  strip ("142 members · 380 alumni · invite only").
+  notifications (unread count) → theme toggle → the signed-in person's
+  avatar, name and role → a visible **Log out** button. At 899px and below the
+  name and Log out button are hidden and "Sign out" lives in the avatar menu
+  instead (the hide rule is `.topbar .topbar__logout`, two classes, because
+  `.btn` loads later and would otherwise keep the button on a phone).
+- **Left nav rail** (240px, full height; was 206px until 2026-10-06, widened so
+  "Master Communications" fits on one line), grouped under collapsible headings
+  that fold away and are remembered per browser (`useCollapsedGroups`, shared with
+  the phone More sheet): **Recruiting** (Home · Jobs · Applications with its count
+  badge) · **Community** (Network · Feed · Companies) · **Learning** (Career
+  Resources · Accelerator) · **Account** (My Profile). Groups with nothing for
+  that account are dropped (alumni and interns see fewer). Admins also get the
+  grouped **Leadership** menu below a hairline: People (User Management, Audit
+  Log) · Content (Content, Library, Accelerator) · Communications (Master
+  Communications, Automatic Emails) · Insights (Site Analytics, Reports) · System
+  (Job Sources, Pipeline and Queues). Nav labels are title case. Item lists and
+  the group map live in `data/navItems.js`. Folding is CSS-only and applies above
+  1100px only, so the icon-only rail never hides a link; a guided-tour step that
+  points at a link in a folded group opens it first (`uc-nav-expand` event).
+  Bottom: club stats strip.
 - Active rail item: tinted background + 2px accent left border + heavier
   weight. Two alternatives (top-bar-only nav, icon rail w/ contextual
   column) were explicitly rejected — left rail is final.
@@ -156,11 +170,12 @@ progress indicator, "Save & finish later", Back/Continue footer:
    career preferences (drives recommendations), recruiting/privacy
    settings, quarterly re-confirmation banner.
 
-**Leadership only** (below the "LEADERSHIP" divider):
-- **Admin Dashboard** (`2h`) — KPI strip, "where members want to work" gap
-  analysis, class-year breakdown, opportunity review queue. Admins see
-  **aggregate only, never an individual's application list** — this
-  privacy boundary is explicit in both `2g` and `2h` copy.
+**Leadership only** (the grouped Leadership menu below the main links):
+- The wireframes' single **Admin Dashboard** (`2h`) no longer exists as a page: it
+  was split into the Leadership pages (see "Admin surface" under Current state).
+  Admins see **aggregate only, never an individual's application list** — this
+  privacy boundary is explicit in both `2g` and `2h` copy, and the Reports
+  page's application counts keep it (counts only, classes under 3 members folded).
 
 **Cross-cutting / utility screens:**
 - **Global search** (`3b`) — tabbed results (All/Jobs/People/Companies/
@@ -374,7 +389,7 @@ which are chronological and not rewritten when later work supersedes them.
   `/admin/analytics` (member engagement). System, the technical side kept apart from everyday admin work:
   `/admin/opportunities` (job sources) and `/admin/system` (pipeline health, opportunity and duplicate queues, job quality,
   broken links, company tiers, feature requests, client errors). `/admin` redirects to Members. The old dashboard is one
-  component, `pages/AdminDashboard.jsx`, rendered with a `view` prop (`system`, `people`, `insights`, `communications`) by
+  component, `pages/AdminDashboard.jsx`, rendered with a `view` prop (`system`, `people`, `communications`) by
   thin wrapper pages. Built 2026-10-06 (modeled on the UConsulting ATS, `uc-ats` repo):
   - **User management** (`/admin/members`): account cards, filters, edit (role, status, class year, phone), add user (via the
     `admin-user-management` Edge Function), deactivate/reactivate (`profiles.deactivated_at` plus an auth ban; refuses
@@ -396,6 +411,33 @@ which are chronological and not rewritten when later work supersedes them.
     Until then send/test/schedule return HTTP 412 (`email_not_configured`, `slack_not_configured`,
     `unsubscribe_secret_missing`), write nothing, and the buttons are disabled with an explanation. The `unsubscribe` function is
     public, so deploy it with `--no-verify-jwt`. Not built: the ATS "Decisions" tab, deliverability page, open/click tracking.
+  - **Sender presets** (`comm_sender_presets`, "Send as" on the email composer): a display name and reply-to per preset, copied
+    onto the message (`comm_messages.from_name/reply_to`) at send time. The address mail is sent FROM never changes (SES only
+    sends from verified addresses); presets override `COMMS_FROM_NAME` / `COMMS_REPLY_TO` for that message.
+  - **Mailing list tools:** multi-select with bulk tag add/remove (`admin_contacts_tag`), bulk remove, CSV export
+    (`data/csvExport.js`, formula-safe), and "last emailed" per contact (`admin_contacts_last_emailed`).
+  - **Audit log** (`/admin/audit-log`, table `admin_audit_log`): written by database triggers when a signed-in admin changes a
+    role or membership, edits another account, sends/schedules/cancels a message, imports/removes/tags contacts, changes the
+    unsubscribe list, automatic emails or senders; the Edge Functions (`admin-user-management`) write their own rows through
+    `log_admin_action()` because service-role work has no `auth.uid()`. Triggers record nothing when `auth.uid()` is null, or
+    inside a bulk action that sets `uc.audit_skip` (class rollover logs one summary row). Rows hold counts and field NAMES, never
+    message text, phone numbers or contact details; nothing can edit or delete a row. In plpgsql use `array_append(arr, 'x')`,
+    never `arr || 'x'` (the literal is read as an array and fails).
+  - **Class rollover** (button on User Management, `admin_class_rollover_apply`): moves chosen current members of one class to
+    alumni; admins start unchecked; only people still current members of that class are touched.
+  - **Reports** (`/admin/reports`): CSVs for member engagement, accelerator progress and application stage counts
+    (`admin_application_stage_counts`: counts only, a class year with fewer than 3 members folds into one "other" row).
+  - **Coffee chat request follow-up** (4th automatic email, off by default): current members whose coffee chat request has read
+    "Request sent" for 5 days; each request is mentioned once (the log keeps the person ids covered).
+- **Saved searches follow the account (2026-10-09).** `saved_searches` (own rows only) mirrors the store's `savedSearches`
+  (`data/savedSearchesSync.js`); the first fetch after sign-in merges the account's list with any browser-only ones and uploads
+  those once. Capped at ten; the one that falls off is deleted remotely too.
+- **Phone number** is entered by the member on My Profile (`profiles.phone`, optional) and readable only by that member and
+  admins; it exists so an exec can text them (iMessage tab).
+- **Alumni first run and offers (2026-10-09).** Alumni get a 3-step flow (welcome, confirm info, "how you can help"). What an
+  alumnus says they can help with and their availability live in `alumni_offers` (own row only), shown to members on the
+  alumnus's profile through `alumni_offer_for_email()` (matched on the directory row's email, alumni only, nothing else about the
+  account is exposed). Editable later on My Profile. Option lists are in `data/alumniOffers.js`; no row means nothing shown.
 - **Scheduled work:** 7 pg_cron jobs call Edge Functions (Greenhouse, Lever,
   Ashby, Deloitte, link-health, board snapshot, weekly digest), each guarded by an
   `X-Cron-Secret` header (secret in Supabase Vault and as an Edge Function

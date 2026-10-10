@@ -17,6 +17,7 @@ import {
 } from "../data/workHistorySync.js";
 import { fetchOwnProjects, addProjectEntry, updateProjectEntry, removeProjectEntry, UC_PROJECT_CATEGORIES } from "../data/ucProjectsSync.js";
 import Avatar from "../components/Avatar.jsx";
+import { AlumniHelpSection } from "../components/AlumniOffersEditor.jsx";
 import DeleteAccountModal from "../components/modals/DeleteAccountModal.jsx";
 import "../styles/jobDetail.css";
 import "../styles/onboarding.css";
@@ -78,6 +79,7 @@ export default function MyProfile() {
     updateProfileOverrides,
     profileLastUpdated,
     touchProfileUpdated,
+    isAlumni,
   } = useAppState();
   const navigate = useNavigate();
   const [tab, setTab] = useState("Personal");
@@ -153,6 +155,7 @@ export default function MyProfile() {
     majors: profileOverrides.majors ?? "",
     ucCommittee: profileOverrides.ucCommittee ?? "",
     linkedIn: profileOverrides.linkedIn ?? "",
+    phone: profileOverrides.phone ?? "",
   });
 
   // The form above is seeded once, at mount. Saved values can now arrive AFTER this page mounted (the
@@ -168,6 +171,7 @@ export default function MyProfile() {
       majors: profileOverrides.majors ?? "",
       ucCommittee: profileOverrides.ucCommittee ?? "",
       linkedIn: profileOverrides.linkedIn ?? "",
+      phone: profileOverrides.phone ?? "",
     });
   }, [
     profileOverrides.fullName,
@@ -176,6 +180,7 @@ export default function MyProfile() {
     profileOverrides.majors,
     profileOverrides.ucCommittee,
     profileOverrides.linkedIn,
+    profileOverrides.phone,
   ]);
 
   function handleSaveChanges() {
@@ -188,6 +193,7 @@ export default function MyProfile() {
       majors: form.majors,
       ucCommittee: form.ucCommittee,
       linkedIn,
+      phone: form.phone.trim(),
     });
     touchProfileUpdated();
     setSaved(true);
@@ -593,6 +599,20 @@ export default function MyProfile() {
                   />
                 </div>
                 <div className="field">
+                  <label htmlFor="profile-phone">Phone (optional)</label>
+                  <input
+                    id="profile-phone"
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="(310) 555-1234"
+                    value={form.phone}
+                    onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                  />
+                  <p className="meta" style={{ margin: "var(--space-2) 0 0" }}>
+                    Only used when a UC exec texts you from their own phone. Admins can see it; other members can't.
+                  </p>
+                </div>
+                <div className="field">
                   <label>Resume</label>
                   <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", flexWrap: "wrap" }}>
                     <span className="meta">
@@ -667,6 +687,8 @@ export default function MyProfile() {
               </div>
             </div>
           )}
+
+          {tab === "Personal" && isAlumni && <AlumniHelpSection />}
 
           {tab === "Work History" && (
             <div className="detail-section">

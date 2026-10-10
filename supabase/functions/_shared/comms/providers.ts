@@ -53,6 +53,10 @@ export interface OutgoingEmail {
   text: string;
   // Present on bulk mail: becomes the List-Unsubscribe headers mail clients show as an "Unsubscribe" button.
   unsubscribeUrl?: string | null;
+  // A sender preset's display name and reply-to. The address it is sent FROM never changes (SES only sends from verified
+  // addresses); these override COMMS_FROM_NAME and COMMS_REPLY_TO for this message only.
+  fromName?: string | null;
+  replyTo?: string | null;
 }
 
 export interface SendResult {
@@ -63,8 +67,10 @@ export interface SendResult {
 
 export async function sendEmail(message: OutgoingEmail): Promise<SendResult> {
   if (!emailConfigured()) return { ok: false, error: "Email isn't connected yet." };
-  const fromName = env("COMMS_FROM_NAME");
-  const from = fromName ? `${fromName} <${env("COMMS_FROM_EMAIL")}>` : env("COMMS_FROM_EMAIL");
+  const fromName = message.fromName?.trim() || env("COMMS_FROM_NAME");
+  // Quotes and angle brackets can't appear in a display name without breaking the header, so they are dropped.
+  const from = fromName ? `${fromName.replace(/["<>\r\n]/g, "")} <${env("COMMS_FROM_EMAIL")}>` : env("COMMS_FROM_EMAIL");
+  const replyTo = message.replyTo?.trim() || env("COMMS_REPLY_TO");
   const headers = message.unsubscribeUrl
     ? [
         { Name: "List-Unsubscribe", Value: `<${message.unsubscribeUrl}>` },
@@ -75,7 +81,7 @@ export async function sendEmail(message: OutgoingEmail): Promise<SendResult> {
     const result = await ses().send(
       new SendEmailCommand({
         FromEmailAddress: from,
-        ReplyToAddresses: env("COMMS_REPLY_TO") ? [env("COMMS_REPLY_TO")] : undefined,
+        ReplyToAddresses: replyTo ? [replyTo] : undefined,
         Destination: { ToAddresses: [message.to] },
         Content: {
           Simple: {
