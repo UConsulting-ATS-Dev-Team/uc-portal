@@ -96,6 +96,8 @@ export function calendarItems(events, lessons) {
     date: lesson.lesson_date,
     time: null,
     kind: "lesson",
+    lessonId: lesson.id,
+    description: lesson.topic_overview ?? null,
     required: true,
     method: "admin",
     location: null,
@@ -107,6 +109,7 @@ export function calendarItems(events, lessons) {
     time: e.start_time ? e.start_time.slice(0, 5) : null,
     endTime: e.end_time ? e.end_time.slice(0, 5) : null,
     kind: e.kind,
+    description: e.description ?? null,
     required: e.required,
     method: e.attendance_method ?? "admin",
     location: e.location,
@@ -328,7 +331,20 @@ export function attendanceStatus(event, progress, today = new Date()) {
   return progress.recordedIds.has(event.id) ? "missed" : "not_recorded";
 }
 
-// ---- Assignments ----------------------------------------------------------------------------------
+// ---- Assignments ----
+
+// Days from today (local midnight) to a "YYYY-MM-DD" due date: negative once it has passed.
+export function daysUntil(dateKey, today = new Date()) {
+  return Math.round((parseYmd(dateKey) - startOfDay(today)) / 86400000);
+}
+
+// "Today", "Tomorrow", "in 4 days", "2 days ago".
+export function dueWording(days) {
+  if (days === 0) return "today";
+  if (days === 1) return "tomorrow";
+  if (days === -1) return "yesterday";
+  return days > 0 ? `in ${days} days` : `${-days} days ago`;
+}
 
 export function submissionState(submission) {
   if (!submission) return "not_started";

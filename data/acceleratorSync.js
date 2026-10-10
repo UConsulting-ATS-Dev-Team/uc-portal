@@ -360,7 +360,8 @@ export async function addSubmissionComment(submissionId, body) {
 export async function fetchUpcomingDeadlineCount() {
   const [lessons, submissions] = await Promise.all([fetchLessons(), fetchOwnSubmissions()]);
   const submittedIds = new Set(submissions.map((s) => s.lesson_id));
-  let count = 0;
+  // Work sent back as incomplete needs the intern's attention too.
+  let count = submissions.filter((s) => s.status === "incomplete").length;
   lessons.forEach((lesson, i) => {
     if (submittedIds.has(lesson.id)) return;
     const prevSubmitted = i === 0 || submittedIds.has(lessons[i - 1].id);

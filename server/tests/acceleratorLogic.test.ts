@@ -320,3 +320,15 @@ describe("assignments", () => {
     expect(p).toEqual({ total: 4, submitted: 2, complete: 1, incomplete: 1, awaitingReview: 1, notStarted: 1 });
   });
 });
+
+describe("due dates", () => {
+  it("counts whole days from today to a due date", () => {
+    expect(L.daysUntil("2026-10-14", at(2026, 10, 14, 15))).toBe(0);
+    expect(L.daysUntil("2026-10-17", at(2026, 10, 14, 23))).toBe(3);
+    expect(L.daysUntil("2026-10-12", at(2026, 10, 14, 1))).toBe(-2);
+  });
+
+  it("words the distance plainly", () => {
+    expect([0, 1, 4, -1, -3].map(L.dueWording)).toEqual(["today", "tomorrow", "in 4 days", "yesterday", "3 days ago"]);
+  });
+});

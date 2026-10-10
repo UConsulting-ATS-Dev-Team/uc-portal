@@ -701,3 +701,116 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* Event details dialog. */
+.accel-details {
+  margin: 0 0 var(--space-4);
+}
+
+.accel-details > div {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+}
+
+.accel-details dt {
+  flex: 0 0 90px;
+  color: var(--color-text-muted);
+}
+
+.accel-details dd {
+  margin: 0;
+}
+
+/* What the committee said about work already handed in. */
+.accel-notices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.accel-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-left: 3px solid var(--color-accent);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.accel-notice--fix {
+  border-left-color: var(--color-danger);
+}
+
+.accel-notice--fix strong {
+  color: var(--color-danger);
+}
+
+/* The next assignments and when each is due, above the calendar. */
+.accel-due {
+  margin-bottom: var(--space-5);
+  background: var(--color-surface);
+  border: var(--border-hairline);
+}
+
+.accel-due__kicker {
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--text-kicker);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  border-bottom: var(--border-hairline);
+}
+
+.accel-due__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-5);
+  color: var(--color-text);
+  text-decoration: none;
+  border-left: 3px solid transparent;
+}
+
+.accel-due__row + .accel-due__row {
+  border-top: var(--border-hairline);
+}
+
+.accel-due__row.is-soon {
+  border-left-color: var(--color-accent);
+}
+
+.accel-due__row.is-overdue {
+  border-left-color: var(--color-danger);
+}
+
+.accel-due__title {
+  font-weight: 700;
+}
+
+.accel-due__date {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.accel-due__when {
+  color: var(--color-text-muted);
+}
+
+.accel-due__row.is-soon .accel-due__when {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.accel-due__row.is-overdue .accel-due__when {
+  color: var(--color-danger);
+  font-weight: 700;
+}

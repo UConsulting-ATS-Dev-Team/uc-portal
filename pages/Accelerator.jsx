@@ -9,6 +9,8 @@ import {
   calendarItems,
   chipStyleFor,
   coffeeChatProgress,
+  daysUntil,
+  dueWording,
   formatTimeRange,
   formatTimeShort,
   itemsByDate,
@@ -23,6 +25,7 @@ import {
   CLUB_CHATS_PER_WEEK,
 } from "../data/acceleratorLogic.js";
 import AcceleratorTabs from "../components/AcceleratorTabs.jsx";
+import Modal from "../components/Modal.jsx";
 import "../styles/accelerator.css";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -34,10 +37,39 @@ function tagFor(item) {
   return { className: `accel-tag accel-tag--${style}`, text: style === "accelerator" ? "Accelerator" : style === "required" ? "Required" : "Optional" };
 }
 
+const KIND_LABEL = { gm: "General meeting", accelerator: "Accelerator meeting", firm: "Firm info session", uc_event: "UC event", social: "Social", lesson: "Assignment due" };
+const METHOD_LABEL = { admin: "The committee takes attendance", photo: "Submit a photo from the event to be marked as attending" };
+
+// What a meeting or event is, where and when. Assignments link to their own page instead.
+function EventDetails({ item, onClose }) {
+  const date = parseYmd(item.date);
+  const rows = [
+    ["When", [date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }), item.time ? formatTimeRange(item.time, item.endTime) : null].filter(Boolean).join(", ")],
+    ["Where", item.location],
+    ["Type", `${KIND_LABEL[item.kind] ?? item.kind}, ${item.required ? "required" : "optional"}`],
+    ["Attendance", METHOD_LABEL[item.method]],
+  ].filter(([, v]) => v);
+  return (
+    <Modal title={item.title} onClose={onClose} width={520} footer={<button className="btn btn-secondary" onClick={onClose}>Close</button>}>
+      <dl className="accel-details">
+        {rows.map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+      {item.description && <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{item.description}</p>}
+    </Modal>
+  );
+}
+
 function EventRow({ item, today }) {
+  const [open, setOpen] = useState(false);
   const date = parseYmd(item.date);
   const tag = tagFor(item);
-  const detail = [item.time ? formatTimeRange(item.time, item.endTime) : null, item.location].filter(Boolean).join(" · ");
+  const isLesson = item.kind === "lesson";
+  const detail = [isLesson ? "Assignment due" : null, item.time ? formatTimeRange(item.time, item.endTime) : null, item.location].filter(Boolean).join(" � ");
   return (
     <div className={`accel-event${item.date < ymd(today) ? " is-past" : ""}`}>
       <div className={`accel-event__date${item.required ? " is-required" : ""}`}>
@@ -49,6 +81,16 @@ function EventRow({ item, today }) {
         {detail && <div className="accel-event__meta">{detail}</div>}
       </div>
       <span className={tag.className}>{tag.text}</span>
+      {isLesson ? (
+        <Link className="btn btn-secondary" to={`/accelerator/assignments?lesson=${item.lessonId}`}>
+          Open assignment
+        </Link>
+      ) : (
+        <button type="button" className="btn btn-secondary" onClick={() => setOpen(true)}>
+          Details
+        </button>
+      )}
+      {open && <EventDetails item={item} onClose={() => setOpen(false)} />}
     </div>
   );
 }
@@ -112,7 +154,7 @@ function Calendar({ byDate, today }) {
               <span className="accel-cal__num">{day.date.getDate()}</span>
               {shown.map((item) => (
                 <span key={item.id} className={`accel-chip accel-chip--${chipStyleFor(item)}`} title={[item.title, item.time ? formatTimeRange(item.time, item.endTime) : null].filter(Boolean).join(", ")}>
-                  {item.time && <span className="accel-chip__time">{formatTimeShort(item.time, item.endTime)}</span>}
+                  {item.kind === "lesson" ? <span className="accel-chip__time">Due</span> : item.time && <span className="accel-chip__time">{formatTimeShort(item.time, item.endTime)}</span>}
                   {item.title}
                 </span>
               ))}
@@ -215,6 +257,19 @@ export default function Accelerator() {
             .filter(Boolean)
             .join(", ");
 
+  // The next assignments to hand in, nearest first, and what the committee has said about the ones already handed in.
+  const submissionByLesson = new Map(submissions.map((s) => [s.lesson_id, s]));
+  const upcoming = lessons
+    .map((lesson, i) => ({ lesson, number: i + 1, days: daysUntil(lesson.lesson_date, today) }))
+    .filter(({ lesson }) => !submissionByLesson.has(lesson.id))
+    .slice(0, 3);
+  const needsFix = lessons
+    .map((lesson, i) => ({ lesson, number: i + 1, submission: submissionByLesson.get(lesson.id) }))
+    .filter(({ submission }) => submission?.status === "incomplete");
+  const recentlyComplete = lessons
+    .map((lesson, i) => ({ lesson, number: i + 1, submission: submissionByLesson.get(lesson.id) }))
+    .filter(({ submission }) => submission?.status === "complete" && submission.graded_at && now - new Date(submission.graded_at) < 14 * 86400000);
+
   const pct = (n, d) => (d > 0 ? (n / d) * 100 : 0);
 
   return (
@@ -222,6 +277,38 @@ export default function Accelerator() {
       <AcceleratorTabs />
       <h1 className="accel-title">Accelerator</h1>
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
+
+      {!loading && (needsFix.length > 0 || recentlyComplete.length > 0) && (
+        <div className="accel-notices">
+          {needsFix.map(({ lesson, number, submission }) => (
+            <Link key={lesson.id} to={`/accelerator/assignments?lesson=${lesson.id}`} className="accel-notice accel-notice--fix">
+              <strong>Week {number}: {lesson.title} needs to be fixed.</strong>
+              <span>{submission.feedback ? `The committee said: ${submission.feedback}` : "The committee marked it incomplete. Open it to see their comments, then resubmit."}</span>
+            </Link>
+          ))}
+          {recentlyComplete.map(({ lesson, number, submission }) => (
+            <Link key={lesson.id} to={`/accelerator/assignments?lesson=${lesson.id}`} className="accel-notice accel-notice--good">
+              <strong>Week {number}: {lesson.title} is complete. You're all set for this one.</strong>
+              {submission.feedback && <span>{submission.feedback}</span>}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {!loading && upcoming.length > 0 && (
+        <div className="accel-due">
+          <div className="accel-due__kicker">Assignments due</div>
+          {upcoming.map(({ lesson, number, days }) => (
+            <Link key={lesson.id} to={`/accelerator/assignments?lesson=${lesson.id}`} className={`accel-due__row${days < 0 ? " is-overdue" : days <= 3 ? " is-soon" : ""}`}>
+              <span className="accel-due__title">Week {number}: {lesson.title}</span>
+              <span className="accel-due__date">
+                {parseYmd(lesson.lesson_date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                <span className="accel-due__when">{days < 0 ? `overdue, was due ${dueWording(days)}` : `due ${dueWording(days)}`}</span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
 
       <div className="accel-home">
         <div className="accel-home__calendar">{loading ? <p className="meta">Loading…</p> : <Calendar byDate={byDate} today={today} />}</div>

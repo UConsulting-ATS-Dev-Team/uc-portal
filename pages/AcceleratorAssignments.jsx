@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { fetchMaterials, materialHref, submitAssignment, uploadSubmissionFile } from "../data/acceleratorSync.js";
 import { assignmentProgress, submissionState } from "../data/acceleratorLogic.js";
 import { useAcceleratorData } from "../data/useAcceleratorData.js";
@@ -158,7 +159,15 @@ function SubmissionForm({ lesson, submission, onSubmitted }) {
 
 export default function AcceleratorAssignments() {
   const { lessons, submissions, loading, error, reload } = useAcceleratorData();
-  const [expandedId, setExpandedId] = useState(null);
+  const [searchParams] = useSearchParams();
+  // Arriving from the calendar or a notice (?lesson=<id>) opens that assignment.
+  const [expandedId, setExpandedId] = useState(searchParams.get("lesson"));
+  useEffect(() => {
+    const id = searchParams.get("lesson");
+    if (!id || loading) return;
+    setExpandedId(id);
+    document.getElementById(`lesson-${id}`)?.scrollIntoView();
+  }, [searchParams, loading]);
 
   const submissionByLesson = new Map(submissions.map((s) => [s.lesson_id, s]));
   const progress = assignmentProgress(lessons, submissions);
@@ -214,7 +223,7 @@ export default function AcceleratorAssignments() {
           const isExpanded = expandedId === lesson.id;
           const label = STATE_LABEL[state];
           return (
-            <div className={`step-row${isExpanded ? " is-current" : ""}`} key={lesson.id} style={{ display: "block" }}>
+            <div id={`lesson-${lesson.id}`} className={`step-row${isExpanded ? " is-current" : ""}`} key={lesson.id} style={{ display: "block" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
                 <span className="step-row__status">{state === "complete" ? "✓" : "○"}</span>
                 <span className="step-row__number step-row__number--week">Week {i + 1}</span>
