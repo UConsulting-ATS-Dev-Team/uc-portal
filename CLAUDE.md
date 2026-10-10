@@ -54,7 +54,8 @@ exported, so treat every "UC Career" in design/handoff/ as this product.
 - **Left nav rail** (240px, full height; was 206px until 2026-10-06, widened so
   "Master Communications" fits on one line), grouped under collapsible headings
   that fold away and are remembered per browser (`useCollapsedGroups`, shared with
-  the phone More sheet): **Recruiting** (Home · Jobs · Applications with its count
+  the phone More sheet), with **Home** standing on its own above them (it is the landing
+  page, not part of a group): **Recruiting** (Jobs · Applications with its count
   badge) · **Community** (Network · Feed · Companies) · **Learning** (Career
   Resources · Accelerator) · **Account** (My Profile). Groups with nothing for
   that account are dropped (alumni and interns see fewer). Admins also get the

@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import { clubStats } from "../data/mockUser.js";
-import { LEADERSHIP_SECTIONS, mainSectionsFor } from "../data/navItems.js";
+import { LEADERSHIP_SECTIONS, mainHomeItemFor, mainSectionsFor } from "../data/navItems.js";
 import { useAppState } from "../data/store.jsx";
 import { useCollapsedGroups } from "./useCollapsedGroups.js";
 
@@ -73,11 +73,17 @@ export default function NavRail() {
   // currentUser.role every session used to see the exact same hardcoded
   // "member" for regardless of who was actually signed in.
   const { isAdmin, isAlumni, isIntern, trackedJobs } = useAppState();
+  const home = mainHomeItemFor({ isIntern, isAlumni, isAdmin });
   const sections = mainSectionsFor({ isIntern, isAlumni, isAdmin });
   const badgeFor = (item) => (item.badge ? () => item.badge(trackedJobs) : undefined);
 
   return (
     <nav className="rail">
+      {home && (
+        <ul className="rail__items rail__home">
+          <RailLink {...home} />
+        </ul>
+      )}
       <GroupedLinks sections={sections} badgeFor={badgeFor} storageKey={MAIN_KEY} />
 
       {isAdmin && (

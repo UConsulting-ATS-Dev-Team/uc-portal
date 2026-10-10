@@ -94,7 +94,6 @@ export function mainItemsFor({ isIntern, isAlumni, isAdmin }) {
 // the group named here; a group with nothing left for this account (e.g. Recruiting for an alumnus) is dropped.
 const MAIN_GROUP_ORDER = ["Recruiting", "Community", "Learning", "Account"];
 const MAIN_GROUP_OF = {
-  "/": "Recruiting",
   "/jobs": "Recruiting",
   "/applications": "Recruiting",
   "/network": "Community",
@@ -105,8 +104,14 @@ const MAIN_GROUP_OF = {
   "/profile": "Account",
 };
 
+// Home stands on its own above the groups, since it is the landing page rather than part of any one of them. (Alumni and interns
+// have no Home, so this is undefined for them.)
+export function mainHomeItemFor(account) {
+  return mainItemsFor(account).find((item) => item.to === "/");
+}
+
 export function mainSectionsFor(account) {
-  const items = mainItemsFor(account);
+  const items = mainItemsFor(account).filter((item) => item.to !== "/");
   return MAIN_GROUP_ORDER.map((section) => ({ section, items: items.filter((item) => MAIN_GROUP_OF[item.to] === section) })).filter(
     (group) => group.items.length > 0
   );

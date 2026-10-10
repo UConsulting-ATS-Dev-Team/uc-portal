@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 // @ts-expect-error plain JS module
 import { toCsv } from "../../data/csvExport.js";
 // @ts-expect-error plain JS module
-import { mainSectionsFor, mainItemsFor, LEADERSHIP_SECTIONS } from "../../data/navItems.js";
+import { mainSectionsFor, mainHomeItemFor, mainItemsFor, LEADERSHIP_SECTIONS } from "../../data/navItems.js";
 
 describe("CSV export", () => {
   it("quotes cells with commas, quotes and line breaks", () => {
@@ -21,9 +21,10 @@ describe("CSV export", () => {
 describe("main nav groups", () => {
   const labels = (account: object) => mainSectionsFor(account).map((g: { section: string; items: { label: string }[] }) => [g.section, g.items.map((i) => i.label)]);
 
-  it("groups a current member's links in rail order", () => {
+  it("groups a current member's links in rail order, with Home standing on its own above them", () => {
+    expect(mainHomeItemFor({ isIntern: false, isAlumni: false, isAdmin: false }).label).toBe("Home");
     expect(labels({ isIntern: false, isAlumni: false, isAdmin: false })).toEqual([
-      ["Recruiting", ["Home", "Jobs", "Applications"]],
+      ["Recruiting", ["Jobs", "Applications"]],
       ["Community", ["Network", "Feed", "Companies"]],
       ["Learning", ["Career Resources", "Accelerator"]],
       ["Account", ["My Profile"]],
@@ -31,6 +32,8 @@ describe("main nav groups", () => {
   });
 
   it("drops groups with nothing left for alumni and interns", () => {
+    expect(mainHomeItemFor({ isAlumni: true })).toBeUndefined();
+    expect(mainHomeItemFor({ isIntern: true })).toBeUndefined();
     expect(labels({ isIntern: false, isAlumni: true, isAdmin: false })).toEqual([
       ["Community", ["Network", "Feed", "Companies"]],
       ["Account", ["My Profile"]],
@@ -43,7 +46,7 @@ describe("main nav groups", () => {
 
   it("gives every account's links a group, so none disappear from the rail", () => {
     for (const account of [{ isAdmin: false }, { isAdmin: true }, { isAlumni: true }, { isIntern: true }]) {
-      const grouped = mainSectionsFor(account).flatMap((g: { items: { to: string }[] }) => g.items.map((i) => i.to));
+      const grouped = [mainHomeItemFor(account)?.to, ...mainSectionsFor(account).flatMap((g: { items: { to: string }[] }) => g.items.map((i) => i.to))].filter(Boolean);
       expect(grouped.sort()).toEqual(mainItemsFor(account).map((i: { to: string }) => i.to).sort());
     }
   });
