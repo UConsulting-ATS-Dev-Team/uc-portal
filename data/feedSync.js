@@ -94,6 +94,12 @@ export async function updateFeedPost(id, body) {
   return data;
 }
 
+// Admin only (the function refuses anyone else).
+export async function setFeedPostPinned(id, pinned) {
+  const { error } = await supabase.rpc("set_feed_post_pinned", { p_id: id, p_pinned: pinned });
+  if (error) throw new Error(error.message);
+}
+
 export async function deleteFeedPost(id) {
   const { error } = await supabase.from("feed_posts").delete().eq("id", id);
   if (error) throw new Error(error.message);

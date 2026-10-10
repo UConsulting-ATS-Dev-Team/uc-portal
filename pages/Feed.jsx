@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { useAppState } from "../data/store.jsx";
 import { displayName } from "../data/profileUtils.js";
-import { fetchFeedPosts, submitFeedPost, updateFeedPost, deleteFeedPost, feedRowToPost } from "../data/feedSync.js";
+import { fetchFeedPosts, submitFeedPost, updateFeedPost, deleteFeedPost, setFeedPostPinned, feedRowToPost } from "../data/feedSync.js";
 import { supabase } from "../data/supabaseClient.js";
 import { listOpenToCoffeeChatMembers } from "../data/messagesSync.js";
 import { fetchMemberAvatars } from "../data/avatarSync.js";
@@ -14,7 +14,7 @@ import PullToRefresh from "../components/PullToRefresh.jsx";
 import "../styles/jobDetail.css";
 import "../styles/feed.css";
 
-const TABS = ["All", "Announcements", "Saved"];
+const TABS = ["All", "Saved"];
 
 export default function Feed() {
   const { profileOverrides, accountEmail, isAlumni, realIsAdmin } = useAppState();
@@ -24,7 +24,7 @@ export default function Feed() {
   // prefilled prompt via router state rather than a URL param, since it's
   // one-time composer seeding, not a shareable/bookmarkable URL.
   const [composerText, setComposerText] = useState(location.state?.prefill || "");
-  // Admins' posts here are announcements (labelled, in the Announcements tab); they can also pin one to the top of the feed.
+  // Admins can pin a post to the top of the feed, when posting or later.
   const [pinPost, setPinPost] = useState(false);
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
@@ -59,6 +59,12 @@ export default function Feed() {
     });
   }
 
+  function togglePinned(post) {
+    setFeedPostPinned(post.id, !post.pinned)
+      .then(() => setPosts((prev) => prev.map((p) => (p.id === post.id ? { ...p, pinned: !post.pinned } : p))))
+      .catch((err) => setPostsError(err.message));
+  }
+
   function handleDeletePost(postId) {
     deleteFeedPost(postId).then(() => setPosts((prev) => prev.filter((p) => p.id !== postId)));
   }
@@ -82,7 +88,7 @@ export default function Feed() {
       const row = await submitFeedPost({
         body: composerText.trim(),
         // The database wants a type on every post; ordinary posts carry the neutral one and show no label.
-        postType: realIsAdmin ? "Announcement" : "Advice",
+        postType: "Advice",
         pinned: realIsAdmin && pinPost,
         authorName: displayName(profileOverrides, accountEmail),
         // Not resolvedClassYear() -- that falls back to mockUser.js's fake
@@ -117,7 +123,6 @@ export default function Feed() {
   const filtered = useMemo(() => {
     return posts
       .filter((p) => {
-        if (tab === "Announcements") return p.postType === "Announcement";
         if (tab === "Saved") return savedPosts.includes(p.id);
         return true;
       })
@@ -156,7 +161,7 @@ export default function Feed() {
               <Avatar name={displayName(profileOverrides, accountEmail)} url={profileOverrides.avatarUrl} />
             </div>
             <textarea
-              placeholder={realIsAdmin ? "Post an announcement to UC…" : "Share something with UC…"}
+              placeholder="Share something with UC…"
               value={composerText}
               onChange={(e) => setComposerText(e.target.value)}
             />
@@ -208,7 +213,6 @@ export default function Feed() {
           const helpfulCount = post.helpfulCount + (isHelpful ? 1 : 0);
           const isSaved = savedPosts.includes(post.id);
 
-          const isAnnouncement = post.postType === "Announcement";
           return (
             <div
               className="post-card"
@@ -220,7 +224,6 @@ export default function Feed() {
                   <Avatar name={post.author} url={avatarsById.get(post.authorId)} />
                 </div>
                 <span className="post-card__name">{post.author}</span>
-                {isAnnouncement && <span className="chip chip-accent">Announcement</span>}
                 {post.pinned && <span className="chip">Pinned</span>}
               </div>
               <p className="post-card__role-line">
@@ -261,6 +264,11 @@ export default function Feed() {
                     Share
                   </button>
                   {post.socialProof && <span className="post-card__proof">{post.socialProof}</span>}
+                  {realIsAdmin && (
+                    <button className="btn-link" onClick={() => togglePinned(post)}>
+                      {post.pinned ? "Unpin" : "Pin to top"}
+                    </button>
+                  )}
                   {post.authorId === currentAccountId && (
                     <>
                       <button className="btn-link" onClick={() => startEditPost(post)}>
