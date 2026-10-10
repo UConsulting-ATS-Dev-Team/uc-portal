@@ -50,6 +50,12 @@ h3 {
   font-size: 15px;
 }
 
+/* A page title that sits directly above a block (a tab bar, a card, a table) gets the same breathing room under it, instead
+   of touching it. Titles followed by a count or a line of text keep that text's own spacing. */
+h1 + :is(div, section, nav, ul, form, table, aside) {
+  margin-top: var(--space-7);
+}
+
 /* --color-accent-deep, not --color-accent -- a real link's own text needs
    the 4.5:1 text-contrast minimum, and plain accent only clears that
    against white (4.90:1), not the page's own ground background

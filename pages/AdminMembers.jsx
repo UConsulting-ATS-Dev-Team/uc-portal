@@ -345,7 +345,7 @@ export default function AdminMembers() {
 
   return (
     <div>
-      <div className="jobs-header" style={{ marginBottom: "var(--space-6)" }}>
+      <div className="jobs-header">
         <div>
           <h1>User management</h1>
         </div>

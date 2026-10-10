@@ -97,7 +97,7 @@ export default function AdminCommunications() {
 
   return (
     <div>
-      <div className="jobs-header" style={{ marginBottom: "var(--space-5)" }}>
+      <div className="jobs-header">
         <div>
           <h1>Master communications</h1>
         </div>

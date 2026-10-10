@@ -1,0 +1,136 @@
+/* Searchable, grouped dropdown for long option lists (components/OptionDropdown.jsx). */
+.option-dropdown {
+  position: relative;
+  margin-bottom: var(--space-5);
+}
+
+.option-dropdown__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-hairline);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.option-dropdown__trigger[aria-expanded="true"] {
+  border-color: var(--color-accent);
+}
+
+.option-dropdown__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.option-dropdown__count {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.option-dropdown__panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  min-width: 240px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  display: flex;
+  flex-direction: column;
+}
+
+.option-dropdown__search {
+  margin: var(--space-3);
+  width: calc(100% - 2 * var(--space-3));
+}
+
+.option-dropdown__list {
+  max-height: 300px;
+  overflow-y: auto;
+  border-top: var(--border-hairline);
+}
+
+.option-dropdown__group {
+  position: sticky;
+  top: 0;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-ground);
+  border-bottom: var(--border-hairline);
+  font-size: var(--text-kicker);
+  font-weight: 700;
+  letter-spacing: var(--tracking-kicker);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.option-dropdown__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.option-dropdown__option:hover:not(:disabled) {
+  background: var(--color-accent-tint);
+}
+
+.option-dropdown__option:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.option-dropdown__option.is-selected {
+  font-weight: 700;
+  color: var(--color-accent-deep);
+}
+
+.option-dropdown__check {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  border: var(--border-hairline);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.option-dropdown__option.is-selected .option-dropdown__check {
+  border-color: var(--color-accent);
+  background: var(--color-accent-tint);
+}
+
+.option-dropdown__empty,
+.option-dropdown__foot {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+}
+
+.option-dropdown__foot {
+  border-top: var(--border-hairline);
+}
+
+.option-dropdown__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}

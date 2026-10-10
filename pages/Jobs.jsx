@@ -3,7 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import JobCard from "../components/JobCard.jsx";
 import ErrorState from "../components/ErrorState.jsx";
 import PostOpportunityModal from "../components/modals/PostOpportunityModal.jsx";
-import { INDUSTRIES, LOCATIONS } from "../data/careerOptions.js";
+import { INDUSTRY_GROUPS, LOCATION_GROUPS } from "../data/careerOptions.js";
+import OptionDropdown from "../components/OptionDropdown.jsx";
 import { NEUTRAL_FILTERS, matchesFilters } from "../data/jobFilters.js";
 import { useYcCompanies } from "../data/useYcCompanies.js";
 import { isNewSince, useJobsVisitBaseline } from "../data/jobVisit.js";
@@ -138,10 +139,10 @@ function defaultFiltersFromPreferences(preferences, classYear) {
 // location-or-workMode, unchanged), just rendered as two separate groups
 // now so it's clear which kind of thing each chip is.
 const WORK_MODE_CHIPS = ["Remote", "Hybrid", "In-person"];
-const LOCATION_CHIPS = [...new Set([...LOCATIONS, "Los Angeles", "San Francisco"])].filter(
-  (loc) => !WORK_MODE_CHIPS.includes(loc)
+// The dropdowns list every industry and place; Remote / Hybrid / In-person are their own chip group below.
+const LOCATION_FILTER_GROUPS = LOCATION_GROUPS.map((g) => ({ ...g, names: g.names.filter((n) => !WORK_MODE_CHIPS.includes(n)) })).filter(
+  (g) => g.names.length > 0
 );
-const INDUSTRY_OPTIONS = INDUSTRIES.filter((i) => i.name !== "Still figuring it out");
 
 // Zero-result diagnostic (wireframe 3e): for each active filter, compute
 // how many results dropping *just that one* would unlock.
@@ -244,10 +245,6 @@ export default function Jobs() {
   const [sortBy, setSortBy] = useState("bestMatch");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const [showMoreIndustries, setShowMoreIndustries] = useState(false);
-  const [showMoreLocations, setShowMoreLocations] = useState(false);
-  const [industrySearch, setIndustrySearch] = useState("");
-  const [locationSearch, setLocationSearch] = useState("");
   const [showPostModal, setShowPostModal] = useState(false);
   const [nlQuery, setNlQuery] = useState("");
   const [nlResult, setNlResult] = useState(null);
@@ -571,72 +568,24 @@ export default function Jobs() {
 
         <div className="filters__group">
           <div className="filters__group-title">Industry</div>
-          {showMoreIndustries && (
-            <input
-              type="text"
-              className="filters__search"
-              placeholder={`Search ${INDUSTRY_OPTIONS.length} industries…`}
-              value={industrySearch}
-              onChange={(e) => setIndustrySearch(e.target.value)}
-            />
-          )}
-          {(showMoreIndustries
-            ? INDUSTRY_OPTIONS.filter(
-                (ind) => filters.industries.includes(ind.name) || ind.name.toLowerCase().includes(industrySearch.trim().toLowerCase())
-              )
-            : INDUSTRY_OPTIONS.slice(0, 4)
-          ).map((ind) => (
-            <label className="filters__checkbox" key={ind.name}>
-              <span>
-                <input
-                  type="checkbox"
-                  checked={filters.industries.includes(ind.name)}
-                  onChange={() => toggleChip("industries", ind.name)}
-                />{" "}
-                {ind.name}
-              </span>
-            </label>
-          ))}
-          {!showMoreIndustries && INDUSTRY_OPTIONS.length > 4 && (
-            <button className="btn-link filters__show-more" onClick={() => setShowMoreIndustries(true)}>
-              Show {INDUSTRY_OPTIONS.length - 4} more
-            </button>
-          )}
+          <OptionDropdown
+            groups={INDUSTRY_GROUPS}
+            selected={filters.industries}
+            onToggle={(name) => toggleChip("industries", name)}
+            noun="industries"
+            placeholder="Any industry"
+          />
         </div>
 
         <div className="filters__group">
           <div className="filters__group-title">Location</div>
-          {showMoreLocations && (
-            <input
-              type="text"
-              className="filters__search"
-              placeholder={`Search ${LOCATION_CHIPS.length} locations…`}
-              value={locationSearch}
-              onChange={(e) => setLocationSearch(e.target.value)}
-            />
-          )}
-          <div className="filters__chip-group">
-            {(showMoreLocations
-              ? LOCATION_CHIPS.filter(
-                  (loc) => filters.locations.includes(loc) || loc.toLowerCase().includes(locationSearch.trim().toLowerCase())
-                )
-              : LOCATION_CHIPS.slice(0, 8)
-            ).map((loc) => (
-              <button
-                type="button"
-                key={loc}
-                className={`filters__chip${filters.locations.includes(loc) ? " is-selected" : ""}`}
-                onClick={() => toggleChip("locations", loc)}
-              >
-                {loc}
-              </button>
-            ))}
-          </div>
-          {!showMoreLocations && LOCATION_CHIPS.length > 8 && (
-            <button className="btn-link filters__show-more" onClick={() => setShowMoreLocations(true)}>
-              Show {LOCATION_CHIPS.length - 8} more
-            </button>
-          )}
+          <OptionDropdown
+            groups={LOCATION_FILTER_GROUPS}
+            selected={filters.locations.filter((l) => !WORK_MODE_CHIPS.includes(l))}
+            onToggle={(name) => toggleChip("locations", name)}
+            noun="locations"
+            placeholder="Any location"
+          />
         </div>
 
         <div className="filters__group">

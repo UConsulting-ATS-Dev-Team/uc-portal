@@ -26,97 +26,82 @@
 // actually classify jobs into more of these is real, separate follow-up
 // work (touches the live ingestion pipeline and its tests), not done
 // here.
-export const INDUSTRIES = [
-  // --- Consulting ---
-  { name: "Management consulting" },
-  { name: "Strategy consulting" },
-  { name: "Technology consulting" },
-  { name: "Human capital consulting" },
-
-  // --- Finance ---
-  { name: "Investment banking" },
-  { name: "Private equity" },
-  { name: "Venture capital" },
-  { name: "Hedge funds / asset management" },
-  { name: "Corporate finance / FP&A" },
-  { name: "Commercial & retail banking" },
-  { name: "Fintech" },
-  { name: "Insurance & actuarial" },
-
-  // --- Business & corporate ---
-  { name: "Marketing & brand strategy" },
-  { name: "Corporate strategy & business development" },
-  { name: "Product management" },
-  { name: "Operations & supply chain" },
-  { name: "Sales & business development" },
-  { name: "Human resources / people operations" },
-
-  // --- Tech ---
-  { name: "Tech / product strategy" },
-  { name: "Data & analytics" },
-  { name: "Software engineering" },
-  { name: "Cybersecurity" },
-
-  // --- Other consulting/finance/business-adjacent ---
-  { name: "Consumer goods & retail" },
-  { name: "Media & entertainment" },
-  { name: "Energy & sustainability" },
-  { name: "Healthcare" },
-  { name: "Real estate" },
-  { name: "Nonprofit / public sector" },
-
-  // --- Added 2026-10-03: the list had 29 rows while the live board spans far more. Each one is
-  // recognised from job titles by data/industryPatterns.js, so picking it actually changes the
-  // member's matches. Consulting / advisory ---
-  { name: "Economic consulting" },
-  { name: "Healthcare consulting" },
-  { name: "Financial advisory & restructuring" },
-  { name: "Public sector consulting" },
-
-  // --- Finance ---
-  { name: "Quantitative trading" },
-  { name: "Sales & trading" },
-  { name: "Equity research" },
-  { name: "Wealth management" },
-  { name: "Credit & lending" },
-  { name: "Accounting & audit" },
-  { name: "Tax" },
-  { name: "Risk & compliance" },
-  { name: "Crypto & digital assets" },
-
-  // --- Business & corporate ---
-  { name: "Legal & regulatory" },
-  { name: "Public relations & communications" },
-  { name: "Customer success & account management" },
-  { name: "Procurement & sourcing" },
-  { name: "Entrepreneurship / startups" },
-  { name: "Education & edtech" },
-  { name: "Design & UX" },
-  { name: "Program & project management" },
-  { name: "Business operations & chief of staff" },
-
-  // --- Tech ---
-  { name: "AI & machine learning" },
-  { name: "Cloud & infrastructure" },
-  { name: "Hardware & semiconductors" },
-  { name: "Robotics & automation" },
-  { name: "Gaming" },
-
-  // --- Other sectors ---
-  { name: "Aerospace & defense" },
-  { name: "Automotive & mobility" },
-  { name: "Biotech & pharma" },
-  { name: "Manufacturing & industrial" },
-  { name: "Travel & hospitality" },
-  { name: "Telecommunications" },
-  { name: "Logistics & transportation" },
-  { name: "Food & agriculture" },
-  { name: "Fashion & luxury" },
-  { name: "Government & policy" },
-  { name: "Sports & fitness" },
-
-  { name: "Still figuring it out" },
+// Grouped so a long dropdown is easy to scan. Every name is recognised from job titles by data/industryPatterns.js
+// (a test fails if one is not), so picking one really changes a member's matches. Industries a business student at a
+// top university tends to recruit into, consulting and finance first.
+export const INDUSTRY_GROUPS = [
+  {
+    label: "Consulting & advisory",
+    names: [
+      "Management consulting", "Strategy consulting", "Technology consulting", "Human capital consulting", "Economic consulting",
+      "Healthcare consulting", "Financial advisory & restructuring", "Public sector consulting", "Operations consulting",
+      "ESG & sustainability consulting",
+    ],
+  },
+  {
+    label: "Finance & investing",
+    names: [
+      "Investment banking", "Private equity", "Venture capital", "Growth equity", "Hedge funds / asset management", "Private credit",
+      "Leveraged finance", "Capital markets", "Sales & trading", "Fixed income & currencies (FICC)", "Commodities trading",
+      "Quantitative trading", "Equity research", "Structured finance & securitization", "Real estate investing", "Infrastructure investing",
+      "Wealth management", "Family office & trust", "Corporate finance / FP&A", "Strategic finance", "Treasury & cash management",
+      "Investor relations", "Commercial & retail banking", "Corporate & institutional banking", "Credit & lending", "Insurance & actuarial",
+      "Reinsurance", "Accounting & audit", "Internal audit", "Tax", "Risk & compliance", "Fintech", "Crypto & digital assets",
+    ],
+  },
+  {
+    label: "Business & corporate",
+    names: [
+      "Corporate strategy & business development", "Product management", "Operations & supply chain", "Sales & business development",
+      "Revenue operations & sales ops", "Pricing & revenue management", "Technical sales & solutions consulting",
+      "Customer success & account management", "Business operations & chief of staff", "Program & project management",
+      "Process improvement & lean", "Procurement & sourcing", "Business intelligence", "IT management & systems",
+      "Human resources / people operations", "Learning & development", "Total rewards & compensation", "Executive search & talent",
+      "Leadership development programs", "Legal & regulatory", "Government relations", "ESG & corporate responsibility",
+      "Entrepreneurship / startups",
+    ],
+  },
+  {
+    label: "Marketing, media & creative",
+    names: [
+      "Marketing & brand strategy", "Brand management", "Digital marketing & performance", "Product marketing",
+      "Market research & insights", "Advertising & media planning", "Social media & content", "Public relations & communications",
+      "Media & entertainment", "Film & television", "Publishing & journalism", "Design & UX",
+    ],
+  },
+  {
+    label: "Technology",
+    names: [
+      "Tech / product strategy", "Data & analytics", "Software engineering", "Enterprise software & SaaS", "AI & machine learning",
+      "Cloud & infrastructure", "Cybersecurity", "Hardware & semiconductors", "Robotics & automation", "Gaming",
+    ],
+  },
+  {
+    label: "Healthcare & life sciences",
+    names: ["Healthcare", "Healthcare administration & operations", "Biotech & pharma", "Medical devices", "Digital health"],
+  },
+  {
+    label: "Energy, industrials & real assets",
+    names: [
+      "Energy & sustainability", "Clean energy & climate tech", "Oil, gas & utilities", "Real estate", "Real estate brokerage & property management",
+      "Construction & engineering", "Aerospace & defense", "Airlines & aviation", "Automotive & mobility", "Manufacturing & industrial",
+      "Chemicals & materials", "Mining & metals", "Telecommunications", "Logistics & transportation",
+    ],
+  },
+  {
+    label: "Consumer, retail & hospitality",
+    names: ["Consumer goods & retail", "E-commerce & marketplaces", "Travel & hospitality", "Food & agriculture", "Fashion & luxury", "Sports & fitness"],
+  },
+  {
+    label: "Government, nonprofit & education",
+    names: [
+      "Nonprofit / public sector", "Government & policy", "Philanthropy & social impact", "International development",
+      "Think tanks & policy research", "Education & edtech", "Higher education administration",
+    ],
+  },
 ];
+
+export const INDUSTRIES = [...INDUSTRY_GROUPS.flatMap((g) => g.names.map((name) => ({ name, group: g.label }))), { name: "Still figuring it out" }];
 
 // "Strategy consulting" and "Management consulting" are the same
 // real-world work, just named differently depending who you ask (the
@@ -190,111 +175,53 @@ export const ROLES = [
   "Paralegal",
 ];
 
-// Cities and metros members can pick. A city matches a job open there; a metro ("San Francisco Bay
-// Area") matches any of its member cities too (data/locationUtils.js holds the membership). Jobs
-// carry every place their posting lists (jobs.locations, see server/src/taxonomy/locations.ts).
-// Expanded 2026-10-03 from 20 cities to cover where the live board actually is.
-export const LOCATIONS = [
-  // --- Major US markets ---
-  "New York",
-  "Chicago",
-  "Los Angeles",
-  "San Francisco",
-  "Boston",
-  "Washington DC",
-  "Seattle",
-  "Austin",
-  "Dallas",
-  "Houston",
-  "Atlanta",
-  "Miami",
-  "Denver",
-  "Philadelphia",
-  "San Diego",
-  "Charlotte",
-  "Minneapolis",
-  "Phoenix",
-  "Nashville",
-  "Detroit",
-
-  // --- Metros: the city plus the suburbs most employers actually list ---
-  "San Francisco Bay Area",
-  "New York Metro",
-  "Greater Los Angeles",
-  "Greater Boston",
-  "Washington DC Area",
-  "Seattle Area",
-  "Dallas-Fort Worth",
-
-  // --- More US cities ---
-  "San Jose",
-  "Oakland",
-  "Palo Alto",
-  "Cambridge",
-  "Pittsburgh",
-  "Raleigh",
-  "Durham",
-  "Columbus",
-  "Cleveland",
-  "Cincinnati",
-  "Indianapolis",
-  "Milwaukee",
-  "Kansas City",
-  "St. Louis",
-  "Salt Lake City",
-  "Las Vegas",
-  "Tampa",
-  "Orlando",
-  "Baltimore",
-  "Boulder",
-  "Sacramento",
-  "San Antonio",
-  "Stamford",
-  "Hartford",
-  "Providence",
-  "Princeton",
-  "Honolulu",
-  "New Orleans",
-  "Louisville",
-  "Ann Arbor",
-
-  // --- Work mode ---
-  "Remote",
-  "Hybrid",
-
-  // --- International ---
-  "International",
-  "London",
-  "Toronto",
-  "Vancouver",
-  "Montreal",
-  "Dublin",
-  "Paris",
-  "Berlin",
-  "Munich",
-  "Frankfurt",
-  "Amsterdam",
-  "Zurich",
-  "Madrid",
-  "Milan",
-  "Stockholm",
-  "Singapore",
-  "Hong Kong",
-  "Tokyo",
-  "Seoul",
-  "Shanghai",
-  "Bengaluru",
-  "Mumbai",
-  "Delhi",
-  "Sydney",
-  "Tel Aviv",
-  "Dubai",
-  "Mexico City",
-  "São Paulo",
-  "Canada",
-  "United Kingdom",
-  "India",
+// Places members can pick, grouped for the dropdown. US places are cities (or a metro area, whose member cities
+// data/locationUtils.js holds); outside the US it is a country, except for the big business cities. A city matches a job
+// open there, a country matches any job in it. Jobs carry every place their posting lists (jobs.locations, written by
+// server/src/taxonomy/locations.ts, whose country names these must follow).
+export const LOCATION_GROUPS = [
+  { label: "Work mode", names: ["Remote", "Hybrid", "International"] },
+  {
+    label: "US metro areas",
+    names: ["San Francisco Bay Area", "New York Metro", "Greater Los Angeles", "Greater Boston", "Washington DC Area", "Seattle Area", "Dallas-Fort Worth"],
+  },
+  {
+    label: "US cities",
+    names: [
+      "Albany", "Albuquerque", "Anchorage", "Ann Arbor", "Arlington", "Atlanta", "Austin", "Baltimore", "Baton Rouge", "Birmingham",
+      "Boise", "Boston", "Boulder", "Buffalo", "Burlington", "Cambridge", "Charleston", "Charlotte", "Chattanooga", "Chicago",
+      "Cincinnati", "Cleveland", "Colorado Springs", "Columbia", "Columbus", "Cupertino", "Dallas", "Denver", "Des Moines", "Detroit",
+      "Durham", "El Paso", "Evanston", "Fort Collins", "Fort Lauderdale", "Fort Worth", "Fresno", "Grand Rapids", "Greenville",
+      "Hartford", "Honolulu", "Houston", "Huntsville", "Indianapolis", "Irvine", "Jacksonville", "Jersey City", "Kansas City", "Knoxville",
+      "Las Vegas", "Lexington", "Lincoln", "Little Rock", "Long Beach", "Los Angeles", "Louisville", "Madison", "Memphis", "Menlo Park",
+      "Miami", "Milwaukee", "Minneapolis", "Mountain View", "Nashville", "New Haven", "New Orleans", "New York", "Newark", "Norfolk",
+      "Oakland", "Oklahoma City", "Omaha", "Orlando", "Palo Alto", "Pasadena", "Philadelphia", "Phoenix", "Pittsburgh", "Plano",
+      "Portland", "Princeton", "Providence", "Raleigh", "Redwood City", "Reno", "Richmond", "Rochester", "Sacramento", "Salt Lake City",
+      "San Antonio", "San Diego", "San Francisco", "San Jose", "Santa Barbara", "Santa Monica", "Savannah", "Scottsdale", "Seattle",
+      "Sioux Falls", "St. Louis", "St. Paul", "Stamford", "Sunnyvale", "Syracuse", "Tampa", "Tempe", "Tucson", "Tulsa",
+      "Virginia Beach", "Washington DC", "Wilmington", "Worcester",
+    ],
+  },
+  {
+    label: "International cities",
+    names: [
+      "London", "Paris", "Amsterdam", "Zurich", "Frankfurt", "Dublin", "Berlin", "Tokyo", "Hong Kong", "Singapore", "Shanghai", "Sydney",
+      "Dubai", "Toronto", "Mexico City",
+    ],
+  },
+  {
+    label: "Countries",
+    names: [
+      "United Kingdom", "Canada", "Ireland", "Germany", "France", "Netherlands", "Switzerland", "Spain", "Italy", "Portugal", "Belgium",
+      "Luxembourg", "Sweden", "Norway", "Denmark", "Finland", "Austria", "Poland", "Czechia", "Hungary", "Romania", "Greece", "Turkey",
+      "Ukraine", "Israel", "United Arab Emirates", "Saudi Arabia", "Qatar", "Egypt", "Nigeria", "Kenya", "South Africa", "India",
+      "China", "Japan", "South Korea", "Taiwan", "Thailand", "Vietnam", "Philippines", "Indonesia", "Malaysia", "Australia",
+      "New Zealand", "Mexico", "Brazil", "Argentina", "Colombia", "Chile",
+    ],
+  },
 ];
+
+export const LOCATIONS = LOCATION_GROUPS.flatMap((g) => g.names);
 
 // Part 10 / US-26 -- the first 28 entries are the exact vocabulary supabase/functions/_shared/
 // pipeline/taxonomy/occupationTaxonomy.ts's skillsForOccupation() actually

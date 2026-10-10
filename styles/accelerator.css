@@ -590,7 +590,11 @@
 }
 
 .accel-section h2 {
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.accel-form h3 {
+  margin-bottom: var(--space-4);
 }
 
 /* ---- Breakpoints ---- */

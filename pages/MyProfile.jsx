@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppState } from "../data/store.jsx";
-import { INDUSTRIES, ROLES, SKILLS, LOCATIONS, COMPANIES, RECRUITING_CYCLES } from "../data/careerOptions.js";
+import { INDUSTRY_GROUPS, LOCATION_GROUPS, ROLES, SKILLS, COMPANIES, RECRUITING_CYCLES } from "../data/careerOptions.js";
+import OptionDropdown from "../components/OptionDropdown.jsx";
 import { useKnownCompanies } from "../data/useKnownCompanies.js";
 import { computeProfileStrength, MONTH_NAMES } from "../data/profileUtils.js";
 import { uploadAvatar, removeAvatar } from "../data/avatarSync.js";
@@ -122,15 +123,11 @@ export default function MyProfile() {
       .finally(() => setProjectsLoading(false));
   }, []);
   const [skillQuery, setSkillQuery] = useState("");
-  const [industryQuery, setIndustryQuery] = useState("");
   const [roleQuery, setRoleQuery] = useState("");
-  const [locationQuery, setLocationQuery] = useState("");
   const [companyQuery, setCompanyQuery] = useState("");
   const knownCompanies = useKnownCompanies();
   const [showAllSkills, setShowAllSkills] = useState(false);
-  const [showAllIndustries, setShowAllIndustries] = useState(false);
   const [showAllRoles, setShowAllRoles] = useState(false);
-  const [showAllLocations, setShowAllLocations] = useState(false);
   const fileInput = useRef(null);
 
   // fullName/classYear/majors/ucCommittee all read profileOverrides
@@ -950,30 +947,15 @@ export default function MyProfile() {
                   </li>
                 ))}
               </ul>
-              <input
-                type="text"
-                placeholder="Search industries…"
-                value={industryQuery}
-                onChange={(e) => setIndustryQuery(e.target.value)}
-                style={{ marginBottom: "var(--space-3)" }}
+              <OptionDropdown
+                groups={INDUSTRY_GROUPS}
+                selected={preferences.industries}
+                onToggle={toggleIndustry}
+                max={3}
+                noun="industries"
+                showChips={false}
+                placeholder="Add an industry"
               />
-              <div className={`chip-row${showAllIndustries || industryQuery.trim() ? "" : " chip-row--collapsed"}`}>
-                {INDUSTRIES.filter((i) => i.name !== "Still figuring it out")
-                  .filter((ind) => preferences.industries.includes(ind.name) || ind.name.toLowerCase().includes(industryQuery.trim().toLowerCase()))
-                  .map((ind) => (
-                    <button
-                      key={ind.name}
-                      className={`chip-toggle${preferences.industries.includes(ind.name) ? " is-selected" : ""}`}
-                      disabled={!preferences.industries.includes(ind.name) && preferences.industries.length >= 3}
-                      onClick={() => toggleIndustry(ind.name)}
-                    >
-                      {ind.name}
-                    </button>
-                  ))}
-              </div>
-              <button className="btn-link" style={{ marginBottom: "var(--space-6)" }} onClick={() => setShowAllIndustries((v) => !v)}>
-                {showAllIndustries ? "Show fewer" : `Show all ${INDUSTRIES.length - 1}`}
-              </button>
 
               <p style={{ fontWeight: 700 }}>Target roles</p>
               <input
@@ -1034,29 +1016,13 @@ export default function MyProfile() {
               </button>
 
               <p style={{ fontWeight: 700 }}>Target locations</p>
-              <input
-                type="text"
-                placeholder="Search locations…"
-                value={locationQuery}
-                onChange={(e) => setLocationQuery(e.target.value)}
-                style={{ marginBottom: "var(--space-3)" }}
+              <OptionDropdown
+                groups={LOCATION_GROUPS}
+                selected={preferences.locations}
+                onToggle={toggleLocation}
+                noun="locations"
+                placeholder="Add a location"
               />
-              <div className={`chip-row${showAllLocations || locationQuery.trim() ? "" : " chip-row--collapsed"}`}>
-                {LOCATIONS.filter((loc) => preferences.locations.includes(loc) || loc.toLowerCase().includes(locationQuery.trim().toLowerCase())).map(
-                  (loc) => (
-                    <button
-                      key={loc}
-                      className={`chip-toggle${preferences.locations.includes(loc) ? " is-selected" : ""}`}
-                      onClick={() => toggleLocation(loc)}
-                    >
-                      {loc}
-                    </button>
-                  )
-                )}
-              </div>
-              <button className="btn-link" style={{ marginBottom: "var(--space-6)" }} onClick={() => setShowAllLocations((v) => !v)}>
-                {showAllLocations ? "Show fewer" : "Show more"}
-              </button>
               <div className="checkbox-row">
                 <input
                   type="checkbox"

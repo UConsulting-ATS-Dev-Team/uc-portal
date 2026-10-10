@@ -573,7 +573,7 @@ export default function AdminDashboard({ view = "system", embedded = false }) {
         </div>
       )}
       {VIEW_HEADER[view] && !embedded && (
-        <div className="jobs-header" style={{ marginBottom: "var(--space-6)" }}>
+        <div className="jobs-header">
           <div>
             <h1>{VIEW_HEADER[view].title}</h1>
           </div>

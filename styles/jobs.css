@@ -472,3 +472,8 @@
     flex: 1 1 auto;
   }
 }
+
+/* A long unbroken word in a title (a URL, a hyphenated term) must wrap, not widen the card past a phone screen. */
+.job-card__role {
+  overflow-wrap: anywhere;
+}

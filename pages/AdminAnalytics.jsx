@@ -401,7 +401,7 @@ export default function AdminAnalytics() {
 
   return (
     <div>
-      <div className="jobs-header" style={{ marginBottom: "var(--space-5)" }}>
+      <div className="jobs-header">
         <div>
           <h1>Site analytics</h1>
         </div>

@@ -110,7 +110,7 @@ export default function AdminAuditLog() {
 
   return (
     <div>
-      <div className="jobs-header" style={{ marginBottom: "var(--space-5)" }}>
+      <div className="jobs-header">
         <div>
           <h1>Audit Log</h1>
         </div>

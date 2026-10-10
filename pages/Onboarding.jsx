@@ -12,11 +12,12 @@ import { matchedJobs, upcomingDeadlineCount, matchingAlumni, alumniAtCompany, op
 import { uploadResume } from "../data/resumeSync.js";
 import ThemeToggle from "../components/theme/ThemeToggle.jsx";
 import ChipPicker from "../components/ChipPicker.jsx";
+import OptionDropdown from "../components/OptionDropdown.jsx";
 import { useKnownCompanies } from "../data/useKnownCompanies.js";
 import {
-  INDUSTRIES,
+  INDUSTRY_GROUPS,
   ROLES,
-  LOCATIONS,
+  LOCATION_GROUPS,
   COMPANIES,
   RECRUITING_CYCLES,
   HELP_OPTIONS,
@@ -180,13 +181,14 @@ function StepIndustries({ industries, onToggle, onReorder }) {
         ))}
       </ul>
 
-      <ChipPicker
-        options={INDUSTRIES.map((ind) => ind.name)}
+      <OptionDropdown
+        groups={[...INDUSTRY_GROUPS, { label: "Not sure yet", names: ["Still figuring it out"] }]}
         selected={industries}
         onToggle={onToggle}
+        max={3}
         noun="industries"
-        pinned={["Still figuring it out"]}
-        isDisabled={() => industries.length >= 3}
+        showChips={false}
+        placeholder="Add an industry"
       />
     </>
   );
@@ -209,13 +211,12 @@ function StepRoles({ preferences, stats, onToggleRole, onToggleLocation, onToggl
       />
 
       <p style={{ fontWeight: 700, marginBottom: "var(--space-2)" }}>Locations</p>
-      <ChipPicker
-        options={LOCATIONS}
+      <OptionDropdown
+        groups={LOCATION_GROUPS}
         selected={preferences.locations}
         onToggle={onToggleLocation}
         noun="locations"
-        initial={20}
-        pinned={["Remote", "Hybrid", "International"]}
+        placeholder="Add a location"
       />
 
       <div className="checkbox-row">

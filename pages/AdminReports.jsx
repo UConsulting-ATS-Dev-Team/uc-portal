@@ -61,7 +61,7 @@ export default function AdminReports() {
 
   return (
     <div>
-      <div className="jobs-header" style={{ marginBottom: "var(--space-5)" }}>
+      <div className="jobs-header">
         <div>
           <h1>Reports</h1>
         </div>
