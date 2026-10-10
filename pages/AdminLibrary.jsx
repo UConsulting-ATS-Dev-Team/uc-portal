@@ -135,10 +135,6 @@ export default function AdminLibrary() {
   return (
     <div>
       <h1>Library</h1>
-      <p className="meta">
-        Manage what members see on Career Resources: guides, templates and decks, plus step-by-step learning tracks. To attach the
-        actual PDF or slideshow, open a resource and use the admin upload link on its page.
-      </p>
       {(error || loadError) && (
         <p className="meta" style={{ color: "var(--color-danger)" }}>
           {error || `Couldn't load the library (${loadError}).`}

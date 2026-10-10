@@ -62,7 +62,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-7);
   gap: var(--space-4);
   flex-wrap: wrap;
 }
@@ -143,13 +143,14 @@
 
 .track-card {
   border: var(--border-hairline);
+  border-top: var(--border-accent-emphasis);
   background: var(--color-surface);
-  padding: var(--space-5);
+  padding: var(--space-6);
 }
 
 .track-card__title {
   font-weight: 700;
-  font-size: var(--text-title-min);
+  font-size: 18px;
   margin: var(--space-3) 0 var(--space-2);
 }
 
@@ -395,5 +396,21 @@
   .track-card-grid,
   .resource-card-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Beside the page the category list and progress are only a guide, so they lose their box and the tracks and library carry the weight. */
+@media (min-width: 900px) {
+  .resources-nav {
+    background: transparent;
+    border: 0;
+    padding: 0 var(--space-5) 0 0;
+  }
+
+  .resources-nav .rail-card {
+    border: 0;
+    border-top: var(--border-hairline);
+    background: transparent;
+    padding: var(--space-6) 0 0;
   }
 }

@@ -100,7 +100,6 @@ export default function AdminCommunications() {
       <div className="jobs-header" style={{ marginBottom: "var(--space-5)" }}>
         <div>
           <h1>Master communications</h1>
-          <p className="meta">Send email, Slack messages and texts to members, alumni and your mailing list.</p>
         </div>
       </div>
 

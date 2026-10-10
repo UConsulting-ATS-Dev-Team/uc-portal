@@ -404,7 +404,6 @@ export default function AdminAnalytics() {
       <div className="jobs-header" style={{ marginBottom: "var(--space-5)" }}>
         <div>
           <h1>Site analytics</h1>
-          <p className="meta">Who is using the portal, and what is going wrong. Never an individual's application list.</p>
         </div>
         <div className="jobs-header__actions">
           <div className="range-toggle" role="group" aria-label="Date range">

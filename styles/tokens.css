@@ -89,10 +89,10 @@
      mechanical fix -- see CLAUDE.md's Type section, updated to match. */
   --font-body-weight: 400; /* Montserrat Regular */
 
-  --text-meta: 11px;
-  --text-secondary: 12px;
-  --text-body: 13px;
-  --text-kicker: 9.5px;
+  --text-meta: 12px;
+  --text-secondary: 13px;
+  --text-body: 14px;
+  --text-kicker: 10.5px;
   --text-title-min: 22px;
   --text-title-max: 30px;
   --text-display-min: 20px;

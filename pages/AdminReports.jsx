@@ -64,7 +64,6 @@ export default function AdminReports() {
       <div className="jobs-header" style={{ marginBottom: "var(--space-5)" }}>
         <div>
           <h1>Reports</h1>
-          <p className="meta">Download the numbers behind the admin pages as spreadsheets.</p>
         </div>
       </div>
 

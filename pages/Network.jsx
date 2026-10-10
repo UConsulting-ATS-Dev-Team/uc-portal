@@ -6,6 +6,7 @@ import { fetchMemberAvatars } from "../data/avatarSync.js";
 import RequestCoffeeChatModal from "../components/modals/RequestCoffeeChatModal.jsx";
 import DemoDataBadge from "../components/DemoDataBadge.jsx";
 import Avatar from "../components/Avatar.jsx";
+import "../styles/jobs.css";
 import "../styles/jobDetail.css";
 import "../styles/network.css";
 import "../styles/home.css";
@@ -158,6 +159,14 @@ export default function Network() {
     return <p className="meta">Loading the UC network…</p>;
   }
 
+  // The filters that are narrowing the list, shown as removable chips like User Management's bar.
+  const activeFilters = [
+    industry !== "All" && { label: industry, clear: () => setIndustry("All") },
+    company !== "All" && { label: company, clear: () => setCompany("All") },
+    location !== "All" && { label: location, clear: () => setLocation("All") },
+    gradYear !== "All" && { label: `Class of ${gradYear}`, clear: () => setGradYear("All") },
+  ].filter(Boolean);
+
   return (
     <div>
       <div className="network-header">
@@ -174,7 +183,7 @@ export default function Network() {
       </div>
 
       <div className="network-filters">
-        <input type="text" placeholder="Search name or company" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <input type="search" placeholder="Search by name or company" aria-label="Search the network" value={search} onChange={(e) => setSearch(e.target.value)} />
         <select aria-label="Industry" value={industry} onChange={(e) => setIndustry(e.target.value)}>
           <option value="All">Industry</option>
           {uniqueValues(PEOPLE, "industry").map((v) => (
@@ -204,6 +213,15 @@ export default function Network() {
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
+        {activeFilters.map((f) => (
+          <span className="active-filter-chip" key={f.label}>
+            {f.label}
+            <button type="button" onClick={f.clear} aria-label={`Remove ${f.label}`}>
+              ✕
+            </button>
+          </span>
+        ))}
+        <span className="meta">{filtered.length} results</span>
         <div className="network-audience-toggle">
           {AUDIENCES.map((a) => (
             <button key={a} className={audience === a ? "is-active" : ""} onClick={() => setAudience(a)}>
@@ -211,7 +229,6 @@ export default function Network() {
             </button>
           ))}
         </div>
-        <span className="meta">{filtered.length} results</span>
       </div>
 
       <div className="network-layout">

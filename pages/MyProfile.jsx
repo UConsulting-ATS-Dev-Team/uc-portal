@@ -507,7 +507,7 @@ export default function MyProfile() {
         <div>
           <h1>My Profile</h1>
           <p className="profile-page-header__meta">
-            Last updated {formatDate(profileLastUpdated)} · UC asks you to refresh this each quarter at GM
+            Last updated {formatDate(profileLastUpdated)}
           </p>
         </div>
         <div className="profile-page-header__actions">

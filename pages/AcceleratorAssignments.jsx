@@ -187,7 +187,6 @@ export default function AcceleratorAssignments() {
       <AcceleratorTabs />
       <div className="detail-header" style={{ display: "block" }}>
         <h1 className="accel-title">Assignments</h1>
-        <p>A weekly curriculum to get you up to speed on how UC operates and how real consulting and recruiting work.</p>
         <div className="progress-bar-track" style={{ maxWidth: "300px" }}>
           <div className="progress-bar-fill" style={{ width: lessons.length ? `${(progress.submitted / lessons.length) * 100}%` : "0%" }} />
         </div>

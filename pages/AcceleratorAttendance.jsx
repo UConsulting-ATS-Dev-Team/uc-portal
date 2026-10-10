@@ -83,9 +83,7 @@ export default function AcceleratorAttendance() {
       <AcceleratorTabs />
       <h1 className="accel-title">Attendance</h1>
       <p className="meta">
-        {progress.requiredAttended} of {progress.requiredSoFar} required events attended so far. The committee marks attendance at general and
-        accelerator meetings. At company visits, fireside chats and socials, add a photo from the event, so there's a record you were there if
-        the committee doesn't get to find you.
+        {progress.requiredAttended} of {progress.requiredSoFar} required events attended
       </p>
       {progress.noSocials && (
         <p className="meta" style={{ color: "var(--color-danger)" }}>

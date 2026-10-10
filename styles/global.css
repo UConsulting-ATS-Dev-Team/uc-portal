@@ -35,6 +35,21 @@ h4 {
   margin: 0;
 }
 
+/* One scale for headings, so a page title, a section and a card title are clearly different steps (before, every
+   heading fell back to the browser's own multiples of the body size and sections read almost as big as the title). */
+h1 {
+  font-size: var(--text-title-max);
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  font-size: 18px;
+}
+
+h3 {
+  font-size: 15px;
+}
+
 /* --color-accent-deep, not --color-accent -- a real link's own text needs
    the 4.5:1 text-contrast minimum, and plain accent only clears that
    against white (4.90:1), not the page's own ground background
@@ -162,13 +177,15 @@ select {
 
 .field {
   display: block;
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-6);
 }
 
+/* A label names the field, so it is bolder and darker than the hint text around it. */
 .field label {
   display: block;
   font-size: var(--text-secondary);
-  color: var(--color-text-secondary);
+  font-weight: 600;
+  color: var(--color-text);
   margin-bottom: var(--space-2);
 }
 

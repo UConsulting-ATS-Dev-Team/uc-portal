@@ -713,37 +713,6 @@ export default function Jobs() {
             </p>
           </div>
           <div className="jobs-header__actions">
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-              <option value="bestMatch">Best match</option>
-              <option value="deadline">Deadline</option>
-              <option value="newest">Newest</option>
-            </select>
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
-              aria-label="Listings per page"
-            >
-              {PAGE_SIZE_OPTIONS.map((n) => (
-                <option key={n} value={n}>
-                  {n} per page
-                </option>
-              ))}
-            </select>
-            {/* A real button in the page's own header, not a small text
-                link buried in the filter sidebar -- member-reported as
-                "in a weird place and isn't super obvious." Visible on
-                every tab now too (the filter sidebar it used to live in
-                doesn't exist on every tab). */}
-            <button
-              className="btn btn-secondary"
-              onClick={() => {
-                setFilters(defaultFiltersFromPreferences(preferences, classYear));
-                setTab("all");
-              }}
-            >
-              Match my profile
-            </button>
-            <button className="btn btn-secondary" onClick={handleSaveSearch}>Save this search</button>
             <button className="btn btn-primary" onClick={() => setShowPostModal(true)}>Post a job</button>
           </div>
         </div>
@@ -759,6 +728,35 @@ export default function Jobs() {
                 {t.label} ({t.key === "recommended" ? matchedCount : t.key === "new" ? newCount : t.key === "saved" ? savedCount : JOBS.length})
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="jobs-toolbar">
+          <div className="jobs-toolbar__actions">
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                setFilters(defaultFiltersFromPreferences(preferences, classYear));
+                setTab("all");
+              }}
+            >
+              Match my profile
+            </button>
+            <button className="btn btn-secondary" onClick={handleSaveSearch}>Save this search</button>
+          </div>
+          <div className="jobs-toolbar__sort">
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="Sort listings">
+              <option value="bestMatch">Best match</option>
+              <option value="deadline">Deadline</option>
+              <option value="newest">Newest</option>
+            </select>
+            <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))} aria-label="Listings per page">
+              {PAGE_SIZE_OPTIONS.map((n) => (
+                <option key={n} value={n}>
+                  {n} per page
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

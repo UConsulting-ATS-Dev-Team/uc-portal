@@ -348,7 +348,6 @@ export default function AdminMembers() {
       <div className="jobs-header" style={{ marginBottom: "var(--space-6)" }}>
         <div>
           <h1>User management</h1>
-          <p className="meta">Manage accounts, roles and access.</p>
         </div>
         <div className="jobs-header__actions">
           <button className="btn btn-secondary" onClick={copySignupLink}>

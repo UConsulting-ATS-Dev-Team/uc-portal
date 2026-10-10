@@ -47,8 +47,8 @@ const SECTION_VIEW = {
 };
 
 const VIEW_HEADER = {
-  system: { title: "System", subtitle: "How the job board and the site are running: scheduled jobs, review queues, sources and errors. Most admins won't need this page." },
-  communications: { title: "Communications", subtitle: "Announcements to members and the weekly digest." },
+  system: { title: "System" },
+  communications: { title: "Communications" },
 };
 
 export default function AdminDashboard({ view = "system", embedded = false }) {
@@ -576,7 +576,6 @@ export default function AdminDashboard({ view = "system", embedded = false }) {
         <div className="jobs-header" style={{ marginBottom: "var(--space-6)" }}>
           <div>
             <h1>{VIEW_HEADER[view].title}</h1>
-            <p className="meta">{VIEW_HEADER[view].subtitle}</p>
           </div>
           <div className="jobs-header__actions">
             {view === "system" && (

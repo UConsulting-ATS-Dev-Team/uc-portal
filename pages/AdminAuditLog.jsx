@@ -113,7 +113,6 @@ export default function AdminAuditLog() {
       <div className="jobs-header" style={{ marginBottom: "var(--space-5)" }}>
         <div>
           <h1>Audit Log</h1>
-          <p className="meta">What admins have done in the portal, newest first. Entries can't be edited or deleted.</p>
         </div>
       </div>
 

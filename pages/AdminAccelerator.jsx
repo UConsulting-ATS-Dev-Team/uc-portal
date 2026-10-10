@@ -704,11 +704,6 @@ export default function AdminAccelerator() {
   return (
     <div>
       <h1>Accelerator</h1>
-      <p className="meta">
-        Manage the accelerator curriculum: one evergreen sequence of weekly lessons, editable any time so it can
-        change slightly year to year without a code change.
-      </p>
-
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
 
       <InternRoster />

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { addCoffeeChat, deleteCoffeeChat, uploadChatPhoto } from "../data/acceleratorSync.js";
-import { CHATS_PER_WEEK, CLUB_CHATS_PER_WEEK, coffeeChatProgress, parseYmd, programPeriods, ymd } from "../data/acceleratorLogic.js";
+import { CHATS_PER_WEEK, coffeeChatProgress, parseYmd, programPeriods, ymd } from "../data/acceleratorLogic.js";
 import { useAcceleratorData } from "../data/useAcceleratorData.js";
 import AcceleratorChatPhoto from "../components/AcceleratorChatPhoto.jsx";
 import AcceleratorTabs from "../components/AcceleratorTabs.jsx";
@@ -179,10 +179,11 @@ export default function AcceleratorCoffeeChats() {
     <div>
       <AcceleratorTabs />
       <h1 className="accel-title">Coffee Chats</h1>
-      <p className="meta">
-        {CHATS_PER_WEEK} a week, due at every accelerator meeting: {CLUB_CHATS_PER_WEEK} with club members, and one with another intern or a third club member.{" "}
-        {current ? `This week: ${current.counted} of ${CHATS_PER_WEEK}.` : ""}
-      </p>
+      {current && (
+        <p className="meta">
+          This week: {current.counted} of {CHATS_PER_WEEK}
+        </p>
+      )}
       {!periods[0]?.byMeeting && (
         <p className="meta">The accelerator's weekly day and time haven't been set yet, so weeks run Sunday to Saturday for now.</p>
       )}

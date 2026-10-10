@@ -78,7 +78,7 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
 }
 
 .section-header h2 {
@@ -200,6 +200,56 @@
 .empty-state__tile {
   border: var(--border-hairline);
   padding: var(--space-5);
+}
+
+/* A new member's Home: left-aligned, a real welcome heading, and three action cards big enough to read as the choices. */
+.home-first-run {
+  text-align: left;
+  padding: var(--space-8) calc(var(--space-8) + var(--space-3));
+}
+
+.home-first-run h1 {
+  margin-bottom: var(--space-3);
+}
+
+.home-first-run p {
+  margin: 0 0 var(--space-3);
+  max-width: 62ch;
+}
+
+.home-first-run .empty-state__tiles {
+  margin-top: var(--space-8);
+  gap: var(--space-6);
+}
+
+.home-first-run .empty-state__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-7);
+  background: var(--color-surface);
+}
+
+.home-first-run .empty-state__tile p {
+  margin: 0;
+}
+
+.home-first-run .empty-state__tile .btn {
+  margin-top: auto;
+}
+
+.empty-state__tile-title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--color-primary);
+}
+
+/* The one to do first: accent top edge. */
+.empty-state__tile.is-primary {
+  border-top: var(--border-accent-emphasis);
+  background: var(--color-accent-tint);
 }
 
 /* ---- Responsive ---- */

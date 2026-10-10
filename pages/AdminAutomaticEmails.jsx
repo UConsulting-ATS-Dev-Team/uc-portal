@@ -114,7 +114,6 @@ export default function AdminAutomaticEmails() {
       <div className="jobs-header" style={{ marginBottom: "var(--space-5)" }}>
         <div>
           <h1>Automatic emails</h1>
-          <p className="meta">Emails the portal sends on its own. Each one is off until you turn it on.</p>
         </div>
       </div>
 

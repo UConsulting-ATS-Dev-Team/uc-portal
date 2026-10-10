@@ -50,11 +50,6 @@ export default function AdminContent() {
   return (
     <div>
       <h1>Content management</h1>
-      <p className="meta">
-        Every real, member-submitted post, interview write-up, and library contribution, with a real "Remove" action
-        on each. Removing here is permanent and visible to
-        every member immediately.
-      </p>
 
       {error && (
         <p className="meta" style={{ color: "var(--color-danger)" }}>

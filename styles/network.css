@@ -2,7 +2,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-7);
   flex-wrap: wrap;
   gap: var(--space-4);
 }
@@ -17,12 +17,30 @@
   gap: var(--space-3);
 }
 
+/* One white bar for the search, the filters and the audience toggle, the same design as User Management's. */
 .network-filters {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   flex-wrap: wrap;
-  margin-bottom: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-6);
+  background: var(--color-surface);
+  border: var(--border-hairline);
+}
+
+.network-filters input[type="search"] {
+  min-width: 240px;
+}
+
+/* A select is as wide as its longest option (Company has some very long names), which pushed the bar onto three rows. */
+.network-filters select {
+  max-width: 150px;
+  text-overflow: ellipsis;
+}
+
+.network-filters .network-audience-toggle {
+  margin-left: auto;
 }
 
 .network-filters input,

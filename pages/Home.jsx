@@ -111,7 +111,7 @@ export default function Home() {
   if (trackedEntries.length === 0) {
     const { pct } = computeProfileStrength(preferences, profileOverrides.linkedIn, profileOverrides.resumePath);
     return (
-      <div className="empty-state">
+      <div className="empty-state home-first-run">
         <h1>Welcome to UC Portal, {displayName(profileOverrides, accountEmail).split(" ")[0]}</h1>
         {/* profileOverrides?.classYear directly, not resolvedClassYear() --
             that falls back to mockUser.js's fake "2027," which used to
@@ -125,18 +125,18 @@ export default function Home() {
         <p>You don't need to be recruiting yet to use this. Browse jobs, meet alumni, or start a learning track whenever you're ready.</p>
         <p className="meta">Profile strength: {pct}%</p>
         <div className="empty-state__tiles">
-          <div className="empty-state__tile">
-            <p style={{ fontWeight: 700 }}>Complete the interest flow</p>
+          <div className="empty-state__tile is-primary">
+            <p className="empty-state__tile-title">Complete the interest flow</p>
             <p className="meta">Takes 90 seconds and unlocks real recommendations.</p>
             <Link to="/onboarding" className="btn btn-primary">Start</Link>
           </div>
           <div className="empty-state__tile">
-            <p style={{ fontWeight: 700 }}>Browse where UC alumni work</p>
+            <p className="empty-state__tile-title">Browse where UC alumni work</p>
             <p className="meta">See which companies have the strongest UC presence.</p>
             <Link to="/companies" className="btn btn-secondary">Browse</Link>
           </div>
           <div className="empty-state__tile">
-            <p style={{ fontWeight: 700 }}>Start a learning track</p>
+            <p className="empty-state__tile-title">Start a learning track</p>
             <p className="meta">Structured prep, start to finish.</p>
             <Link to="/resources" className="btn btn-secondary">Explore</Link>
           </div>

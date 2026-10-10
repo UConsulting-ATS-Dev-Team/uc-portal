@@ -136,10 +136,6 @@ export default function SourceManagement() {
       <div className="jobs-header" style={{ marginBottom: "var(--space-6)" }}>
         <div>
           <h1>Job sources</h1>
-          <p className="meta">
-            Every job on the board traces back to one of these. A disabled or unapproved source can't
-            contribute a single row, regardless of what any submission form or scheduled fetch tries to do.
-          </p>
         </div>
       </div>
 

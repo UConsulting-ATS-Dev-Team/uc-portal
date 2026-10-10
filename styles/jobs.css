@@ -126,7 +126,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-7);
 }
 
 .jobs-header__count {
@@ -140,12 +140,31 @@
   gap: var(--space-3);
 }
 
-.jobs-header__actions select {
+.jobs-header__actions select,
+.jobs-toolbar select {
   padding: var(--space-3) var(--space-4);
   padding-right: calc(var(--space-4) * 2 + 14px);
   border: var(--border-hairline);
   background-color: var(--color-surface);
   color: var(--color-text);
+}
+
+/* The page's own actions sit in one row above the list: what to do with the results on the left, how to order them on the right. */
+.jobs-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-6);
+}
+
+.jobs-toolbar__actions,
+.jobs-toolbar__sort {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 .jobs-tabs {

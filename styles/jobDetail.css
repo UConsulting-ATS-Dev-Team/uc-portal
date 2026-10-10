@@ -81,12 +81,12 @@
 .detail-section {
   border: var(--border-hairline);
   background: var(--color-surface);
-  padding: var(--space-6);
-  margin-bottom: var(--space-7);
+  padding: var(--space-7);
+  margin-bottom: var(--space-8);
 }
 
 .detail-section__title {
-  font-size: var(--text-title-min);
+  font-size: 18px;
   margin-bottom: var(--space-5);
 }
 
@@ -314,10 +314,24 @@
 
 .rail-card__title {
   font-size: var(--text-secondary);
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: var(--tracking-kicker);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   margin-bottom: var(--space-4);
+}
+
+/* In a side rail only the card that asks for action keeps its box. The rest are quiet blocks separated by a rule and more
+   space, so the eye goes to the one that matters instead of a stack of identical frames. */
+.network-rail .rail-card:not(.is-accent),
+.feed-rail .rail-card:not(.is-accent),
+.home-rail .rail-card:not(.is-accent),
+.detail-rail .rail-card:not(.is-accent) {
+  border: 0;
+  border-top: var(--border-hairline);
+  background: transparent;
+  padding: var(--space-6) 0 0;
+  margin-bottom: var(--space-8);
 }
 
 .person-row {
