@@ -6,6 +6,7 @@ import { useAppState } from "../data/store.jsx";
 import { isManualJobId, jobForManualEntry } from "../data/manualApplications.js";
 import { fetchFeedPosts, feedRowToPost } from "../data/feedSync.js";
 import { listOpenToCoffeeChatMembers } from "../data/messagesSync.js";
+import { fetchMemberAvatars } from "../data/avatarSync.js";
 import { computeProfileStrength, displayName, resolvedClassYear, resolvedGradMonth } from "../data/profileUtils.js";
 import Avatar from "../components/Avatar.jsx";
 import { deadlineLabel, isUrgent } from "../data/jobUtils.js";
@@ -20,10 +21,6 @@ import "../styles/feed.css";
 import "../styles/resources.css";
 import "../styles/myProfile.css";
 import "../styles/home.css";
-
-function initials(name) {
-  return name.split(" ").map((p) => p[0]).join("").slice(0, 2);
-}
 
 export default function Home() {
   const {
@@ -61,10 +58,15 @@ export default function Home() {
   // preview used to always show the same 2 mock FEED_POSTS regardless of
   // what anyone had actually posted, even after Feed.jsx itself went real.
   const [recentPosts, setRecentPosts] = useState([]);
+  // Profile photos by account id, so a post shows its author's photo here the same as on the Feed.
+  const [avatarsById, setAvatarsById] = useState(new Map());
   useEffect(() => {
     fetchFeedPosts()
       .then((rows) => setRecentPosts(rows.slice(0, 2).map(feedRowToPost)))
       .catch(() => {}); // Preview degrades to "nothing recent" rather than crashing Home
+    fetchMemberAvatars()
+      .then(({ byId }) => setAvatarsById(byId))
+      .catch(() => {});
   }, []);
 
   // Real members who've opted in via MyProfile.jsx's "Open to coffee chat
@@ -324,7 +326,9 @@ export default function Home() {
           {recentPosts.map((post) => (
             <div className="feed-preview-card" key={post.id}>
               <div className="post-card__header">
-                <div className="post-card__avatar">{initials(post.author)}</div>
+                <div className="post-card__avatar">
+                  <Avatar name={post.author} url={avatarsById.get(post.authorId)} />
+                </div>
                 <span className="post-card__name">{post.author}</span>
                 <span className="chip">{post.roleChip}</span>
               </div>
