@@ -222,23 +222,22 @@ export default function AcceleratorAssignments() {
           const isExpanded = expandedId === lesson.id;
           const label = STATE_LABEL[state];
           return (
-            <div id={`lesson-${lesson.id}`} className={`step-row${isExpanded ? " is-current" : ""}`} key={lesson.id} style={{ display: "block" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-                <span className="step-row__status">{state === "complete" ? "✓" : "○"}</span>
-                <span className="step-row__number step-row__number--week">Week {i + 1}</span>
-                <div className="step-row__body">
-                  <div className="step-row__title">{lesson.title}</div>
-                  <div className="step-row__detail meta">Due {formatDue(lessonDue(lesson, schedule).date, lessonDue(lesson, schedule).hasTime)}</div>
+            <div id={`lesson-${lesson.id}`} className={`lesson-card${isExpanded ? " is-open" : ""}${!prevSubmitted ? " is-locked" : ""}`} key={lesson.id}>
+              <div className="lesson-card__head">
+                <span className={`lesson-card__num${state === "complete" ? " is-done" : ""}`}>{state === "complete" ? "\u2713" : i + 1}</span>
+                <div className="lesson-card__main">
+                  <div className="lesson-card__title">{lesson.title}</div>
+                  <div className="lesson-card__meta">
+                    Due {formatDue(lessonDue(lesson, schedule).date, lessonDue(lesson, schedule).hasTime)}
+                    {!prevSubmitted && (opens.waitingForMeeting ? ` \u00b7 Opens after the accelerator, ${formatDue(opens.waitingForMeeting, true)}` : " \u00b7 Locked until the previous week is submitted")}
+                  </div>
                 </div>
-                {label && <span className={label.className}>{label.text}</span>}
-                <div className="step-row__state">
-                  {!prevSubmitted && (opens.waitingForMeeting ? `Opens after the accelerator, ${formatDue(opens.waitingForMeeting, true)}` : "Locked until the previous lesson is submitted")}
-                  {prevSubmitted && (
-                    <button className="btn btn-secondary" onClick={() => setExpandedId(isExpanded ? null : lesson.id)}>
-                      {isExpanded ? "Close" : state === "not_started" ? "Start" : state === "incomplete" ? "Fix" : "View"}
-                    </button>
-                  )}
-                </div>
+                {label ? <span className={label.className}>{label.text}</span> : <span className={`accel-tag${prevSubmitted ? " accel-tag--accelerator" : " accel-tag--optional"}`}>{prevSubmitted ? "To do" : "Locked"}</span>}
+                {prevSubmitted && (
+                  <button className="btn btn-secondary" onClick={() => setExpandedId(isExpanded ? null : lesson.id)}>
+                    {isExpanded ? "Close" : state === "not_started" ? "Start" : state === "incomplete" ? "Fix" : "View"}
+                  </button>
+                )}
               </div>
               {isExpanded && prevSubmitted && (
                 <div className="accel-step-panel">

@@ -846,3 +846,107 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* A week of the curriculum as a card: a number badge, a bold title, a colored status pill and its actions. Used on the
+   intern's Assignments page and the admin's Lessons list. */
+.lesson-card {
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  margin-bottom: var(--space-5);
+}
+
+.lesson-card.is-open {
+  border-color: var(--color-accent);
+}
+
+.lesson-card.is-locked {
+  background: var(--color-ground);
+}
+
+.lesson-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+  padding: var(--space-5) var(--space-6);
+}
+
+.lesson-card__num {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--color-primary);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--color-primary);
+}
+
+.lesson-card__num.is-done {
+  background: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.lesson-card__main {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.lesson-card__title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--color-primary);
+}
+
+.lesson-card__meta {
+  margin-top: var(--space-1);
+  color: var(--color-text-secondary);
+}
+
+.lesson-card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.lesson-card__desc {
+  margin: 0;
+  padding: 0 var(--space-6) var(--space-5) calc(var(--space-6) + 40px + var(--space-5));
+  color: var(--color-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.lesson-card > .accel-step-panel,
+.lesson-card > .lesson-manager {
+  padding: 0 var(--space-6) var(--space-6);
+  margin-top: 0;
+}
+
+.lesson-card.is-open > .accel-step-panel {
+  border-top: var(--border-hairline);
+  padding-top: var(--space-5);
+  max-width: none;
+}
+
+@media (max-width: 640px) {
+  .lesson-card__head {
+    padding: var(--space-5);
+  }
+
+  .lesson-card__desc {
+    padding-left: var(--space-5);
+  }
+}
+
+.lesson-card > .detail-section {
+  border: 0;
+  border-top: var(--border-hairline);
+  margin: 0;
+}

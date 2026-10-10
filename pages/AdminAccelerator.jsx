@@ -195,7 +195,7 @@ function InternRoster() {
         ))}
         {names.map((n) => (
           <li key={n.name_key}>
-            {n.name} <span className="meta">{n.claimed_at ? "signed up" : "listed by name, not signed up yet"}</span>{" "}
+            {n.name} <span className="meta">{n.claimed_at ? (n.claimed_as && n.claimed_as.trim().toLowerCase() !== n.name.trim().toLowerCase() ? `signed up as "${n.claimed_as}"` : "signed up") : "listed by name, not signed up yet"}</span>{" "}
             <button className="btn-link" onClick={() => removeName(n.name_key)}>
               Remove
             </button>
@@ -420,7 +420,7 @@ function LessonManager({ lesson, onChanged }) {
     loadMaterials();
     loadSubmissions();
     supabase.rpc("list_members").then(({ data }) => {
-      setNamesById(new Map((data ?? []).map((m) => [m.member_id, `${m.display_name} (${m.email})`])));
+      setNamesById(new Map((data ?? []).map((m) => [m.member_id, m.display_name === m.email ? m.email : `${m.display_name} (${m.email})`])));
     });
   }, [lesson.id]);
 
@@ -737,15 +737,26 @@ export default function AdminAccelerator() {
         {loading && <p className="meta">Loading…</p>}
         {!loading && lessons.length === 0 && <p className="meta">No lessons yet. Add the first one.</p>}
         {lessons.map((lesson, i) => (
-          <div key={lesson.id}>
-            <div className="step-row">
-              <span className="step-row__number step-row__number--week">Week {i + 1}</span>
-              <div className="step-row__body">
-                <div className="step-row__title">{lesson.title}</div>
-                <div className="step-row__detail meta">{new Date(`${lesson.lesson_date}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</div>
-                {lesson.topic_overview && <div className="step-row__detail">{lesson.topic_overview}</div>}
+          <div key={lesson.id} className={`lesson-card${selectedId === lesson.id ? " is-open" : ""}`}>
+            <div className="lesson-card__head">
+              <span className="lesson-card__num">{i + 1}</span>
+              <div className="lesson-card__main">
+                <div className="lesson-card__title">{lesson.title}</div>
+                <div className="lesson-card__meta">
+                  Week of {new Date(`${lesson.lesson_date}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                </div>
               </div>
-              <div className="step-row__state" style={{ display: "flex", gap: "var(--space-2)" }}>
+              {(() => {
+                const days = Math.round((new Date(`${lesson.lesson_date}T00:00:00`) - new Date(new Date().toDateString())) / 86400000);
+                return days < -6 ? (
+                  <span className="accel-tag">Past</span>
+                ) : days <= 6 ? (
+                  <span className="accel-tag accel-tag--accelerator">This week</span>
+                ) : (
+                  <span className="accel-tag accel-tag--optional">Upcoming</span>
+                );
+              })()}
+              <div className="lesson-card__actions">
                 <button className="btn btn-secondary" onClick={() => setSelectedId(selectedId === lesson.id ? null : lesson.id)}>
                   {selectedId === lesson.id ? "Close" : "Manage"}
                 </button>
@@ -757,6 +768,7 @@ export default function AdminAccelerator() {
                 </button>
               </div>
             </div>
+            {lesson.topic_overview && <p className="lesson-card__desc">{lesson.topic_overview}</p>}
             {selectedId === lesson.id && <LessonManager lesson={lesson} onChanged={load} />}
           </div>
         ))}
