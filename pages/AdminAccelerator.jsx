@@ -482,11 +482,11 @@ function LessonManager({ lesson, onChanged }) {
       <input type="file" onChange={handleUpload} disabled={uploading} accept=".pdf,.ppt,.pptx,.xls,.xlsx" />
 
       <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "flex-end", marginTop: "var(--space-4)" }}>
-        <div className="field" style={{ flex: "1 1 180px" }}>
+        <div className="field" style={{ flex: "1 1 180px", marginBottom: 0 }}>
           <label>Link label (optional)</label>
           <input type="text" value={linkLabel} onChange={(e) => setLinkLabel(e.target.value)} placeholder="e.g. Slide deck" />
         </div>
-        <div className="field" style={{ flex: "1 1 260px" }}>
+        <div className="field" style={{ flex: "1 1 260px", marginBottom: 0 }}>
           <label>Link URL</label>
           <input type="url" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://…" />
         </div>
@@ -638,15 +638,15 @@ function LessonModal({ editing, onClose, onSaved }) {
             }}
           />
           <div className="field-row" style={{ marginTop: "var(--space-4)", alignItems: "flex-end" }}>
-            <div className="field">
+            <div className="field" style={{ marginBottom: 0 }}>
               <label htmlFor="lesson-link-label">Link label (optional)</label>
               <input id="lesson-link-label" type="text" value={draftLinkLabel} onChange={(e) => setDraftLinkLabel(e.target.value)} placeholder="e.g. Slide deck" />
             </div>
-            <div className="field" style={{ flex: 2 }}>
+            <div className="field" style={{ flex: 2, marginBottom: 0 }}>
               <label htmlFor="lesson-link-url">Link URL</label>
               <input id="lesson-link-url" type="url" value={draftLinkUrl} onChange={(e) => setDraftLinkUrl(e.target.value)} placeholder="https://…" />
             </div>
-            <button type="button" className="btn btn-secondary" onClick={queueLink} disabled={!draftLinkUrl.trim()} style={{ marginBottom: "var(--space-4)" }}>
+            <button type="button" className="btn btn-secondary" onClick={queueLink} disabled={!draftLinkUrl.trim()}>
               Add link
             </button>
           </div>
