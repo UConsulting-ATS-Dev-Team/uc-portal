@@ -11,34 +11,27 @@ import { fetchOwnWorkHistory } from "../data/workHistorySync.js";
 import { useSwipeTabs } from "../data/useSwipeTabs.js";
 import Avatar from "../components/Avatar.jsx";
 import PullToRefresh from "../components/PullToRefresh.jsx";
-import ComingSoonButton from "../components/ComingSoonButton.jsx";
 import "../styles/jobDetail.css";
 import "../styles/feed.css";
 
-const TABS = ["All", "Alumni", "Opportunities", "Advice", "Events", "Saved"];
-const POST_TYPES = [
-  { label: "Post a job", value: "UC-posted job" },
-  { label: "Interview write-up", value: "Interview write-up" },
-  { label: "Ask the network", value: "Advice" },
-  { label: "Event", value: "Event" },
-];
+const TABS = ["All", "Announcements", "Saved"];
 
 export default function Feed() {
-  const { profileOverrides, accountEmail, isAlumni } = useAppState();
+  const { profileOverrides, accountEmail, isAlumni, realIsAdmin } = useAppState();
   const location = useLocation();
   const [tab, setTab] = useState("All");
   // "Ask the network" from Global search's no-results state hands off a
   // prefilled prompt via router state rather than a URL param, since it's
   // one-time composer seeding, not a shareable/bookmarkable URL.
   const [composerText, setComposerText] = useState(location.state?.prefill || "");
-  const [selectedType, setSelectedType] = useState("Advice");
+  // Admins can mark a post as an announcement: pinned to the top and labelled. Everyone else just posts.
+  const [asAnnouncement, setAsAnnouncement] = useState(false);
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [postsError, setPostsError] = useState(null);
   const [posting, setPosting] = useState(false);
   const [helpfulPosts, setHelpfulPosts] = useState([]);
   const [savedPosts, setSavedPosts] = useState([]);
-  const [rsvpedPosts, setRsvpedPosts] = useState([]);
   const [avatarsById, setAvatarsById] = useState(new Map());
   const [currentAccountId, setCurrentAccountId] = useState(null);
   const [editingPostId, setEditingPostId] = useState(null);
@@ -88,7 +81,8 @@ export default function Feed() {
     try {
       const row = await submitFeedPost({
         body: composerText.trim(),
-        postType: selectedType,
+        // The database wants a type on every post; ordinary posts carry the neutral one and show no label.
+        postType: asAnnouncement ? "Announcement" : "Advice",
         authorName: displayName(profileOverrides, accountEmail),
         // Not resolvedClassYear() -- that falls back to mockUser.js's fake
         // "2027" the moment a real member has no class year set, which
@@ -98,14 +92,12 @@ export default function Feed() {
         // -- Feed.jsx/Home.jsx's post rendering already handles a missing
         // roleLine.
         authorRoleLine: profileOverrides?.classYear ? `Class of ${profileOverrides.classYear}` : null,
-        isEvent: selectedType === "Event",
-        // No real event-date/RSVP picker in the composer yet -- same
-        // scope line the feed_posts migration draws (posts themselves
-        // were the complaint, not a new event-scheduling UI).
+        isEvent: false,
         eventLabel: null,
       });
       setPosts((prev) => [feedRowToPost(row), ...prev]);
       setComposerText("");
+      setAsAnnouncement(false);
     } catch (err) {
       setPostsError(err.message);
     } finally {
@@ -117,15 +109,6 @@ export default function Feed() {
     setHelpfulPosts((prev) => (prev.includes(postId) ? prev.filter((id) => id !== postId) : [...prev, postId]));
   }
 
-  // Was a dead click ("RSVP" had no onClick at all) -- same base-count +
-  // local-toggle pattern as toggleHelpful/helpfulCount above, not new
-  // machinery. "Add to calendar" stays inert (no calendar integration
-  // anywhere in this prototype -- same reasoning as Applications
-  // tracker's "Sync deadlines to calendar").
-  function toggleRsvp(postId) {
-    setRsvpedPosts((prev) => (prev.includes(postId) ? prev.filter((id) => id !== postId) : [...prev, postId]));
-  }
-
   function toggleSavedPost(postId) {
     setSavedPosts((prev) => (prev.includes(postId) ? prev.filter((id) => id !== postId) : [...prev, postId]));
   }
@@ -133,10 +116,7 @@ export default function Feed() {
   const filtered = useMemo(() => {
     return posts
       .filter((p) => {
-        if (tab === "Alumni") return p.roleChip === "Alumna" || p.roleChip === "Alumnus";
-        if (tab === "Opportunities") return p.postType === "UC-posted job";
-        if (tab === "Advice") return p.postType === "Advice";
-        if (tab === "Events") return p.postType === "Event";
+        if (tab === "Announcements") return p.postType === "Announcement";
         if (tab === "Saved") return savedPosts.includes(p.id);
         return true;
       })
@@ -165,16 +145,6 @@ export default function Feed() {
       .then((rows) => setHasWorkHistory(rows.length > 0))
       .catch(() => {});
   }, []);
-  const upcoming = posts.filter((p) => p.isEvent);
-  // Real counts now that posts are real -- used to add a flat "+6/+4/+8"
-  // baseline to make an 8-post mock feed look busier than it was; a real,
-  // possibly-zero count is the honest number now.
-  const trending = [
-    { topic: "Case interviews", count: posts.filter((p) => p.postType === "Interview write-up").length },
-    { topic: "Offers & outcomes", count: posts.filter((p) => p.postType === "UC-posted job").length },
-    { topic: "Recruiting advice", count: posts.filter((p) => p.postType === "Advice").length },
-  ];
-
   return (
     <PullToRefresh onRefresh={refreshFeed}>
     <div className="feed-layout">
@@ -192,15 +162,11 @@ export default function Feed() {
           </div>
           <div className="composer__bottom">
             <div className="composer__types">
-              {POST_TYPES.map((t) => (
-                <button
-                  key={t.value}
-                  className={`chip-toggle${selectedType === t.value ? " is-selected" : ""}`}
-                  onClick={() => setSelectedType(t.value)}
-                >
-                  {t.label}
-                </button>
-              ))}
+              {realIsAdmin && (
+                <label className="composer__announce">
+                  <input type="checkbox" checked={asAnnouncement} onChange={(e) => setAsAnnouncement(e.target.checked)} /> Post as an announcement
+                </label>
+              )}
             </div>
             <button className="btn btn-primary" onClick={handlePost} disabled={posting || !composerText.trim()}>
               {posting ? "Posting…" : "Post"}
@@ -240,8 +206,6 @@ export default function Feed() {
           const isHelpful = helpfulPosts.includes(post.id);
           const helpfulCount = post.helpfulCount + (isHelpful ? 1 : 0);
           const isSaved = savedPosts.includes(post.id);
-          const isRsvped = rsvpedPosts.includes(post.id);
-          const rsvpCount = (post.rsvpCount || 0) + (isRsvped ? 1 : 0);
 
           const isAnnouncement = post.postType === "Announcement";
           return (
@@ -255,8 +219,7 @@ export default function Feed() {
                   <Avatar name={post.author} url={avatarsById.get(post.authorId)} />
                 </div>
                 <span className="post-card__name">{post.author}</span>
-                <span className="chip">{post.roleChip}</span>
-                <span className="chip chip-accent">{isAnnouncement ? "📌 Announcement" : post.postType}</span>
+                {isAnnouncement && <span className="chip chip-accent">Announcement</span>}
               </div>
               <p className="post-card__role-line">
                 {post.roleLine ? `${post.roleLine} · ` : ""}
@@ -283,28 +246,7 @@ export default function Feed() {
                 <p className="post-card__body">{post.body}</p>
               )}
 
-              {post.isEvent ? (
-                <div className="post-card__engagement">
-                  <span>{post.eventLabel}</span>
-                  <button className={`btn btn-secondary${isRsvped ? " is-saved" : ""}`} onClick={() => toggleRsvp(post.id)}>
-                    {isRsvped ? "✓ Going" : "RSVP"}
-                  </button>
-                  <ComingSoonButton className="btn-link" message="Calendar sync is coming soon">
-                    Add to calendar
-                  </ComingSoonButton>
-                  <span className="post-card__proof">{rsvpCount} attending</span>
-                  {post.authorId === currentAccountId && (
-                    <>
-                      <button className="btn-link" onClick={() => startEditPost(post)}>
-                        Edit
-                      </button>
-                      <button className="btn-link" onClick={() => handleDeletePost(post.id)}>
-                        Delete
-                      </button>
-                    </>
-                  )}
-                </div>
-              ) : (
+              {(
                 <div className="post-card__engagement">
                   <button className={isHelpful ? "is-active" : ""} onClick={() => toggleHelpful(post.id)}>
                     ↑ {helpfulCount} helpful
@@ -336,24 +278,6 @@ export default function Feed() {
       </div>
 
       <div className="feed-rail">
-        <div className="rail-card is-accent">
-          <div className="rail-card__title">Why this feed is different</div>
-          <p style={{ margin: 0 }}>
-            Every post here comes from a UC member or alumnus. The referrals, write-ups, and advice below
-            don't exist anywhere on the open internet.
-          </p>
-        </div>
-
-        <div className="rail-card">
-          <div className="rail-card__title">Trending in UC</div>
-          {trending.map((t) => (
-            <div className="trending-row" key={t.topic}>
-              <span>{t.topic}</span>
-              <span className="meta">{t.count} posts</span>
-            </div>
-          ))}
-        </div>
-
         {!hasWorkHistory && (
           <div className="rail-card">
             <div className="rail-card__title">Add your work history</div>
@@ -400,16 +324,6 @@ export default function Feed() {
               >
                 Chat
               </Link>
-            </div>
-          ))}
-        </div>
-
-        <div className="rail-card">
-          <div className="rail-card__title">Upcoming</div>
-          {upcoming.length === 0 && <p className="meta" style={{ margin: 0 }}>Nothing scheduled.</p>}
-          {upcoming.map((e) => (
-            <div className="upcoming-row" key={e.id}>
-              <span>{e.eventLabel}</span>
             </div>
           ))}
         </div>
