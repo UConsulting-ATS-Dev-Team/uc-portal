@@ -301,19 +301,43 @@ export async function bulkAddInternRoster(text) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const rows = text
+  const lines = text
     .split("\n")
     .map((line) => line.trim())
-    .filter(Boolean)
+    .filter(Boolean);
+
+  // A line with no "@" is just a name: that intern is cleared to sign up by typing it (the email isn't known yet).
+  const names = lines.filter((line) => !line.includes("@"));
+  if (names.length) {
+    const nameRows = names.map((name) => ({ name: name.replace(/\s+/g, " "), name_key: name.trim().replace(/\s+/g, " ").toLowerCase(), added_by: user.id }));
+    const { error } = await supabase.from("intern_name_roster").upsert(nameRows, { onConflict: "name_key", ignoreDuplicates: true });
+    if (error) throw new Error(error.message);
+  }
+
+  const rows = lines
+    .filter((line) => line.includes("@"))
     .map((line) => {
       const [email, ...rest] = line.split(",");
       return { email: email.trim().toLowerCase(), name: rest.join(",").trim() || null, added_by: user.id };
     })
     .filter((r) => r.email.includes("@"));
-  if (rows.length === 0) return 0;
-  const { error } = await supabase.from("intern_roster").upsert(rows, { onConflict: "email" });
+  if (rows.length > 0) {
+    const { error } = await supabase.from("intern_roster").upsert(rows, { onConflict: "email" });
+    if (error) throw new Error(error.message);
+  }
+  return rows.length + names.length;
+}
+
+// Names cleared to sign up as interns (no email yet). claimed_at is set once someone has signed up with that name.
+export async function fetchInternNames() {
+  const { data, error } = await supabase.from("intern_name_roster").select("name_key, name, claimed_at").order("name");
   if (error) throw new Error(error.message);
-  return rows.length;
+  return data ?? [];
+}
+
+export async function removeInternName(nameKey) {
+  const { error } = await supabase.from("intern_name_roster").delete().eq("name_key", nameKey);
+  if (error) throw new Error(error.message);
 }
 
 // Real back-and-forth comment thread per submission -- separate from the

@@ -19,6 +19,8 @@ import {
   removeInternRosterEntry,
   bulkAddInternRoster,
   fetchInternProgress,
+  fetchInternNames,
+  removeInternName,
   fetchMeetingSchedule,
   saveMeetingSchedule,
 } from "../data/acceleratorSync.js";
@@ -100,6 +102,7 @@ function MeetingSchedule() {
 
 function InternRoster() {
   const [entries, setEntries] = useState([]);
+  const [names, setNames] = useState([]);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState(null);
@@ -110,6 +113,7 @@ function InternRoster() {
 
   function load() {
     fetchInternRoster().then(setEntries).catch((e) => setError(e.message));
+    fetchInternNames().then(setNames).catch((e) => setError(e.message));
   }
 
   useEffect(() => {
@@ -141,13 +145,18 @@ function InternRoster() {
       setEmail("");
       setName("");
       setBulkText("");
-      setResult(`Added or updated ${count} email${count === 1 ? "" : "s"}.`);
+      setResult(`Added or updated ${count} ${count === 1 ? "intern" : "interns"}.`);
       load();
     } catch (err) {
       setError(err.message);
     } finally {
       setAdding(false);
     }
+  }
+
+  async function removeName(nameKey) {
+    await removeInternName(nameKey);
+    load();
   }
 
   async function remove(entryEmail) {
@@ -165,7 +174,8 @@ function InternRoster() {
       </div>
       <p className="meta">
         Incoming freshmen aren't on the roster or in the Directory yet. Add their email here before they try to
-        sign up.
+        sign up, or just their name if you don't have an email: they type that full name when creating their account
+        and it works once.
       </p>
       {error && !open && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
       <ul>
@@ -178,7 +188,15 @@ function InternRoster() {
             </button>
           </li>
         ))}
-        {entries.length === 0 && <li className="meta">No one on this list yet.</li>}
+        {names.map((n) => (
+          <li key={n.name_key}>
+            {n.name} <span className="meta">{n.claimed_at ? "signed up" : "listed by name, not signed up yet"}</span>{" "}
+            <button className="btn-link" onClick={() => removeName(n.name_key)}>
+              Remove
+            </button>
+          </li>
+        ))}
+        {entries.length === 0 && names.length === 0 && <li className="meta">No one on this list yet.</li>}
       </ul>
 
       {open && (
@@ -209,13 +227,13 @@ function InternRoster() {
             </div>
           </div>
           <div className="field">
-            <label htmlFor="intern-bulk">Or paste a whole cohort, one per line: "email" or "email, name"</label>
+            <label htmlFor="intern-bulk">Or paste a whole cohort, one per line: "email", "email, name", or just "name"</label>
             <textarea
               id="intern-bulk"
               rows={6}
               value={bulkText}
               onChange={(e) => setBulkText(e.target.value)}
-              placeholder={"freshman1@ucla.edu, Jane Doe\nfreshman2@ucla.edu"}
+              placeholder={"freshman1@ucla.edu, Jane Doe\nfreshman2@ucla.edu\nJane Doe"}
             />
           </div>
         </Modal>

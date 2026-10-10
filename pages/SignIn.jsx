@@ -67,6 +67,7 @@ export default function SignIn() {
   const [mode, setMode] = useState("sign-in"); // "sign-in" | "sign-up"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [authError, setAuthError] = useState(null);
   const [confirmNotice, setConfirmNotice] = useState(false);
   const [submittedAt, setSubmittedAt] = useState(null);
@@ -100,7 +101,8 @@ export default function SignIn() {
       // covers both current members (roster) and real alumni (a
       // people.status = 'Alumni' match) -- see the alumni-accounts
       // migration's own header comment for why this isn't just roster.
-      const { data: onRoster, error: rosterCheckError } = await supabase.rpc("can_sign_up", { check_email: email });
+      // Also passes the full name: an intern the admin could only list by name is cleared by it.
+      const { data: onRoster, error: rosterCheckError } = await supabase.rpc("can_sign_up_with_name", { check_email: email, check_name: fullName.trim() });
       if (rosterCheckError) {
         setAuthError(rosterCheckError.message);
         setState(STATE.SIGN_IN);
@@ -110,12 +112,19 @@ export default function SignIn() {
         setState(STATE.NOT_ON_ROSTER);
         return;
       }
+      // One account per person: a name that already has an account (other than an admin's) can't sign up again.
+      const { data: nameTaken } = await supabase.rpc("signup_name_taken", { check_email: email, check_name: fullName.trim() });
+      if (nameTaken) {
+        setAuthError("An account already exists under this name. Sign in instead, or reset your password if you've forgotten it.");
+        setState(STATE.SIGN_IN);
+        return;
+      }
     }
 
     const { data, error } =
       mode === "sign-in"
         ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password });
+        : await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName.trim() } } });
 
     if (error) {
       setAuthError(error.message);
@@ -413,6 +422,12 @@ export default function SignIn() {
           )}
 
           <form onSubmit={handleSubmit}>
+            {mode === "sign-up" && (
+              <div className="field">
+                <label htmlFor="full-name">Full name</label>
+                <input id="full-name" type="text" autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+              </div>
+            )}
             <div className="field">
               <label htmlFor="email">Email</label>
               <input

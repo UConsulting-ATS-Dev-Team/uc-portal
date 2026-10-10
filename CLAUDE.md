@@ -433,6 +433,14 @@ which are chronological and not rewritten when later work supersedes them.
 - **Saved searches follow the account (2026-10-09).** `saved_searches` (own rows only) mirrors the store's `savedSearches`
   (`data/savedSearchesSync.js`); the first fetch after sign-in merges the account's list with any browser-only ones and uploads
   those once. Capped at ten; the one that falls off is deleted remotely too.
+- **Interns by name, one account per name (2026-10-10).** The admin can list interns by name only (a line with no "@" in the
+  Add interns box, table `intern_name_roster`). The sign-up form asks for a full name; `can_sign_up_with_name()` and the
+  `reject_non_roster_signup` trigger accept an unclaimed matching name (case and spacing ignored), `handle_new_user()` makes the
+  account an intern with the listed name on the profile and marks the name used (one use; deleting the account does not free it,
+  remove and re-add). Real names go in with a temp migration or the admin box, never git. Separately, `signup_name_taken()` allows
+  only one account per name (profile name, else the roster/directory/intern-list name for that email) unless an admin account
+  carries that name, so admins can make test accounts under their own name. The accelerator's event end time and weekly
+  meeting day/time (`accelerator_settings`, which resets the 3-a-week coffee chat count) were added the same day.
 - **Phone number** is entered by the member on My Profile (`profiles.phone`, optional) and readable only by that member and
   admins; it exists so an exec can text them (iMessage tab).
 - **Alumni first run and offers (2026-10-09).** Alumni get a 3-step flow (welcome, confirm info, "how you can help"). What an
