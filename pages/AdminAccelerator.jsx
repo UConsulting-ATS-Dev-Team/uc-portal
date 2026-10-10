@@ -27,7 +27,6 @@ import SubmissionCommentThread from "../components/SubmissionCommentThread.jsx";
 import AdminAcceleratorEvents from "../components/AdminAcceleratorEvents.jsx";
 import Modal from "../components/Modal.jsx";
 import CollapsibleSection from "../components/CollapsibleSection.jsx";
-import { formatTime } from "../data/acceleratorLogic.js";
 import AdminAcceleratorChats from "../components/AdminAcceleratorChats.jsx";
 import "../styles/jobDetail.css";
 import "../styles/admin.css";
@@ -72,10 +71,8 @@ function MeetingSchedule() {
   }
 
   return (
-    <CollapsibleSection
-      title="Weekly accelerator meeting"
-      summary={loaded ? (saved ? `${WEEKDAYS[weekday]}s at ${formatTime(time)}` : "Not set yet, so weeks run Sunday to Saturday") : "Loading…"}
-    >
+    <div className="detail-section">
+      <p style={{ fontWeight: 700, margin: 0 }}>Weekly accelerator meeting</p>
       <p className="meta">
         Interns owe 3 coffee chats a week, and the count starts over at this day and time. {loaded && !saved && "Not set yet, so weeks run Sunday to Saturday."}
       </p>
@@ -99,7 +96,7 @@ function MeetingSchedule() {
         </button>
       </div>
       {message && <p className="meta">{message}</p>}
-    </CollapsibleSection>
+    </div>
   );
 }
 

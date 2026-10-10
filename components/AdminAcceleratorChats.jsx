@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { fetchChatsForIntern, fetchInterns } from "../data/acceleratorSync.js";
 import { parseYmd } from "../data/acceleratorLogic.js";
 import AcceleratorChatPhoto from "./AcceleratorChatPhoto.jsx";
-import CollapsibleSection from "./CollapsibleSection.jsx";
 import "../styles/accelerator.css";
 
 // Read-only: an intern's logged coffee chats, with the picture each one submitted.
@@ -34,7 +33,8 @@ export default function AdminAcceleratorChats() {
   }, [selected]);
 
   return (
-    <CollapsibleSection title="Coffee Chats" summary="Pick an intern to read what they logged">
+    <div className="detail-section">
+      <p style={{ fontWeight: 700 }}>Coffee Chats</p>
       <p className="meta">What each intern logged: who they met, what they talked about, and the picture. Three a week, at least two with UC members.</p>
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
       <div className="field" style={{ maxWidth: 360 }}>
@@ -66,6 +66,6 @@ export default function AdminAcceleratorChats() {
           </div>
         </div>
       ))}
-    </CollapsibleSection>
+    </div>
   );
 }
