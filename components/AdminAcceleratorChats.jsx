@@ -60,7 +60,7 @@ export default function AdminAcceleratorChats() {
             </div>
             <div className="meta">
               {parseYmd(chat.chat_date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-              {chat.is_uc_member && ` · ${chat.member_year}, ${chat.member_major}`}
+              {chat.member_year && ` · ${chat.member_year}, ${chat.member_major}`}
             </div>
             <p className="accel-chat__summary">{chat.summary}</p>
           </div>

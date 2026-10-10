@@ -204,6 +204,17 @@ describe("coffee-chat weeks close at each accelerator meeting", () => {
     expect(periods[0].endMs).toBe(new Date(2026, 9, 17, 23, 59, 59, 999).getTime()); // Saturday after Sun Oct 11
     expect(periods[1].startMs).toBe(new Date(2026, 9, 18).getTime() - 1);
   });
+
+  it("resets every week at the day and time the admin set, with no end", () => {
+    const schedule = { weekday: 3, time: "18:00" }; // Wednesdays 6 PM
+    const today = at(2027, 3, 1, 9); // months later, a Monday
+    const periods = L.programPeriods([], { lessons: [{ id: "a", title: "L", lesson_date: "2026-10-12" }], today, schedule });
+    expect(periods[0].endMs).toBe(at(2026, 10, 14, 18).getTime());
+    expect(periods[1].endMs).toBe(at(2026, 10, 21, 18).getTime());
+    const p = L.coffeeChatProgress([chat(at(2027, 2, 23, 9), true), chat(at(2027, 2, 24, 19), true), chat(at(2027, 2, 28, 9), true)], periods, today);
+    expect(p.current.endMs).toBe(at(2027, 3, 3, 18).getTime());
+    expect(p.current.counted).toBe(2); // the Feb 23 chat belongs to last week; the two logged since Wed Feb 24 6 PM count now
+  });
 });
 
 describe("coffee-chat slots: two with club members, one with an intern or a third club member", () => {

@@ -48,8 +48,8 @@ function ChatForm({ week, onLogged }) {
     if (isClub && !week.canLogClub) return "This week's club member and intern slots are all taken.";
     if (!isClub && !week.canLogIntern) return "Your intern slot this week is taken. Log a chat with a club member instead.";
     if (!form.contactName.trim()) return "Enter the name of the person you met.";
-    if (isClub && !form.year) return "Choose the club member's year.";
-    if (isClub && !form.major.trim()) return "Enter the club member's major.";
+    if (!form.year) return `Choose ${isClub ? "the club member's" : "the intern's"} year.`;
+    if (!form.major.trim()) return `Enter ${isClub ? "the club member's" : "the intern's"} major.`;
     if (!form.summary.trim()) return "Say what you talked about.";
     if (!photo) return "Add a picture from the chat.";
     if (photo.size > MAX_PHOTO_BYTES) return "That picture is over 10 MB. Choose a smaller one.";
@@ -111,7 +111,7 @@ function ChatForm({ week, onLogged }) {
           <input id="chat-name" type="text" value={form.contactName} onChange={(e) => set({ contactName: e.target.value })} />
         </div>
       </div>
-      {isClub && (
+      {(
         <div className="accel-form__row">
           <div className="field">
             <label htmlFor="chat-year">Their year</label>
@@ -147,9 +147,9 @@ function ChatForm({ week, onLogged }) {
 }
 
 export default function AcceleratorCoffeeChats() {
-  const { events, lessons, chats, loading, error, reload } = useAcceleratorData();
+  const { events, lessons, chats, schedule, loading, error, reload } = useAcceleratorData();
   const now = useMemo(() => new Date(), []);
-  const periods = useMemo(() => programPeriods(events, { lessons, chats, today: now }), [events, lessons, chats, now]);
+  const periods = useMemo(() => programPeriods(events, { lessons, chats, today: now, schedule }), [events, lessons, chats, now, schedule]);
   const progress = useMemo(() => coffeeChatProgress(chats, periods, now), [chats, periods, now]);
   const [deleteError, setDeleteError] = useState(null);
   const current = progress.current;
@@ -181,10 +181,10 @@ export default function AcceleratorCoffeeChats() {
       <h1 className="accel-title">Coffee chats</h1>
       <p className="meta">
         {CHATS_PER_WEEK} a week, due at every accelerator meeting: {CLUB_CHATS_PER_WEEK} with club members, and one with another intern or a third club member.{" "}
-        {progress.counted} of {progress.target} done.
+        {current ? `This week: ${current.counted} of ${CHATS_PER_WEEK}.` : ""}
       </p>
       {!periods[0]?.byMeeting && (
-        <p className="meta">No accelerator meetings are on the calendar yet, so weeks run Sunday to Saturday for now.</p>
+        <p className="meta">The accelerator's weekly day and time haven't been set yet, so weeks run Sunday to Saturday for now.</p>
       )}
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
 
@@ -262,7 +262,7 @@ export default function AcceleratorCoffeeChats() {
                 </div>
                 <div className="meta">
                   {parseYmd(chat.chat_date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
-                  {chat.is_uc_member && ` · ${chat.member_year}, ${chat.member_major}`}
+                  {chat.member_year && ` · ${chat.member_year}, ${chat.member_major}`}
                 </div>
                 <p className="accel-chat__summary">{chat.summary}</p>
                 {info?.week.isCurrent && (

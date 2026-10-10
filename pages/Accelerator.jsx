@@ -168,14 +168,14 @@ function RequirementCard({ to, kicker, figure, of, percent, note, flag }) {
 }
 
 export default function Accelerator() {
-  const { lessons, events, submissions, attendance, chats, loading, error } = useAcceleratorData();
+  const { lessons, events, submissions, attendance, chats, schedule, loading, error } = useAcceleratorData();
   const today = useMemo(() => new Date(), []);
 
   const items = useMemo(() => calendarItems(events, lessons), [events, lessons]);
   const byDate = useMemo(() => itemsByDate(items), [items]);
 
   const now = useMemo(() => new Date(), []);
-  const periods = useMemo(() => programPeriods(events, { lessons, chats, today }), [events, lessons, chats, today]);
+  const periods = useMemo(() => programPeriods(events, { lessons, chats, today, schedule }), [events, lessons, chats, today, schedule]);
   const chatProgress = useMemo(() => coffeeChatProgress(chats, periods, now), [chats, periods, now]);
   const attendanceStats = useMemo(() => attendanceProgress(events, attendance, today), [events, attendance, today]);
   const assignments = useMemo(() => assignmentProgress(lessons, submissions), [lessons, submissions]);
@@ -185,10 +185,10 @@ export default function Accelerator() {
   let chatFlag = false;
   if (chatProgress.behind.length > 0) {
     const n = chatProgress.behind.length;
-    chatNote = `${n} past week${n === 1 ? "" : "s"} short of ${CHATS_PER_WEEK} chats${current ? `. This week: ${current.counted} of ${CHATS_PER_WEEK}, due ${current.dueLabel}` : ""}`;
+    chatNote = `Due ${current ? current.dueLabel : "at the next meeting"}. ${n} past week${n === 1 ? "" : "s"} ended short of ${CHATS_PER_WEEK} chats`;
     chatFlag = true;
   } else if (current) {
-    chatNote = `Week ${current.number}: ${current.counted} of ${CHATS_PER_WEEK} logged, ${Math.min(CLUB_CHATS_PER_WEEK, current.clubCount)} of ${CLUB_CHATS_PER_WEEK} with club members. Due ${current.dueLabel}`;
+    chatNote = `${Math.min(CLUB_CHATS_PER_WEEK, current.clubCount)} of ${CLUB_CHATS_PER_WEEK} with club members. Resets ${current.dueLabel}`;
   } else if (chatProgress.counted > 0) {
     chatNote = "Every week of the program so far is on track.";
   }
@@ -225,9 +225,9 @@ export default function Accelerator() {
           <RequirementCard
             to="/accelerator/coffee-chats"
             kicker="Coffee chats"
-            figure={chatProgress.counted}
-            of={`/ ${chatProgress.target}`}
-            percent={pct(chatProgress.counted, chatProgress.target)}
+            figure={current ? current.counted : 0}
+            of={`/ ${CHATS_PER_WEEK} this week`}
+            percent={pct(current ? current.counted : 0, CHATS_PER_WEEK)}
             note={chatNote}
             flag={chatFlag}
           />

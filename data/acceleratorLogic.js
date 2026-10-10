@@ -152,13 +152,48 @@ function meetingInfo(event) {
   return { date: new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59, 999), hasTime: false };
 }
 
+// The first moment at or after `from` that falls on `weekday` at `time` ("HH:MM" or "HH:MM:SS").
+function nextMeeting(from, weekday, time) {
+  const [h, m] = time.split(":").map(Number);
+  let d = new Date(from.getFullYear(), from.getMonth(), from.getDate() + ((weekday - from.getDay() + 7) % 7), h, m);
+  if (d < from) d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7, h, m);
+  return d;
+}
+
+function scheduledPeriods({ lessons, chats, today, schedule }) {
+  let anchor = startOfDay(today);
+  if (lessons.length) anchor = parseYmd(lessons[0].lesson_date);
+  else if (chats.length) anchor = startOfDay(new Date([...chats].map((c) => c.created_at).sort()[0]));
+  const ends = [nextMeeting(anchor, schedule.weekday, schedule.time)];
+  // Keep going until the week that holds today is included (and at least the usual eight weeks).
+  while (ends.length < DEFAULT_PROGRAM_WEEKS || ends[ends.length - 1] < today) {
+    const last = ends[ends.length - 1];
+    ends.push(new Date(last.getFullYear(), last.getMonth(), last.getDate() + 7, last.getHours(), last.getMinutes()));
+  }
+  return ends.map((end, i) => ({
+    index: i,
+    number: i + 1,
+    startMs: i === 0 ? -Infinity : ends[i - 1].getTime(),
+    endMs: end.getTime(),
+    end,
+    dueLabel: formatDue(end, true),
+    projected: end > today && end.getTime() - today.getTime() > 7 * 86400000,
+    byMeeting: true,
+  }));
+}
+
 // A coffee-chat "week" is the stretch between accelerator meetings, because the three chats are due at each one: a
 // chat logged before a meeting (even earlier the same day) counts toward the week that meeting closes, one logged
 // after it counts toward the next. So week boundaries are the exact date and time of each accelerator meeting
 // (events of kind "accelerator"). If fewer than eight are scheduled the rest are projected a week apart, so the
 // target is 24 from day one. With no accelerator meetings on the calendar yet it falls back to eight Sunday-to-
 // Saturday weeks from the first lesson (or first chat, or today).
-export function programPeriods(events, { lessons = [], chats = [], today = new Date() } = {}) {
+//
+// When the admin has set the weekly meeting day and time (`schedule`: { weekday: 0-6, time: "HH:MM" }) that wins over
+// the calendar: a week closes at that moment every week, with no end, so the count resets each week for as long as the
+// program runs.
+export function programPeriods(events, { lessons = [], chats = [], today = new Date(), schedule = null } = {}) {
+  if (schedule) return scheduledPeriods({ lessons, chats, today, schedule });
   const meetings = events
     .filter((e) => e.kind === "accelerator")
     .map(meetingInfo)

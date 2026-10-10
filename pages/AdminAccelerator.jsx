@@ -19,6 +19,8 @@ import {
   removeInternRosterEntry,
   bulkAddInternRoster,
   fetchInternProgress,
+  fetchMeetingSchedule,
+  saveMeetingSchedule,
 } from "../data/acceleratorSync.js";
 import SubmissionCommentThread from "../components/SubmissionCommentThread.jsx";
 import AdminAcceleratorEvents from "../components/AdminAcceleratorEvents.jsx";
@@ -28,6 +30,73 @@ import "../styles/jobDetail.css";
 import "../styles/admin.css";
 
 const EMPTY_FORM = { lessonDate: "", title: "", topicOverview: "" };
+
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+// When the accelerator meets each week. Interns' coffee-chat count (3 a week) resets at this day and time.
+function MeetingSchedule() {
+  const [weekday, setWeekday] = useState(3);
+  const [time, setTime] = useState("18:00");
+  const [saved, setSaved] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState(null);
+
+  useEffect(() => {
+    fetchMeetingSchedule()
+      .then((s) => {
+        if (s) {
+          setWeekday(s.weekday);
+          setTime(s.time);
+          setSaved(true);
+        }
+      })
+      .catch((e) => setMessage(e.message))
+      .finally(() => setLoaded(true));
+  }, []);
+
+  async function save() {
+    setSaving(true);
+    setMessage(null);
+    try {
+      await saveMeetingSchedule({ weekday, time });
+      setSaved(true);
+      setMessage("Saved.");
+    } catch (e) {
+      setMessage(e.message);
+    }
+    setSaving(false);
+  }
+
+  return (
+    <div className="detail-section">
+      <p style={{ fontWeight: 700, margin: 0 }}>Weekly accelerator meeting</p>
+      <p className="meta">
+        Interns owe 3 coffee chats a week, and the count starts over at this day and time. {loaded && !saved && "Not set yet, so weeks run Sunday to Saturday."}
+      </p>
+      <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "flex-end", flexWrap: "wrap" }}>
+        <div className="field">
+          <label htmlFor="meeting-day">Day</label>
+          <select id="meeting-day" value={weekday} onChange={(e) => setWeekday(Number(e.target.value))}>
+            {WEEKDAYS.map((d, i) => (
+              <option key={d} value={i}>
+                {d}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="meeting-time">Time</label>
+          <input id="meeting-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+        </div>
+        <button className="btn btn-primary" onClick={save} disabled={saving || !time}>
+          {saving ? "Saving…" : "Save"}
+        </button>
+      </div>
+      {message && <p className="meta">{message}</p>}
+    </div>
+  );
+}
 
 function InternRoster() {
   const [entries, setEntries] = useState([]);
@@ -633,6 +702,8 @@ export default function AdminAccelerator() {
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
 
       <InternRoster />
+
+      <MeetingSchedule />
 
       <InternProgress />
 

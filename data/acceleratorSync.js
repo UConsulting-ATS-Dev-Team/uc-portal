@@ -184,13 +184,14 @@ export async function fetchInternProgress() {
   // of bug that already bit the Jobs board, the Companies grid, and
   // feed_posts once each in this project's history -- cheap to apply
   // proactively rather than wait for a fourth real incident.
-  const [{ data: members, error: membersError }, lessons, allSubmissions, events, allAttendance, allChats] = await Promise.all([
+  const [{ data: members, error: membersError }, lessons, allSubmissions, events, allAttendance, allChats, schedule] = await Promise.all([
     supabase.rpc("list_members"),
     fetchLessons(),
     fetchAllRows("accelerator_submissions", "*"),
     fetchEvents(),
     fetchAllRows("accelerator_attendance", "*", undefined, "event_id"),
     fetchAllRows("accelerator_coffee_chats", "id, profile_id, chat_date, is_uc_member, created_at"),
+    fetchMeetingSchedule(),
   ]);
   if (membersError) throw new Error(membersError.message);
 
@@ -212,7 +213,7 @@ export async function fetchInternProgress() {
       new Date()
     );
     const ownChats = allChats.filter((c) => c.profile_id === intern.member_id);
-    const chats = coffeeChatProgress(ownChats, programPeriods(events, { lessons, chats: ownChats }), new Date());
+    const chats = coffeeChatProgress(ownChats, programPeriods(events, { lessons, chats: ownChats, schedule }), new Date());
     return {
       assignmentsComplete: assignments.complete,
       assignmentsIncomplete: assignments.incomplete,
@@ -371,6 +372,22 @@ export async function graduateIntern(profileId) {
 }
 
 
+// ---- Weekly meeting schedule ------------------------------------------------------------------------------
+
+// { weekday: 0-6 (Sunday first), time: "HH:MM" } or null when the admin hasn't set it. Coffee-chat weeks reset then.
+export async function fetchMeetingSchedule() {
+  const { data, error } = await supabase.from("accelerator_settings").select("meeting_weekday, meeting_time").maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? { weekday: data.meeting_weekday, time: data.meeting_time.slice(0, 5) } : null;
+}
+
+export async function saveMeetingSchedule({ weekday, time }) {
+  const { error } = await supabase
+    .from("accelerator_settings")
+    .upsert({ id: true, meeting_weekday: weekday, meeting_time: time, updated_at: new Date().toISOString() }, { onConflict: "id" });
+  if (error) throw new Error(error.message);
+}
+
 // ---- Calendar events, attendance and coffee chats (tracker) ----------------------------------------------
 
 export async function fetchEvents() {
@@ -439,8 +456,8 @@ export async function addCoffeeChat({ chatDate, contactName, isUcMember, memberY
       chat_date: chatDate,
       contact_name: contactName.trim(),
       is_uc_member: isUcMember,
-      member_year: isUcMember ? memberYear.trim() : null,
-      member_major: isUcMember ? memberMajor.trim() : null,
+      member_year: memberYear.trim(),
+      member_major: memberMajor.trim(),
       summary: summary.trim(),
       photo_path: photoPath ?? null,
     })
