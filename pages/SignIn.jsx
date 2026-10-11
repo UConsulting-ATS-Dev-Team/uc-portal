@@ -139,6 +139,14 @@ export default function SignIn() {
       return;
     }
 
+    // Supabase answers a sign-up for an address that already has an account with a user that has no identities, and sends
+    // no email: say so instead of telling them to look for a confirmation link that will never come.
+    if (mode === "sign-up" && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      setAuthError("An account with this email already exists. Sign in, or use \"Forgot your password?\" if you haven't set a password yet.");
+      setState(STATE.SIGN_IN);
+      return;
+    }
+
     // Sign-up with email confirmation enabled (the Supabase default) returns
     // a user but no active session yet -- the member has to click the link
     // in their inbox before signInWithPassword will succeed.
