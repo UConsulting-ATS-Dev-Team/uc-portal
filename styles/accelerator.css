@@ -950,3 +950,9 @@
   border-top: var(--border-hairline);
   margin: 0;
 }
+
+/* Admin coffee chat table: the three slots share the width equally. */
+.accel-chat-table td,
+.accel-chat-table th {
+  vertical-align: top;
+}

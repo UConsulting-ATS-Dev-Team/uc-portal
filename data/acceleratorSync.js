@@ -589,6 +589,11 @@ function nameFor(member, rosterNames) {
   return !name || name.includes("@") ? rosterNames.get((member.email ?? "").toLowerCase()) ?? name : name;
 }
 
+// Every intern's coffee chats (admin only; RLS lets admins read them all).
+export async function fetchAllCoffeeChats() {
+  return fetchAllRows("accelerator_coffee_chats", "*");
+}
+
 export async function fetchInterns() {
   const [{ data, error }, rosterNames] = await Promise.all([supabase.rpc("list_members"), rosterNamesByEmail()]);
   if (error) throw new Error(error.message);

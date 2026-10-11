@@ -714,15 +714,7 @@ export default function AdminAccelerator() {
       <h1>Accelerator</h1>
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
 
-      <InternRoster />
-
-      <MeetingSchedule />
-
       <InternProgress />
-
-      <AdminAcceleratorEvents />
-
-      <AdminAcceleratorChats />
 
       <CollapsibleSection
         title="Lessons"
@@ -773,6 +765,15 @@ export default function AdminAccelerator() {
           </div>
         ))}
       </CollapsibleSection>
+
+      <AdminAcceleratorEvents />
+
+      <AdminAcceleratorChats />
+
+      <InternRoster />
+
+      <MeetingSchedule />
+
 
       {lessonModal && <LessonModal editing={lessonModal.editing} onClose={() => setLessonModal(null)} onSaved={lessonSaved} />}
     </div>
