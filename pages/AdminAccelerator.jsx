@@ -72,7 +72,7 @@ function MeetingSchedule() {
 
   return (
     <div className="detail-section">
-      <p style={{ fontWeight: 700, margin: 0 }}>Weekly accelerator meeting</p>
+      <p style={{ fontWeight: 700, margin: 0 }}>Weekly Accelerator Meeting</p>
       <p className="meta">
         Interns owe 3 coffee chats a week, and the count starts over at this day and time. {loaded && !saved && "Not set yet, so weeks run Sunday to Saturday."}
       </p>
@@ -167,7 +167,7 @@ function InternRoster() {
   return (
     <>
     <CollapsibleSection
-      title="Who can sign up as an intern"
+      title="Approved Accounts"
       summary={`${entries.length + names.length} listed${names.some((n) => !n.claimed_at) ? `, ${names.filter((n) => !n.claimed_at).length} by name only and not signed up yet` : ""}`}
     
       action={
@@ -327,7 +327,7 @@ function InternProgress() {
 
   return (
     <CollapsibleSection
-      title="Intern progress"
+      title="Intern Progress"
       summary={
         progress === null
           ? "Loading…"
