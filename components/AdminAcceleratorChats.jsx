@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { fetchAllCoffeeChats, fetchEvents, fetchInterns, fetchLessons, fetchMeetingSchedule } from "../data/acceleratorSync.js";
 import { CHAT_SLOT_LABELS, CHATS_PER_WEEK, coffeeChatProgress, parseYmd, programPeriods } from "../data/acceleratorLogic.js";
 import AcceleratorChatPhoto from "./AcceleratorChatPhoto.jsx";
+import CollapsibleSection from "./CollapsibleSection.jsx";
 import "../styles/accelerator.css";
 
 // Read-only: every intern's coffee chats at a glance. One row per intern, with this week's three slots side by side; open a
@@ -30,8 +31,14 @@ export default function AdminAcceleratorChats() {
   }, [data]);
 
   return (
-    <div className="detail-section">
-      <p style={{ fontWeight: 700 }}>Coffee Chats</p>
+    <CollapsibleSection
+      title="Coffee Chats"
+      summary={
+        rows === null
+          ? "Loading…"
+          : `${rows.length} intern${rows.length === 1 ? "" : "s"}, ${rows.reduce((n, r) => n + (r.week ? r.week.counted : 0), 0)} of ${rows.length * CHATS_PER_WEEK} chats logged this week`
+      }
+    >
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
       {rows === null && !error && <p className="meta">Loading…</p>}
       {rows?.length === 0 && <p className="meta">No intern accounts yet.</p>}
@@ -71,7 +78,8 @@ export default function AdminAcceleratorChats() {
                           <td key={i} className={chat ? "" : "meta"}>
                             {chat ? (
                               <>
-                                <div>{chat.contact_name}</div>
+                                {chat.photo_path ? <AcceleratorChatPhoto path={chat.photo_path} /> : <div className="accel-chat__photo" />}
+                                <div style={{ marginTop: "var(--space-2)" }}>{chat.contact_name}</div>
                                 <div className="meta">
                                   {chat.is_uc_member ? "UC member" : "Intern"}
                                   {chat.member_year && ` · ${chat.member_year}, ${chat.member_major}`}
@@ -121,6 +129,6 @@ export default function AdminAcceleratorChats() {
           </table>
         </div>
       )}
-    </div>
+    </CollapsibleSection>
   );
 }

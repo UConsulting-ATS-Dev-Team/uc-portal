@@ -956,3 +956,11 @@
 .accel-chat-table th {
   vertical-align: top;
 }
+
+/* In the admin chat table the picture is a fixed thumbnail above the name, at every screen width. */
+.accel-chat-table .accel-chat__photo {
+  display: block;
+  flex: none;
+  width: 96px;
+  height: 96px;
+}
