@@ -326,15 +326,13 @@ function InternProgress() {
   }, []);
 
   return (
-    <CollapsibleSection
-      title="Intern Progress"
-      summary={
-        progress === null
+    <div className="detail-section">
+      <p style={{ fontWeight: 700, margin: 0 }}>Intern Progress</p>
+      <p className="meta">
+        {progress === null
           ? "Loading…"
-          : `${progress.length} intern${progress.length === 1 ? "" : "s"}${progress.filter((p) => p.assignmentsIncomplete > 0 || p.weeksBehindOnChats > 0 || p.noSocials).length ? `, ${progress.filter((p) => p.assignmentsIncomplete > 0 || p.weeksBehindOnChats > 0 || p.noSocials).length} need attention` : ""}`
-      }
-    >
-      <p className="meta">Every real intern account, at a glance: who's on track and who's stalled.</p>
+          : `${progress.length} intern${progress.length === 1 ? "" : "s"}${progress.filter((p) => p.assignmentsIncomplete > 0 || p.weeksBehindOnChats > 0 || p.noSocials).length ? `, ${progress.filter((p) => p.assignmentsIncomplete > 0 || p.weeksBehindOnChats > 0 || p.noSocials).length} need attention` : ""}`}
+      </p>
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
       <div className="queue-table__scroll">
         <table className="queue-table">
@@ -389,7 +387,7 @@ function InternProgress() {
           </tbody>
         </table>
       </div>
-    </CollapsibleSection>
+    </div>
   );
 }
 
