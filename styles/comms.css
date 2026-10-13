@@ -176,21 +176,73 @@
 }
 
 .aud__top {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-4);
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+  max-width: 640px;
 }
 
 .aud__top .field {
   margin: 0;
-  min-width: 200px;
+}
+
+.aud__mode {
+  display: inline-flex;
+  border: var(--border-hairline);
+  margin-bottom: var(--space-5);
+}
+
+.aud__mode button {
+  background: var(--color-surface);
+  border: 0;
+  padding: var(--space-3) var(--space-5);
+  font: inherit;
+  font-size: var(--text-secondary);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.aud__mode button + button {
+  border-left: var(--border-hairline);
+}
+
+.aud__mode button[aria-pressed="true"] {
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-weight: 700;
+}
+
+.aud__typed textarea {
+  min-height: 112px;
+  max-width: 640px;
+}
+
+.aud__typed .field {
+  margin: 0;
 }
 
 .aud__save {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+
+.aud__save input {
+  min-width: 240px;
+}
+
+.comms-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.comms-check label {
+  margin: 0;
+  cursor: pointer;
 }
 
 .aud__groups {
@@ -430,6 +482,10 @@
 
   .aud__saved-list {
     margin-left: 0;
+  }
+
+  .aud__top {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

@@ -145,9 +145,10 @@ function ManageModal({ presets, onClose, onChanged }) {
         <label htmlFor="sp-reply">Replies go to (optional)</label>
         <input id="sp-reply" type="email" value={form.replyTo} onChange={(e) => set({ replyTo: e.target.value })} placeholder="careers@example.org" />
       </div>
-      <label style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", marginBottom: "var(--space-4)" }}>
-        <input type="checkbox" checked={form.isDefault} onChange={(e) => set({ isDefault: e.target.checked })} /> Use this sender by default
-      </label>
+      <div className="comms-check">
+        <input id="sp-default" type="checkbox" checked={form.isDefault} onChange={(e) => set({ isDefault: e.target.checked })} />
+        <label htmlFor="sp-default">Use this sender by default</label>
+      </div>
       <button className="btn btn-primary" onClick={add} disabled={busy}>
         Add sender
       </button>

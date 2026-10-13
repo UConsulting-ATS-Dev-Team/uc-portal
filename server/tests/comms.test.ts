@@ -5,6 +5,7 @@ import {
   describeAudience,
   matchesAudience,
   matchesCondition,
+  parseTypedEmails,
   resolveAudience,
   type Audience,
   type Person,
@@ -146,6 +147,38 @@ describe("audience groups", () => {
     expect(matchesAudience(person({ source: "mailing_list", status: "contact" }), preset("contacts"), NOW)).toBe(true);
     expect(matchesAudience(person({ lastActiveAt: daysAgo(30) }), preset("inactive"), NOW)).toBe(true);
     expect(matchesAudience(person({ source: "mailing_list", lastActiveAt: null }), preset("inactive"), NOW)).toBe(false);
+  });
+});
+
+describe("typed email addresses", () => {
+  it("splits pasted text, lowercases, drops repeats and reports what is not an address", () => {
+    const r = parseTypedEmails(["Ann@Example.com, bob@example.com;", "ann@example.com  <cy@example.org> nope, x@y"].join("\n"));
+    expect(r.valid).toEqual(["ann@example.com", "bob@example.com", "cy@example.org"]);
+    expect(r.invalid).toEqual(["nope", "x@y"]);
+  });
+
+  const typed = (emails: string[], extra: Partial<Audience> = {}): Audience => ({ ...EMPTY_AUDIENCE, emails, emailsOnly: true, ...extra });
+  const opts = { channel: "email" as const, suppressedEmails: new Set(["gone@example.com"]), now: NOW };
+
+  it("sends to only the typed addresses and ignores everyone else in the portal", () => {
+    const r = resolveAudience([person({ key: "a:1" })], typed(["new@example.com"]), opts);
+    expect(r.recipients.map((p) => p.email)).toEqual(["new@example.com"]);
+    expect(r.recipients[0].key).toBe("x:new@example.com");
+  });
+
+  it("still honors unsubscribes and does not send twice to an address that has an account", () => {
+    const people = [person({ key: "a:1", email: "kim@example.com" })];
+    const r = resolveAudience(people, { ...typed(["kim@example.com", "gone@example.com"]), emailsOnly: false }, opts);
+    expect(r.recipients.map((p) => p.key)).toContain("a:1");
+    expect(r.excluded.map((e) => [e.person.email, e.reason]).sort()).toEqual([
+      ["gone@example.com", "unsubscribed"],
+      ["kim@example.com", "duplicate"],
+    ]);
+  });
+
+  it("ignores typed addresses on other channels and describes the audience", () => {
+    expect(resolveAudience([], typed(["a@example.com"]), { ...opts, channel: "slack" }).recipients).toEqual([]);
+    expect(describeAudience(typed(["a@example.com", "b@example.com"]))).toBe("2 typed email addresses");
   });
 });
 

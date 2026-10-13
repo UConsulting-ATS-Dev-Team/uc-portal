@@ -44,6 +44,57 @@ export interface Audience {
   // How the groups combine. A group with no conditions matches everyone; an audience with no groups is everyone.
   match: "all" | "any";
   groups: Group[];
+  // Addresses typed in by an admin for people who aren't in the portal. With `emailsOnly` the groups are ignored and these are
+  // the whole audience; without it they are added to whoever the groups match. Email only.
+  emails?: string[];
+  emailsOnly?: boolean;
+}
+
+const EMAIL_SHAPE = /^[^@\s,;<>"]+@[^@\s,;<>"]+\.[^@\s,;<>"]+$/;
+
+export function isValidEmail(value: string): boolean {
+  return EMAIL_SHAPE.test(value.trim());
+}
+
+// Splits whatever an admin pasted (commas, semicolons, spaces, new lines, "Name <a@b.org>") into clean lowercase addresses,
+// keeping the first of any repeats and reporting the pieces that don't look like an address.
+export function parseTypedEmails(text: string): { valid: string[]; invalid: string[] } {
+  const valid: string[] = [];
+  const invalid: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of text.split(/[\s,;]+/)) {
+    const piece = raw.replace(/^<|>$/g, "").trim();
+    if (!piece) continue;
+    const email = piece.toLowerCase();
+    if (!isValidEmail(email)) {
+      invalid.push(piece);
+      continue;
+    }
+    if (seen.has(email)) continue;
+    seen.add(email);
+    valid.push(email);
+  }
+  return { valid, invalid };
+}
+
+function typedPerson(email: string): Person {
+  return {
+    key: `x:${email}`,
+    source: "mailing_list",
+    profileId: null,
+    contactId: null,
+    email,
+    name: "",
+    phone: null,
+    status: "contact",
+    role: null,
+    classYear: null,
+    joinedAt: null,
+    lastActiveAt: null,
+    deactivated: false,
+    tags: [],
+    subscribed: true,
+  };
 }
 
 export const EMPTY_AUDIENCE: Audience = { match: "all", groups: [{ match: "all", conditions: [] }] };
@@ -185,7 +236,8 @@ export function resolveAudience(
   opts: { channel: Channel; suppressedEmails: Set<string>; now?: Date }
 ): Resolved {
   const now = opts.now ?? new Date();
-  const matched = people.filter((p) => matchesAudience(p, audience, now));
+  const matched = audience.emailsOnly ? [] : people.filter((p) => matchesAudience(p, audience, now));
+  if (opts.channel === "email") for (const email of parseTypedEmails((audience.emails ?? []).join(" ")).valid) matched.push(typedPerson(email));
   const ordered = [...matched].sort((a, b) => (a.source === b.source ? 0 : a.source === "account" ? -1 : 1));
 
   const recipients: Person[] = [];
@@ -255,6 +307,8 @@ export const AUDIENCE_PRESETS: Preset[] = [
 
 // A short sentence describing an audience, for the log and the confirm step.
 export function describeAudience(audience: Audience): string {
+  const typed = audience.emails?.length ?? 0;
+  if (audience.emailsOnly) return `${typed} typed email address${typed === 1 ? "" : "es"}`;
   const conditions = audience.groups.flatMap((g) => g.conditions);
   if (conditions.length === 0) return "Everyone";
   const label = (c: Condition) => {

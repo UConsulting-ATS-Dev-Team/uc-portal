@@ -48,6 +48,8 @@ export default function Composer({ channel, people, suppressedEmails, status, ow
   const channelPost = channel === "slack" && state.slackMode === "channel";
   const resolved = useMemo(() => resolveAudience(people, state.audience, { channel, suppressedEmails }), [people, state.audience, channel, suppressedEmails]);
   const recipientCount = channelPost ? 1 : resolved.recipients.length;
+  const typedOnly = isEmail && Boolean(state.audience.emailsOnly);
+  const noun = (n) => (typedOnly ? (n === 1 ? "address" : "addresses") : n === 1 ? "person" : "people");
   const unknown = unknownMergeFields(`${state.subject}\n${state.body}`);
   const ready = state.body.trim() && (!isEmail || state.subject.trim()) && unknown.length === 0 && recipientCount > 0 && (!channelPost || state.slackTarget);
   const blockedReason = !connected
@@ -107,7 +109,7 @@ export default function Composer({ channel, people, suppressedEmails, status, ow
     const result = await run("send", { confirmCount: recipientCount });
     if (result) {
       setModal(null);
-      setNotice({ kind: "ok", text: `Sending to ${result.recipientCount} ${result.recipientCount === 1 ? "person" : "people"}. Progress is in the Logs tab.` });
+      setNotice({ kind: "ok", text: `Sending to ${result.recipientCount} ${noun(result.recipientCount)}. Progress is in the Logs tab.` });
       onQueued?.();
     }
   }
@@ -122,7 +124,7 @@ export default function Composer({ channel, people, suppressedEmails, status, ow
     const result = await run("schedule", { confirmCount: recipientCount, scheduledFor: when.toISOString() });
     if (result) {
       setModal(null);
-      setNotice({ kind: "ok", text: `Scheduled for ${when.toLocaleString()} to ${result.recipientCount} ${result.recipientCount === 1 ? "person" : "people"}.` });
+      setNotice({ kind: "ok", text: `Scheduled for ${when.toLocaleString()} to ${result.recipientCount} ${noun(result.recipientCount)}.` });
       onQueued?.();
     }
   }
@@ -271,8 +273,8 @@ export default function Composer({ channel, people, suppressedEmails, status, ow
           <ul className="recipient-list">
             {recipientsView.recipients.slice(0, 300).map((p) => (
               <li key={p.key}>
-                <span>{p.name}</span>
-                <span className="meta">{channel === "imessage" ? p.phone : p.email}</span>
+                <span>{p.name || p.email}</span>
+                <span className="meta">{p.name ? (channel === "imessage" ? p.phone : p.email) : "Not in the portal"}</span>
               </li>
             ))}
           </ul>
@@ -283,7 +285,7 @@ export default function Composer({ channel, people, suppressedEmails, status, ow
               <ul className="recipient-list">
                 {recipientsView.excluded.slice(0, 100).map((e) => (
                   <li key={e.person.key}>
-                    <span>{e.person.name}</span>
+                    <span>{e.person.name || e.person.email}</span>
                     <span className="meta">{EXCLUDE_LABEL[e.reason]}</span>
                   </li>
                 ))}
@@ -304,7 +306,7 @@ export default function Composer({ channel, people, suppressedEmails, status, ow
                 Cancel
               </button>
               <button className="btn btn-primary" onClick={modal === "send" ? confirmSend : confirmSchedule} disabled={Boolean(busy)}>
-                {busy ? "Working…" : modal === "send" ? `Send to ${recipientCount} ${recipientCount === 1 ? "person" : "people"}` : `Schedule for ${recipientCount}`}
+                {busy ? "Working…" : modal === "send" ? `Send to ${recipientCount} ${noun(recipientCount)}` : `Schedule for ${recipientCount}`}
               </button>
             </>
           }
@@ -313,7 +315,7 @@ export default function Composer({ channel, people, suppressedEmails, status, ow
             <div>
               <dt>To</dt>
               <dd>
-                {channelPost ? `Slack channel ${state.slackTarget}` : `${recipientCount} ${recipientCount === 1 ? "person" : "people"}`}
+                {channelPost ? `Slack channel ${state.slackTarget}` : `${recipientCount} ${noun(recipientCount)}`}
                 <span className="meta">{channelPost ? "" : ` · ${describeAudience(state.audience)}`}</span>
               </dd>
             </div>

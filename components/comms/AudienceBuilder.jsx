@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, X } from "lucide-react";
-import { AUDIENCE_PRESETS, EMPTY_AUDIENCE, EXCLUDE_LABEL, FIELD_DEFS, OP_LABEL, resolveAudience } from "../../supabase/functions/_shared/comms/audience.ts";
+import { AUDIENCE_PRESETS, EMPTY_AUDIENCE, EXCLUDE_LABEL, FIELD_DEFS, OP_LABEL, parseTypedEmails, resolveAudience } from "../../supabase/functions/_shared/comms/audience.ts";
 import "../../styles/comms.css";
 
 const fieldDef = (key) => FIELD_DEFS.find((f) => f.key === key);
@@ -42,6 +42,21 @@ function ValueInput({ def, condition, onChange }) {
 export default function AudienceBuilder({ audience, onChange, people, suppressedEmails, channel, savedAudiences, onSaveAudience, onDeleteSaved, onPreview }) {
   const [savingName, setSavingName] = useState("");
   const [showSave, setShowSave] = useState(false);
+  const typedMode = channel === "email" && Boolean(audience.emailsOnly);
+  const [typedText, setTypedText] = useState((audience.emails ?? []).join("\n"));
+  const typed = useMemo(() => parseTypedEmails(typedText), [typedText]);
+
+  // A draft opened from another tab brings its own addresses; keep the box in step with them.
+  useEffect(() => {
+    const incoming = audience.emails ?? [];
+    if (incoming.join(" ") !== typed.valid.join(" ")) setTypedText(incoming.join("\n"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audience.emails]);
+
+  function editTyped(text) {
+    setTypedText(text);
+    onChange({ ...audience, emails: parseTypedEmails(text).valid, emailsOnly: true });
+  }
 
   const resolved = useMemo(() => resolveAudience(people, audience, { channel, suppressedEmails }), [people, audience, channel, suppressedEmails]);
   const excludedByReason = useMemo(() => {
@@ -74,6 +89,41 @@ export default function AudienceBuilder({ audience, onChange, people, suppressed
 
   return (
     <div className="aud">
+      {channel === "email" && (
+        <div className="aud__mode" role="group" aria-label="Who to send to">
+          <button type="button" aria-pressed={!typedMode} onClick={() => onChange({ ...audience, emailsOnly: false })}>
+            People in the portal
+          </button>
+          <button type="button" aria-pressed={typedMode} onClick={() => onChange({ ...audience, emails: typed.valid, emailsOnly: true })}>
+            Specific email addresses
+          </button>
+        </div>
+      )}
+
+      {typedMode && (
+        <div className="aud__typed">
+          <div className="field">
+            <label htmlFor="aud-typed">Email addresses</label>
+            <textarea
+              id="aud-typed"
+              value={typedText}
+              onChange={(e) => editTyped(e.target.value)}
+              placeholder="name@example.com, another@example.com"
+              spellCheck={false}
+            />
+            <p className="meta" style={{ margin: "var(--space-2) 0 0" }}>
+              Separate addresses with commas, spaces or new lines. These people don't need a portal account.
+            </p>
+            {typed.invalid.length > 0 && (
+              <p className="meta" role="alert" style={{ color: "var(--color-danger)", margin: "var(--space-2) 0 0" }}>
+                Not valid email addresses: {typed.invalid.join(", ")}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!typedMode && (
       <div className="aud__top">
         <div className="field">
           <label htmlFor="aud-saved">Saved audience</label>
@@ -111,25 +161,10 @@ export default function AudienceBuilder({ audience, onChange, people, suppressed
             ))}
           </select>
         </div>
-        <div className="aud__save">
-          {showSave ? (
-            <>
-              <input type="text" aria-label="Audience name" placeholder="Name this audience" value={savingName} onChange={(e) => setSavingName(e.target.value)} />
-              <button type="button" className="btn btn-primary" onClick={saveCurrent} disabled={!savingName.trim()}>
-                Save
-              </button>
-              <button type="button" className="btn-link" onClick={() => setShowSave(false)}>
-                Cancel
-              </button>
-            </>
-          ) : (
-            <button type="button" className="btn btn-secondary" onClick={() => setShowSave(true)}>
-              Save as new
-            </button>
-          )}
-        </div>
       </div>
+      )}
 
+      {!typedMode && (
       <div className="aud__groups">
         {audience.groups.map((group, gi) => (
           <div className="aud__group" key={gi}>
@@ -199,9 +234,11 @@ export default function AudienceBuilder({ audience, onChange, people, suppressed
           </button>
         </div>
       </div>
+      )}
 
       <div className="aud__summary" role="status">
-        <strong>{resolved.recipients.length}</strong> {resolved.recipients.length === 1 ? "person" : "people"} would receive this
+        <strong>{resolved.recipients.length}</strong>{" "}
+        {typedMode ? (resolved.recipients.length === 1 ? "address" : "addresses") : resolved.recipients.length === 1 ? "person" : "people"} would receive this
         {resolved.excluded.length > 0 && (
           <span className="meta">
             {" "}
@@ -211,6 +248,11 @@ export default function AudienceBuilder({ audience, onChange, people, suppressed
         {onPreview && (
           <button type="button" className="btn-link" style={{ marginLeft: "var(--space-4)" }} onClick={() => onPreview(resolved)}>
             See who
+          </button>
+        )}
+        {!typedMode && !showSave && (
+          <button type="button" className="btn-link" onClick={() => setShowSave(true)}>
+            Save this audience
           </button>
         )}
         {savedAudiences.length > 0 && (
@@ -226,6 +268,18 @@ export default function AudienceBuilder({ audience, onChange, people, suppressed
           </span>
         )}
       </div>
+
+      {!typedMode && showSave && (
+        <div className="aud__save">
+          <input type="text" aria-label="Audience name" placeholder="Name this audience" value={savingName} onChange={(e) => setSavingName(e.target.value)} />
+          <button type="button" className="btn btn-primary" onClick={saveCurrent} disabled={!savingName.trim()}>
+            Save
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={() => setShowSave(false)}>
+            Cancel
+          </button>
+        </div>
+      )}
     </div>
   );
 }
