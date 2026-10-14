@@ -964,3 +964,26 @@
   width: 96px;
   height: 96px;
 }
+
+.accel-required {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.accel-required li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-surface);
+  border: var(--border-hairline);
+  border-left: var(--border-accent-emphasis);
+  margin-bottom: var(--space-2);
+}
+
+.accel-weeks .accel-more {
+  display: block;
+  padding: var(--space-4) 0 var(--space-5);
+}

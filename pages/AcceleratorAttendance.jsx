@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { submitEventPhoto } from "../data/acceleratorSync.js";
-import { attendanceProgress, attendanceStatus, calendarItems, formatTimeRange, parseYmd, ymd } from "../data/acceleratorLogic.js";
+import { addDays, attendanceProgress, attendanceStatus, calendarItems, formatTimeRange, parseYmd, ymd } from "../data/acceleratorLogic.js";
 import { useAcceleratorData } from "../data/useAcceleratorData.js";
 import AcceleratorEventPhoto from "../components/AcceleratorEventPhoto.jsx";
 import AcceleratorTabs from "../components/AcceleratorTabs.jsx";
@@ -69,6 +69,33 @@ function PhotoControl({ item, record, started, onDone }) {
   );
 }
 
+function EventRow({ item, status, record, todayKey, onDone }) {
+  const date = parseYmd(item.date);
+  const detail = [item.time ? formatTimeRange(item.time, item.endTime) : null, item.location].filter(Boolean).join(" · ");
+  const started = item.date <= todayKey;
+  return (
+    <div className="accel-event">
+      <div className={`accel-event__date${item.required ? " is-required" : ""}`}>
+        <span className="accel-event__dow">{date.toLocaleDateString(undefined, { weekday: "short" })}</span>
+        <span className="accel-event__day">{date.getDate()}</span>
+      </div>
+      <div className="accel-event__body">
+        <div className="accel-event__title">{item.title}</div>
+        <div className="accel-event__meta">
+          {date.toLocaleDateString(undefined, { month: "long", day: "numeric" })}
+          {detail && ` · ${detail}`}
+        </div>
+        <div className="accel-event__meta">
+          {item.method === "photo" ? "Add a photo from the event" : "The committee marks attendance"}
+          {record?.source === "photo" && " · photo submitted"}
+        </div>
+      </div>
+      {item.method === "photo" && <PhotoControl item={item} record={record} started={started} onDone={onDone} />}
+      <span className={status.className}>{status.text}</span>
+    </div>
+  );
+}
+
 export default function AcceleratorAttendance() {
   const { events, attendance, loading, error, reload } = useAcceleratorData();
   const today = useMemo(() => new Date(), []);
@@ -77,14 +104,54 @@ export default function AcceleratorAttendance() {
   const recordByEvent = useMemo(() => new Map(attendance.map((a) => [a.event_id, a])), [attendance]);
   // Lessons are the Assignments page's business; this page is only about events a person goes to.
   const items = useMemo(() => calendarItems(events, []), [events]);
+  const [showAll, setShowAll] = useState({});
+
+  // The required events behind "x of y": this week's, plus any earlier one not yet attended, plus what is next if this week has none.
+  const required = useMemo(() => {
+    const weekStart = ymd(addDays(today, -today.getDay()));
+    const weekEnd = ymd(addDays(today, 6 - today.getDay()));
+    const req = items.filter((i) => i.required);
+    const earlierOpen = req.filter((i) => i.date < weekStart && !progress.attendedIds.has(i.id));
+    const thisWeek = req.filter((i) => i.date >= weekStart && i.date <= weekEnd);
+    const next = thisWeek.length === 0 ? req.find((i) => i.date > weekEnd) : null;
+    return { rows: [...earlierOpen, ...thisWeek], next, empty: thisWeek.length === 0 };
+  }, [items, today, progress]);
 
   return (
     <div>
       <AcceleratorTabs />
       <h1 className="accel-title">Attendance</h1>
       <p className="meta">
-        {progress.requiredAttended} of {progress.requiredSoFar} required events attended
+        {progress.requiredAttended} of {progress.requiredSoFar} required events attended so far
       </p>
+      {!loading && (required.rows.length > 0 || required.next) && (
+        <div className="accel-section">
+          <h2>Required this week</h2>
+          <ul className="accel-required">
+            {required.rows.map((item) => {
+              const status = STATUS[attendanceStatus({ id: item.id, event_date: item.date }, progress, today)];
+              const when = [parseYmd(item.date).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" }), item.time ? formatTimeRange(item.time, item.endTime) : null].filter(Boolean).join(" · ");
+              return (
+                <li key={item.id}>
+                  <span>
+                    <strong>{item.title}</strong>
+                    <span className="meta"> {when}</span>
+                  </span>
+                  <span className={status.className}>{status.text}</span>
+                </li>
+              );
+            })}
+            {required.empty && required.next && (
+              <li>
+                <span>
+                  <strong>Nothing required this week.</strong>
+                  <span className="meta"> Next: {required.next.title}, {parseYmd(required.next.date).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}</span>
+                </span>
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
       {progress.noSocials && (
         <p className="meta" style={{ color: "var(--color-danger)" }}>
           You haven't been to a social yet. They're optional, but you're expected to go to at least one.
@@ -98,6 +165,11 @@ export default function AcceleratorAttendance() {
         const groupItems = items.filter((i) => groupKeyFor(i) === group.key);
         if (groupItems.length === 0) return null;
         const attended = groupItems.filter((i) => progress.attendedIds.has(i.id)).length;
+        const done = groupItems.filter((i) => i.date <= todayKey);
+        const upcoming = groupItems.filter((i) => i.date > todayKey);
+        const later = upcoming.slice(1);
+        const open = Boolean(showAll[group.key]);
+        const visible = [...done, ...upcoming.slice(0, 1), ...(open ? later : [])];
         return (
           <div className="accel-section" key={group.key}>
             <h2>
@@ -105,34 +177,21 @@ export default function AcceleratorAttendance() {
             </h2>
             {group.note && <p className="meta" style={{ marginTop: 0 }}>{group.note}</p>}
             <div className="accel-weeks" style={{ padding: "0 var(--space-5)" }}>
-              {groupItems.map((item) => {
-                const status = STATUS[attendanceStatus({ id: item.id, event_date: item.date }, progress, today)];
-                const date = parseYmd(item.date);
-                const detail = [item.time ? formatTimeRange(item.time, item.endTime) : null, item.location].filter(Boolean).join(" · ");
-                const record = recordByEvent.get(item.id);
-                const started = item.date <= todayKey;
-                return (
-                  <div className="accel-event" key={item.id}>
-                    <div className={`accel-event__date${item.required ? " is-required" : ""}`}>
-                      <span className="accel-event__dow">{date.toLocaleDateString(undefined, { weekday: "short" })}</span>
-                      <span className="accel-event__day">{date.getDate()}</span>
-                    </div>
-                    <div className="accel-event__body">
-                      <div className="accel-event__title">{item.title}</div>
-                      <div className="accel-event__meta">
-                        {date.toLocaleDateString(undefined, { month: "long", day: "numeric" })}
-                        {detail && ` · ${detail}`}
-                      </div>
-                      <div className="accel-event__meta">
-                        {item.method === "photo" ? "Add a photo from the event" : "The committee marks attendance"}
-                        {record?.source === "photo" && " · photo submitted"}
-                      </div>
-                    </div>
-                    {item.method === "photo" && <PhotoControl item={item} record={record} started={started} onDone={reload} />}
-                    <span className={status.className}>{status.text}</span>
-                  </div>
-                );
-              })}
+              {visible.map((item) => (
+                <EventRow
+                  key={item.id}
+                  item={item}
+                  status={STATUS[attendanceStatus({ id: item.id, event_date: item.date }, progress, today)]}
+                  record={recordByEvent.get(item.id)}
+                  todayKey={todayKey}
+                  onDone={reload}
+                />
+              ))}
+              {later.length > 0 && (
+                <button type="button" className="btn-link accel-more" aria-expanded={open} onClick={() => setShowAll((m) => ({ ...m, [group.key]: !open }))}>
+                  {open ? "Hide later events" : `Show ${later.length} more upcoming`}
+                </button>
+              )}
             </div>
           </div>
         );
