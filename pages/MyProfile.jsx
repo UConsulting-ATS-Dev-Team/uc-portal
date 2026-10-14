@@ -8,6 +8,7 @@ import { computeProfileStrength, MONTH_NAMES } from "../data/profileUtils.js";
 import { uploadAvatar, removeAvatar } from "../data/avatarSync.js";
 import { uploadResume, removeResume, getResumeSignedUrl } from "../data/resumeSync.js";
 import { changePassword } from "../data/passwordSync.js";
+import { fetchPreferencesUpdatedAt } from "../data/memberPreferencesSync.js";
 import { fetchDirectoryPrefill } from "../data/directoryPrefillSync.js";
 import {
   fetchOwnWorkHistory,
@@ -85,6 +86,15 @@ export default function MyProfile() {
     accountEmail,
   } = useAppState();
   const navigate = useNavigate();
+  // The "update your interests" reminder only appears once interests are two months old. A new account has none saved yet.
+  const [interestsUpdatedAt, setInterestsUpdatedAt] = useState(null);
+  useEffect(() => {
+    fetchPreferencesUpdatedAt().then(setInterestsUpdatedAt).catch(() => {});
+  }, []);
+  // "Last updated" is the later of the last interests change and the last profile save.
+  const updateTimes = [interestsUpdatedAt, profileLastUpdated].filter(Boolean).map((t) => new Date(t).getTime());
+  const lastUpdatedAt = updateTimes.length > 0 ? new Date(Math.max(...updateTimes)).toISOString() : null;
+  const interestsStale = lastUpdatedAt ? (Date.now() - new Date(lastUpdatedAt).getTime()) / 86400000 >= 60 : false;
   const [tab, setTab] = useState("Personal");
   const [saved, setSaved] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -505,9 +515,7 @@ export default function MyProfile() {
       <div className="profile-page-header">
         <div>
           <h1>My Profile</h1>
-          <p className="profile-page-header__meta">
-            Last updated {formatDate(profileLastUpdated)}
-          </p>
+          {profileLastUpdated && <p className="profile-page-header__meta">Last updated {formatDate(profileLastUpdated)}</p>}
         </div>
         <div className="profile-page-header__actions">
           <button className="btn btn-secondary" disabled={previewLoading} onClick={handleViewAsOthersSeeIt}>
@@ -525,12 +533,16 @@ export default function MyProfile() {
         </p>
       )}
 
-      <div className="quarterly-banner">
-        <span>Your interests were last confirmed in spring. Takes 90 seconds and improves every recommendation you see.</span>
-        <button className="btn btn-primary" onClick={() => navigate("/onboarding")}>
-          Update interests
-        </button>
-      </div>
+      {interestsStale && (
+        <div className="quarterly-banner">
+          <span>
+            Your profile and interests were last updated on {new Date(lastUpdatedAt).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}. Takes 90 seconds and improves every recommendation you see.
+          </span>
+          <button className="btn btn-primary" onClick={() => navigate("/onboarding")}>
+            Update interests
+          </button>
+        </div>
+      )}
 
       <div className="jobs-tabs" style={{ marginBottom: "var(--space-6)" }}>
         <div className="jobs-tabs__list">
@@ -560,24 +572,27 @@ export default function MyProfile() {
                   <label>Major</label>
                   <input type="text" value={form.majors} onChange={(e) => setForm((f) => ({ ...f, majors: e.target.value }))} />
                 </div>
-                <div className="field">
-                  <label>Graduation month</label>
-                  <select value={form.gradMonth} onChange={(e) => setForm((f) => ({ ...f, gradMonth: e.target.value ? Number(e.target.value) : "" }))}>
-                    <option value="">Not set</option>
-                    {MONTH_NAMES.map((name, i) => (
-                      <option key={name} value={i + 1}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field">
-                  <label>Graduation year</label>
-                  <input
-                    type="number"
-                    value={form.classYear}
-                    onChange={(e) => setForm((f) => ({ ...f, classYear: Number(e.target.value) }))}
-                  />
+                <div className="profile-grad">
+                  <div className="field">
+                    <label htmlFor="profile-grad-month">Graduation month</label>
+                    <select id="profile-grad-month" value={form.gradMonth} onChange={(e) => setForm((f) => ({ ...f, gradMonth: e.target.value ? Number(e.target.value) : "" }))}>
+                      <option value="">Not set</option>
+                      {MONTH_NAMES.map((name, i) => (
+                        <option key={name} value={i + 1}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="profile-grad-year">Graduation year</label>
+                    <input
+                      id="profile-grad-year"
+                      type="number"
+                      value={form.classYear}
+                      onChange={(e) => setForm((f) => ({ ...f, classYear: Number(e.target.value) }))}
+                    />
+                  </div>
                 </div>
                 <div className="field">
                   <label>UC Role(s)</label>

@@ -72,6 +72,17 @@ export async function fetchRemotePreferences() {
   return rowToPreferences(data);
 }
 
+// When the member's interests were last saved, or null if they never have (a brand new account has no row).
+export async function fetchPreferencesUpdatedAt() {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) return null;
+  const { data, error } = await supabase.from("member_preferences").select("updated_at").eq("id", session.user.id).maybeSingle();
+  if (error || !data) return null;
+  return data.updated_at ?? null;
+}
+
 // Fire-and-forget upsert -- callers don't await this on the UI thread, a
 // failed background sync shouldn't block or roll back a local state update
 // the member already sees reflected on screen.

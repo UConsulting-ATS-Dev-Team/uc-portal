@@ -47,6 +47,13 @@
   gap: 0 var(--space-6);
 }
 
+/* Graduation month and year share one grid cell: two short fields side by side. */
+.profile-grad {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 0 var(--space-3);
+}
+
 .avatar-card {
   border: var(--border-hairline);
   background: var(--color-surface);

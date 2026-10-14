@@ -82,7 +82,7 @@ const DEFAULT_STATE = {
     resumePath: null,
     avatarUrl: null,
   },
-  profileLastUpdated: "2026-08-02T12:00:00.000Z",
+  profileLastUpdated: null, // set the first time the member saves their profile; never a made-up date
   notificationSettings: {
     deadlineReminders: true,
     newMatchedJobs: true,
@@ -91,6 +91,10 @@ const DEFAULT_STATE = {
     weeklyDigest: true,
   },
 };
+
+// Until October 2026 every account started with this made-up "last updated" date, and browsers (and the database) kept it.
+const PLACEHOLDER_LAST_UPDATED = "2026-08-02T12:00:00.000Z";
+const realLastUpdated = (value) => (value && new Date(value).getTime() !== new Date(PLACEHOLDER_LAST_UPDATED).getTime() ? value : null);
 
 function loadState() {
   try {
@@ -115,6 +119,7 @@ function loadState() {
       },
       profileOverrides: { ...DEFAULT_STATE.profileOverrides, ...saved.profileOverrides },
       notificationSettings: { ...DEFAULT_STATE.notificationSettings, ...saved.notificationSettings },
+      profileLastUpdated: realLastUpdated(saved.profileLastUpdated),
     };
   } catch {
     return DEFAULT_STATE;
@@ -320,7 +325,7 @@ export function AppStateProvider({ children }) {
           ...prev,
           profileOverrides: { ...prev.profileOverrides, ...remote.profileOverrides },
           onboardingComplete: remote.onboardingComplete || prev.onboardingComplete,
-          profileLastUpdated: remote.profileLastUpdated ?? prev.profileLastUpdated,
+          profileLastUpdated: realLastUpdated(remote.profileLastUpdated) ?? realLastUpdated(prev.profileLastUpdated),
         }));
       })
       .finally(() => {
