@@ -277,11 +277,16 @@ function InternRoster() {
     load();
   }
 
+  // A person listed by email AND by name (the name was added first) is one person: show the email entry only.
+  const key = (n) => (n ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+  const emailNames = new Set(entries.map((e) => key(e.name)).filter(Boolean));
+  const nameOnly = names.filter((n) => !emailNames.has(key(n.name)));
+
   return (
     <>
     <CollapsibleSection
       title="Approved Accounts"
-      summary={`${entries.length + names.length} listed${names.some((n) => !n.claimed_at) ? `, ${names.filter((n) => !n.claimed_at).length} by name only and not signed up yet` : ""}`}
+      summary={`${entries.length + nameOnly.length} listed${nameOnly.some((n) => !n.claimed_at) ? `, ${nameOnly.filter((n) => !n.claimed_at).length} by name only and not signed up yet` : ""}`}
     
       action={
         <button className="btn btn-primary" onClick={() => setOpen(true)}>
@@ -301,7 +306,7 @@ function InternRoster() {
             </button>
           </li>
         ))}
-        {names.map((n) => (
+        {nameOnly.map((n) => (
           <li key={n.name_key}>
             {n.name} <span className="meta">{n.claimed_at ? (n.claimed_as && n.claimed_as.trim().toLowerCase() !== n.name.trim().toLowerCase() ? `signed up as "${n.claimed_as}"` : "signed up") : "listed by name, not signed up yet"}</span>{" "}
             <button className="btn-link" onClick={() => removeName(n.name_key)}>
@@ -309,7 +314,7 @@ function InternRoster() {
             </button>
           </li>
         ))}
-        {entries.length === 0 && names.length === 0 && <li className="meta">No one on this list yet.</li>}
+        {entries.length === 0 && nameOnly.length === 0 && <li className="meta">No one on this list yet.</li>}
       </ul>
 
     </CollapsibleSection>
