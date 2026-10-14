@@ -557,12 +557,8 @@ export default function MyProfile() {
                   />
                 </div>
                 <div className="field">
-                  <label>Graduation year</label>
-                  <input
-                    type="number"
-                    value={form.classYear}
-                    onChange={(e) => setForm((f) => ({ ...f, classYear: Number(e.target.value) }))}
-                  />
+                  <label>Major</label>
+                  <input type="text" value={form.majors} onChange={(e) => setForm((f) => ({ ...f, majors: e.target.value }))} />
                 </div>
                 <div className="field">
                   <label>Graduation month</label>
@@ -576,8 +572,12 @@ export default function MyProfile() {
                   </select>
                 </div>
                 <div className="field">
-                  <label>Major</label>
-                  <input type="text" value={form.majors} onChange={(e) => setForm((f) => ({ ...f, majors: e.target.value }))} />
+                  <label>Graduation year</label>
+                  <input
+                    type="number"
+                    value={form.classYear}
+                    onChange={(e) => setForm((f) => ({ ...f, classYear: Number(e.target.value) }))}
+                  />
                 </div>
                 <div className="field">
                   <label>UC Role(s)</label>
