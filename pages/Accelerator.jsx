@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
 import { useAcceleratorData } from "../data/useAcceleratorData.js";
 import {
   addDays,
@@ -206,14 +206,19 @@ const ATTENDANCE_TAG = {
 };
 
 // A short list tucked under a requirement card: a title and a line of detail on the left, a status on the right.
+const SIDE_PREVIEW = 2;
+
 function SideList({ heading, rows, empty }) {
+  const [open, setOpen] = useState(false);
+  const shown = open ? rows : rows.slice(0, SIDE_PREVIEW);
+  const hidden = rows.length - SIDE_PREVIEW;
   return (
     <div className="accel-side">
       <div className="accel-side__heading">{heading}</div>
       {rows.length === 0 ? (
         <p className="meta accel-side__empty">{empty}</p>
       ) : (
-        rows.map((r) => {
+        shown.map((r) => {
           const body = (
             <>
               <span className="accel-side__main">
@@ -233,6 +238,12 @@ function SideList({ heading, rows, empty }) {
             </div>
           );
         })
+      )}
+      {hidden > 0 && (
+        <button type="button" className="accel-side__toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? "Show fewer" : `Show ${hidden} more`}
+          {open ? <ChevronUp size={14} strokeWidth={1.5} aria-hidden="true" /> : <ChevronDown size={14} strokeWidth={1.5} aria-hidden="true" />}
+        </button>
       )}
     </div>
   );
@@ -322,7 +333,7 @@ export default function Accelerator() {
   const todayKey = ymd(today);
   const attendanceRows = items
     .filter((i) => i.kind !== "lesson" && i.date >= todayKey)
-    .slice(0, 4)
+    .slice(0, 12)
     .map((item) => {
       const status = attendanceStatus({ id: item.id, event_date: item.date }, attendanceStats, today);
       const [tag, tagClass] = ATTENDANCE_TAG[status] ?? [tagFor(item).text, tagFor(item).className];
@@ -344,7 +355,7 @@ export default function Accelerator() {
     return { key: lesson.id, state, title: `Week ${i + 1}: ${lesson.title}`, detail: `Due ${formatDue(due.date, due.hasTime)}`, tag: ASSIGNMENT_STATE[state][0], tagClass: ASSIGNMENT_STATE[state][1], to: `/accelerator/assignments?lesson=${lesson.id}` };
   });
   const openAssignments = assignmentRows.filter((r) => r.state !== "complete");
-  const assignmentShown = (openAssignments.length > 0 ? openAssignments : assignmentRows).slice(0, 4);
+  const assignmentShown = (openAssignments.length > 0 ? openAssignments : assignmentRows).slice(0, 12);
 
   return (
     <div>
