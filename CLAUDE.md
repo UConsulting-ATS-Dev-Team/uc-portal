@@ -406,12 +406,31 @@ which are chronological and not rewritten when later work supersedes them.
     default, rewordable, deduped in `auto_email_log`, run daily by `run-automatic-emails`; turning one on sends no backlog.
   - **Site analytics** (`/admin/analytics`): own `analytics_events` page-view table (client tracker in `NavShell`), 180-day
     retention, Pacific-day RPCs, dependency-free SVG chart.
-  - **Plug-and-go, still unset (nothing sends until then):** email needs `AWS_REGION`, `AWS_ACCESS_KEY_ID`,
-    `AWS_SECRET_ACCESS_KEY`, `COMMS_FROM_EMAIL` (optional `COMMS_FROM_NAME`, `COMMS_REPLY_TO`) and `COMMS_UNSUBSCRIBE_SECRET`
-    (any long random string; bulk mail is refused without it); Slack needs `SLACK_BOT_TOKEN`. Set with `supabase secrets set`.
-    Until then send/test/schedule return HTTP 412 (`email_not_configured`, `slack_not_configured`,
-    `unsubscribe_secret_missing`), write nothing, and the buttons are disabled with an explanation. The `unsubscribe` function is
-    public, so deploy it with `--no-verify-jwt`. Not built: the ATS "Decisions" tab, deliverability page, open/click tracking.
+  - **Email (Amazon SES) is live (2026-10-14).** SES is in `us-west-1` (N. California), in the account the ATS also uses. The
+    verified identity is the domain `uconsultingats.com`, so any address on it can send; the portal sends from
+    `portal@uconsultingats.com` as "UConsulting Portal". Two separate paths, each with its own IAM user:
+    1. **Master Communications, Automatic Emails and the weekly digest** (Edge Functions): IAM user `uc-portal-ses` with a policy
+       allowing `ses:SendEmail` and `ses:SendRawEmail`. Supabase secrets: `AWS_REGION`, `AWS_ACCESS_KEY_ID` (not
+       `AWS_ACCESS_KEY`: the code reads the `_ID` name), `AWS_SECRET_ACCESS_KEY`, `COMMS_FROM_EMAIL`, `COMMS_FROM_NAME`,
+       `COMMS_UNSUBSCRIBE_SECRET` (any long random string; bulk mail is refused without it). Set with
+       `npx supabase secrets set ...`: the CLI is not installed globally, always prefix `npx`. `secrets list` prints hashes, not values.
+       Until they are set send/test/schedule return HTTP 412 (`email_not_configured`, `slack_not_configured`,
+       `unsubscribe_secret_missing`), write nothing, and the buttons are disabled. The `unsubscribe` function is public (deployed
+       with `--no-verify-jwt`). Slack needs `SLACK_BOT_TOKEN` (not set).
+    2. **Sign-in emails** (confirmation, password reset): sent by Supabase Auth, not our code, through custom SMTP set in the
+       dashboard (Authentication > Emails > SMTP Settings): host `email-smtp.us-west-1.amazonaws.com`, port 587, SMTP credentials
+       from SES (IAM user created by SES's "Create SMTP credentials", in group `AWSSESSendingGroupDoNotRename`; these are NOT the
+       access keys above). Without it Supabase's built-in sender is rate-limited and sign-up/reset emails silently don't arrive.
+       Changing the site domain also means updating Site URL and Redirect URLs under Authentication > URL Configuration.
+    To move to a portal-specific domain: verify it in SES (us-west-1, Easy DKIM, three CNAMEs), then
+    `npx supabase secrets set COMMS_FROM_EMAIL=...` and update the Supabase SMTP sender; no code change.
+    A new SES account starts in the sandbox (only verified recipients); confirm production access by sending to an outside address.
+  - **Typed email addresses:** on the Email composer, "Specific email addresses" sends to addresses that are not in the portal
+    (`Audience.emails` + `emailsOnly`, parsed by `parseTypedEmails` in `_shared/comms/audience.ts`, email channel only). Unsubscribes
+    and the one-message-per-address rule still apply; typed recipients have no name, so don't use `{{firstName}}` in those messages.
+  - **Email confirmation on sign-up was turned OFF 2026-10-14** (Authentication > Sign In / Providers > Email > Confirm email) so the
+    first accelerator interns, who sign up with a shared password, can't get stuck on email. Turn it back on once they're in. Not
+    tracked in code: it's a dashboard setting.
   - **Sender presets** (`comm_sender_presets`, "Send as" on the email composer): a display name and reply-to per preset, copied
     onto the message (`comm_messages.from_name/reply_to`) at send time. The address mail is sent FROM never changes (SES only
     sends from verified addresses); presets override `COMMS_FROM_NAME` / `COMMS_REPLY_TO` for that message.
