@@ -11,6 +11,21 @@ import "./styles/global.css";
 
 installGlobalErrorReporting();
 
+// A tab left open across a deploy still points at the old page files, which no longer exist, so opening a page fails with
+// "Failed to fetch dynamically imported module". Reload once to pick up the new build instead of showing the error screen;
+// the stamp stops a reload loop if the files are genuinely unreachable.
+window.addEventListener("vite:preloadError", (event) => {
+  try {
+    const last = Number(sessionStorage.getItem("uc-preload-reload") ?? 0);
+    if (Date.now() - last < 30000) return;
+    sessionStorage.setItem("uc-preload-reload", String(Date.now()));
+  } catch {
+    return;
+  }
+  event.preventDefault();
+  window.location.reload();
+});
+
 // Applied synchronously here, before React even mounts, so there's no
 // flash of the wrong theme on load -- ThemeProvider's own first effect
 // (inside the render below) re-applies the same result, which is a

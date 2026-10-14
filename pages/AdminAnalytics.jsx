@@ -84,7 +84,7 @@ function StatCard({ label, value, note }) {
   );
 }
 
-function Overview({ days, daily, summary, attention, errorsYesterday, emailYesterday }) {
+function Overview({ days, daily, summary, attention, errorsYesterday, emailYesterday, onOpenTab }) {
   const dayList = useMemo(() => lastDays(days), [days]);
   const series = useMemo(
     () =>
@@ -109,11 +109,19 @@ function Overview({ days, daily, summary, attention, errorsYesterday, emailYeste
           <h2 className="analytics-block__title">Needs attention</h2>
           {attention.map((a) => (
             <div key={a.text} className={`attention attention--${a.level}`}>
-              <span>{a.text}</span>
+              <span>
+                {a.text}
+                {a.detail && <span className="meta attention__detail">{a.detail}</span>}
+              </span>
               {a.to && (
                 <Link to={a.to} className="btn-link">
                   Open
                 </Link>
+              )}
+              {a.tab && (
+                <button type="button" className="btn-link" onClick={() => onOpenTab(a.tab)}>
+                  See all
+                </button>
               )}
             </div>
           ))}
@@ -385,8 +393,14 @@ export default function AdminAnalytics() {
       setEmailYesterday(email7.messages.filter((m) => new Date(m.created_at) > new Date(dayAgo)).reduce((n, m) => n + m.sent_count, 0));
       const items = [];
       if (email7.failed > 0) items.push({ level: "warn", text: `${email7.failed} email${email7.failed === 1 ? "" : "s"} failed to send in the last 7 days.`, to: "/admin/communications" });
-      if (errs > 0) items.push({ level: "warn", text: `${errs} error${errs === 1 ? "" : "s"} reported from members' browsers in the last 24 hours.` });
-      else if (errs7 > 0) items.push({ level: "info", text: `${errs7} error${errs7 === 1 ? "" : "s"} reported in the last 7 days.` });
+      if (errs > 0 || errs7 > 0) {
+        // Say what the latest one was, so the line is more than a count; the Errors tab has the full list.
+        const latest = (await fetchClientErrors(1))[0];
+        const when = latest ? new Date(latest.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : null;
+        const detail = latest ? `Latest: "${String(latest.message).slice(0, 140)}" on ${latest.page_path ?? "an unknown page"}, ${when}.` : null;
+        if (errs > 0) items.push({ level: "warn", text: `${errs} error${errs === 1 ? "" : "s"} reported from members' browsers in the last 24 hours.`, detail, tab: "errors" });
+        else items.push({ level: "info", text: `${errs7} error${errs7 === 1 ? "" : "s"} reported in the last 7 days.`, detail, tab: "errors" });
+      }
       setAttention(items);
     } catch (e) {
       setError(e.message);
@@ -422,7 +436,7 @@ export default function AdminAnalytics() {
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
       <TabBar tabs={TABS} active={tab} onChange={setTab} label="Analytics" />
 
-      {tab === "overview" && <Overview days={days} daily={daily} summary={summary} attention={attention} errorsYesterday={errorsYesterday} emailYesterday={emailYesterday} />}
+      {tab === "overview" && <Overview days={days} daily={daily} summary={summary} attention={attention} errorsYesterday={errorsYesterday} emailYesterday={emailYesterday} onOpenTab={setTab} />}
       {tab === "engagement" && <EngagementTab days={days} />}
       {tab === "errors" && <ErrorsTab />}
       {tab === "email" && <EmailTab days={days} />}
