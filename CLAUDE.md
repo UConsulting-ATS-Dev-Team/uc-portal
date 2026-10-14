@@ -468,6 +468,7 @@ which are chronological and not rewritten when later work supersedes them.
   account, so everyone else gets one account and adds emails instead; `signup_name_taken()` no longer exempts admins. Admin
   accounts for people who haven't signed up are pre-created from a temp migration with an unusable password (they claim it with
   "Forgot your password?"), never committed.
+- **Interns listed by email carry a phone number too (2026-10-21).** `intern_roster.phone` (admin-set, never in git) is copied to `profiles.phone` by `handle_new_user()` when someone signs up with that email, and that sign-up also claims the person's name-only `intern_name_roster` entry. The 11 first-cohort interns are listed this way in the live database.
 - **Phone number** is entered by the member on My Profile (`profiles.phone`, optional) and readable only by that member and
   admins; it exists so an exec can text them (iMessage tab).
 - **Alumni first run and offers (2026-10-09).** Alumni get a 3-step flow (welcome, confirm info, "how you can help"). What an
