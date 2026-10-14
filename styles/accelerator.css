@@ -150,13 +150,78 @@
 .accel-home {
   display: grid;
   grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
-  grid-template-areas: "calendar requirements";
-  gap: var(--space-7);
+  grid-template-areas: "alerts requirements" "calendar requirements";
+  grid-template-rows: auto 1fr;
+  gap: 0 var(--space-7);
   align-items: start;
+}
+
+.accel-home__alerts {
+  grid-area: alerts;
+}
+
+.accel-home__alerts:not(:empty) {
+  margin-bottom: var(--space-5);
 }
 
 .accel-home__calendar {
   grid-area: calendar;
+}
+
+.accel-home__block {
+  display: flex;
+  flex-direction: column;
+}
+
+/* A short list under a requirement card, joined to it by sharing its border. */
+.accel-side {
+  margin-top: -1px;
+  background: var(--color-surface);
+  border: var(--border-hairline);
+}
+
+.accel-side__heading {
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--text-kicker);
+  font-weight: 700;
+  letter-spacing: var(--tracking-kicker);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  border-bottom: var(--border-hairline);
+}
+
+.accel-side__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-6);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.accel-side__row + .accel-side__row {
+  border-top: var(--border-hairline);
+}
+
+a.accel-side__row:hover {
+  background: var(--color-table-header);
+}
+
+.accel-side__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.accel-side__title {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.accel-side__empty {
+  margin: 0;
+  padding: var(--space-4) var(--space-6);
 }
 
 .accel-home__requirements {
@@ -602,7 +667,9 @@
 @media (max-width: 900px) {
   .accel-home {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "requirements" "calendar";
+    grid-template-areas: "alerts" "requirements" "calendar";
+    grid-template-rows: auto;
+    row-gap: var(--space-5);
   }
 
   .accel-home__requirements {
@@ -650,7 +717,7 @@
   }
 
   .accel-home {
-    grid-template-areas: "requirements" "agenda";
+    grid-template-areas: "alerts" "requirements" "agenda";
   }
 
   .accel-home__requirements {

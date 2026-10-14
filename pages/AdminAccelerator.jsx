@@ -22,12 +22,15 @@ import {
   removeInternName,
   fetchMeetingSchedule,
   saveMeetingSchedule,
+  fetchEvents,
+  createEventSeries,
 } from "../data/acceleratorSync.js";
 import SubmissionCommentThread from "../components/SubmissionCommentThread.jsx";
 import AdminAcceleratorEvents from "../components/AdminAcceleratorEvents.jsx";
 import Modal from "../components/Modal.jsx";
 import CollapsibleSection from "../components/CollapsibleSection.jsx";
 import AdminAcceleratorChats from "../components/AdminAcceleratorChats.jsx";
+import { MAX_RECURRING_EVENTS, defaultAttendanceMethod, expandRecurrence, formatTimeShort, parseYmd, ymd } from "../data/acceleratorLogic.js";
 import "../styles/jobDetail.css";
 import "../styles/admin.css";
 
@@ -36,10 +39,117 @@ const EMPTY_FORM = { lessonDate: "", title: "", topicOverview: "" };
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 // When the accelerator meets each week. Interns' coffee-chat count (3 a week) resets at this day and time.
-function MeetingSchedule() {
+const plusOneHour = (hhmm) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  return `${String(Math.min(h + 1, 23)).padStart(2, "0")}:${String(h + 1 > 23 ? 59 : m).padStart(2, "0")}`;
+};
+
+// The next date on or after today that falls on the given weekday (0 = Sunday), as YYYY-MM-DD.
+function nextWeekday(weekday) {
+  const d = new Date();
+  d.setDate(d.getDate() + ((weekday - d.getDay() + 7) % 7));
+  return ymd(d);
+}
+
+// Puts the weekly meeting on the calendar for every week up to an end date, using the day and time saved above. Dates that already
+// have an accelerator meeting are left alone, so running it twice doesn't double anything up.
+function CreateWeeklyMeetings({ weekday, time, ready, onCreated }) {
+  const [endTime, setEndTime] = useState("");
+  const [firstDate, setFirstDate] = useState("");
+  const [until, setUntil] = useState("");
+  const [location, setLocation] = useState("");
+  const [existing, setExisting] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState(null);
+
+  const loadExisting = () =>
+    fetchEvents()
+      .then(setExisting)
+      .catch((e) => setMessage({ error: true, text: e.message }));
+  useEffect(() => {
+    loadExisting();
+  }, []);
+
+  const end = endTime || plusOneHour(time);
+  const first = firstDate || nextWeekday(weekday);
+  const dates = until && first <= until ? expandRecurrence(first, until, 1) : [];
+  const have = new Set(existing.filter((e) => e.kind === "accelerator").map((e) => e.event_date));
+  const toCreate = dates.filter((d) => !have.has(d));
+  const skipped = dates.length - toCreate.length;
+  const weekdayMismatch = first && parseYmd(first).getDay() !== weekday;
+  const fmt = (key) => parseYmd(key).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+
+  async function create() {
+    setMessage(null);
+    if (end <= time) return setMessage({ error: true, text: "The end time has to be after the start time." });
+    if (!until || until < first) return setMessage({ error: true, text: "Choose a last date on or after the first meeting." });
+    if (toCreate.length === 0) return setMessage({ error: true, text: "Every one of those dates already has an accelerator meeting." });
+    setBusy(true);
+    try {
+      await createEventSeries(
+        { title: "Accelerator Meeting", eventDate: first, startTime: time, endTime: end, kind: "accelerator", required: true, attendanceMethod: defaultAttendanceMethod("accelerator"), location },
+        toCreate
+      );
+      setMessage({ error: false, text: `Added ${toCreate.length} accelerator meeting${toCreate.length === 1 ? "" : "s"} to the calendar.` });
+      setUntil("");
+      await loadExisting();
+      onCreated?.();
+    } catch (e) {
+      setMessage({ error: true, text: e.message });
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div style={{ marginTop: "var(--space-6)", paddingTop: "var(--space-5)", borderTop: "var(--border-hairline)" }}>
+      <p style={{ fontWeight: 700, margin: 0 }}>Add the Weekly Meetings to the Calendar</p>
+      <p className="meta">
+        Creates an accelerator meeting every {WEEKDAYS[weekday]} at {formatTimeShort(time, end)} until the date you choose. They count as required events.
+      </p>
+      {!ready && <p className="meta">Save the day and time above first.</p>}
+      <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "flex-end", flexWrap: "wrap" }}>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label htmlFor="wk-first">First meeting</label>
+          <input id="wk-first" type="date" value={first} onChange={(e) => setFirstDate(e.target.value)} />
+        </div>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label htmlFor="wk-end-time">Ends at</label>
+          <input id="wk-end-time" type="time" value={end} onChange={(e) => setEndTime(e.target.value)} />
+        </div>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label htmlFor="wk-until">Repeat until</label>
+          <input id="wk-until" type="date" value={until} min={first} onChange={(e) => setUntil(e.target.value)} />
+        </div>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label htmlFor="wk-location">Location (optional)</label>
+          <input id="wk-location" type="text" value={location} onChange={(e) => setLocation(e.target.value)} />
+        </div>
+        <button className="btn btn-primary" onClick={create} disabled={busy || !ready || !until || !time}>
+          {busy ? "Creating…" : toCreate.length > 0 ? `Create ${toCreate.length} meeting${toCreate.length === 1 ? "" : "s"}` : "Create meetings"}
+        </button>
+      </div>
+      {weekdayMismatch && (
+        <p className="meta" style={{ color: "var(--color-danger)" }}>
+          {fmt(first)} isn't a {WEEKDAYS[weekday]}, so every meeting would land on a {parseYmd(first).toLocaleDateString(undefined, { weekday: "long" })}. Pick a {WEEKDAYS[weekday]} for the first date.
+        </p>
+      )}
+      {dates.length > 0 && (
+        <p className="meta">
+          {toCreate.length > 0 ? `${fmt(toCreate[0])} to ${fmt(toCreate[toCreate.length - 1])}` : "Nothing new to add"}
+          {skipped > 0 && `. ${skipped} date${skipped === 1 ? " already has" : "s already have"} an accelerator meeting and ${skipped === 1 ? "is" : "are"} skipped`}
+          {dates.length >= MAX_RECURRING_EVENTS && `. That's the most that can be added at once (${MAX_RECURRING_EVENTS}), so run it again for later dates`}.
+        </p>
+      )}
+      {message && <p className="meta" style={message.error ? { color: "var(--color-danger)" } : undefined}>{message.text}</p>}
+    </div>
+  );
+}
+
+function MeetingSchedule({ onEventsCreated }) {
   const [weekday, setWeekday] = useState(3);
   const [time, setTime] = useState("18:00");
   const [saved, setSaved] = useState(false);
+  const [savedValues, setSavedValues] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
@@ -51,6 +161,7 @@ function MeetingSchedule() {
           setWeekday(s.weekday);
           setTime(s.time);
           setSaved(true);
+          setSavedValues({ weekday: s.weekday, time: s.time });
         }
       })
       .catch((e) => setMessage(e.message))
@@ -63,6 +174,7 @@ function MeetingSchedule() {
     try {
       await saveMeetingSchedule({ weekday, time });
       setSaved(true);
+      setSavedValues({ weekday, time });
       setMessage("Saved.");
     } catch (e) {
       setMessage(e.message);
@@ -96,6 +208,7 @@ function MeetingSchedule() {
         </button>
       </div>
       {message && <p className="meta">{message}</p>}
+      <CreateWeeklyMeetings weekday={weekday} time={time} ready={Boolean(savedValues) && savedValues.weekday === weekday && savedValues.time === time} onCreated={onEventsCreated} />
     </div>
   );
 }
@@ -675,6 +788,7 @@ function LessonModal({ editing, onClose, onSaved }) {
 }
 
 export default function AdminAccelerator() {
+  const [eventsVersion, setEventsVersion] = useState(0);
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lessonModal, setLessonModal] = useState(null); // null | { editing: lesson | null }
@@ -764,13 +878,13 @@ export default function AdminAccelerator() {
         ))}
       </CollapsibleSection>
 
-      <AdminAcceleratorEvents />
+      <AdminAcceleratorEvents key={`events-${eventsVersion}`} />
 
-      <AdminAcceleratorChats />
+      <AdminAcceleratorChats key={`chats-${eventsVersion}`} />
 
       <InternRoster />
 
-      <MeetingSchedule />
+      <MeetingSchedule onEventsCreated={() => setEventsVersion((v) => v + 1)} />
 
 
       {lessonModal && <LessonModal editing={lessonModal.editing} onClose={() => setLessonModal(null)} onSaved={lessonSaved} />}

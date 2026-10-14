@@ -6,6 +6,7 @@ import {
   addDays,
   assignmentProgress,
   attendanceProgress,
+  attendanceStatus,
   calendarItems,
   chipStyleFor,
   coffeeChatProgress,
@@ -71,7 +72,7 @@ function EventRow({ item, today }) {
   const date = parseYmd(item.date);
   const tag = tagFor(item);
   const isLesson = item.kind === "lesson";
-  const detail = [isLesson ? "Assignment due" : null, item.time ? formatTimeRange(item.time, item.endTime) : null, item.location].filter(Boolean).join(" � ");
+  const detail = [isLesson ? "Assignment due" : null, item.time ? formatTimeRange(item.time, item.endTime) : null, item.location].filter(Boolean).join(" · ");
   return (
     <div className={`accel-event${item.date < ymd(today) ? " is-past" : ""}`}>
       <div className={`accel-event__date${item.required ? " is-required" : ""}`}>
@@ -197,6 +198,46 @@ function Agenda({ items, today }) {
   );
 }
 
+const ATTENDANCE_TAG = {
+  attended: ["Attended", "accel-tag accel-tag--good"],
+  missed: ["Missed", "accel-tag accel-tag--flag"],
+  not_recorded: ["Not recorded", "accel-tag accel-tag--optional"],
+  today: ["Today", "accel-tag accel-tag--accelerator"],
+};
+
+// A short list tucked under a requirement card: a title and a line of detail on the left, a status on the right.
+function SideList({ heading, rows, empty }) {
+  return (
+    <div className="accel-side">
+      <div className="accel-side__heading">{heading}</div>
+      {rows.length === 0 ? (
+        <p className="meta accel-side__empty">{empty}</p>
+      ) : (
+        rows.map((r) => {
+          const body = (
+            <>
+              <span className="accel-side__main">
+                <span className="accel-side__title">{r.title}</span>
+                <span className="meta">{r.detail}</span>
+              </span>
+              <span className={r.tagClass}>{r.tag}</span>
+            </>
+          );
+          return r.to ? (
+            <Link key={r.key} to={r.to} className="accel-side__row">
+              {body}
+            </Link>
+          ) : (
+            <div key={r.key} className="accel-side__row">
+              {body}
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
 function RequirementCard({ to, kicker, figure, of, percent, note, flag }) {
   return (
     <Link to={to} className="accel-req">
@@ -277,45 +318,75 @@ export default function Accelerator() {
 
   const pct = (n, d) => (d > 0 ? (n / d) * 100 : 0);
 
+  // Under Attendance: the next few events, today's included, with whether each is required.
+  const todayKey = ymd(today);
+  const attendanceRows = items
+    .filter((i) => i.kind !== "lesson" && i.date >= todayKey)
+    .slice(0, 4)
+    .map((item) => {
+      const status = attendanceStatus({ id: item.id, event_date: item.date }, attendanceStats, today);
+      const [tag, tagClass] = ATTENDANCE_TAG[status] ?? [tagFor(item).text, tagFor(item).className];
+      const when = [parseYmd(item.date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }), item.time ? formatTimeShort(item.time, item.endTime) : null].filter(Boolean).join(" · ");
+      return { key: item.id, title: item.title, detail: when, tag, tagClass };
+    });
+
+  // Under Assignments: where each one stands. Anything still open comes first; once everything is done, the whole list shows.
+  const ASSIGNMENT_STATE = {
+    complete: ["Complete", "accel-tag accel-tag--good"],
+    incomplete: ["Fix and resubmit", "accel-tag accel-tag--flag"],
+    waiting: ["Waiting for comments", "accel-tag accel-tag--optional"],
+    todo: ["Not started", "accel-tag accel-tag--optional"],
+  };
+  const assignmentRows = lessons.map((lesson, i) => {
+    const sub = submissionByLesson.get(lesson.id);
+    const state = !sub ? "todo" : sub.status === "complete" ? "complete" : sub.status === "incomplete" ? "incomplete" : "waiting";
+    const due = lessonDue(lesson, schedule);
+    return { key: lesson.id, state, title: `Week ${i + 1}: ${lesson.title}`, detail: `Due ${formatDue(due.date, due.hasTime)}`, tag: ASSIGNMENT_STATE[state][0], tagClass: ASSIGNMENT_STATE[state][1], to: `/accelerator/assignments?lesson=${lesson.id}` };
+  });
+  const openAssignments = assignmentRows.filter((r) => r.state !== "complete");
+  const assignmentShown = (openAssignments.length > 0 ? openAssignments : assignmentRows).slice(0, 4);
+
   return (
     <div>
       <AcceleratorTabs />
       <h1 className="accel-title">Accelerator</h1>
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
 
-      {!loading && (needsFix.length > 0 || recentlyComplete.length > 0) && (
-        <div className="accel-notices">
-          {needsFix.map(({ lesson, number, submission }) => (
-            <Link key={lesson.id} to={`/accelerator/assignments?lesson=${lesson.id}`} className="accel-notice accel-notice--fix">
-              <strong>Week {number}: {lesson.title} needs to be fixed.</strong>
-              <span>{submission.feedback ? `The committee said: ${submission.feedback}` : "The committee marked it incomplete. Open it to see their comments, then resubmit."}</span>
-            </Link>
-          ))}
-          {recentlyComplete.map(({ lesson, number, submission }) => (
-            <Link key={lesson.id} to={`/accelerator/assignments?lesson=${lesson.id}`} className="accel-notice accel-notice--good">
-              <strong>Week {number}: {lesson.title} is complete. You're all set for this one.</strong>
-              {submission.feedback && <span>{submission.feedback}</span>}
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {!loading && upcoming.length > 0 && (
-        <div className="accel-due">
-          <div className="accel-due__kicker">Assignments due</div>
-          {upcoming.map(({ lesson, number, due, days, overdue }) => (
-            <Link key={lesson.id} to={`/accelerator/assignments?lesson=${lesson.id}`} className={`accel-due__row${overdue ? " is-overdue" : days <= 3 ? " is-soon" : ""}`}>
-              <span className="accel-due__title">Week {number}: {lesson.title}</span>
-              <span className="accel-due__date">
-                {formatDue(due.date, due.hasTime)}
-                <span className="accel-due__when">{overdue ? `overdue, was due ${dueWording(days)}` : `due ${dueWording(days)}`}</span>
-              </span>
-            </Link>
-          ))}
-        </div>
-      )}
-
       <div className="accel-home">
+        <div className="accel-home__alerts">
+        {!loading && (needsFix.length > 0 || recentlyComplete.length > 0) && (
+          <div className="accel-notices">
+            {needsFix.map(({ lesson, number, submission }) => (
+              <Link key={lesson.id} to={`/accelerator/assignments?lesson=${lesson.id}`} className="accel-notice accel-notice--fix">
+                <strong>Week {number}: {lesson.title} needs to be fixed.</strong>
+                <span>{submission.feedback ? `The committee said: ${submission.feedback}` : "The committee marked it incomplete. Open it to see their comments, then resubmit."}</span>
+              </Link>
+            ))}
+            {recentlyComplete.map(({ lesson, number, submission }) => (
+              <Link key={lesson.id} to={`/accelerator/assignments?lesson=${lesson.id}`} className="accel-notice accel-notice--good">
+                <strong>Week {number}: {lesson.title} is complete. You're all set for this one.</strong>
+                {submission.feedback && <span>{submission.feedback}</span>}
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {!loading && upcoming.length > 0 && (
+          <div className="accel-due">
+            <div className="accel-due__kicker">Assignments due</div>
+            {upcoming.map(({ lesson, number, due, days, overdue }) => (
+              <Link key={lesson.id} to={`/accelerator/assignments?lesson=${lesson.id}`} className={`accel-due__row${overdue ? " is-overdue" : days <= 3 ? " is-soon" : ""}`}>
+                <span className="accel-due__title">Week {number}: {lesson.title}</span>
+                <span className="accel-due__date">
+                  {formatDue(due.date, due.hasTime)}
+                  <span className="accel-due__when">{overdue ? `overdue, was due ${dueWording(days)}` : `due ${dueWording(days)}`}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
+        </div>
+
         <div className="accel-home__calendar">{loading ? <p className="meta">Loading…</p> : <Calendar byDate={byDate} today={today} />}</div>
 
         <div className="accel-home__requirements">
@@ -328,6 +399,7 @@ export default function Accelerator() {
             note={chatNote}
             flag={chatFlag}
           />
+          <div className="accel-home__block">
           <RequirementCard
             to="/accelerator/attendance"
             kicker="Attendance"
@@ -337,6 +409,9 @@ export default function Accelerator() {
             note={attendanceNote}
             flag={attendanceStats.noSocials}
           />
+          {!loading && <SideList heading="Coming up" rows={attendanceRows} empty="No upcoming events." />}
+          </div>
+          <div className="accel-home__block">
           <RequirementCard
             to="/accelerator/assignments"
             kicker="Assignments"
@@ -346,6 +421,8 @@ export default function Accelerator() {
             note={assignmentNote}
             flag={assignments.incomplete > 0}
           />
+          {!loading && <SideList heading={openAssignments.length > 0 ? "Still to do" : "All assignments"} rows={assignmentShown} empty="No assignments yet." />}
+          </div>
         </div>
 
         <div className="accel-home__agenda">{loading ? null : <Agenda items={items} today={today} />}</div>
