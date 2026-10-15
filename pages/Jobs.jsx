@@ -662,7 +662,7 @@ export default function Jobs() {
             </p>
           </div>
           <div className="jobs-header__actions">
-            <button className="btn btn-primary" onClick={() => setShowPostModal(true)}>Post a job</button>
+            <button className="btn btn-primary btn-add" onClick={() => setShowPostModal(true)}>Post a job</button>
           </div>
         </div>
 

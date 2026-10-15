@@ -139,7 +139,7 @@ export default function Applications() {
               <option key={s}>{s}</option>
             ))}
           </select>
-          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>+ Add application</button>
+          <button className="btn btn-primary btn-add" onClick={() => setShowAddModal(true)}>+ Add application</button>
         </div>
       </div>
 

@@ -144,7 +144,7 @@ export default function AdminLibrary() {
       <div className="detail-section">
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", flexWrap: "wrap" }}>
           <p style={{ fontWeight: 700, margin: 0, flex: 1 }}>Resources ({resources.length})</p>
-          <button className="btn btn-primary" onClick={() => setResourceOpen(true)}>
+          <button className="btn btn-primary btn-add" onClick={() => setResourceOpen(true)}>
             Add resource
           </button>
         </div>
@@ -176,7 +176,7 @@ export default function AdminLibrary() {
       <div className="detail-section">
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", flexWrap: "wrap" }}>
           <p style={{ fontWeight: 700, margin: 0, flex: 1 }}>Learning tracks ({tracks.length})</p>
-          <button className="btn btn-primary" onClick={() => setTrackOpen(true)}>
+          <button className="btn btn-primary btn-add" onClick={() => setTrackOpen(true)}>
             Add learning track
           </button>
         </div>

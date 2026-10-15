@@ -118,6 +118,13 @@ select {
 
 /* Shared primitives — reused across every page */
 
+/* The primary "add something" button in a page or section header (Add lesson, Add event, Post a job...): one width for all of
+   them, so a stack of sections or a row of pages doesn't show buttons of different lengths. Wider than the longest label. */
+.btn-add {
+  min-width: 11.5rem;
+  max-width: 100%;
+}
+
 .btn {
   display: inline-block;
   padding: var(--space-4) var(--space-6);

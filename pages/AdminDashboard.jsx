@@ -566,7 +566,7 @@ export default function AdminDashboard({ view = "system", embedded = false }) {
     <div>
       {embedded && view === "communications" && (
         <div className="comms-toolbar">
-          <button className="btn btn-primary" onClick={() => setShowAnnouncementModal(true)}>
+          <button className="btn btn-primary btn-add" onClick={() => setShowAnnouncementModal(true)}>
             Post announcement
           </button>
           <span className="meta">An in-app announcement members see on their feed.</span>
@@ -579,12 +579,12 @@ export default function AdminDashboard({ view = "system", embedded = false }) {
           </div>
           <div className="jobs-header__actions">
             {view === "system" && (
-              <button className="btn btn-primary" onClick={() => setShowPostModal(true)}>
+              <button className="btn btn-primary btn-add" onClick={() => setShowPostModal(true)}>
                 Post opportunity
               </button>
             )}
             {view === "communications" && (
-              <button className="btn btn-primary" onClick={() => setShowAnnouncementModal(true)}>
+              <button className="btn btn-primary btn-add" onClick={() => setShowAnnouncementModal(true)}>
                 Post announcement
               </button>
             )}

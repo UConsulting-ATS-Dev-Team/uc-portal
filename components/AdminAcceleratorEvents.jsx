@@ -380,7 +380,7 @@ export default function AdminAcceleratorEvents() {
       title="Calendar Events and Attendance"
       summary={loading ? "Loading…" : `${events.filter((e) => e.event_date >= todayKey).length} upcoming, ${events.length} in all`}
       action={
-        <button className="btn btn-primary" onClick={() => setModal({ editing: null })}>
+        <button className="btn btn-primary btn-add" onClick={() => setModal({ editing: null })}>
           Add event
         </button>
       }

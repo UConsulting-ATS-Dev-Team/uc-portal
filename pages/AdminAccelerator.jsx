@@ -289,7 +289,7 @@ function InternRoster() {
       summary={`${entries.length + nameOnly.length} listed${nameOnly.some((n) => !n.claimed_at) ? `, ${nameOnly.filter((n) => !n.claimed_at).length} by name only and not signed up yet` : ""}`}
     
       action={
-        <button className="btn btn-primary" onClick={() => setOpen(true)}>
+        <button className="btn btn-primary btn-add" onClick={() => setOpen(true)}>
           Add interns
         </button>
       }
@@ -844,7 +844,7 @@ export default function AdminAccelerator() {
         title="Lessons"
         summary={loading ? "Loading…" : `${lessons.length} week${lessons.length === 1 ? "" : "s"}`}
         action={
-          <button className="btn btn-primary" onClick={() => setLessonModal({ editing: null })}>
+          <button className="btn btn-primary btn-add" onClick={() => setLessonModal({ editing: null })}>
             Add lesson
           </button>
         }
