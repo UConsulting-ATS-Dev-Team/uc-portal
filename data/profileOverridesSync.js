@@ -22,6 +22,7 @@ function rowToOverrides(row) {
       linkedIn: row.linkedin ?? "",
       phone: row.phone ?? "",
       pronouns: row.pronouns ?? "",
+      admitClass: row.admit_class ?? "",
       gender: row.gender ?? "",
       resumeFileName: row.resume_file_name,
       resumePath: row.resume_path,
@@ -43,7 +44,7 @@ export async function fetchRemoteProfileOverrides() {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("full_name, class_year, grad_month, majors, uc_committee, linkedin, phone, pronouns, gender, resume_file_name, resume_path, avatar_url, onboarding_complete, profile_last_updated")
+    .select("full_name, class_year, grad_month, majors, uc_committee, linkedin, phone, pronouns, gender, admit_class, resume_file_name, resume_path, avatar_url, onboarding_complete, profile_last_updated")
     .eq("id", session.user.id)
     .maybeSingle();
   if (error || !data) return null;
@@ -82,6 +83,7 @@ export async function syncProfileOverridesToRemote(profileOverrides, onboardingC
       linkedin: profileOverrides.linkedIn || null,
       phone: profileOverrides.phone?.trim() || null,
       pronouns: profileOverrides.pronouns?.trim() || null,
+      admit_class: profileOverrides.admitClass?.trim() || null,
       gender: profileOverrides.gender?.trim() || null,
       resume_file_name: profileOverrides.resumeFileName,
       resume_path: profileOverrides.resumePath,

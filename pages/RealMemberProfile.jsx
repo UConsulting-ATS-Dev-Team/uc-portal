@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchRealPersonById } from "../data/realPeople.js";
 import { fetchMemberAvatars } from "../data/avatarSync.js";
+import { fetchMemberClassInfo } from "../data/memberClassSync.js";
 import { fetchAlumniOfferForEmail } from "../data/alumniOffers.js";
 import { useAppState } from "../data/store.jsx";
 import Placeholder from "./Placeholder.jsx";
@@ -29,12 +30,16 @@ export default function RealMemberProfile({ personId }) {
   const { savedConnections, coffeeChatStatus, toggleSavedConnection } = useAppState();
   const [showChatModal, setShowChatModal] = useState(false);
   const [avatarsByEmail, setAvatarsByEmail] = useState(new Map());
+  const [classInfo, setClassInfo] = useState(new Map());
   const [offer, setOffer] = useState(null); // what an alumnus says they can help with, when they have said
 
   useEffect(() => {
     let cancelled = false;
     fetchRealPersonById(personId).then((p) => {
       if (!cancelled) setPerson(p);
+    });
+    fetchMemberClassInfo().then((m) => {
+      if (!cancelled) setClassInfo(m);
     });
     fetchMemberAvatars().then(({ byEmail }) => {
       if (!cancelled) setAvatarsByEmail(byEmail);
@@ -68,9 +73,16 @@ export default function RealMemberProfile({ personId }) {
   const chatStatus = coffeeChatStatus[person.id];
   const isSaved = savedConnections.includes(person.id);
 
+  // Two different things: the admit class is when they joined UC ("Winter 2026"), the grad year is when they graduate from UCLA.
+  // A signed-up member's own entries win over the directory's; an alumnus's grad year is often unknown and stays blank.
+  const accountInfo = person.email ? classInfo.get(person.email.toLowerCase()) : null;
+  const admitClass = accountInfo?.admitClass || person.admitClass;
+  const gradYear = accountInfo?.classYear || person.classYear;
+
   const knownFacts = [
     person.major && { label: "Major", value: person.major },
-    person.admitClass && { label: "Admitted", value: person.admitClass },
+    admitClass && { label: "Admit class", value: admitClass },
+    gradYear && { label: "Grad year", value: String(gradYear) },
     person.graduatingClass && { label: "Graduated", value: person.graduatingClass },
     person.mentor && { label: "UC mentor", value: person.mentor },
   ].filter(Boolean);
@@ -89,8 +101,8 @@ export default function RealMemberProfile({ personId }) {
             <div>
               <div className="profile-header__name-row">
                 <h1>{person.name}</h1>
-                {!isMember && person.classYear && (
-                  <span className="chip chip-accent">{person.status} '{String(person.classYear).slice(2)}</span>
+                {!isMember && (
+                  <span className="chip chip-accent">{person.status}{admitClass ? ` · ${admitClass}` : ""}</span>
                 )}
                 {isMember && <span className="chip chip-accent">Current member</span>}
               </div>

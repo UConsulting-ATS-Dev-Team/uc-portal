@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { fetchRealPeople } from "../data/realPeople.js";
 import { useAppState } from "../data/store.jsx";
 import { fetchMemberAvatars } from "../data/avatarSync.js";
+import { fetchMemberClassInfo } from "../data/memberClassSync.js";
 import RequestCoffeeChatModal from "../components/modals/RequestCoffeeChatModal.jsx";
 import DemoDataBadge from "../components/DemoDataBadge.jsx";
 import Avatar from "../components/Avatar.jsx";
@@ -103,12 +104,14 @@ export default function Network() {
   const [PEOPLE, setPeople] = useState([]);
   const [peopleLoading, setPeopleLoading] = useState(true);
   const [avatarsByEmail, setAvatarsByEmail] = useState(new Map());
+  const [classInfo, setClassInfo] = useState(new Map());
 
   useEffect(() => {
     fetchRealPeople()
       .then(setPeople)
       .finally(() => setPeopleLoading(false));
     fetchMemberAvatars().then(({ byEmail }) => setAvatarsByEmail(byEmail));
+    fetchMemberClassInfo().then(setClassInfo);
   }, []);
 
   function findPerson(id) {
@@ -257,7 +260,11 @@ export default function Network() {
               // Only render lines that have real content -- real people
               // often lack role/company/location/industry, which used to
               // leave an empty row or a stray " · " dot on the card.
-              const statusLine = isMember ? "Current member" : [p.status, p.classYear ? `Class of ${p.classYear}` : null].filter(Boolean).join(" · ");
+              // Admit class (when they joined UC) and grad year (when they graduate from UCLA) are shown as the two different things they are.
+              const info = p.email ? classInfo.get(p.email.toLowerCase()) : null;
+              const admit = info?.admitClass || p.admitClass;
+              const grad = info?.classYear || p.classYear;
+              const statusLine = [p.status, admit ? `Admit ${admit}` : null, grad ? `Grad ${grad}` : null].filter(Boolean).join(" · ");
               const roleLine = [p.role, p.company].filter(Boolean).join(" · ");
               const metaLine = [p.location, p.industry].filter(Boolean).join(" · ");
               return (

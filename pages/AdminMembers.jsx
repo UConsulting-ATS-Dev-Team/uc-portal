@@ -24,6 +24,9 @@ function activityText(account) {
   return `Last active ${when}`;
 }
 
+// Interns are not club members yet, so their role reads "Intern" rather than "Member" (the stored access level is still member/admin).
+const roleLabel = (account) => (account.role === "admin" ? "Admin" : account.member_status === "intern" ? "Intern" : "Member");
+
 function UserCard({ account, isSelf, busy, onRole, onEdit, onToggleActive }) {
   const deactivated = Boolean(account.deactivated_at);
   return (
@@ -37,9 +40,15 @@ function UserCard({ account, isSelf, busy, onRole, onEdit, onToggleActive }) {
       </div>
       <dl className="user-card__facts">
         <div>
-          <dt>Class</dt>
+          <dt>Grad year</dt>
           <dd>{account.class_year ?? "Not set"}</dd>
         </div>
+        {account.admit_class && (
+          <div>
+            <dt>Admit class</dt>
+            <dd>{account.admit_class}</dd>
+          </div>
+        )}
         {account.pronouns && (
           <div>
             <dt>Pronouns</dt>
@@ -63,7 +72,7 @@ function UserCard({ account, isSelf, busy, onRole, onEdit, onToggleActive }) {
         <div>
           <dt>Role</dt>
           <dd>
-            <span className={`chip${account.role === "admin" ? " chip-accent" : ""}`}>{account.role === "admin" ? "Admin" : "Member"}</span>
+            <span className={`chip${account.role === "admin" ? " chip-accent" : ""}`}>{roleLabel(account)}</span>
             {deactivated && <span className="chip user-card__flag">Deactivated</span>}
           </dd>
         </div>
@@ -86,7 +95,7 @@ function UserCard({ account, isSelf, busy, onRole, onEdit, onToggleActive }) {
         >
           {ROLE_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
-              {o.label}
+              {o.value === "member" && account.member_status === "intern" ? "Intern" : o.label}
             </option>
           ))}
         </select>
@@ -154,7 +163,7 @@ function EditModal({ account, onClose, onSaved }) {
       </div>
       <div className="field-row">
         <div className="field">
-          <label htmlFor="eu-class">Class year</label>
+          <label htmlFor="eu-class">Grad year</label>
           <input id="eu-class" type="number" min="2000" max="2100" value={form.classYear} onChange={(e) => set({ classYear: e.target.value })} />
         </div>
         <div className="field">
@@ -229,7 +238,7 @@ function AddModal({ onClose, onSaved }) {
       </div>
       <div className="field-row">
         <div className="field">
-          <label htmlFor="au-class">Class year</label>
+          <label htmlFor="au-class">Grad year</label>
           <input id="au-class" type="number" min="2000" max="2100" value={form.classYear} onChange={(e) => set({ classYear: e.target.value })} />
         </div>
         <div className="field">

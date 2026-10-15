@@ -80,6 +80,7 @@ const DEFAULT_STATE = {
     phone: "",
     pronouns: "",
     gender: "",
+    admitClass: "",
     resumeFileName: null,
     resumePath: null,
     avatarUrl: null,
@@ -436,6 +437,7 @@ export function AppStateProvider({ children }) {
           if (!prev.profileOverrides.fullName && match.name) patch.fullName = match.name;
           if (!prev.profileOverrides.majors && match.major) patch.majors = match.major;
           if (!prev.profileOverrides.linkedIn && match.linkedin) patch.linkedIn = match.linkedin;
+          if (!prev.profileOverrides.admitClass && match.admitClass) patch.admitClass = match.admitClass;
           if (Object.keys(patch).length === 0) return prev;
           return { ...prev, profileOverrides: { ...prev.profileOverrides, ...patch } };
         });

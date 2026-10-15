@@ -22,6 +22,13 @@ import Avatar from "../components/Avatar.jsx";
 import { AlumniHelpSection } from "../components/AlumniOffersEditor.jsx";
 import DeleteAccountModal from "../components/modals/DeleteAccountModal.jsx";
 import AccountEmails from "../components/AccountEmails.jsx";
+
+const ADMIT_SEASONS = ["Fall", "Winter", "Spring"];
+// "Winter 2026" -> { season: "Winter", year: "2026" }; anything else is left blank rather than guessed at.
+function parseAdmitClass(text) {
+  const m = /^(Fall|Winter|Spring|Summer)\s+(\d{4})$/i.exec((text ?? "").trim());
+  return m ? { season: m[1][0].toUpperCase() + m[1].slice(1).toLowerCase(), year: m[2] } : { season: "", year: "" };
+}
 import RevealMore from "../components/RevealMore.jsx";
 import "../styles/jobDetail.css";
 import "../styles/onboarding.css";
@@ -168,6 +175,8 @@ export default function MyProfile() {
     phone: profileOverrides.phone ?? "",
     pronouns: profileOverrides.pronouns ?? "",
     gender: profileOverrides.gender ?? "",
+    admitSeason: parseAdmitClass(profileOverrides.admitClass).season,
+    admitYear: parseAdmitClass(profileOverrides.admitClass).year,
   });
 
   // The form above is seeded once, at mount. Saved values can now arrive AFTER this page mounted (the
@@ -186,6 +195,8 @@ export default function MyProfile() {
       phone: profileOverrides.phone ?? "",
       pronouns: profileOverrides.pronouns ?? "",
       gender: profileOverrides.gender ?? "",
+      admitSeason: parseAdmitClass(profileOverrides.admitClass).season,
+      admitYear: parseAdmitClass(profileOverrides.admitClass).year,
     });
   }, [
     profileOverrides.fullName,
@@ -197,6 +208,7 @@ export default function MyProfile() {
     profileOverrides.phone,
     profileOverrides.pronouns,
     profileOverrides.gender,
+    profileOverrides.admitClass,
   ]);
 
   function handleSaveChanges() {
@@ -212,6 +224,7 @@ export default function MyProfile() {
       phone: form.phone.trim(),
       pronouns: form.pronouns.trim(),
       gender: form.gender.trim(),
+      admitClass: form.admitSeason && /^\d{4}$/.test(String(form.admitYear)) ? `${form.admitSeason} ${form.admitYear}` : "",
     });
     touchProfileUpdated();
     setSaved(true);
@@ -583,6 +596,23 @@ export default function MyProfile() {
                 </div>
                 <div className="profile-grad">
                   <div className="field">
+                    <label htmlFor="profile-admit-season">Admit class (joined UC)</label>
+                    <select id="profile-admit-season" value={form.admitSeason} onChange={(e) => setForm((f) => ({ ...f, admitSeason: e.target.value }))}>
+                      <option value="">Season</option>
+                      {ADMIT_SEASONS.map((season) => (
+                        <option key={season} value={season}>
+                          {season}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="profile-admit-year">Year</label>
+                    <input id="profile-admit-year" type="number" min="2000" max="2100" placeholder="2026" value={form.admitYear} onChange={(e) => setForm((f) => ({ ...f, admitYear: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="profile-grad">
+                  <div className="field">
                     <label htmlFor="profile-grad-month">Graduation month</label>
                     <select id="profile-grad-month" value={form.gradMonth} onChange={(e) => setForm((f) => ({ ...f, gradMonth: e.target.value ? Number(e.target.value) : "" }))}>
                       <option value="">Not set</option>
@@ -594,7 +624,7 @@ export default function MyProfile() {
                     </select>
                   </div>
                   <div className="field">
-                    <label htmlFor="profile-grad-year">Graduation year</label>
+                    <label htmlFor="profile-grad-year">Grad year (UCLA)</label>
                     <input
                       id="profile-grad-year"
                       type="number"
