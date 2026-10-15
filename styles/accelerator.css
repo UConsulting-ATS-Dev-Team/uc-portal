@@ -173,11 +173,11 @@
   flex-direction: column;
 }
 
-/* A short list under a requirement card, joined to it by sharing its border. */
+/* A short list under a requirement card, joined to it: no top border of its own, so the two share the card's bottom edge. */
 .accel-side {
-  margin-top: -1px;
   background: var(--color-surface);
   border: var(--border-hairline);
+  border-top: 0;
 }
 
 .accel-side__heading {
@@ -194,7 +194,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-4);
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
   padding: var(--space-3) var(--space-6);
   color: var(--color-text);
   text-decoration: none;
@@ -211,6 +212,7 @@ a.accel-side__row:hover {
 .accel-side__main {
   display: flex;
   flex-direction: column;
+  flex: 1 1 9rem;
   min-width: 0;
 }
 
@@ -674,6 +676,7 @@ a.accel-side__row:hover {
 
   .accel-home__requirements {
     flex-direction: row;
+    align-items: flex-start;
   }
 
   .accel-home__requirements > * {
@@ -722,6 +725,7 @@ a.accel-side__row:hover {
 
   .accel-home__requirements {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .accel-home__calendar {

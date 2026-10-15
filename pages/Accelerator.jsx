@@ -207,7 +207,7 @@ const ATTENDANCE_TAG = {
 };
 
 // A short list tucked under a requirement card: a title and a line of detail on the left, a status on the right.
-const SIDE_PREVIEW = 2;
+const SIDE_PREVIEW = 1;
 
 function SideList({ heading, rows, empty }) {
   const reveal = useReveal(rows.length, SIDE_PREVIEW, 5);
