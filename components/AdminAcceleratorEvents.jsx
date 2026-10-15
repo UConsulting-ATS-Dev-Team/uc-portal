@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
 import {
   createEvent,
   createEventSeries,
@@ -16,6 +15,7 @@ import { MAX_RECURRING_EVENTS, defaultAttendanceMethod, expandRecurrence, format
 import AcceleratorEventPhoto from "./AcceleratorEventPhoto.jsx";
 import Modal from "./Modal.jsx";
 import CollapsibleSection from "./CollapsibleSection.jsx";
+import RevealMore, { useReveal } from "./RevealMore.jsx";
 import "../styles/accelerator.css";
 
 const KINDS = [
@@ -42,8 +42,8 @@ const EMPTY_FORM = {
   applyToSeries: false,
 };
 
-// Events listed before the rest fold into a "show more" toggle.
-const PREVIEW_COUNT = 3;
+// Events past the first few are revealed five at a time.
+const PREVIEW_COUNT = 5;
 
 const REPEAT_WEEKS ={ weekly: 1, biweekly: 2 };
 
@@ -326,7 +326,6 @@ export default function AdminAcceleratorEvents() {
   const [modal, setModal] = useState(null); // null | { editing: event | null }
   const [openId, setOpenId] = useState(null);
   const [showPast, setShowPast] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const [error, setError] = useState(null);
 
   async function load() {
@@ -350,6 +349,7 @@ export default function AdminAcceleratorEvents() {
   }, [events]);
   const visible = showPast ? events : events.filter((e) => e.event_date >= todayKey);
   const pastCount = events.length - events.filter((e) => e.event_date >= todayKey).length;
+  const reveal = useReveal(visible.length, PREVIEW_COUNT, 5);
 
   async function remove(event) {
     if (!window.confirm(`Delete "${event.title}" on ${parseYmd(event.event_date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}? Its attendance records go with it.`)) return;
@@ -392,7 +392,7 @@ export default function AdminAcceleratorEvents() {
         {loading && <p className="meta">Loading…</p>}
         {!loading && events.length === 0 && <p className="meta">No events yet. Add the first one.</p>}
         {!loading && events.length > 0 && visible.length === 0 && <p className="meta">No upcoming events.</p>}
-        {(expanded ? visible : visible.slice(0, PREVIEW_COUNT)).map((event) => {
+        {visible.slice(0, reveal.shown).map((event) => {
           const date = parseYmd(event.event_date);
           const seriesCount = event.series_id ? seriesCounts.get(event.series_id) : 0;
           return (
@@ -434,12 +434,7 @@ export default function AdminAcceleratorEvents() {
             </div>
           );
         })}
-        {visible.length > PREVIEW_COUNT && (
-          <button type="button" className="btn btn-secondary" style={{ marginTop: "var(--space-3)", display: "inline-flex", alignItems: "center", gap: "var(--space-2)" }} aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>
-            {expanded ? <ChevronUp size={16} strokeWidth={1.5} aria-hidden="true" /> : <ChevronDown size={16} strokeWidth={1.5} aria-hidden="true" />}
-            {expanded ? "Show fewer events" : `Show ${visible.length - PREVIEW_COUNT} more event${visible.length - PREVIEW_COUNT === 1 ? "" : "s"}`}
-          </button>
-        )}
+        <RevealMore reveal={reveal} noun="event" />
         {pastCount > 0 && (
           <button className="btn-link" style={{ marginTop: "var(--space-3)" }} onClick={() => setShowPast((v) => !v)}>
             {showPast ? "Hide past events" : `Show ${pastCount} past event${pastCount === 1 ? "" : "s"}`}

@@ -4,6 +4,7 @@ import { addDays, attendanceProgress, attendanceStatus, calendarItems, formatTim
 import { useAcceleratorData } from "../data/useAcceleratorData.js";
 import AcceleratorEventPhoto from "../components/AcceleratorEventPhoto.jsx";
 import AcceleratorTabs from "../components/AcceleratorTabs.jsx";
+import RevealMore, { makeReveal } from "../components/RevealMore.jsx";
 import "../styles/accelerator.css";
 
 const GROUPS = [
@@ -104,7 +105,7 @@ export default function AcceleratorAttendance() {
   const recordByEvent = useMemo(() => new Map(attendance.map((a) => [a.event_id, a])), [attendance]);
   // Lessons are the Assignments page's business; this page is only about events a person goes to.
   const items = useMemo(() => calendarItems(events, []), [events]);
-  const [showAll, setShowAll] = useState({});
+  const [extraByGroup, setExtraByGroup] = useState({});
 
   // The required events behind "x of y": this week's, plus any earlier one not yet attended, plus what is next if this week has none.
   const required = useMemo(() => {
@@ -167,9 +168,8 @@ export default function AcceleratorAttendance() {
         const attended = groupItems.filter((i) => progress.attendedIds.has(i.id)).length;
         const done = groupItems.filter((i) => i.date <= todayKey);
         const upcoming = groupItems.filter((i) => i.date > todayKey);
-        const later = upcoming.slice(1);
-        const open = Boolean(showAll[group.key]);
-        const visible = [...done, ...upcoming.slice(0, 1), ...(open ? later : [])];
+        const reveal = makeReveal(upcoming.length, 1, 5, extraByGroup[group.key] ?? 0, (n) => setExtraByGroup((m) => ({ ...m, [group.key]: n })));
+        const visible = [...done, ...upcoming.slice(0, reveal.shown)];
         return (
           <div className="accel-section" key={group.key}>
             <h2>
@@ -187,11 +187,7 @@ export default function AcceleratorAttendance() {
                   onDone={reload}
                 />
               ))}
-              {later.length > 0 && (
-                <button type="button" className="btn-link accel-more" aria-expanded={open} onClick={() => setShowAll((m) => ({ ...m, [group.key]: !open }))}>
-                  {open ? "Hide later events" : `Show ${later.length} more upcoming`}
-                </button>
-              )}
+              <RevealMore reveal={reveal} noun="upcoming event" />
             </div>
           </div>
         );

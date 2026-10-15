@@ -22,6 +22,7 @@ import Avatar from "../components/Avatar.jsx";
 import { AlumniHelpSection } from "../components/AlumniOffersEditor.jsx";
 import DeleteAccountModal from "../components/modals/DeleteAccountModal.jsx";
 import AccountEmails from "../components/AccountEmails.jsx";
+import RevealMore from "../components/RevealMore.jsx";
 import "../styles/jobDetail.css";
 import "../styles/onboarding.css";
 import "../styles/tracker.css";
@@ -138,8 +139,8 @@ export default function MyProfile() {
   const [roleQuery, setRoleQuery] = useState("");
   const [companyQuery, setCompanyQuery] = useState("");
   const knownCompanies = useKnownCompanies();
-  const [showAllSkills, setShowAllSkills] = useState(false);
-  const [showAllRoles, setShowAllRoles] = useState(false);
+  const [skillExtra, setSkillExtra] = useState(0);
+  const [roleExtra, setRoleExtra] = useState(0);
   const fileInput = useRef(null);
 
   // fullName/classYear/majors/ucCommittee all read profileOverrides
@@ -983,23 +984,31 @@ export default function MyProfile() {
                 onChange={(e) => setRoleQuery(e.target.value)}
                 style={{ marginBottom: "var(--space-3)" }}
               />
-              <div className={`chip-row${showAllRoles || roleQuery.trim() ? "" : " chip-row--collapsed"}`}>
-                {ROLES.filter((role) => preferences.roles.includes(role) || role.toLowerCase().includes(roleQuery.trim().toLowerCase())).map(
-                  (role) => (
-                    <button
-                      key={role}
-                      className={`chip-toggle${preferences.roles.includes(role) ? " is-selected" : ""}`}
-                      disabled={!preferences.roles.includes(role) && preferences.roles.length >= 5}
-                      onClick={() => toggleRole(role)}
-                    >
-                      {role}
-                    </button>
-                  )
-                )}
-              </div>
-              <button className="btn-link" style={{ marginBottom: "var(--space-6)" }} onClick={() => setShowAllRoles((v) => !v)}>
-                {showAllRoles ? "Show fewer" : `Show all ${ROLES.length}`}
-              </button>
+              {(() => {
+                const q = roleQuery.trim().toLowerCase();
+                const matching = ROLES.filter((role) => preferences.roles.includes(role) || role.toLowerCase().includes(q));
+                const limit = 12 + roleExtra;
+                const shownRoles = q ? matching : matching.filter((role, i) => i < limit || preferences.roles.includes(role));
+                const hidden = matching.length - shownRoles.length;
+                const reveal = { step: 10, remaining: hidden, canMore: !q && hidden > 0, canFewer: !q && roleExtra > 0, more: () => setRoleExtra(roleExtra + 10), fewer: () => setRoleExtra(0) };
+                return (
+                  <>
+                    <div className="chip-row">
+                      {shownRoles.map((role) => (
+                        <button
+                          key={role}
+                          className={`chip-toggle${preferences.roles.includes(role) ? " is-selected" : ""}`}
+                          disabled={!preferences.roles.includes(role) && preferences.roles.length >= 5}
+                          onClick={() => toggleRole(role)}
+                        >
+                          {role}
+                        </button>
+                      ))}
+                    </div>
+                    <RevealMore reveal={reveal} noun="role" style={{ marginBottom: "var(--space-6)" }} />
+                  </>
+                );
+              })()}
 
               <p style={{ fontWeight: 700 }}>Skills</p>
               <p className="meta" style={{ marginTop: "calc(-1 * var(--space-3))" }}>
@@ -1013,25 +1022,31 @@ export default function MyProfile() {
                 onChange={(e) => setSkillQuery(e.target.value)}
                 style={{ marginBottom: "var(--space-3)" }}
               />
-              <div className={`chip-row${showAllSkills || skillQuery.trim() ? "" : " chip-row--collapsed"}`}>
-                {SKILLS.filter(
-                  (skill) => preferences.skills.includes(skill) || skill.toLowerCase().includes(skillQuery.trim().toLowerCase())
-                ).map((skill) => (
-                  <button
-                    key={skill}
-                    className={`chip-toggle${preferences.skills.includes(skill) ? " is-selected" : ""}`}
-                    onClick={() => toggleSkill(skill)}
-                  >
-                    {skill}
-                  </button>
-                ))}
-                {SKILLS.every(
-                  (skill) => !preferences.skills.includes(skill) && !skill.toLowerCase().includes(skillQuery.trim().toLowerCase())
-                ) && <p className="meta">No skills match "{skillQuery}".</p>}
-              </div>
-              <button className="btn-link" style={{ marginBottom: "var(--space-6)" }} onClick={() => setShowAllSkills((v) => !v)}>
-                {showAllSkills ? "Show fewer" : "Show more"}
-              </button>
+              {(() => {
+                const q = skillQuery.trim().toLowerCase();
+                const matching = SKILLS.filter((skill) => preferences.skills.includes(skill) || skill.toLowerCase().includes(q));
+                const limit = 16 + skillExtra;
+                const shownSkills = q ? matching : matching.filter((skill, i) => i < limit || preferences.skills.includes(skill));
+                const hidden = matching.length - shownSkills.length;
+                const reveal = { step: 10, remaining: hidden, canMore: !q && hidden > 0, canFewer: !q && skillExtra > 0, more: () => setSkillExtra(skillExtra + 10), fewer: () => setSkillExtra(0) };
+                return (
+                  <>
+                    <div className="chip-row">
+                      {shownSkills.map((skill) => (
+                        <button
+                          key={skill}
+                          className={`chip-toggle${preferences.skills.includes(skill) ? " is-selected" : ""}`}
+                          onClick={() => toggleSkill(skill)}
+                        >
+                          {skill}
+                        </button>
+                      ))}
+                      {matching.length === 0 && <p className="meta">No skills match "{skillQuery}".</p>}
+                    </div>
+                    <RevealMore reveal={reveal} noun="skill" style={{ marginBottom: "var(--space-6)" }} />
+                  </>
+                );
+              })()}
 
               <p style={{ fontWeight: 700 }}>Target locations</p>
               <OptionDropdown

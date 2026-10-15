@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useAcceleratorData } from "../data/useAcceleratorData.js";
 import {
   addDays,
@@ -29,6 +29,7 @@ import {
 } from "../data/acceleratorLogic.js";
 import AcceleratorTabs from "../components/AcceleratorTabs.jsx";
 import Modal from "../components/Modal.jsx";
+import RevealMore, { useReveal } from "../components/RevealMore.jsx";
 import "../styles/accelerator.css";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -209,16 +210,14 @@ const ATTENDANCE_TAG = {
 const SIDE_PREVIEW = 2;
 
 function SideList({ heading, rows, empty }) {
-  const [open, setOpen] = useState(false);
-  const shown = open ? rows : rows.slice(0, SIDE_PREVIEW);
-  const hidden = rows.length - SIDE_PREVIEW;
+  const reveal = useReveal(rows.length, SIDE_PREVIEW, 5);
   return (
     <div className="accel-side">
       <div className="accel-side__heading">{heading}</div>
       {rows.length === 0 ? (
         <p className="meta accel-side__empty">{empty}</p>
       ) : (
-        shown.map((r) => {
+        rows.slice(0, reveal.shown).map((r) => {
           const body = (
             <>
               <span className="accel-side__main">
@@ -239,12 +238,7 @@ function SideList({ heading, rows, empty }) {
           );
         })
       )}
-      {hidden > 0 && (
-        <button type="button" className="accel-side__toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
-          {open ? "Show fewer" : `Show ${hidden} more`}
-          {open ? <ChevronUp size={14} strokeWidth={1.5} aria-hidden="true" /> : <ChevronDown size={14} strokeWidth={1.5} aria-hidden="true" />}
-        </button>
-      )}
+      <RevealMore reveal={reveal} className="reveal-more--box" />
     </div>
   );
 }

@@ -120,6 +120,39 @@ select {
 
 /* The primary "add something" button in a page or section header (Add lesson, Add event, Post a job...): one width for all of
    them, so a stack of sections or a row of pages doesn't show buttons of different lengths. Wider than the longest label. */
+.reveal-more {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-3) 0;
+}
+
+.reveal-more button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--color-accent);
+  font: inherit;
+  font-size: var(--text-secondary);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reveal-more button:hover {
+  text-decoration: underline;
+}
+
+/* Inside a bordered box (the Overview's side lists): a full-width footer row. */
+.reveal-more--box {
+  justify-content: center;
+  padding: var(--space-3) var(--space-6);
+  background: var(--color-table-header);
+  border-top: var(--border-hairline);
+}
+
 .btn-add {
   min-width: 11.5rem;
   max-width: 100%;

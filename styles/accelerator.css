@@ -219,26 +219,6 @@ a.accel-side__row:hover {
   overflow-wrap: anywhere;
 }
 
-.accel-side__toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  width: 100%;
-  padding: var(--space-3) var(--space-6);
-  background: var(--color-table-header);
-  border: 0;
-  border-top: var(--border-hairline);
-  color: var(--color-accent);
-  font: inherit;
-  font-size: var(--text-secondary);
-  cursor: pointer;
-}
-
-.accel-side__toggle:hover {
-  text-decoration: underline;
-}
-
 .accel-side__empty {
   margin: 0;
   padding: var(--space-4) var(--space-6);
@@ -1070,7 +1050,3 @@ a.accel-side__row:hover {
   margin-bottom: var(--space-2);
 }
 
-.accel-weeks .accel-more {
-  display: block;
-  padding: var(--space-4) 0 var(--space-5);
-}
