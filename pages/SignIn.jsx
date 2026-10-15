@@ -69,6 +69,8 @@ export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [pronouns, setPronouns] = useState("");
+  const [gender, setGender] = useState("");
   const [authError, setAuthError] = useState(null);
   const [confirmNotice, setConfirmNotice] = useState(false);
   const [submittedAt, setSubmittedAt] = useState(null);
@@ -131,7 +133,7 @@ export default function SignIn() {
     const { data, error } =
       mode === "sign-in"
         ? await supabase.auth.signInWithPassword({ email: (await resolveLoginEmail(email)) || email, password })
-        : await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName.trim() } } });
+        : await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName.trim(), pronouns: pronouns.trim(), gender: gender.trim() } } });
 
     if (error) {
       setAuthError(error.message);
@@ -441,6 +443,18 @@ export default function SignIn() {
               <div className="field">
                 <label htmlFor="full-name">Full name</label>
                 <input id="full-name" type="text" autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+              </div>
+            )}
+            {mode === "sign-up" && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "0 var(--space-3)" }}>
+                <div className="field">
+                  <label htmlFor="signup-pronouns">Pronouns (optional)</label>
+                  <input id="signup-pronouns" type="text" maxLength={60} placeholder="she/her" value={pronouns} onChange={(e) => setPronouns(e.target.value)} />
+                </div>
+                <div className="field">
+                  <label htmlFor="signup-gender">Gender (optional)</label>
+                  <input id="signup-gender" type="text" maxLength={60} value={gender} onChange={(e) => setGender(e.target.value)} />
+                </div>
               </div>
             )}
             <div className="field">

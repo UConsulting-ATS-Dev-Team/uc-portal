@@ -166,6 +166,8 @@ export default function MyProfile() {
     ucCommittee: profileOverrides.ucCommittee ?? "",
     linkedIn: profileOverrides.linkedIn ?? "",
     phone: profileOverrides.phone ?? "",
+    pronouns: profileOverrides.pronouns ?? "",
+    gender: profileOverrides.gender ?? "",
   });
 
   // The form above is seeded once, at mount. Saved values can now arrive AFTER this page mounted (the
@@ -182,6 +184,8 @@ export default function MyProfile() {
       ucCommittee: profileOverrides.ucCommittee ?? "",
       linkedIn: profileOverrides.linkedIn ?? "",
       phone: profileOverrides.phone ?? "",
+      pronouns: profileOverrides.pronouns ?? "",
+      gender: profileOverrides.gender ?? "",
     });
   }, [
     profileOverrides.fullName,
@@ -191,6 +195,8 @@ export default function MyProfile() {
     profileOverrides.ucCommittee,
     profileOverrides.linkedIn,
     profileOverrides.phone,
+    profileOverrides.pronouns,
+    profileOverrides.gender,
   ]);
 
   function handleSaveChanges() {
@@ -204,6 +210,8 @@ export default function MyProfile() {
       ucCommittee: form.ucCommittee,
       linkedIn,
       phone: form.phone.trim(),
+      pronouns: form.pronouns.trim(),
+      gender: form.gender.trim(),
     });
     touchProfileUpdated();
     setSaved(true);
@@ -593,6 +601,16 @@ export default function MyProfile() {
                       value={form.classYear}
                       onChange={(e) => setForm((f) => ({ ...f, classYear: Number(e.target.value) }))}
                     />
+                  </div>
+                </div>
+                <div className="profile-grad">
+                  <div className="field">
+                    <label htmlFor="profile-pronouns">Pronouns</label>
+                    <input id="profile-pronouns" type="text" maxLength={60} placeholder="Optional, e.g. she/her" value={form.pronouns} onChange={(e) => setForm((f) => ({ ...f, pronouns: e.target.value }))} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="profile-gender">Gender</label>
+                    <input id="profile-gender" type="text" maxLength={60} placeholder="Optional" value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value }))} />
                   </div>
                 </div>
                 <div className="field">

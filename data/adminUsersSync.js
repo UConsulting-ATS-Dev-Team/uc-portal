@@ -6,9 +6,11 @@ import { supabase } from "./supabaseClient.js";
 // which re-checks that the caller is an admin.
 
 export async function fetchAccounts() {
-  const { data, error } = await supabase.rpc("admin_list_accounts");
+  const [{ data, error }, identity] = await Promise.all([supabase.rpc("admin_list_accounts"), supabase.rpc("admin_list_identity")]);
   if (error) throw new Error(error.message);
-  return data ?? [];
+  // Pronouns and gender come from their own admin-only function; a failure there shouldn't hide the accounts.
+  const byId = new Map((identity.data ?? []).map((r) => [r.member_id, r]));
+  return (data ?? []).map((a) => ({ ...a, pronouns: byId.get(a.member_id)?.pronouns ?? null, gender: byId.get(a.member_id)?.gender ?? null }));
 }
 
 // name, classYear, phone, memberStatus and role are all plain profile columns.

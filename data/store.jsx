@@ -78,6 +78,8 @@ const DEFAULT_STATE = {
     ucCommittee: "",
     linkedIn: "",
     phone: "",
+    pronouns: "",
+    gender: "",
     resumeFileName: null,
     resumePath: null,
     avatarUrl: null,

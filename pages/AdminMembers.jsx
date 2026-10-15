@@ -40,6 +40,18 @@ function UserCard({ account, isSelf, busy, onRole, onEdit, onToggleActive }) {
           <dt>Class</dt>
           <dd>{account.class_year ?? "Not set"}</dd>
         </div>
+        {account.pronouns && (
+          <div>
+            <dt>Pronouns</dt>
+            <dd>{account.pronouns}</dd>
+          </div>
+        )}
+        {account.gender && (
+          <div>
+            <dt>Gender</dt>
+            <dd>{account.gender}</dd>
+          </div>
+        )}
         <div>
           <dt>Joined</dt>
           <dd>{fmtDate(account.created_at)}</dd>

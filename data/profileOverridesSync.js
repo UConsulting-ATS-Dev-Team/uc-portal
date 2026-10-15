@@ -21,6 +21,8 @@ function rowToOverrides(row) {
       ucCommittee: row.uc_committee ?? "",
       linkedIn: row.linkedin ?? "",
       phone: row.phone ?? "",
+      pronouns: row.pronouns ?? "",
+      gender: row.gender ?? "",
       resumeFileName: row.resume_file_name,
       resumePath: row.resume_path,
       avatarUrl: row.avatar_url,
@@ -41,7 +43,7 @@ export async function fetchRemoteProfileOverrides() {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("full_name, class_year, grad_month, majors, uc_committee, linkedin, phone, resume_file_name, resume_path, avatar_url, onboarding_complete, profile_last_updated")
+    .select("full_name, class_year, grad_month, majors, uc_committee, linkedin, phone, pronouns, gender, resume_file_name, resume_path, avatar_url, onboarding_complete, profile_last_updated")
     .eq("id", session.user.id)
     .maybeSingle();
   if (error || !data) return null;
@@ -67,16 +69,20 @@ export async function syncProfileOverridesToRemote(profileOverrides, onboardingC
   } = await supabase.auth.getSession();
   if (!session) return;
 
-  await supabase
+  const { error } = await supabase
     .from("profiles")
     .update({
       full_name: profileOverrides.fullName || null,
-      class_year: profileOverrides.classYear,
+      // A blank graduation year arrives as "" (or 0 after being cleared); an integer column rejects that, and the rejection
+      // used to fail the whole save without a word. Anything that isn't a real year is stored as nothing.
+      class_year: Number(profileOverrides.classYear) > 0 ? Number(profileOverrides.classYear) : null,
       grad_month: profileOverrides.gradMonth || null,
       majors: profileOverrides.majors || null,
       uc_committee: profileOverrides.ucCommittee || null,
       linkedin: profileOverrides.linkedIn || null,
       phone: profileOverrides.phone?.trim() || null,
+      pronouns: profileOverrides.pronouns?.trim() || null,
+      gender: profileOverrides.gender?.trim() || null,
       resume_file_name: profileOverrides.resumeFileName,
       resume_path: profileOverrides.resumePath,
       avatar_url: profileOverrides.avatarUrl,
@@ -84,4 +90,5 @@ export async function syncProfileOverridesToRemote(profileOverrides, onboardingC
       profile_last_updated: profileLastUpdated,
     })
     .eq("id", session.user.id);
+  if (error) console.warn("Saving the profile failed:", error.message);
 }
