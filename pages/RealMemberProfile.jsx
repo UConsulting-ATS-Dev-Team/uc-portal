@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { fetchRealPersonById } from "../data/realPeople.js";
 import { fetchMemberAvatars } from "../data/avatarSync.js";
 import { fetchMemberClassInfo } from "../data/memberClassSync.js";
+import { fetchInternById } from "../data/internDirectorySync.js";
 import { fetchAlumniOfferForEmail } from "../data/alumniOffers.js";
 import { useAppState } from "../data/store.jsx";
 import Placeholder from "./Placeholder.jsx";
@@ -35,7 +36,8 @@ export default function RealMemberProfile({ personId }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetchRealPersonById(personId).then((p) => {
+    // A directory person, or else an active intern (interns are not in the directory).
+    fetchRealPersonById(personId).then((p) => (p ? p : fetchInternById(personId))).then((p) => {
       if (!cancelled) setPerson(p);
     });
     fetchMemberClassInfo().then((m) => {
@@ -114,9 +116,11 @@ export default function RealMemberProfile({ personId }) {
             </div>
           </div>
           <div className="profile-header__actions">
-            <button className="btn btn-primary" disabled={!!chatStatus} onClick={() => setShowChatModal(true)}>
-              {chatStatus ? chatStatus : "Request coffee chat"}
-            </button>
+            {!person.isIntern && (
+              <button className="btn btn-primary" disabled={!!chatStatus} onClick={() => setShowChatModal(true)}>
+                {chatStatus ? chatStatus : "Request coffee chat"}
+              </button>
+            )}
             {/* Was missing entirely -- caught by an actual live
                 click-through, not a code read. pages/Network.jsx's card
                 grid already linked here correctly (fixed earlier the same
@@ -126,7 +130,11 @@ export default function RealMemberProfile({ personId }) {
                 appears -- pages/Messages.jsx's own ?personId= handling
                 opens a real thread if this person has signed up, or says
                 so honestly if they haven't. */}
-            <Link to={`/messages?personId=${person.id}`} className="btn btn-secondary">
+            {/* An intern is a real account, not a directory row, so the thread opens by account id. */}
+            <Link
+              to={person.isIntern ? `/messages?accountId=${person.id}&accountName=${encodeURIComponent(person.name)}` : `/messages?personId=${person.id}`}
+              className={person.isIntern ? "btn btn-primary" : "btn btn-secondary"}
+            >
               Message
             </Link>
             {person.email && (

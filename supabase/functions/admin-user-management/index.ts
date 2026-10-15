@@ -5,6 +5,8 @@
 //                no email sent. They claim it with "Forgot your password?", like every pre-created account.
 //   deactivate   Marks the profile deactivated AND disables the sign-in (a long ban), so the account can't get a new session.
 //   reactivate   Reverses both.
+//   delete       Permanently deletes an account that has NEVER signed in (a pre-created one nobody used, or one made by mistake). An
+//                account that has been used is deactivated instead, never deleted here. Admins must be demoted first.
 //
 // Same rules as the other admin functions: re-checks the caller is an admin here, never trusting the page. An admin can't
 // deactivate themselves, and the last active admin can't be deactivated.
@@ -106,6 +108,24 @@ Deno.serve(async (req) => {
     if (error) return jsonResponse({ error: error.message }, 500);
     const { data: who } = await adminClient.rpc("audit_person_label", { p_id: memberId });
     await adminClient.rpc("log_admin_action", { p_action: deactivating ? "account_deactivated" : "account_reactivated", p_target_type: "account", p_target_id: memberId, p_target_label: who ?? null, p_details: {}, p_actor: user.id });
+    return jsonResponse({ ok: true });
+  }
+
+  if (input.action === "delete") {
+    const memberId = input.memberId ?? "";
+    if (!memberId) return jsonResponse({ error: "Say which account." }, 400);
+    if (memberId === user.id) return jsonResponse({ error: "You can't delete your own account." }, 400);
+    const { data: target } = await adminClient.from("profiles").select("role").eq("id", memberId).maybeSingle();
+    if (!target) return jsonResponse({ error: "That account doesn't exist." }, 404);
+    if (target.role === "admin") return jsonResponse({ error: "That account is an admin. Change its role first." }, 400);
+    const { data: found } = await adminClient.auth.admin.getUserById(memberId);
+    if (!found?.user) return jsonResponse({ error: "That account doesn't exist." }, 404);
+    // Re-checked here, never trusting the page: only an account nobody has ever signed in to.
+    if (found.user.last_sign_in_at) return jsonResponse({ error: "This account has signed in, so it can't be deleted here. Deactivate it instead." }, 409);
+    const { data: who } = await adminClient.rpc("audit_person_label", { p_id: memberId });
+    const { error } = await adminClient.auth.admin.deleteUser(memberId);
+    if (error) return jsonResponse({ error: error.message }, 500);
+    await adminClient.rpc("log_admin_action", { p_action: "account_deleted", p_target_type: "account", p_target_id: memberId, p_target_label: who ?? null, p_details: {}, p_actor: user.id });
     return jsonResponse({ ok: true });
   }
 

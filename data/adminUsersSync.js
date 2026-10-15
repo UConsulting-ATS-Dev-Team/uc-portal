@@ -10,7 +10,7 @@ export async function fetchAccounts() {
   if (error) throw new Error(error.message);
   // Pronouns and gender come from their own admin-only function; a failure there shouldn't hide the accounts.
   const byId = new Map((identity.data ?? []).map((r) => [r.member_id, r]));
-  return (data ?? []).map((a) => ({ ...a, pronouns: byId.get(a.member_id)?.pronouns ?? null, gender: byId.get(a.member_id)?.gender ?? null, admit_class: byId.get(a.member_id)?.admit_class ?? null }));
+  return (data ?? []).map((a) => ({ ...a, pronouns: byId.get(a.member_id)?.pronouns ?? null, gender: byId.get(a.member_id)?.gender ?? null, admit_class: byId.get(a.member_id)?.admit_class ?? null, signed_in: byId.get(a.member_id)?.signed_in ?? true }));
 }
 
 // name, classYear, phone, memberStatus and role are all plain profile columns.
@@ -45,3 +45,4 @@ async function manage(body) {
 export const createAccount = ({ email, name, classYear, memberStatus, role }) => manage({ action: "create", email, name, classYear, memberStatus, role });
 export const deactivateAccount = (memberId) => manage({ action: "deactivate", memberId });
 export const reactivateAccount = (memberId) => manage({ action: "reactivate", memberId });
+export const deleteAccount = (memberId) => manage({ action: "delete", memberId });

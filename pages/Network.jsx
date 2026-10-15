@@ -4,6 +4,7 @@ import { fetchRealPeople } from "../data/realPeople.js";
 import { useAppState } from "../data/store.jsx";
 import { fetchMemberAvatars } from "../data/avatarSync.js";
 import { fetchMemberClassInfo } from "../data/memberClassSync.js";
+import { fetchInternDirectory } from "../data/internDirectorySync.js";
 import RequestCoffeeChatModal from "../components/modals/RequestCoffeeChatModal.jsx";
 import DemoDataBadge from "../components/DemoDataBadge.jsx";
 import Avatar from "../components/Avatar.jsx";
@@ -12,7 +13,7 @@ import "../styles/jobDetail.css";
 import "../styles/network.css";
 import "../styles/home.css";
 
-const AUDIENCES = ["All", "Alumni", "Current members"];
+const AUDIENCES = ["All", "Alumni", "Current members", "Interns"];
 
 function uniqueValues(people, key) {
   return [...new Set(people.map((p) => p[key]).filter(Boolean))].sort((a, b) => a.localeCompare(b));
@@ -107,8 +108,9 @@ export default function Network() {
   const [classInfo, setClassInfo] = useState(new Map());
 
   useEffect(() => {
-    fetchRealPeople()
-      .then(setPeople)
+    // Active interns are shown beside the directory people: they are not members yet, but other members meet them.
+    Promise.all([fetchRealPeople(), fetchInternDirectory()])
+      .then(([people, interns]) => setPeople([...people, ...interns]))
       .finally(() => setPeopleLoading(false));
     fetchMemberAvatars().then(({ byEmail }) => setAvatarsByEmail(byEmail));
     fetchMemberClassInfo().then(setClassInfo);
@@ -118,13 +120,14 @@ export default function Network() {
     return PEOPLE.find((p) => p.id === id);
   }
 
-  const alumniCount = PEOPLE.filter((p) => p.status !== "Current member").length;
+  const alumniCount = PEOPLE.filter((p) => p.status === "Alumni").length;
   const memberCount = PEOPLE.filter((p) => p.status === "Current member").length;
   const pendingRequests = Object.values(coffeeChatStatus).filter((s) => s === "Request sent").length;
 
   const filtered = useMemo(() => {
     const matches = PEOPLE.filter((p) => {
-      if (audience === "Alumni" && p.status === "Current member") return false;
+      if (audience === "Alumni" && p.status !== "Alumni") return false;
+      if (audience === "Interns" && p.status !== "Intern") return false;
       if (audience === "Current members" && p.status !== "Current member") return false;
       if (industry !== "All" && p.industry !== industry) return false;
       if (company !== "All" && p.company !== company) return false;
@@ -277,7 +280,9 @@ export default function Network() {
                   {roleLine && <div className="person-card__role">{roleLine}</div>}
                   {metaLine && <div className="person-card__meta">{metaLine}</div>}
                   <div className="person-card__actions">
-                    {isMember ? (
+                    {p.isIntern ? (
+                      <Link to={`/messages?accountId=${p.id}&accountName=${encodeURIComponent(p.name)}`} className="btn btn-primary">Message</Link>
+                    ) : isMember ? (
                       // Messages.jsx's own ?personId= handling now resolves
                       // this for real (a real account -> opens a real
                       // thread; no account yet -> an honest "hasn't joined

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Ban, Copy, GraduationCap, Pencil, Plus, RotateCcw } from "lucide-react";
+import { Ban, Copy, GraduationCap, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { supabase } from "../data/supabaseClient.js";
-import { fetchAccounts, updateAccount, createAccount, deactivateAccount, reactivateAccount } from "../data/adminUsersSync.js";
+import { fetchAccounts, updateAccount, createAccount, deactivateAccount, deleteAccount, reactivateAccount } from "../data/adminUsersSync.js";
 import { initialsFromName } from "../data/profileUtils.js";
 import AccountSetupPanel from "../components/admin/AccountSetupPanel.jsx";
 import ClassRolloverModal from "../components/admin/ClassRolloverModal.jsx";
@@ -27,7 +27,7 @@ function activityText(account) {
 // Interns are not club members yet, so their role reads "Intern" rather than "Member" (the stored access level is still member/admin).
 const roleLabel = (account) => (account.role === "admin" ? "Admin" : account.member_status === "intern" ? "Intern" : "Member");
 
-function UserCard({ account, isSelf, busy, onRole, onEdit, onToggleActive }) {
+function UserCard({ account, isSelf, busy, onRole, onEdit, onToggleActive, onDelete }) {
   const deactivated = Boolean(account.deactivated_at);
   return (
     <div className={`user-card${deactivated ? " is-deactivated" : ""}`}>
@@ -43,12 +43,10 @@ function UserCard({ account, isSelf, busy, onRole, onEdit, onToggleActive }) {
           <dt>Grad year</dt>
           <dd>{account.class_year ?? "Not set"}</dd>
         </div>
-        {account.admit_class && (
-          <div>
-            <dt>Admit class</dt>
-            <dd>{account.admit_class}</dd>
-          </div>
-        )}
+        <div>
+          <dt>Admit class</dt>
+          <dd>{account.admit_class ?? "Not set"}</dd>
+        </div>
         {account.pronouns && (
           <div>
             <dt>Pronouns</dt>
@@ -108,6 +106,12 @@ function UserCard({ account, isSelf, busy, onRole, onEdit, onToggleActive }) {
           {deactivated ? <RotateCcw size={13} strokeWidth={1.5} aria-hidden="true" /> : <Ban size={13} strokeWidth={1.5} aria-hidden="true" />}{" "}
           {deactivated ? "Reactivate" : "Deactivate"}
         </button>
+        {/* Only for an account nobody has ever signed in to (a pre-created one nobody used, or one made by mistake). */}
+        {account.signed_in === false && !isSelf && account.role !== "admin" && (
+          <button type="button" className="btn-link" disabled={busy} onClick={() => onDelete(account)}>
+            <Trash2 size={13} strokeWidth={1.5} aria-hidden="true" /> Delete
+          </button>
+        )}
       </div>
     </div>
   );
@@ -330,6 +334,18 @@ export default function AdminMembers() {
     setBusyId(null);
   }
 
+  async function removeAccount(account) {
+    if (!window.confirm(`Delete the account for ${account.display_name}? This permanently removes it and can't be undone. They stay on the roster, so they can still sign up again later.`)) return;
+    setBusyId(account.member_id);
+    try {
+      await deleteAccount(account.member_id);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    }
+    setBusyId(null);
+  }
+
   async function confirmDeactivate() {
     const account = deactivating;
     setBusyId(account.member_id);
@@ -438,6 +454,7 @@ export default function AdminMembers() {
             onRole={changeRole}
             onEdit={setEditing}
             onToggleActive={(acc) => (acc.deactivated_at ? reactivate(acc) : setDeactivating(acc))}
+            onDelete={removeAccount}
           />
         ))}
       </div>
