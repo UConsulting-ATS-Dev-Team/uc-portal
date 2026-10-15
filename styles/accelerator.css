@@ -1042,6 +1042,10 @@ a.accel-side__row:hover {
   padding: 0;
 }
 
+.accel-required.accel-required--flag li {
+  border-left-color: var(--color-danger);
+}
+
 .accel-required li {
   display: flex;
   align-items: center;

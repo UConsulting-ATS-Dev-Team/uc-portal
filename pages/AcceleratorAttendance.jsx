@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { submitEventPhoto } from "../data/acceleratorSync.js";
-import { addDays, attendanceProgress, attendanceStatus, calendarItems, formatTimeRange, parseYmd, ymd } from "../data/acceleratorLogic.js";
+import { attendanceProgress, attendanceStatus, calendarItems, formatTimeRange, parseYmd, ymd } from "../data/acceleratorLogic.js";
 import { useAcceleratorData } from "../data/useAcceleratorData.js";
 import AcceleratorEventPhoto from "../components/AcceleratorEventPhoto.jsx";
 import AcceleratorTabs from "../components/AcceleratorTabs.jsx";
-import RevealMore, { makeReveal } from "../components/RevealMore.jsx";
+import RevealMore, { makeReveal, useReveal } from "../components/RevealMore.jsx";
 import "../styles/accelerator.css";
 
 const GROUPS = [
@@ -97,6 +97,20 @@ function EventRow({ item, status, record, todayKey, onDone }) {
   );
 }
 
+function RequiredRow({ item, progress, today }) {
+  const status = STATUS[attendanceStatus({ id: item.id, event_date: item.date }, progress, today)];
+  const when = [parseYmd(item.date).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" }), item.time ? formatTimeRange(item.time, item.endTime) : null].filter(Boolean).join(" · ");
+  return (
+    <li>
+      <span>
+        <strong>{item.title}</strong>
+        <span className="meta"> {when}</span>
+      </span>
+      <span className={status.className}>{status.text}</span>
+    </li>
+  );
+}
+
 export default function AcceleratorAttendance() {
   const { events, attendance, loading, error, reload } = useAcceleratorData();
   const today = useMemo(() => new Date(), []);
@@ -107,16 +121,12 @@ export default function AcceleratorAttendance() {
   const items = useMemo(() => calendarItems(events, []), [events]);
   const [extraByGroup, setExtraByGroup] = useState({});
 
-  // The required events behind "x of y": this week's, plus any earlier one not yet attended, plus what is next if this week has none.
-  const required = useMemo(() => {
-    const weekStart = ymd(addDays(today, -today.getDay()));
-    const weekEnd = ymd(addDays(today, 6 - today.getDay()));
-    const req = items.filter((i) => i.required);
-    const earlierOpen = req.filter((i) => i.date < weekStart && !progress.attendedIds.has(i.id));
-    const thisWeek = req.filter((i) => i.date >= weekStart && i.date <= weekEnd);
-    const next = thisWeek.length === 0 ? req.find((i) => i.date > weekEnd) : null;
-    return { rows: [...earlierOpen, ...thisWeek], next, empty: thisWeek.length === 0 };
-  }, [items, today, progress]);
+  // No week boundary: the headline counts only required events that have happened, so one still to come is never owed. Below it,
+  // what slipped (happened, not attended or not recorded yet) and what is coming next.
+  const requiredItems = items.filter((i) => i.required);
+  const missed = requiredItems.filter((i) => i.date < todayKey && !progress.attendedIds.has(i.id));
+  const upNext = requiredItems.filter((i) => i.date >= todayKey);
+  const upNextReveal = useReveal(upNext.length, 2, 5);
 
   return (
     <div>
@@ -125,32 +135,25 @@ export default function AcceleratorAttendance() {
       <p className="meta">
         {progress.requiredAttended} of {progress.requiredSoFar} required events attended so far
       </p>
-      {!loading && (required.rows.length > 0 || required.next) && (
+      {!loading && missed.length > 0 && (
         <div className="accel-section">
-          <h2>Required this week</h2>
-          <ul className="accel-required">
-            {required.rows.map((item) => {
-              const status = STATUS[attendanceStatus({ id: item.id, event_date: item.date }, progress, today)];
-              const when = [parseYmd(item.date).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" }), item.time ? formatTimeRange(item.time, item.endTime) : null].filter(Boolean).join(" · ");
-              return (
-                <li key={item.id}>
-                  <span>
-                    <strong>{item.title}</strong>
-                    <span className="meta"> {when}</span>
-                  </span>
-                  <span className={status.className}>{status.text}</span>
-                </li>
-              );
-            })}
-            {required.empty && required.next && (
-              <li>
-                <span>
-                  <strong>Nothing required this week.</strong>
-                  <span className="meta"> Next: {required.next.title}, {parseYmd(required.next.date).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}</span>
-                </span>
-              </li>
-            )}
+          <h2>Missed or not recorded yet</h2>
+          <ul className="accel-required accel-required--flag">
+            {missed.map((item) => (
+              <RequiredRow key={item.id} item={item} progress={progress} today={today} />
+            ))}
           </ul>
+        </div>
+      )}
+      {!loading && upNext.length > 0 && (
+        <div className="accel-section">
+          <h2>Up next</h2>
+          <ul className="accel-required">
+            {upNext.slice(0, upNextReveal.shown).map((item) => (
+              <RequiredRow key={item.id} item={item} progress={progress} today={today} />
+            ))}
+          </ul>
+          <RevealMore reveal={upNextReveal} noun="event" />
         </div>
       )}
       {progress.noSocials && (
