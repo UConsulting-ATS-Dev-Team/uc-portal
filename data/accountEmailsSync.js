@@ -3,7 +3,17 @@ import { supabase } from "./supabaseClient.js";
 // Extra sign-in emails for the signed-in account (its main email is the one it was created with). See the
 // account_emails migration: the database refuses an email another account uses or a directory person is waiting to use.
 export async function fetchAccountEmails() {
-  const { data, error } = await supabase.from("account_emails").select("email, created_at").order("created_at", { ascending: true });
+  // Only this account's own rows: an admin's session is allowed to read everyone's, and without the filter an admin's profile
+  // listed other people's extra emails.
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) return [];
+  const { data, error } = await supabase
+    .from("account_emails")
+    .select("email, created_at")
+    .eq("user_id", session.user.id)
+    .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
   return data ?? [];
 }
