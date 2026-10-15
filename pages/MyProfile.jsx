@@ -204,7 +204,7 @@ export default function MyProfile() {
     setForm((f) => ({ ...f, linkedIn }));
     updateProfileOverrides({
       fullName: form.fullName,
-      classYear: form.classYear,
+      classYear: form.classYear || null,
       gradMonth: form.gradMonth || null,
       majors: form.majors,
       ucCommittee: form.ucCommittee,
@@ -599,7 +599,7 @@ export default function MyProfile() {
                       id="profile-grad-year"
                       type="number"
                       value={form.classYear}
-                      onChange={(e) => setForm((f) => ({ ...f, classYear: Number(e.target.value) }))}
+                      onChange={(e) => setForm((f) => ({ ...f, classYear: e.target.value === "" ? "" : Number(e.target.value) }))}
                     />
                   </div>
                 </div>
