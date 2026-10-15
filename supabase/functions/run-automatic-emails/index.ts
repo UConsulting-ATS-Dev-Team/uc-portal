@@ -59,19 +59,33 @@ async function digestCandidates(admin: Admin): Promise<Candidate[]> {
   return (data ?? []).map((row) => ({ profileId: row.profile_id as string, ref: row.week_of as string, vars: { digest: row.body_text as string } }));
 }
 
+// An assignment's week starts at the accelerator meeting on or after its "Week of" date and it is due at the next meeting (the same
+// rule as lessonDue() in data/acceleratorLogic.js). Returns the due day as YYYY-MM-DD, or the lesson date itself when no meeting
+// day is set.
+function lessonDueDay(lessonDate: string, weekday: number | null): string {
+  if (weekday == null) return lessonDate;
+  const [y, m, d] = lessonDate.split("-").map(Number);
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  const offset = ((weekday - dow + 7) % 7) + 7;
+  return new Date(Date.UTC(y, m - 1, d + offset)).toISOString().slice(0, 10);
+}
+
 async function assignmentCandidates(admin: Admin, interns: Account[]): Promise<Candidate[]> {
   const { data: lessons } = await admin.from("accelerator_lessons").select("id, title, lesson_date").order("lesson_date");
-  const ordered = lessons ?? [];
+  const { data: settings } = await admin.from("accelerator_settings").select("meeting_weekday, meeting_time").maybeSingle();
+  const weekday = settings ? (settings.meeting_weekday as number) : null;
+  const meetingTime = settings ? (settings.meeting_time as string).slice(0, 5) : null;
+  const ordered = (lessons ?? []).map((l) => ({ ...l, dueDay: lessonDueDay(l.lesson_date as string, weekday) }));
   const today = todayPacific();
   const horizon = new Date(Date.parse(`${today}T12:00:00Z`) + 2 * 86_400_000).toISOString().slice(0, 10);
-  const due = ordered.filter((l) => l.lesson_date >= today && l.lesson_date <= horizon);
+  const due = ordered.filter((l) => l.dueDay >= today && l.dueDay <= horizon);
   if (due.length === 0 || interns.length === 0) return [];
   const { data: submissions } = await admin.from("accelerator_submissions").select("lesson_id, profile_id").in("lesson_id", due.map((l) => l.id));
   const done = new Set((submissions ?? []).map((s) => `${s.lesson_id}:${s.profile_id}`));
   const out: Candidate[] = [];
   for (const lesson of due) {
     const weekNumber = ordered.findIndex((l) => l.id === lesson.id) + 1;
-    const dueDate = longDate(pacificInstant(lesson.lesson_date, "12:00"));
+    const dueDate = meetingTime ? longDateTime(pacificInstant(lesson.dueDay, meetingTime)) : longDate(pacificInstant(lesson.dueDay, "12:00"));
     for (const intern of interns) {
       if (!done.has(`${lesson.id}:${intern.member_id}`)) {
         out.push({ profileId: intern.member_id, ref: lesson.id, vars: { lessonTitle: lesson.title, weekNumber: String(weekNumber), dueDate } });

@@ -30,7 +30,7 @@ import AdminAcceleratorEvents from "../components/AdminAcceleratorEvents.jsx";
 import Modal from "../components/Modal.jsx";
 import CollapsibleSection from "../components/CollapsibleSection.jsx";
 import AdminAcceleratorChats from "../components/AdminAcceleratorChats.jsx";
-import { MAX_RECURRING_EVENTS, defaultAttendanceMethod, expandRecurrence, formatTimeShort, parseYmd, ymd } from "../data/acceleratorLogic.js";
+import { MAX_RECURRING_EVENTS, defaultAttendanceMethod, expandRecurrence, formatDue, formatTimeShort, lessonDue, lessonStart, parseYmd, ymd } from "../data/acceleratorLogic.js";
 import "../styles/jobDetail.css";
 import "../styles/admin.css";
 
@@ -723,6 +723,9 @@ function LessonModal({ editing, onClose, onSaved }) {
         <div className="field">
           <label htmlFor="lesson-date">Week of</label>
           <input id="lesson-date" type="date" value={form.lessonDate} onChange={(e) => setForm({ ...form, lessonDate: e.target.value })} />
+          <p className="meta" style={{ margin: "var(--space-2) 0 0" }}>
+            The week starts at the accelerator meeting on or after this date and runs until the next one, when the assignment is due.
+          </p>
         </div>
         <div className="field" style={{ flex: 2 }}>
           <label htmlFor="lesson-title">Title</label>
@@ -794,6 +797,10 @@ function LessonModal({ editing, onClose, onSaved }) {
 
 export default function AdminAccelerator() {
   const [eventsVersion, setEventsVersion] = useState(0);
+  const [schedule, setSchedule] = useState(null);
+  useEffect(() => {
+    fetchMeetingSchedule().then(setSchedule).catch(() => {});
+  }, [eventsVersion]);
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lessonModal, setLessonModal] = useState(null); // null | { editing: lesson | null }
@@ -852,7 +859,9 @@ export default function AdminAccelerator() {
               <div className="lesson-card__main">
                 <div className="lesson-card__title">{lesson.title}</div>
                 <div className="lesson-card__meta">
-                  Week of {new Date(`${lesson.lesson_date}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                  {schedule
+                    ? `Week of ${formatDue(lessonStart(lesson, schedule), true)} · due ${formatDue(lessonDue(lesson, schedule).date, true)}`
+                    : `Week of ${new Date(`${lesson.lesson_date}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}`}
                 </div>
               </div>
               {(() => {

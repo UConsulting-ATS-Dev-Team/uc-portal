@@ -190,7 +190,10 @@ function scheduledPeriods({ lessons, chats, today, schedule }) {
   let anchor = startOfDay(today);
   if (lessons.length) anchor = parseYmd(lessons[0].lesson_date);
   else if (chats.length) anchor = startOfDay(new Date([...chats].map((c) => c.created_at).sort()[0]));
-  const ends = [nextMeeting(anchor, schedule.weekday, schedule.time)];
+  // A lesson's "Week of" date starts that week at the accelerator meeting on or after it, and the week runs until the next
+  // meeting, so the first week closes a week after the first meeting. With no lesson to anchor on, the first meeting closes it.
+  const first = nextMeeting(anchor, schedule.weekday, schedule.time);
+  const ends = [lessons.length ? new Date(first.getFullYear(), first.getMonth(), first.getDate() + 7, first.getHours(), first.getMinutes()) : first];
   // Keep going until the week that holds today is included (and at least the usual eight weeks).
   while (ends.length < DEFAULT_PROGRAM_WEEKS || ends[ends.length - 1] < today) {
     const last = ends[ends.length - 1];
@@ -336,12 +339,19 @@ export function attendanceStatus(event, progress, today = new Date()) {
 
 // ---- Assignments ----
 
-// An assignment is due at the accelerator meeting on or after its lesson date, at the meeting's time, so it is done before
-// that week's accelerator. With no meeting day and time set yet it falls back to the end of the lesson date.
+// A lesson's week starts at the accelerator meeting on or after its "Week of" date and runs until the next one. The
+// assignment is due at that next meeting, so it is done before the following week begins. With no meeting day and time set
+// yet it falls back to the end of the lesson date.
+export function lessonStart(lesson, schedule) {
+  if (!schedule) return null;
+  return nextMeeting(parseYmd(lesson.lesson_date), schedule.weekday, schedule.time);
+}
+
 export function lessonDue(lesson, schedule) {
   const day = parseYmd(lesson.lesson_date);
   if (!schedule) return { date: new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59, 999), hasTime: false };
-  return { date: nextMeeting(day, schedule.weekday, schedule.time), hasTime: true };
+  const start = lessonStart(lesson, schedule);
+  return { date: new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7, start.getHours(), start.getMinutes()), hasTime: true };
 }
 
 // The first lesson is always open. Each later one opens once the previous is handed in AND that week's accelerator has

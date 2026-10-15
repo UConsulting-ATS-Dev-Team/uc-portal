@@ -209,8 +209,9 @@ describe("coffee-chat weeks close at each accelerator meeting", () => {
     const schedule = { weekday: 3, time: "18:00" }; // Wednesdays 6 PM
     const today = at(2027, 3, 1, 9); // months later, a Monday
     const periods = L.programPeriods([], { lessons: [{ id: "a", title: "L", lesson_date: "2026-10-12" }], today, schedule });
-    expect(periods[0].endMs).toBe(at(2026, 10, 14, 18).getTime());
-    expect(periods[1].endMs).toBe(at(2026, 10, 21, 18).getTime());
+    // Week of Mon Oct 12 starts at the Wed Oct 14 meeting and runs to the next one, Oct 21.
+    expect(periods[0].endMs).toBe(at(2026, 10, 21, 18).getTime());
+    expect(periods[1].endMs).toBe(at(2026, 10, 28, 18).getTime());
     const p = L.coffeeChatProgress([chat(at(2027, 2, 23, 9), true), chat(at(2027, 2, 24, 19), true), chat(at(2027, 2, 28, 9), true)], periods, today);
     expect(p.current.endMs).toBe(at(2027, 3, 3, 18).getTime());
     expect(p.current.counted).toBe(2); // the Feb 23 chat belongs to last week; the two logged since Wed Feb 24 6 PM count now
@@ -342,9 +343,12 @@ describe("assignments are due at the weekly accelerator", () => {
     { id: "b", lesson_date: "2026-10-19" },
   ];
 
-  it("lands on the accelerator meeting on or after the lesson date, at its time", () => {
-    expect(L.lessonDue(lessons[0], tuesday5).date.getTime()).toBe(at(2026, 10, 13, 17).getTime());
-    expect(L.lessonDue({ lesson_date: "2026-10-13" }, tuesday5).date.getTime()).toBe(at(2026, 10, 13, 17).getTime());
+  it("starts the week at the accelerator on or after the date and is due at the next one", () => {
+    expect(L.lessonStart(lessons[0], tuesday5).getTime()).toBe(at(2026, 10, 13, 17).getTime());
+    expect(L.lessonDue(lessons[0], tuesday5).date.getTime()).toBe(at(2026, 10, 20, 17).getTime());
+    // A date that is itself a meeting day starts that very meeting's week (Oct 13 5 PM to Oct 20 5 PM).
+    expect(L.lessonStart({ lesson_date: "2026-10-13" }, tuesday5).getTime()).toBe(at(2026, 10, 13, 17).getTime());
+    expect(L.lessonDue({ lesson_date: "2026-10-13" }, tuesday5).date.getTime()).toBe(at(2026, 10, 20, 17).getTime());
   });
 
   it("falls back to the end of the date when no meeting time is set", () => {
@@ -358,10 +362,10 @@ describe("assignments are due at the weekly accelerator", () => {
     const submitted = new Map([["a", {}]]);
     expect(L.lessonOpensAt(0, lessons, none, tuesday5, at(2026, 10, 10)).open).toBe(true);
     expect(L.lessonOpensAt(1, lessons, none, tuesday5, at(2026, 10, 14)).open).toBe(false);
-    const early = L.lessonOpensAt(1, lessons, submitted, tuesday5, at(2026, 10, 13, 16));
+    const early = L.lessonOpensAt(1, lessons, submitted, tuesday5, at(2026, 10, 19, 16));
     expect(early.open).toBe(false);
-    expect(early.waitingForMeeting?.getTime()).toBe(at(2026, 10, 13, 17).getTime());
-    expect(L.lessonOpensAt(1, lessons, submitted, tuesday5, at(2026, 10, 13, 17, 1)).open).toBe(true);
+    expect(early.waitingForMeeting?.getTime()).toBe(at(2026, 10, 20, 17).getTime());
+    expect(L.lessonOpensAt(1, lessons, submitted, tuesday5, at(2026, 10, 20, 17, 1)).open).toBe(true);
     expect(L.lessonOpensAt(1, lessons, submitted, null, at(2026, 10, 10)).open).toBe(true);
   });
 });
