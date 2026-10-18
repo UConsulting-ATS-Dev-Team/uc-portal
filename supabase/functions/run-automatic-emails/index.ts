@@ -169,6 +169,9 @@ Deno.serve(async (req) => {
   const { data: accounts, error } = await admin.rpc("comm_accounts_internal");
   if (error) return jsonResponse({ error: error.message }, 500);
   const byId = new Map((accounts as Account[]).map((a) => [a.member_id, a]));
+  // Accounts that only exist for testing (table test_accounts) never get an automatic email, whichever one it is.
+  const { data: testRows } = await admin.from("test_accounts").select("user_id");
+  const testIds = new Set((testRows ?? []).map((r) => r.user_id as string));
   const activeInterns = (accounts as Account[]).filter((a) => a.member_status === "intern" && !a.deactivated_at && a.email);
   const activeMembers = (accounts as Account[]).filter((a) => a.member_status === "current_member" && !a.deactivated_at && a.email);
 
@@ -184,7 +187,7 @@ Deno.serve(async (req) => {
 
     candidates = candidates.filter((c) => {
       const account = byId.get(c.profileId);
-      return account && account.email && !account.deactivated_at;
+      return account && account.email && !account.deactivated_at && !testIds.has(c.profileId);
     });
     if (candidates.length === 0) continue;
 
