@@ -176,6 +176,13 @@ export async function deleteMaterial(material) {
 // real name/email resolver AdminMembers.jsx uses) against every real
 // submission, client-side -- small enough tables that a second query
 // per row isn't worth avoiding the join for.
+// Accounts kept out of the accelerator lists because they only exist for testing (table test_accounts, filled in by hand), so
+// nobody reads a test account's empty progress as an intern who isn't doing their work.
+async function testAccountIds() {
+  const { data } = await supabase.rpc("admin_list_test_accounts");
+  return new Set((data ?? []).map((r) => r.member_id));
+}
+
 export async function fetchInternProgress() {
   // All real submissions app-wide, not one lesson's worth -- unlikely to
   // ever near PostgREST's 1000-row default at this club's real scale
@@ -196,7 +203,8 @@ export async function fetchInternProgress() {
   ]);
   if (membersError) throw new Error(membersError.message);
 
-  const interns = (members ?? []).filter((m) => m.member_status === "intern");
+  const hidden = await testAccountIds();
+  const interns = (members ?? []).filter((m) => m.member_status === "intern" && !hidden.has(m.member_id));
   // "Accelerator week" is now a computed position in the real,
   // chronologically-ordered curriculum (fetchLessons() already sorts by
   // lesson_date) rather than a stored, hand-entered number -- see the
@@ -595,10 +603,10 @@ export async function fetchAllCoffeeChats() {
 }
 
 export async function fetchInterns() {
-  const [{ data, error }, rosterNames] = await Promise.all([supabase.rpc("list_members"), rosterNamesByEmail()]);
+  const [{ data, error }, rosterNames, hidden] = await Promise.all([supabase.rpc("list_members"), rosterNamesByEmail(), testAccountIds()]);
   if (error) throw new Error(error.message);
   return (data ?? [])
-    .filter((m) => m.member_status === "intern")
+    .filter((m) => m.member_status === "intern" && !hidden.has(m.member_id))
     .map((m) => ({ memberId: m.member_id, displayName: nameFor(m, rosterNames), email: m.email }))
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
