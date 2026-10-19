@@ -211,6 +211,7 @@ export async function fetchInternProgress() {
   // lesson_date migration's own comment for why.
   const lessonByWeek = new Map(lessons.map((l, i) => [l.id, i + 1]));
 
+  // Names are stored first name first, so a plain alphabetical sort is a first-name sort.
   return interns.map((intern) => {
     const own = allSubmissions.filter((s) => s.profile_id === intern.member_id);
     const weeksSubmitted = own.map((s) => lessonByWeek.get(s.lesson_id)).filter((w) => w != null);
@@ -242,7 +243,7 @@ export async function fetchInternProgress() {
       gradedCount: graded.length,
       lastSubmittedAt: own.length ? own.map((s) => s.submitted_at).sort().at(-1) : null,
     };
-  });
+  }).sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" }));
 }
 
 export async function fetchSubmissionsForLesson(lessonId) {
@@ -608,7 +609,7 @@ export async function fetchInterns() {
   return (data ?? [])
     .filter((m) => m.member_status === "intern" && !hidden.has(m.member_id))
     .map((m) => ({ memberId: m.member_id, displayName: nameFor(m, rosterNames), email: m.email }))
-    .sort((a, b) => a.displayName.localeCompare(b.displayName));
+    .sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" }));
 }
 
 
