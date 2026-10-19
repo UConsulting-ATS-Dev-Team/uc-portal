@@ -93,20 +93,20 @@ export async function getSubmissionFileSignedUrl(path) {
 // ---- Admin-only below (RLS backs every one of these regardless of what
 // the UI shows) ----
 
-export async function createLesson({ lessonDate, title, topicOverview }) {
+export async function createLesson({ lessonDate, title, topicOverview, dueDate, dueTime }) {
   const { data, error } = await supabase
     .from("accelerator_lessons")
-    .insert({ lesson_date: lessonDate, title, topic_overview: topicOverview || null })
+    .insert({ lesson_date: lessonDate, title, topic_overview: topicOverview || null, due_date: dueDate || null, due_time: dueDate && dueTime ? dueTime : null })
     .select()
     .single();
   if (error) throw new Error(error.message);
   return data;
 }
 
-export async function updateLesson(id, { lessonDate, title, topicOverview }) {
+export async function updateLesson(id, { lessonDate, title, topicOverview, dueDate, dueTime }) {
   const { error } = await supabase
     .from("accelerator_lessons")
-    .update({ lesson_date: lessonDate, title, topic_overview: topicOverview || null, updated_at: new Date().toISOString() })
+    .update({ lesson_date: lessonDate, title, topic_overview: topicOverview || null, due_date: dueDate || null, due_time: dueDate && dueTime ? dueTime : null, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw new Error(error.message);
 }

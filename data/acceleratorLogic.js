@@ -347,11 +347,26 @@ export function lessonStart(lesson, schedule) {
   return nextMeeting(parseYmd(lesson.lesson_date), schedule.weekday, schedule.time);
 }
 
-export function lessonDue(lesson, schedule) {
+// When the week ends and the next one begins (the next accelerator meeting). The next assignment opens then, whatever the
+// current one's own due date is.
+export function lessonWeekEnd(lesson, schedule) {
   const day = parseYmd(lesson.lesson_date);
   if (!schedule) return { date: new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59, 999), hasTime: false };
   const start = lessonStart(lesson, schedule);
   return { date: new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7, start.getHours(), start.getMinutes()), hasTime: true };
+}
+
+// When the assignment is due: the lesson's own due date if the committee set one (earlier than the next meeting, say, to leave
+// time for grading), else the end of its week.
+export function lessonDue(lesson, schedule) {
+  if (lesson.due_date) {
+    const day = parseYmd(lesson.due_date);
+    const time = lesson.due_time ? lesson.due_time.slice(0, 5) : schedule?.time ?? null;
+    if (!time) return { date: new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59, 999), hasTime: false };
+    const [h, m] = time.split(":").map(Number);
+    return { date: new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m), hasTime: true };
+  }
+  return lessonWeekEnd(lesson, schedule);
 }
 
 // The first lesson is always open. Each later one opens once the previous is handed in AND that week's accelerator has
@@ -361,7 +376,7 @@ export function lessonOpensAt(index, lessons, submissionByLesson, schedule, now 
   const prev = lessons[index - 1];
   if (!submissionByLesson.has(prev.id)) return { open: false, waitingForMeeting: null };
   if (!schedule) return { open: true, waitingForMeeting: null };
-  const meeting = lessonDue(prev, schedule).date;
+  const meeting = lessonWeekEnd(prev, schedule).date;
   return now >= meeting ? { open: true, waitingForMeeting: null } : { open: false, waitingForMeeting: meeting };
 }
 

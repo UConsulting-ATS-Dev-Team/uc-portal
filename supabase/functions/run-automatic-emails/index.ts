@@ -71,11 +71,16 @@ function lessonDueDay(lessonDate: string, weekday: number | null): string {
 }
 
 async function assignmentCandidates(admin: Admin, interns: Account[]): Promise<Candidate[]> {
-  const { data: lessons } = await admin.from("accelerator_lessons").select("id, title, lesson_date").order("lesson_date");
+  const { data: lessons } = await admin.from("accelerator_lessons").select("id, title, lesson_date, due_date, due_time").order("lesson_date");
   const { data: settings } = await admin.from("accelerator_settings").select("meeting_weekday, meeting_time").maybeSingle();
   const weekday = settings ? (settings.meeting_weekday as number) : null;
   const meetingTime = settings ? (settings.meeting_time as string).slice(0, 5) : null;
-  const ordered = (lessons ?? []).map((l) => ({ ...l, dueDay: lessonDueDay(l.lesson_date as string, weekday) }));
+  // A lesson's own due date (and time) wins over the next-meeting rule.
+  const ordered = (lessons ?? []).map((l) => ({
+    ...l,
+    dueDay: (l.due_date as string | null) ?? lessonDueDay(l.lesson_date as string, weekday),
+    dueClock: l.due_date ? ((l.due_time as string | null)?.slice(0, 5) ?? meetingTime) : meetingTime,
+  }));
   const today = todayPacific();
   const horizon = new Date(Date.parse(`${today}T12:00:00Z`) + 2 * 86_400_000).toISOString().slice(0, 10);
   const due = ordered.filter((l) => l.dueDay >= today && l.dueDay <= horizon);
@@ -85,7 +90,7 @@ async function assignmentCandidates(admin: Admin, interns: Account[]): Promise<C
   const out: Candidate[] = [];
   for (const lesson of due) {
     const weekNumber = ordered.findIndex((l) => l.id === lesson.id) + 1;
-    const dueDate = meetingTime ? longDateTime(pacificInstant(lesson.dueDay, meetingTime)) : longDate(pacificInstant(lesson.dueDay, "12:00"));
+    const dueDate = lesson.dueClock ? longDateTime(pacificInstant(lesson.dueDay, lesson.dueClock)) : longDate(pacificInstant(lesson.dueDay, "12:00"));
     for (const intern of interns) {
       if (!done.has(`${lesson.id}:${intern.member_id}`)) {
         out.push({ profileId: intern.member_id, ref: lesson.id, vars: { lessonTitle: lesson.title, weekNumber: String(weekNumber), dueDate } });

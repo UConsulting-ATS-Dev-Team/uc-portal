@@ -34,7 +34,7 @@ import { MAX_RECURRING_EVENTS, defaultAttendanceMethod, expandRecurrence, format
 import "../styles/jobDetail.css";
 import "../styles/admin.css";
 
-const EMPTY_FORM = { lessonDate: "", title: "", topicOverview: "" };
+const EMPTY_FORM = { lessonDate: "", title: "", topicOverview: "", dueDate: "", dueTime: "" };
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -646,7 +646,7 @@ function LessonManager({ lesson, onChanged }) {
 // slides is one step instead of a separate hunt for the Manage panel.
 function LessonModal({ editing, onClose, onSaved }) {
   const [form, setForm] = useState(
-    editing ? { lessonDate: editing.lesson_date, title: editing.title, topicOverview: editing.topic_overview || "" } : EMPTY_FORM
+    editing ? { lessonDate: editing.lesson_date, title: editing.title, topicOverview: editing.topic_overview || "", dueDate: editing.due_date || "", dueTime: editing.due_time ? editing.due_time.slice(0, 5) : "" } : EMPTY_FORM
   );
   const [pendingFiles, setPendingFiles] = useState([]);
   const [pendingLinks, setPendingLinks] = useState([]);
@@ -671,12 +671,12 @@ function LessonModal({ editing, onClose, onSaved }) {
     setSaving(true);
     try {
       if (editing) {
-        await updateLesson(editing.id, { lessonDate: form.lessonDate, title: form.title.trim(), topicOverview: form.topicOverview.trim() });
+        await updateLesson(editing.id, { lessonDate: form.lessonDate, title: form.title.trim(), topicOverview: form.topicOverview.trim(), dueDate: form.dueDate, dueTime: form.dueTime });
         await onSaved(null, null);
         onClose();
         return;
       }
-      const created = await createLesson({ lessonDate: form.lessonDate, title: form.title.trim(), topicOverview: form.topicOverview.trim() });
+      const created = await createLesson({ lessonDate: form.lessonDate, title: form.title.trim(), topicOverview: form.topicOverview.trim(), dueDate: form.dueDate, dueTime: form.dueTime });
       // A failed attachment shouldn't lose the lesson that was just created: collect failures and surface them
       // while still opening Manage so the admin can retry from there.
       const failures = [];
@@ -732,8 +732,19 @@ function LessonModal({ editing, onClose, onSaved }) {
           <input id="lesson-title" type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
         </div>
       </div>
+      <div className="field-row">
+        <div className="field">
+          <label htmlFor="lesson-due-date">Due date (optional)</label>
+          <input id="lesson-due-date" type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
+        </div>
+        <div className="field">
+          <label htmlFor="lesson-due-time">Due time (optional)</label>
+          <input id="lesson-due-time" type="time" value={form.dueTime} disabled={!form.dueDate} onChange={(e) => setForm({ ...form, dueTime: e.target.value })} />
+        </div>
+      </div>
       <p className="meta" style={{ marginTop: 0 }}>
-        The assignment is due at that week's accelerator (the weekly meeting day and time set above), and the next assignment opens once that accelerator has passed.
+        Leave the due date blank and the assignment is due at that week's accelerator (the weekly meeting day and time set above). Set one to
+        make it due earlier, for example to leave time for grading. Either way, the next assignment opens once that accelerator has passed.
       </p>
       <div className="field">
         <label htmlFor="lesson-topic">Instructions</label>
