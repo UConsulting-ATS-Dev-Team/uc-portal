@@ -111,7 +111,7 @@ function SubmissionForm({ lesson, submission, onSubmitted }) {
       {state === "incomplete" && (
         <div className="rail-card" style={{ marginBottom: "var(--space-4)", borderColor: "var(--color-danger)" }}>
           <div className="rail-card__title">Incomplete: fix it and submit again</div>
-          {submission.feedback && <p style={{ margin: 0 }}>{submission.feedback}</p>}
+          {submission.feedback ? <p style={{ margin: 0 }}>{submission.feedback}</p> : <p className="meta" style={{ margin: 0 }}>The committee's comments are in the thread below.</p>}
         </div>
       )}
       {state === "awaiting_review" && (

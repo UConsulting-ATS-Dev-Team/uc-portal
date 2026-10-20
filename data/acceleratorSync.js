@@ -292,12 +292,13 @@ export async function fetchSubmissionsForLesson(lessonId) {
 // The committee marks a submission complete or incomplete and leaves comments (the intern sees both). There is no
 // numeric grade (the old admin-only accelerator_submission_scores table is no longer written).
 export async function gradeSubmission(id, { status, feedback }) {
+  // Comments now go in the comment thread; `feedback` is only written when a caller passes it, so older notes aren't wiped.
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const { error } = await supabase
     .from("accelerator_submissions")
-    .update({ status, feedback: feedback?.trim() || null, graded_by: user.id, graded_at: new Date().toISOString() })
+    .update({ status, ...(feedback === undefined ? {} : { feedback: feedback?.trim() || null }), graded_by: user.id, graded_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw new Error(error.message);
 }

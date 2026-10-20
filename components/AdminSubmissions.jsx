@@ -43,7 +43,6 @@ function statusTag(submission) {
 // review pop-up.
 export function SubmissionDetail({ name, submission, resolveAuthorName, onGraded }) {
   const [status, setStatus] = useState(submission.status ?? "");
-  const [feedback, setFeedback] = useState(submission.feedback ?? "");
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -55,7 +54,7 @@ export function SubmissionDetail({ name, submission, resolveAuthorName, onGraded
     setSaving(true);
     setError(null);
     try {
-      await gradeSubmission(submission.id, { status, feedback });
+      await gradeSubmission(submission.id, { status });
       onGraded();
     } catch (err) {
       setError(err.message);
@@ -108,7 +107,6 @@ export function SubmissionDetail({ name, submission, resolveAuthorName, onGraded
           <option value="complete">Complete</option>
           <option value="incomplete">Incomplete</option>
         </select>
-        <input type="text" value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Comments for the intern" aria-label={`Comments for ${name}`} />
         <button className="btn btn-secondary" onClick={save} disabled={saving}>
           {saving ? "Saving…" : submission.graded_at ? "Update" : "Save"}
         </button>
