@@ -650,7 +650,7 @@ function LessonModal({ editing, onClose, onSaved }) {
             Cancel
           </button>
           <button className="btn btn-primary" onClick={save} disabled={saving}>
-            {saving ? "Saving…" : editing ? "Save" : "Add lesson"}
+            {saving ? "Saving…" : editing ? "Save and close" : "Add lesson"}
           </button>
         </>
       }

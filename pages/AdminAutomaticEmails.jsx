@@ -45,7 +45,7 @@ function EditModal({ def, setting, onClose, onSaved }) {
             Cancel
           </button>
           <button className="btn btn-primary" onClick={() => save(false)} disabled={saving}>
-            {saving ? "Saving…" : "Save"}
+            {saving ? "Saving…" : "Save and close"}
           </button>
         </>
       }

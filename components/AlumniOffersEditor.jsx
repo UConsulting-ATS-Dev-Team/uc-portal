@@ -50,6 +50,18 @@ export function AlumniHelpSection() {
       .finally(() => setLoaded(true));
   }, []);
 
+  // Saves a moment after the last change, so leaving the page without pressing Save loses nothing. The button still works.
+  const [dirty, setDirty] = useState(false);
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const timer = setTimeout(() => {
+      setDirty(false);
+      save();
+    }, 1500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dirty, offer]);
+
   async function save() {
     setStatus({ kind: "saving" });
     try {
@@ -67,7 +79,7 @@ export function AlumniHelpSection() {
         <p className="meta">Loading…</p>
       ) : (
         <>
-          <AlumniOffersEditor topics={offer.topics} availability={offer.availability} onChange={({ topics, availability }) => { setOffer({ topics, availability }); setStatus(null); }} idPrefix="profile" />
+          <AlumniOffersEditor topics={offer.topics} availability={offer.availability} onChange={({ topics, availability }) => { setOffer({ topics, availability }); setStatus(null); setDirty(true); }} idPrefix="profile" />
           <div style={{ marginTop: "var(--space-5)", display: "flex", gap: "var(--space-4)", alignItems: "center" }}>
             <button className="btn btn-primary" type="button" onClick={save} disabled={status?.kind === "saving"}>
               {status?.kind === "saving" ? "Saving…" : "Save"}

@@ -93,7 +93,7 @@ function ManageModal({ presets, onClose, onChanged }) {
   }
 
   return (
-    <Modal title="Senders" onClose={onClose} width={620} footer={<button className="btn btn-secondary" onClick={onClose}>Done</button>}>
+    <Modal title="Senders" onClose={onClose} width={620} guard={false} footer={<button className="btn btn-secondary" onClick={onClose}>Done</button>}>
       <p className="meta" style={{ marginTop: 0 }}>
         A sender is the name recipients see and the address their replies go to. Every email still goes out from the club's one email address.
       </p>

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import "../styles/modal.css";
 
 const FOCUSABLE_SELECTOR =
@@ -13,10 +13,17 @@ const FOCUSABLE_SELECTOR =
 // Tab could escape the modal into the (still-visible, not scroll-
 // locked) page behind it, and closing a modal never returned focus to
 // whatever triggered it, both real gaps for keyboard/screen-reader use.
-// Still deliberately no confirm-on-dirty prompt -- unrelated to keyboard
-// operability, a separate simplification kept as-is.
-export default function Modal({ title, onClose, children, footer, width = 600 }) {
+//
+// Accidental dismissal is guarded: once something inside a form has been typed or changed, Escape, a click on the dimmed backdrop
+// and the corner X ask "Discard your changes?" instead of closing. The footer's own Cancel and Save buttons call the page's
+// onClose directly, so they are never asked. A pop-up that only searches or picks (nothing to lose) passes `guard={false}`.
+export default function Modal({ title, onClose, children, footer, width = 600, guard = true }) {
   const modalRef = useRef(null);
+  const touchedRef = useRef(false);
+  const requestClose = useCallback(() => {
+    if (guard && touchedRef.current && !window.confirm("Discard your changes?")) return;
+    onClose();
+  }, [guard, onClose]);
   const previouslyFocusedRef = useRef(null);
 
   // The page behind is dimmed by the backdrop and should not scroll under the dialog either: the modal is the only
@@ -37,7 +44,7 @@ export default function Modal({ title, onClose, children, footer, width = 600 })
 
     function onKeyDown(e) {
       if (e.key === "Escape") {
-        onClose();
+        requestClose();
         return;
       }
       if (e.key !== "Tab" || !modalRef.current) return;
@@ -67,14 +74,14 @@ export default function Modal({ title, onClose, children, footer, width = 600 })
         returnTarget.focus();
       }
     };
-  }, [onClose]);
+  }, [requestClose]);
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" style={{ width }} onClick={(e) => e.stopPropagation()} ref={modalRef} tabIndex={-1}>
+    <div className="modal-backdrop" onClick={requestClose}>
+      <div className="modal" style={{ width }} onClick={(e) => e.stopPropagation()} onInputCapture={() => (touchedRef.current = true)} onChangeCapture={() => (touchedRef.current = true)} ref={modalRef} tabIndex={-1}>
         <div className="modal__title-row">
           <h2 style={{ margin: 0 }}>{title}</h2>
-          <button className="modal__close" onClick={onClose} aria-label="Close">
+          <button className="modal__close" onClick={requestClose} aria-label="Close">
             ✕
           </button>
         </div>

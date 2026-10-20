@@ -521,7 +521,7 @@ export default function Messages() {
       )}
 
       {showNewPicker && (
-        <Modal title="New conversation" onClose={() => setShowNewPicker(false)} width={420}>
+        <Modal title="New conversation" onClose={() => setShowNewPicker(false)} width={420} guard={false}>
           {messageable.length === 0 && <p className="meta">No other real UC Portal accounts exist yet to message.</p>}
           {messageable.length > 8 && (
             <input

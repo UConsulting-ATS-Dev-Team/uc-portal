@@ -139,7 +139,7 @@ function EventModal({ editing, seriesCount, onClose, onSaved }) {
             Cancel
           </button>
           <button className="btn btn-primary" onClick={save} disabled={saving}>
-            {saving ? "Saving…" : editing ? "Save" : repeating && dates.length > 1 ? `Add ${dates.length} events` : "Add event"}
+            {saving ? "Saving…" : editing ? "Save and close" : repeating && dates.length > 1 ? `Add ${dates.length} events` : "Add event"}
           </button>
         </>
       }

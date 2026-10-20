@@ -211,7 +211,7 @@ export default function AdminLibrary() {
                 Cancel
               </button>
               <button className="btn btn-primary" onClick={saveResource} disabled={saving}>
-                {saving ? "Saving…" : editingResourceId ? "Save" : "Add resource"}
+                {saving ? "Saving…" : editingResourceId ? "Save and close" : "Add resource"}
               </button>
             </>
           }

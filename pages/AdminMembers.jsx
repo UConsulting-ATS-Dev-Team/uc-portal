@@ -151,7 +151,7 @@ function EditModal({ account, onClose, onSaved }) {
             Cancel
           </button>
           <button className="btn btn-primary" onClick={save} disabled={saving}>
-            {saving ? "Saving…" : "Save"}
+            {saving ? "Saving…" : "Save and close"}
           </button>
         </>
       }
