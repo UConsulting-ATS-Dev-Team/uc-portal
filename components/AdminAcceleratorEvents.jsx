@@ -228,21 +228,27 @@ function EventModal({ editing, seriesCount, onClose, onSaved }) {
   );
 }
 
-// Marking who came: "Not recorded" (no row), "Attended" or "Absent". An intern's own tracker reads these, and a
-// photo an intern submitted shows beside their name, where the committee can confirm it or change the mark.
-function AttendancePanel({ event }) {
+// Marking who came, in a pop-up: each intern is "Not recorded" (no row), "Attended" or "Absent". Changes are held until
+// "Save and close", so a slip can be backed out of with Cancel. An intern's own tracker reads these marks, and a photo an intern
+// submitted shows beside their name, where the committee can confirm it or change the mark.
+function AttendanceModal({ event, onClose }) {
   const [interns, setInterns] = useState(null);
   const [records, setRecords] = useState(new Map());
+  const [draft, setDraft] = useState(new Map()); // memberId -> "" | "yes" | "no"
   const [error, setError] = useState(null);
-  const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const toValue = (record) => (record === undefined ? "" : record.attended ? "yes" : "no");
 
   useEffect(() => {
     let cancelled = false;
     Promise.all([fetchInterns(), fetchAttendanceForEvent(event.id)])
       .then(([i, a]) => {
         if (cancelled) return;
+        const byProfile = new Map(a.map((r) => [r.profile_id, r]));
         setInterns(i);
-        setRecords(new Map(a.map((r) => [r.profile_id, r])));
+        setRecords(byProfile);
+        setDraft(new Map(i.map((intern) => [intern.memberId, toValue(byProfile.get(intern.memberId))])));
       })
       .catch((e) => !cancelled && setError(e.message));
     return () => {
@@ -250,64 +256,75 @@ function AttendancePanel({ event }) {
     };
   }, [event.id]);
 
-  async function mark(profileId, value) {
+  const changed = (interns ?? []).filter((i) => draft.get(i.memberId) !== toValue(records.get(i.memberId)));
+  const count = (v) => (interns ?? []).filter((i) => draft.get(i.memberId) === v).length;
+
+  function markAllAttended() {
+    setDraft((prev) => {
+      const next = new Map(prev);
+      for (const intern of interns) if (next.get(intern.memberId) === "") next.set(intern.memberId, "yes");
+      return next;
+    });
+  }
+
+  async function saveAndClose() {
+    setSaving(true);
     setError(null);
     try {
-      await setAttendance(event.id, profileId, value);
-      setRecords((prev) => {
-        const next = new Map(prev);
-        const existing = prev.get(profileId);
-        if (value === null) next.delete(profileId);
-        else next.set(profileId, { ...existing, profile_id: profileId, attended: value, source: "admin" });
-        return next;
-      });
+      for (const intern of changed) {
+        const v = draft.get(intern.memberId);
+        await setAttendance(event.id, intern.memberId, v === "" ? null : v === "yes");
+      }
+      onClose();
     } catch (e) {
       setError(e.message);
+      setSaving(false);
     }
   }
 
-  async function markAllAttended() {
-    setBusy(true);
-    setError(null);
-    try {
-      for (const intern of interns) {
-        if (!records.has(intern.memberId)) await mark(intern.memberId, true);
-      }
-    } finally {
-      setBusy(false);
-    }
-  }
+  const when = parseYmd(event.event_date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 
   return (
-    <div style={{ padding: "var(--space-4) var(--space-5)", background: "var(--color-ground)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", marginBottom: "var(--space-3)", flexWrap: "wrap" }}>
-        <div style={{ flex: 1 }}>
-          <p style={{ fontWeight: 700, margin: 0 }}>Attendance</p>
-          <p className="meta" style={{ margin: 0 }}>{METHOD_LABEL[event.attendance_method]}</p>
-        </div>
-        {interns && interns.length > 0 && (
-          <button type="button" className="btn btn-secondary" onClick={markAllAttended} disabled={busy}>
-            Mark everyone not yet recorded as attended
+    <Modal
+      title={`Attendance: ${event.title}`}
+      onClose={onClose}
+      width={640}
+      footer={
+        <>
+          <button className="btn btn-secondary" onClick={onClose} disabled={saving}>
+            Cancel
           </button>
-        )}
-      </div>
+          <button className="btn btn-primary" onClick={saveAndClose} disabled={saving || interns === null}>
+            {saving ? "Saving…" : "Save and close"}
+          </button>
+        </>
+      }
+    >
+      <p className="meta" style={{ marginTop: 0 }}>
+        {when} · {METHOD_LABEL[event.attendance_method]}
+        {interns && interns.length > 0 && ` · ${count("yes")} attended, ${count("no")} absent, ${count("")} not recorded`}
+      </p>
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
-      {interns === null && <p className="meta">Loading…</p>}
+      {interns === null && !error && <p className="meta">Loading…</p>}
       {interns?.length === 0 && <p className="meta">No intern accounts yet.</p>}
+      {interns && interns.length > 0 && (
+        <button type="button" className="btn btn-secondary" onClick={markAllAttended} disabled={count("") === 0} style={{ marginBottom: "var(--space-3)" }}>
+          Mark everyone not yet recorded as attended
+        </button>
+      )}
       {interns?.map((intern) => {
         const record = records.get(intern.memberId);
-        const value = record === undefined ? "" : record.attended ? "yes" : "no";
         return (
           <div key={intern.memberId} style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", padding: "var(--space-2) 0" }}>
             {record?.photo_path && <AcceleratorEventPhoto path={record.photo_path} />}
             <span style={{ flex: 1, minWidth: 0 }}>
-              {intern.displayName} <span className="meta">({intern.email})</span>
+              {intern.displayName}
               {record?.source === "photo" && <span className="accel-tag" style={{ marginLeft: "var(--space-3)" }}>Photo submitted</span>}
             </span>
             <select
               aria-label={`Attendance for ${intern.displayName}`}
-              value={value}
-              onChange={(e) => mark(intern.memberId, e.target.value === "" ? null : e.target.value === "yes")}
+              value={draft.get(intern.memberId) ?? ""}
+              onChange={(e) => setDraft((prev) => new Map(prev).set(intern.memberId, e.target.value))}
             >
               <option value="">Not recorded</option>
               <option value="yes">Attended</option>
@@ -316,7 +333,7 @@ function AttendancePanel({ event }) {
           </div>
         );
       })}
-    </div>
+    </Modal>
   );
 }
 
@@ -415,8 +432,8 @@ export default function AdminAcceleratorEvents() {
                   </div>
                 </div>
                 <span className={`accel-tag${event.required ? "" : " accel-tag--optional"}`}>{event.required ? "Required" : "Optional"}</span>
-                <button className="btn btn-secondary" onClick={() => setOpenId(openId === event.id ? null : event.id)}>
-                  {openId === event.id ? "Close" : "Attendance"}
+                <button className="btn btn-secondary" onClick={() => setOpenId(event.id)}>
+                  Attendance
                 </button>
                 <button className="btn-link" onClick={() => setModal({ editing: event })}>
                   Edit
@@ -430,7 +447,6 @@ export default function AdminAcceleratorEvents() {
                   </button>
                 )}
               </div>
-              {openId === event.id && <AttendancePanel event={event} />}
             </div>
           );
         })}
@@ -443,6 +459,7 @@ export default function AdminAcceleratorEvents() {
       </div>
 
     </CollapsibleSection>
+      {openId && events.find((e) => e.id === openId) && <AttendanceModal event={events.find((e) => e.id === openId)} onClose={() => setOpenId(null)} />}
       {modal && (
         <EventModal
           editing={modal.editing}
