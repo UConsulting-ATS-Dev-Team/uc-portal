@@ -369,3 +369,21 @@ describe("assignments are due at the weekly accelerator", () => {
     expect(L.lessonOpensAt(1, lessons, submitted, null, at(2026, 10, 10)).open).toBe(true);
   });
 });
+
+describe("submission timing", () => {
+  const lesson = { lesson_date: "2026-10-14", due_date: "2026-10-19", due_time: "18:00" };
+  const before = new Date(2026, 9, 18, 12, 0);
+  const after = new Date(2026, 9, 20, 12, 0);
+  it("is pending before the due time and missing after it", () => {
+    expect(L.submissionTiming(lesson, null, null, before)).toBe("pending");
+    expect(L.submissionTiming(lesson, null, null, after)).toBe("missing");
+  });
+  it("is late only when handed in after the due time", () => {
+    expect(L.submissionTiming(lesson, { submitted_at: new Date(2026, 9, 18, 9, 0).toISOString() }, null, after)).toBe("ontime");
+    expect(L.submissionTiming(lesson, { submitted_at: new Date(2026, 9, 19, 19, 0).toISOString() }, null, after)).toBe("late");
+  });
+  it("does not call a fix after the committee sent work back late", () => {
+    const resub = { submitted_at: new Date(2026, 9, 25, 9, 0).toISOString(), graded_by: "x", status: null };
+    expect(L.submissionTiming(lesson, resub, null, new Date(2026, 9, 26))).toBe("ontime");
+  });
+});

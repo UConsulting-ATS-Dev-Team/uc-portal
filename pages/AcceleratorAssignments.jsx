@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { fetchMaterials, materialHref, submitAssignment, uploadSubmissionFile } from "../data/acceleratorSync.js";
+import { fetchMaterials, materialHref, submissionFiles, submitAssignment, uploadSubmissionFile } from "../data/acceleratorSync.js";
 import { assignmentProgress, daysUntil, dueWording, formatDue, lessonDue, lessonOpensAt, submissionState, ymd } from "../data/acceleratorLogic.js";
 import { useAcceleratorData } from "../data/useAcceleratorData.js";
 import AcceleratorTabs from "../components/AcceleratorTabs.jsx";
@@ -62,11 +62,17 @@ function LessonMaterials({ lessonId }) {
 function SubmissionForm({ lesson, submission, onSubmitted }) {
   const [body, setBody] = useState(submission?.body || "");
   const [linkUrl, setLinkUrl] = useState(submission?.link_url || "");
-  const [file, setFile] = useState(null);
+  // Files already on the submission (each can be taken off) and files picked but not sent yet.
+  const [keptFiles, setKeptFiles] = useState(() => submissionFiles(submission));
+  const [newFiles, setNewFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const state = submissionState(submission);
   const locked = state === "complete";
+
+  useEffect(() => {
+    setKeptFiles(submissionFiles(submission));
+  }, [submission?.id, submission?.submitted_at]);
 
   const linkLooksValid = !linkUrl.trim() || /^https?:\/\/\S+$/i.test(linkUrl.trim());
 
@@ -79,15 +85,13 @@ function SubmissionForm({ lesson, submission, onSubmitted }) {
     setSubmitting(true);
     setError(null);
     try {
-      let filePath = submission?.file_path ?? null;
-      let fileName = submission?.file_name ?? null;
-      if (file) {
+      const files = [...keptFiles];
+      for (const file of newFiles) {
         const uploaded = await uploadSubmissionFile(file);
-        filePath = uploaded.path;
-        fileName = uploaded.fileName;
+        files.push({ path: uploaded.path, name: uploaded.fileName });
       }
-      await submitAssignment(lesson.id, { body, linkUrl, filePath, fileName });
-      setFile(null);
+      await submitAssignment(lesson.id, { body, linkUrl, files });
+      setNewFiles([]);
       await onSubmitted();
     } catch (err) {
       setError(err.message);
@@ -128,14 +132,41 @@ function SubmissionForm({ lesson, submission, onSubmitted }) {
         </div>
         {!locked && (
           <div className="field">
-            <label htmlFor={`file-${lesson.id}`}>Or upload a file</label>
-            <input id={`file-${lesson.id}`} type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            <label htmlFor={`file-${lesson.id}`}>Or upload files</label>
+            <input
+              id={`file-${lesson.id}`}
+              type="file"
+              multiple
+              onChange={(e) => {
+                setNewFiles((prev) => [...prev, ...Array.from(e.target.files ?? [])]);
+                e.target.value = "";
+              }}
+            />
+            {(keptFiles.length > 0 || newFiles.length > 0) && (
+              <ul className="accel-submit__files">
+                {keptFiles.map((f) => (
+                  <li key={f.path}>
+                    {f.name}
+                    <button type="button" className="btn-link" onClick={() => setKeptFiles(keptFiles.filter((k) => k.path !== f.path))}>
+                      Remove
+                    </button>
+                  </li>
+                ))}
+                {newFiles.map((f, i) => (
+                  <li key={`${f.name}-${i}`}>
+                    {f.name} <span className="meta">(not sent yet)</span>
+                    <button type="button" className="btn-link" onClick={() => setNewFiles(newFiles.filter((_, j) => j !== i))}>
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
         {!locked && (
           <p className="meta accel-submit__hint">
-            Set a linked doc to "anyone with the link can view" so the committee can open it. Files can be Word, Excel, PowerPoint or PDF.
-            {submission?.file_name && !file && ` Currently attached: ${submission.file_name}.`}
+            Set a linked doc to "anyone with the link can view" so the committee can open it. Files can be Word, Excel, PowerPoint or PDF, and you can add more than one.
           </p>
         )}
         <div className="field accel-submit__notes">
@@ -143,10 +174,10 @@ function SubmissionForm({ lesson, submission, onSubmitted }) {
           <textarea id={`notes-${lesson.id}`} rows={2} value={body} disabled={locked} onChange={(e) => setBody(e.target.value)} />
         </div>
       </div>
-      {locked && submission?.file_name && <p className="meta">Attached: {submission.file_name}</p>}
+      {locked && keptFiles.length > 0 && <p className="meta">Attached: {keptFiles.map((f) => f.name).join(", ")}</p>}
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
       {!locked && (
-        <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting || (!linkUrl.trim() && !body.trim() && !file && !submission?.file_path)}>
+        <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting || (!linkUrl.trim() && !body.trim() && newFiles.length === 0 && keptFiles.length === 0)}>
           {submitting ? "Submitting…" : state === "incomplete" ? "Resubmit" : submission ? "Update submission" : "Submit"}
         </button>
       )}

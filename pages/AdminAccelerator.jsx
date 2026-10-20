@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "../data/supabaseClient.js";
 import {
   fetchLessons,
@@ -11,8 +12,7 @@ import {
   addMaterialLink,
   deleteMaterial,
   fetchSubmissionsForLesson,
-  getSubmissionFileSignedUrl,
-  gradeSubmission,
+  fetchInterns,
   fetchInternRoster,
   addInternRosterEntry,
   removeInternRosterEntry,
@@ -25,7 +25,7 @@ import {
   fetchEvents,
   createEventSeries,
 } from "../data/acceleratorSync.js";
-import SubmissionCommentThread from "../components/SubmissionCommentThread.jsx";
+import AdminSubmissions from "../components/AdminSubmissions.jsx";
 import AdminAcceleratorEvents from "../components/AdminAcceleratorEvents.jsx";
 import Modal from "../components/Modal.jsx";
 import CollapsibleSection from "../components/CollapsibleSection.jsx";
@@ -361,79 +361,10 @@ function InternRoster() {
   );
 }
 
-// Marked complete (looks decent, real effort) or incomplete (unfinished or poor), with comments the intern sees. No number.
-function GradeRow({ submission, displayName, namesById, onGraded }) {
-  const [status, setStatus] = useState(submission.status ?? "");
-  const [feedback, setFeedback] = useState(submission.feedback ?? "");
-  const [error, setError] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [fileUrl, setFileUrl] = useState(null);
+// A link that opens one intern's work on one lesson (the Accelerator page reads these two query values).
+const workLink = (lessonId, memberId) => `/admin/accelerator?lesson=${lessonId}&intern=${memberId}`;
 
-  useEffect(() => {
-    if (submission.file_path) {
-      getSubmissionFileSignedUrl(submission.file_path).then(setFileUrl).catch(() => {});
-    }
-  }, [submission.file_path]);
-
-  async function save() {
-    if (!status) {
-      setError("Choose complete or incomplete.");
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      await gradeSubmission(submission.id, { status, feedback });
-      onGraded();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <>
-      <tr>
-        <td>{displayName}</td>
-        <td className="meta">{new Date(submission.submitted_at).toLocaleDateString()}</td>
-        <td style={{ maxWidth: 280, whiteSpace: "pre-wrap" }}>{submission.body || <span className="meta">No written response.</span>}</td>
-        <td>
-          {fileUrl ? (
-            <a href={fileUrl} target="_blank" rel="noreferrer">
-              {submission.file_name}
-            </a>
-          ) : submission.file_path ? (
-            "Loading…"
-          ) : (
-            <span className="meta">None</span>
-          )}
-        </td>
-        <td>
-          <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="">Not reviewed</option>
-            <option value="complete">Complete</option>
-            <option value="incomplete">Incomplete</option>
-          </select>
-        </td>
-        <td>
-          <input type="text" value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Comments for the intern" />
-          {error && <div className="meta" style={{ color: "var(--color-danger)" }}>{error}</div>}
-        </td>
-        <td>
-          <button className="btn btn-secondary" onClick={save} disabled={saving}>
-            {saving ? "Saving…" : submission.graded_at ? "Update" : "Save"}
-          </button>
-        </td>
-      </tr>
-      <tr>
-        <td colSpan={7} style={{ background: "var(--color-ground)" }}>
-          <SubmissionCommentThread submissionId={submission.id} resolveAuthorName={(id) => namesById.get(id) ?? id} />
-        </td>
-      </tr>
-    </>
-  );
-}
+const needsAttention = (p) => p.assignmentsIncomplete > 0 || p.assignmentsMissing > 0 || p.weeksBehindOnChats > 0 || p.noSocials;
 
 function InternProgress() {
   const [progress, setProgress] = useState(null);
@@ -449,7 +380,7 @@ function InternProgress() {
       <p className="meta">
         {progress === null
           ? "Loading…"
-          : `${progress.length} intern${progress.length === 1 ? "" : "s"}${progress.filter((p) => p.assignmentsIncomplete > 0 || p.weeksBehindOnChats > 0 || p.noSocials).length ? `, ${progress.filter((p) => p.assignmentsIncomplete > 0 || p.weeksBehindOnChats > 0 || p.noSocials).length} need attention` : ""}`}
+          : `${progress.length} intern${progress.length === 1 ? "" : "s"}${progress.filter(needsAttention).length ? `, ${progress.filter(needsAttention).length} need attention` : ""}`}
       </p>
       {error && <p className="meta" style={{ color: "var(--color-danger)" }}>{error}</p>}
       <div className="queue-table__scroll">
@@ -488,7 +419,24 @@ function InternProgress() {
                 <td>
                   {p.assignmentsComplete} / {p.totalLessons}
                   {p.assignmentsIncomplete > 0 && <span className="meta" style={{ color: "var(--color-danger)" }}> · {p.assignmentsIncomplete} incomplete</span>}
-                  {p.assignmentsAwaiting > 0 && <span className="meta"> · {p.assignmentsAwaiting} to review</span>}
+                  {p.assignmentsAwaiting > 0 && (
+                    <span className="meta">
+                      {" · "}
+                      <Link to={workLink(p.reviewLessonId, p.memberId)}>{p.assignmentsAwaiting} to review</Link>
+                    </span>
+                  )}
+                  {p.assignmentsMissing > 0 && (
+                    <span className="meta" style={{ color: "var(--color-danger)" }}>
+                      {" · "}
+                      <Link to={workLink(p.missingLessonId, p.memberId)} style={{ color: "inherit" }}>{p.assignmentsMissing} missing</Link>
+                    </span>
+                  )}
+                  {p.assignmentsLate > 0 && (
+                    <span className="meta">
+                      {" · "}
+                      <Link to={workLink(p.lateLessonId, p.memberId)}>{p.assignmentsLate} late</Link>
+                    </span>
+                  )}
                 </td>
                 <td>
                   {p.chatsCounted} / {p.chatsTarget}
@@ -509,7 +457,7 @@ function InternProgress() {
   );
 }
 
-function LessonManager({ lesson, onChanged }) {
+function LessonManager({ lesson, schedule, focusIntern, onChanged }) {
   const [materials, setMaterials] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [linkLabel, setLinkLabel] = useState("");
@@ -517,6 +465,7 @@ function LessonManager({ lesson, onChanged }) {
   const [addingLink, setAddingLink] = useState(false);
   const [submissions, setSubmissions] = useState([]);
   const [namesById, setNamesById] = useState(new Map());
+  const [interns, setInterns] = useState([]);
   const [error, setError] = useState(null);
 
   function loadMaterials() {
@@ -531,19 +480,29 @@ function LessonManager({ lesson, onChanged }) {
   useEffect(() => {
     loadMaterials();
     loadSubmissions();
+    fetchInterns().then(setInterns).catch(() => {});
     supabase.rpc("list_members").then(({ data }) => {
       setNamesById(new Map((data ?? []).map((m) => [m.member_id, m.display_name === m.email ? m.email : `${m.display_name} (${m.email})`])));
     });
   }, [lesson.id]);
 
   async function handleUpload(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const picked = Array.from(e.target.files ?? []);
+    if (picked.length === 0) return;
     setUploading(true);
     setError(null);
+    const failures = [];
     try {
-      await uploadMaterial(lesson.id, file);
+      // One at a time so a bad file doesn't stop the rest; any that failed are named afterwards.
+      for (const file of picked) {
+        try {
+          await uploadMaterial(lesson.id, file);
+        } catch (err) {
+          failures.push(`${file.name}: ${err.message}`);
+        }
+      }
       loadMaterials();
+      if (failures.length) setError(`Some files didn't upload: ${failures.join("; ")}`);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -593,7 +552,7 @@ function LessonManager({ lesson, onChanged }) {
         ))}
         {materials.length === 0 && <li className="meta">Nothing added yet.</li>}
       </ul>
-      <input type="file" onChange={handleUpload} disabled={uploading} accept=".pdf,.ppt,.pptx,.xls,.xlsx" />
+      <input type="file" multiple onChange={handleUpload} disabled={uploading} accept=".pdf,.ppt,.pptx,.xls,.xlsx" />
 
       <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "flex-end", marginTop: "var(--space-4)" }}>
         <div className="field" style={{ flex: "1 1 180px", marginBottom: 0 }}>
@@ -609,34 +568,7 @@ function LessonManager({ lesson, onChanged }) {
         </button>
       </div>
 
-      <p style={{ fontWeight: 700, marginTop: "var(--space-6)" }}>Submissions ({submissions.length})</p>
-      <div className="queue-table__scroll">
-        <table className="queue-table">
-          <thead>
-            <tr>
-              <th>Intern</th>
-              <th>Submitted</th>
-              <th>Notes</th>
-              <th>Work</th>
-              <th>Status</th>
-              <th>Comments</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {submissions.map((s) => (
-              <GradeRow key={`${s.id}-${s.graded_at ?? ""}-${s.submitted_at}`} submission={s} displayName={namesById.get(s.profile_id) ?? s.profile_id} namesById={namesById} onGraded={loadSubmissions} />
-            ))}
-            {submissions.length === 0 && (
-              <tr>
-                <td colSpan={7} className="meta">
-                  No one has submitted yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <AdminSubmissions lesson={lesson} schedule={schedule} submissions={submissions} interns={interns} namesById={namesById} focusIntern={focusIntern} onGraded={loadSubmissions} />
     </div>
   );
 }
@@ -815,8 +747,17 @@ export default function AdminAccelerator() {
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lessonModal, setLessonModal] = useState(null); // null | { editing: lesson | null }
-  const [selectedId, setSelectedId] = useState(null);
+  const [searchParams] = useSearchParams();
+  const [selectedId, setSelectedId] = useState(searchParams.get("lesson"));
   const [error, setError] = useState(null);
+
+  // A link from the progress table (?lesson=<id>&intern=<id>) opens that lesson's Manage panel on that intern's work.
+  const linkedLesson = searchParams.get("lesson");
+  const linkedIntern = searchParams.get("intern");
+  useEffect(() => {
+    if (!linkedLesson) return;
+    setSelectedId(linkedLesson);
+  }, [linkedLesson, linkedIntern]);
 
   function load() {
     setLoading(true);
@@ -898,7 +839,7 @@ export default function AdminAccelerator() {
               </div>
             </div>
             {lesson.topic_overview && <p className="lesson-card__desc">{lesson.topic_overview}</p>}
-            {selectedId === lesson.id && <LessonManager lesson={lesson} onChanged={load} />}
+            {selectedId === lesson.id && <LessonManager lesson={lesson} schedule={schedule} focusIntern={linkedLesson === lesson.id ? linkedIntern : null} onChanged={load} />}
           </div>
         ))}
       </CollapsibleSection>

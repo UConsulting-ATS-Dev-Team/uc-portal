@@ -1,6 +1,6 @@
 import { supabase } from "./supabaseClient.js";
 import { fetchAllRows } from "./fetchAllRows.js";
-import { assignmentProgress, attendanceProgress, coffeeChatProgress, lessonDue, lessonOpensAt, programPeriods } from "./acceleratorLogic.js";
+import { assignmentProgress, attendanceProgress, coffeeChatProgress, lessonDue, lessonOpensAt, programPeriods, submissionTiming } from "./acceleratorLogic.js";
 
 // Real accelerator program (freshmen onboarding) -- see the
 // intern_accelerator migration's own header comment for the full
@@ -67,7 +67,14 @@ export async function uploadSubmissionFile(file) {
 
 // One real row per (lesson, intern) -- upsert so resubmitting before
 // grading just replaces it, rather than growing a history no one reads.
-export async function submitAssignment(lessonId, { body, linkUrl, filePath, fileName }) {
+// The files on a submission: the `files` list, or the single file older rows have.
+export function submissionFiles(submission) {
+  if (!submission) return [];
+  if (Array.isArray(submission.files) && submission.files.length) return submission.files;
+  return submission.file_path ? [{ path: submission.file_path, name: submission.file_name || "File" }] : [];
+}
+
+export async function submitAssignment(lessonId, { body, linkUrl, files }) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -75,7 +82,7 @@ export async function submitAssignment(lessonId, { body, linkUrl, filePath, file
   const { data, error } = await supabase
     .from("accelerator_submissions")
     .upsert(
-      { lesson_id: lessonId, profile_id: user.id, body: body?.trim() || null, link_url: linkUrl?.trim() || null, file_path: filePath ?? null, file_name: fileName ?? null, submitted_at: new Date().toISOString() },
+      { lesson_id: lessonId, profile_id: user.id, body: body?.trim() || null, link_url: linkUrl?.trim() || null, files: files ?? [], file_path: files?.[0]?.path ?? null, file_name: files?.[0]?.name ?? null, submitted_at: new Date().toISOString() },
       { onConflict: "lesson_id,profile_id" }
     )
     .select()
@@ -119,12 +126,13 @@ export async function deleteLesson(id) {
   // bucket) must not block deleting the lesson itself.
   const [{ data: materials }, { data: submissions }] = await Promise.all([
     supabase.from("accelerator_materials").select("file_path").eq("lesson_id", id),
-    supabase.from("accelerator_submissions").select("file_path").eq("lesson_id", id),
+    supabase.from("accelerator_submissions").select("file_path, files").eq("lesson_id", id),
   ]);
   const materialPaths = (materials ?? []).map((m) => m.file_path).filter(Boolean);
-  const submissionPaths = (submissions ?? []).map((s) => s.file_path).filter(Boolean);
+  const submissionPaths = (submissions ?? []).flatMap((s) => [s.file_path, ...(s.files ?? []).map((f) => f.path)]).filter(Boolean);
+  const uniqueSubmissionPaths = [...new Set(submissionPaths)];
   if (materialPaths.length) await supabase.storage.from("accelerator-materials").remove(materialPaths);
-  if (submissionPaths.length) await supabase.storage.from("accelerator-submissions").remove(submissionPaths);
+  if (uniqueSubmissionPaths.length) await supabase.storage.from("accelerator-submissions").remove(uniqueSubmissionPaths);
 
   const { error } = await supabase.from("accelerator_lessons").delete().eq("id", id);
   if (error) throw new Error(error.message);
@@ -224,7 +232,29 @@ export async function fetchInternProgress() {
     );
     const ownChats = allChats.filter((c) => c.profile_id === intern.member_id);
     const chats = coffeeChatProgress(ownChats, programPeriods(events, { lessons, chats: ownChats, schedule }), new Date());
+    // Where an admin should look: the first piece of work waiting for review, and the first missing or late one.
+    const now = new Date();
+    const lessonIds = { review: null, missing: null, late: null };
+    let missing = 0;
+    let late = 0;
+    for (const lesson of lessons) {
+      const sub = own.find((s) => s.lesson_id === lesson.id);
+      const timing = submissionTiming(lesson, sub, schedule, now);
+      if (sub && !sub.status) lessonIds.review ??= lesson.id;
+      if (timing === "missing") {
+        missing += 1;
+        lessonIds.missing ??= lesson.id;
+      } else if (timing === "late") {
+        late += 1;
+        lessonIds.late ??= lesson.id;
+      }
+    }
     return {
+      assignmentsMissing: missing,
+      assignmentsLate: late,
+      reviewLessonId: lessonIds.review,
+      missingLessonId: lessonIds.missing,
+      lateLessonId: lessonIds.late,
       assignmentsComplete: assignments.complete,
       assignmentsIncomplete: assignments.incomplete,
       assignmentsAwaiting: assignments.awaitingReview,
