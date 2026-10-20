@@ -752,16 +752,21 @@ export default function AdminAccelerator() {
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lessonModal, setLessonModal] = useState(null); // null | { editing: lesson | null }
-  const [searchParams] = useSearchParams();
-  const [selectedId, setSelectedId] = useState(searchParams.get("lesson"));
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedId, setSelectedId] = useState(null);
+  // Which intern's work to highlight, only for the visit that came from a link in the progress table.
+  const [focus, setFocus] = useState(null); // { lessonId, internId }
   const [error, setError] = useState(null);
 
-  // A link from the progress table (?lesson=<id>&intern=<id>) opens that lesson's Manage panel on that intern's work.
+  // A link from the progress table (?lesson=<id>&intern=<id>) opens that lesson's panel on that intern's work. The values are
+  // used once and then removed from the address, so opening a lesson later by hand doesn't highlight the same person again.
   const linkedLesson = searchParams.get("lesson");
   const linkedIntern = searchParams.get("intern");
   useEffect(() => {
     if (!linkedLesson) return;
     setSelectedId(linkedLesson);
+    setFocus({ lessonId: linkedLesson, internId: linkedIntern });
+    setSearchParams({}, { replace: true });
   }, [linkedLesson, linkedIntern]);
 
   function load() {
@@ -784,7 +789,9 @@ export default function AdminAccelerator() {
     if (createdId) setSelectedId(createdId);
   }
 
-  async function removeLesson(id) {
+  async function removeLesson(lesson) {
+    if (!window.confirm(`Delete "${lesson.title}"? This also removes its prep material and every submission for it, and can't be undone.`)) return;
+    const id = lesson.id;
     await deleteLesson(id);
     if (selectedId === id) setSelectedId(null);
     load();
@@ -832,13 +839,16 @@ export default function AdminAccelerator() {
                 );
               })()}
               <div className="lesson-card__actions">
-                <button className="btn btn-secondary" onClick={() => setSelectedId(selectedId === lesson.id ? null : lesson.id)}>
+                <button className="btn btn-secondary" onClick={() => {
+                  setFocus(null);
+                  setSelectedId(selectedId === lesson.id ? null : lesson.id);
+                }}>
                   {selectedId === lesson.id ? "Hide Submissions" : "View Submissions"}
                 </button>
                 <button className="btn btn-secondary" onClick={() => setLessonModal({ editing: lesson })}>
                   Edit
                 </button>
-                <button className="btn btn-secondary" onClick={() => removeLesson(lesson.id)}>
+                <button className="btn btn-secondary" onClick={() => removeLesson(lesson)}>
                   Delete
                 </button>
               </div>
@@ -849,7 +859,7 @@ export default function AdminAccelerator() {
                 <p>{lesson.topic_overview}</p>
               </div>
             )}
-            {selectedId === lesson.id && <LessonManager lesson={lesson} schedule={schedule} focusIntern={linkedLesson === lesson.id ? linkedIntern : null} onChanged={load} />}
+            {selectedId === lesson.id && <LessonManager lesson={lesson} schedule={schedule} focusIntern={focus?.lessonId === lesson.id ? focus.internId : null} onChanged={load} />}
           </div>
         ))}
       </CollapsibleSection>
