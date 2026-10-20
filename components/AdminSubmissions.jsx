@@ -114,7 +114,7 @@ export function SubmissionDetail({ name, submission, resolveAuthorName, onGraded
         </div>
       </dl>
 
-      <SubmissionCommentThread submissionId={submission.id} resolveAuthorName={resolveAuthorName} hideComposer reloadKey={threadVersion} />
+      <SubmissionCommentThread submissionId={submission.id} resolveAuthorName={resolveAuthorName} hideComposer reloadKey={threadVersion} isAdmin />
 
       <div className="sub-item__grade">
         <select aria-label={`Status for ${name}`} value={status} onChange={(e) => changeStatus(e.target.value)}>

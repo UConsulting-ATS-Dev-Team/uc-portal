@@ -385,6 +385,16 @@ export async function fetchSubmissionComments(submissionId) {
   return data ?? [];
 }
 
+export async function updateSubmissionComment(id, body) {
+  const { error } = await supabase.from("accelerator_submission_comments").update({ body: body.trim() }).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteSubmissionComment(id) {
+  const { error } = await supabase.from("accelerator_submission_comments").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 export async function addSubmissionComment(submissionId, body) {
   const {
     data: { user },
