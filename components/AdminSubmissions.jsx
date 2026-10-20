@@ -121,23 +121,29 @@ export function SubmissionDetail({ name, submission, resolveAuthorName, onGraded
 }
 
 // One intern's work for one lesson. Collapsed to a single line; opening it shows the work, the status and the comments.
-function SubmissionItem({ name, submission, timing, focused, resolveAuthorName, onGraded }) {
-  const [open, setOpen] = useState(focused);
+function SubmissionItem({ name, submission, timing, linked, active, onActivate, resolveAuthorName, onGraded }) {
+  const [open, setOpen] = useState(linked);
   const ref = useRef(null);
 
   // Arriving from the progress table opens this intern's work and brings it into view.
   useEffect(() => {
-    if (!focused) return;
+    if (!linked) return;
     setOpen(true);
     ref.current?.scrollIntoView({ block: "center" });
-  }, [focused]);
+  }, [linked]);
+
+  function toggle() {
+    if (!submission) return;
+    if (!open) onActivate();
+    setOpen(!open);
+  }
 
   const tag = submission ? statusTag(submission) : null;
   const timingTag = TIMING_TAG[timing];
 
   return (
-    <div ref={ref} className={`sub-item${open ? " is-open" : ""}${focused ? " is-focused" : ""}`}>
-      <button type="button" className="sub-item__head" onClick={() => submission && setOpen(!open)} aria-expanded={submission ? open : undefined} disabled={!submission}>
+    <div ref={ref} className={`sub-item${open ? " is-open" : ""}${active ? " is-focused" : ""}`}>
+      <button type="button" className="sub-item__head" onClick={toggle} aria-expanded={submission ? open : undefined} disabled={!submission}>
         <span className="sub-item__name">{name}</span>
         <span className="sub-item__tags">
           {tag && <span className={tag.className}>{tag.text}</span>}
@@ -160,6 +166,8 @@ function SubmissionItem({ name, submission, timing, focused, resolveAuthorName, 
 // and a Missing tag on anyone who hasn't once it is past due.
 export default function AdminSubmissions({ lesson, schedule, submissions, interns, namesById, focusIntern, onGraded }) {
   const now = new Date();
+  // The outlined line is whichever one was opened most recently (or the one a link from the progress table pointed at).
+  const [activeId, setActiveId] = useState(focusIntern ?? null);
   const byProfile = new Map(submissions.map((s) => [s.profile_id, s]));
   const people = interns.map((i) => ({ id: i.memberId, name: i.displayName }));
   // Someone who submitted but isn't in the intern list (an account since changed) still appears.
@@ -187,7 +195,9 @@ export default function AdminSubmissions({ lesson, schedule, submissions, intern
             name={r.name}
             submission={r.submission}
             timing={submissionTiming(lesson, r.submission, schedule, now)}
-            focused={focusIntern === r.id}
+            linked={focusIntern === r.id}
+            active={activeId === r.id}
+            onActivate={() => setActiveId(r.id)}
             resolveAuthorName={(id) => namesById.get(id) ?? id}
             onGraded={onGraded}
           />
