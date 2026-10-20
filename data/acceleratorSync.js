@@ -239,6 +239,7 @@ export async function fetchInternProgress() {
     const lessonIds = { review: null, missing: null, late: null };
     let missing = 0;
     let late = 0;
+    let lateOpen = 0; // late and not yet marked complete: the ones still worth opening
     for (const lesson of lessons) {
       const sub = own.find((s) => s.lesson_id === lesson.id);
       const timing = submissionTiming(lesson, sub, schedule, now);
@@ -248,12 +249,16 @@ export async function fetchInternProgress() {
         lessonIds.missing ??= lesson.id;
       } else if (timing === "late") {
         late += 1;
-        lessonIds.late ??= lesson.id;
+        if (sub.status !== "complete") {
+          lateOpen += 1;
+          lessonIds.late ??= lesson.id;
+        }
       }
     }
     return {
       assignmentsMissing: missing,
       assignmentsLate: late,
+      assignmentsLateOpen: lateOpen,
       reviewLessonId: lessonIds.review,
       missingLessonId: lessonIds.missing,
       lateLessonId: lessonIds.late,

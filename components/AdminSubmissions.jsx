@@ -226,7 +226,7 @@ export default function AdminSubmissions({ lesson, schedule, submissions, intern
   const rows = people.map((p) => ({ ...p, submission: byProfile.get(p.id) ?? null }));
   const toReview = rows.filter((r) => r.submission && !r.submission.status).length;
   const missing = rows.filter((r) => !r.submission && now > lessonDue(lesson, schedule).date).length;
-  const late = rows.filter((r) => r.submission && submissionTiming(lesson, r.submission, schedule, now) === "late").length;
+  const late = rows.filter((r) => r.submission && r.submission.status !== "complete" && submissionTiming(lesson, r.submission, schedule, now) === "late").length;
 
   return (
     <>

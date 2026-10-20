@@ -153,6 +153,7 @@ function MeetingSchedule({ onEventsCreated }) {
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
+  const [edited, setEdited] = useState(false); // true once the day or time has been changed by hand
 
   useEffect(() => {
     fetchMeetingSchedule()
@@ -167,6 +168,16 @@ function MeetingSchedule({ onEventsCreated }) {
       .catch((e) => setMessage(e.message))
       .finally(() => setLoaded(true));
   }, []);
+
+  // The day and time save by themselves a moment after they are changed. The starting values on a page where nothing has been saved
+  // yet are only a suggestion, so nothing is written until one of them is changed.
+  useEffect(() => {
+    if (!edited || !time) return undefined;
+    if (savedValues && savedValues.weekday === weekday && savedValues.time === time) return undefined;
+    const timer = setTimeout(save, 1000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edited, weekday, time]);
 
   async function save() {
     setSaving(true);
@@ -191,7 +202,10 @@ function MeetingSchedule({ onEventsCreated }) {
       <div style={{ display: "flex", gap: "var(--space-4)", alignItems: "flex-end", flexWrap: "wrap" }}>
         <div className="field" style={{ marginBottom: 0 }}>
           <label htmlFor="meeting-day">Day</label>
-          <select id="meeting-day" value={weekday} onChange={(e) => setWeekday(Number(e.target.value))}>
+          <select id="meeting-day" value={weekday} onChange={(e) => {
+              setWeekday(Number(e.target.value));
+              setEdited(true);
+            }}>
             {WEEKDAYS.map((d, i) => (
               <option key={d} value={i}>
                 {d}
@@ -201,11 +215,15 @@ function MeetingSchedule({ onEventsCreated }) {
         </div>
         <div className="field" style={{ marginBottom: 0 }}>
           <label htmlFor="meeting-time">Time</label>
-          <input id="meeting-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+          <input id="meeting-time" type="time" value={time} onChange={(e) => {
+              setTime(e.target.value);
+              setEdited(true);
+            }} />
         </div>
         <button className="btn btn-primary" onClick={save} disabled={saving || !time}>
           {saving ? "Saving…" : "Save"}
         </button>
+        <span className="meta">Saves automatically</span>
       </div>
       {message && <p className="meta">{message}</p>}
       <CreateWeeklyMeetings weekday={weekday} time={time} ready={Boolean(savedValues) && savedValues.weekday === weekday && savedValues.time === time} onCreated={onEventsCreated} />
@@ -435,10 +453,11 @@ function InternProgress() {
                       <Link to={workLink(p.missingLessonId, p.memberId)} style={{ color: "inherit" }}>{p.assignmentsMissing} missing</Link>
                     </span>
                   )}
+                  {/* Late work that is already marked complete needs nothing, so it is plain text, not a link to open. */}
                   {p.assignmentsLate > 0 && (
                     <span className="meta">
                       {" · "}
-                      <Link to={workLink(p.lateLessonId, p.memberId)}>{p.assignmentsLate} late</Link>
+                      {p.assignmentsLateOpen > 0 ? <Link to={workLink(p.lateLessonId, p.memberId)}>{p.assignmentsLateOpen} late</Link> : `${p.assignmentsLate} late (complete)`}
                     </span>
                   )}
                 </td>
