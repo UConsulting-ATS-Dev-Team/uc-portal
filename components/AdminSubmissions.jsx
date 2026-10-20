@@ -51,21 +51,36 @@ export function SubmissionDetail({ name, submission, resolveAuthorName, onGraded
   const [ownComment, setComment] = useState("");
   const status = controlled ? draft.status : ownStatus;
   const comment = controlled ? draft.comment : ownComment;
-  const changeStatus = (v) => (controlled ? onDraft({ ...draft, status: v }) : setStatus(v));
+  const [statusSaved, setStatusSaved] = useState(false);
+  // Choosing Complete or Incomplete saves on the spot, so a mark is never lost to a forgotten Save. A typed comment still goes
+  // with its own button (or Save and close).
+  async function changeStatus(v) {
+    if (!v) return;
+    const previous = status;
+    if (controlled) onDraft({ ...draft, status: v });
+    else setStatus(v);
+    setError(null);
+    setStatusSaved(false);
+    try {
+      await gradeSubmission(submission.id, { status: v });
+      setStatusSaved(true);
+      onGraded?.();
+    } catch (err) {
+      setError(err.message);
+      if (controlled) onDraft({ ...draft, status: previous });
+      else setStatus(previous);
+    }
+  }
   const changeComment = (v) => (controlled ? onDraft({ ...draft, comment: v }) : setComment(v));
   const [threadVersion, setThreadVersion] = useState(0);
 
   // One click sets the status and, if something is typed, posts it as a comment the intern sees.
   async function save() {
-    if (!status) {
-      setError("Choose complete or incomplete.");
-      return;
-    }
+    if (!comment.trim()) return;
     setSaving(true);
     setError(null);
     try {
-      await gradeSubmission(submission.id, { status });
-      if (comment.trim()) await addSubmissionComment(submission.id, comment);
+      await addSubmissionComment(submission.id, comment);
       setComment("");
       setThreadVersion((v) => v + 1);
       onGraded();
@@ -118,21 +133,22 @@ export function SubmissionDetail({ name, submission, resolveAuthorName, onGraded
 
       <div className="sub-item__grade">
         <select aria-label={`Status for ${name}`} value={status} onChange={(e) => changeStatus(e.target.value)}>
-          <option value="">Not reviewed</option>
+          {!status && <option value="">Not reviewed</option>}
           <option value="complete">Complete</option>
           <option value="incomplete">Incomplete</option>
         </select>
+        {statusSaved && <span className="meta sub-item__saved">Saved ✓</span>}
         <input
           type="text"
           value={comment}
           onChange={(e) => changeComment(e.target.value)}
-          onKeyDown={(e) => !controlled && e.key === "Enter" && status && !saving && save()}
+          onKeyDown={(e) => !controlled && e.key === "Enter" && !saving && save()}
           placeholder="Add a comment for the intern (optional)"
           aria-label={`Comment for ${name}`}
         />
         {!controlled && (
-          <button className="btn btn-secondary" onClick={save} disabled={saving}>
-            {saving ? "Saving…" : comment.trim() ? "Save and send comment" : submission.graded_at ? "Update" : "Save"}
+          <button className="btn btn-secondary" onClick={save} disabled={saving || !comment.trim()}>
+            {saving ? "Sending…" : "Send comment"}
           </button>
         )}
       </div>
@@ -208,7 +224,7 @@ export default function AdminSubmissions({ lesson, schedule, submissions, intern
       <div className="sub-list">
         {rows.map((r) => (
           <SubmissionItem
-            key={`${r.id}-${r.submission?.id ?? "none"}-${r.submission?.graded_at ?? ""}-${r.submission?.submitted_at ?? ""}`}
+            key={`${r.id}-${r.submission?.id ?? "none"}-${r.submission?.submitted_at ?? ""}`}
             name={r.name}
             submission={r.submission}
             timing={submissionTiming(lesson, r.submission, schedule, now)}
@@ -249,20 +265,15 @@ export function ReviewModal({ memberId, name, onClose, onChanged }) {
 
   // Everything marked in the pop-up is written at once: the status, plus the comment if one is typed.
   async function saveAndClose() {
-    const touched = (items ?? []).filter((x) => drafts[x.submission.id]?.status || drafts[x.submission.id]?.comment.trim());
-    if (touched.some((x) => !drafts[x.submission.id].status)) {
-      setError("Choose complete or incomplete for each piece you comment on.");
-      return;
-    }
+    const touched = (items ?? []).filter((x) => drafts[x.submission.id]?.comment.trim());
     setSaving(true);
     setError(null);
     try {
       for (const x of touched) {
         const d = drafts[x.submission.id];
-        await gradeSubmission(x.submission.id, { status: d.status });
-        if (d.comment.trim()) await addSubmissionComment(x.submission.id, d.comment);
+        // The status was already saved when it was chosen; only the comment is left to send.
+        await addSubmissionComment(x.submission.id, d.comment);
       }
-      if (touched.length) onChanged?.();
       onClose();
     } catch (e) {
       setError(e.message);
@@ -303,6 +314,7 @@ export function ReviewModal({ memberId, name, onClose, onChanged }) {
             resolveAuthorName={(id) => (id === memberId ? name : "Committee")}
             draft={drafts[submission.id] ?? { status: "", comment: "" }}
             onDraft={(d) => setDrafts((prev) => ({ ...prev, [submission.id]: d }))}
+            onGraded={onChanged}
           />
         </section>
       ))}

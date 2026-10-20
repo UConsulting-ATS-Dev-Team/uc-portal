@@ -211,25 +211,43 @@ export default function MyProfile() {
     profileOverrides.admitClass,
   ]);
 
+  // What the form would save, and the same fields as currently saved (as plain strings, so the two can be compared).
+  const formPayload = (f) => ({
+    fullName: f.fullName,
+    classYear: f.classYear || null,
+    gradMonth: f.gradMonth || null,
+    majors: f.majors,
+    ucCommittee: f.ucCommittee,
+    linkedIn: normalizeLinkedInUrl(f.linkedIn),
+    phone: f.phone.trim(),
+    pronouns: f.pronouns.trim(),
+    gender: f.gender.trim(),
+    admitClass: f.admitSeason && /^\d{4}$/.test(String(f.admitYear)) ? `${f.admitSeason} ${f.admitYear}` : "",
+  });
+  const comparable = (o) =>
+    JSON.stringify(["fullName", "classYear", "gradMonth", "majors", "ucCommittee", "linkedIn", "phone", "pronouns", "gender", "admitClass"].map((k) => String(o[k] ?? "")));
+
   function handleSaveChanges() {
-    const linkedIn = normalizeLinkedInUrl(form.linkedIn);
-    setForm((f) => ({ ...f, linkedIn }));
-    updateProfileOverrides({
-      fullName: form.fullName,
-      classYear: form.classYear || null,
-      gradMonth: form.gradMonth || null,
-      majors: form.majors,
-      ucCommittee: form.ucCommittee,
-      linkedIn,
-      phone: form.phone.trim(),
-      pronouns: form.pronouns.trim(),
-      gender: form.gender.trim(),
-      admitClass: form.admitSeason && /^\d{4}$/.test(String(form.admitYear)) ? `${form.admitSeason} ${form.admitYear}` : "",
-    });
+    const payload = formPayload(form);
+    setForm((f) => ({ ...f, linkedIn: payload.linkedIn }));
+    updateProfileOverrides(payload);
     touchProfileUpdated();
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
   }
+
+  // Changes save by themselves once typing stops, so nobody loses an edit by forgetting the button. A half-typed value is never
+  // saved: the graduation or admit year must be a full four digits (or empty) and an admit season needs its year.
+  const handleSaveRef = useRef(handleSaveChanges);
+  handleSaveRef.current = handleSaveChanges;
+  useEffect(() => {
+    const yearOk = (y) => y === "" || y == null || /^\d{4}$/.test(String(y));
+    const complete = yearOk(form.classYear) && yearOk(form.admitYear) && Boolean(form.admitSeason) === (String(form.admitYear ?? "") !== "");
+    if (!complete || comparable(formPayload(form)) === comparable(profileOverrides)) return undefined;
+    const timer = setTimeout(() => handleSaveRef.current(), 1500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, profileOverrides]);
 
   // Applies immediately on choosing a file, unlike the rest of this tab's
   // fields (which wait for "Save changes") -- an image picker with a
@@ -543,6 +561,7 @@ export default function MyProfile() {
           <button className="btn btn-secondary" disabled={previewLoading} onClick={handleViewAsOthersSeeIt}>
             {previewLoading ? "Loading…" : "View as others see it"}
           </button>
+          <span className="meta profile-page-header__autosave">Changes save automatically</span>
           <button className="btn btn-primary" onClick={handleSaveChanges}>
             {saved ? "Saved ✓" : "Save changes"}
           </button>

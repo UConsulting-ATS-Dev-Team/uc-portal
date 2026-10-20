@@ -1216,3 +1216,8 @@ a.accel-side__row:hover {
   font-size: 15px;
   color: var(--color-primary);
 }
+
+.sub-item__saved {
+  align-self: center;
+  color: var(--color-primary);
+}
