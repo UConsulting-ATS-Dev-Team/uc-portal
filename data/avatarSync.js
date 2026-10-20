@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient.js";
+import { prepareImageForUpload } from "./imageConvert.js";
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -14,9 +15,11 @@ function extensionFor(file) {
 // local-state-then-background-sync path every other Personal-tab field
 // already uses (data/store.jsx + data/profileOverridesSync.js), rather than
 // this file doing a second, parallel direct write to the same table.
-export async function uploadAvatar(file) {
+export async function uploadAvatar(originalFile) {
+  // An iPhone photo (HEIC) is turned into a JPEG first so it shows up in every browser.
+  const file = await prepareImageForUpload(originalFile);
   if (!ALLOWED_TYPES.includes(file.type)) {
-    throw new Error("Please choose a JPEG, PNG, WEBP, or GIF image.");
+    throw new Error("Please choose a JPEG, PNG, WEBP, GIF or iPhone (HEIC) image.");
   }
   if (file.size > MAX_AVATAR_BYTES) {
     throw new Error("Image must be smaller than 5MB.");

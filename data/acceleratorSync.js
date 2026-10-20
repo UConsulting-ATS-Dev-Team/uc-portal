@@ -1,5 +1,6 @@
 import { supabase } from "./supabaseClient.js";
 import { fetchAllRows } from "./fetchAllRows.js";
+import { prepareImageForUpload } from "./imageConvert.js";
 import { assignmentProgress, attendanceProgress, coffeeChatProgress, lessonDue, lessonOpensAt, programPeriods, submissionTiming } from "./acceleratorLogic.js";
 
 // Real accelerator program (freshmen onboarding) -- see the
@@ -493,7 +494,8 @@ export async function fetchOwnCoffeeChats() {
 }
 
 // Private bucket, own-folder RLS: the photo is only readable by the intern and admins.
-export async function uploadChatPhoto(file) {
+export async function uploadChatPhoto(originalFile) {
+  const file = await prepareImageForUpload(originalFile);
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -666,7 +668,8 @@ export async function fetchInterns() {
 
 // For events the committee doesn't take attendance at (company visits, fireside chats, socials): the intern submits a
 // photo from the event, which records them as attending. The committee can still change it.
-export async function submitEventPhoto(eventId, file) {
+export async function submitEventPhoto(eventId, originalFile) {
+  const file = await prepareImageForUpload(originalFile);
   const {
     data: { user },
   } = await supabase.auth.getUser();
