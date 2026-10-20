@@ -370,13 +370,12 @@ export function lessonDue(lesson, schedule) {
 }
 
 // How a submission stands against its due date: "missing" (nothing handed in and it is past due), "pending" (nothing yet, not due),
-// "late" (handed in after the due time) or "ontime". A resubmission after the committee sent work back is not counted late, since
-// the intern is fixing it, not handing it in.
+// "late" (FIRST handed in after the due time) or "ontime". It goes by the first time the work was handed in, so fixing and
+// resubmitting after the committee sent it back never makes an on-time submission late.
 export function submissionTiming(lesson, submission, schedule, now = new Date()) {
   const due = lessonDue(lesson, schedule).date;
   if (!submission) return now > due ? "missing" : "pending";
-  if (submission.graded_by && !submission.status) return "ontime";
-  return new Date(submission.submitted_at) > due ? "late" : "ontime";
+  return new Date(submission.first_submitted_at ?? submission.submitted_at) > due ? "late" : "ontime";
 }
 
 // The first lesson is always open. Each later one opens once the previous is handed in AND that week's accelerator has

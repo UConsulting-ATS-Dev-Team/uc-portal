@@ -382,8 +382,10 @@ describe("submission timing", () => {
     expect(L.submissionTiming(lesson, { submitted_at: new Date(2026, 9, 18, 9, 0).toISOString() }, null, after)).toBe("ontime");
     expect(L.submissionTiming(lesson, { submitted_at: new Date(2026, 9, 19, 19, 0).toISOString() }, null, after)).toBe("late");
   });
-  it("does not call a fix after the committee sent work back late", () => {
-    const resub = { submitted_at: new Date(2026, 9, 25, 9, 0).toISOString(), graded_by: "x", status: null };
+  it("goes by the first time it was handed in, so a late fix after comments is not late", () => {
+    const resub = { first_submitted_at: new Date(2026, 9, 18, 9, 0).toISOString(), submitted_at: new Date(2026, 9, 25, 9, 0).toISOString() };
     expect(L.submissionTiming(lesson, resub, null, new Date(2026, 9, 26))).toBe("ontime");
+    const lateFirst = { first_submitted_at: new Date(2026, 9, 21, 9, 0).toISOString(), submitted_at: new Date(2026, 9, 22, 9, 0).toISOString() };
+    expect(L.submissionTiming(lesson, lateFirst, null, new Date(2026, 9, 26))).toBe("late");
   });
 });
