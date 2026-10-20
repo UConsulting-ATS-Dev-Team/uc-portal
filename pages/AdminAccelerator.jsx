@@ -833,17 +833,22 @@ export default function AdminAccelerator() {
               })()}
               <div className="lesson-card__actions">
                 <button className="btn btn-secondary" onClick={() => setSelectedId(selectedId === lesson.id ? null : lesson.id)}>
-                  {selectedId === lesson.id ? "Close" : "Manage"}
+                  {selectedId === lesson.id ? "Hide Submissions" : "View Submissions"}
                 </button>
-                <button className="btn-link" onClick={() => setLessonModal({ editing: lesson })}>
+                <button className="btn btn-secondary" onClick={() => setLessonModal({ editing: lesson })}>
                   Edit
                 </button>
-                <button className="btn-link" onClick={() => removeLesson(lesson.id)}>
+                <button className="btn btn-secondary" onClick={() => removeLesson(lesson.id)}>
                   Delete
                 </button>
               </div>
             </div>
-            {lesson.topic_overview && <p className="lesson-card__desc">{lesson.topic_overview}</p>}
+            {lesson.topic_overview && (
+              <div className="lesson-card__instructions">
+                <div className="lesson-card__instructions-title">Instructions:</div>
+                <p>{lesson.topic_overview}</p>
+              </div>
+            )}
             {selectedId === lesson.id && <LessonManager lesson={lesson} schedule={schedule} focusIntern={linkedLesson === lesson.id ? linkedIntern : null} onChanged={load} />}
           </div>
         ))}
