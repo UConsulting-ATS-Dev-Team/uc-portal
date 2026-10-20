@@ -41,11 +41,18 @@ function statusTag(submission) {
 
 // The work itself: notes, link, files, the status and comments boxes and the comment thread. Shared by the lesson's list and the
 // review pop-up.
-export function SubmissionDetail({ name, submission, resolveAuthorName, onGraded }) {
-  const [status, setStatus] = useState(submission.status ?? "");
+// With `draft` and `onDraft` the status and comment are held by the caller and there is no Save button here (the review pop-up saves
+// everything from its own footer).
+export function SubmissionDetail({ name, submission, resolveAuthorName, onGraded, draft, onDraft }) {
+  const controlled = draft !== undefined;
+  const [ownStatus, setStatus] = useState(submission.status ?? "");
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [comment, setComment] = useState("");
+  const [ownComment, setComment] = useState("");
+  const status = controlled ? draft.status : ownStatus;
+  const comment = controlled ? draft.comment : ownComment;
+  const changeStatus = (v) => (controlled ? onDraft({ ...draft, status: v }) : setStatus(v));
+  const changeComment = (v) => (controlled ? onDraft({ ...draft, comment: v }) : setComment(v));
   const [threadVersion, setThreadVersion] = useState(0);
 
   // One click sets the status and, if something is typed, posts it as a comment the intern sees.
@@ -110,7 +117,7 @@ export function SubmissionDetail({ name, submission, resolveAuthorName, onGraded
       <SubmissionCommentThread submissionId={submission.id} resolveAuthorName={resolveAuthorName} hideComposer reloadKey={threadVersion} />
 
       <div className="sub-item__grade">
-        <select aria-label={`Status for ${name}`} value={status} onChange={(e) => setStatus(e.target.value)}>
+        <select aria-label={`Status for ${name}`} value={status} onChange={(e) => changeStatus(e.target.value)}>
           <option value="">Not reviewed</option>
           <option value="complete">Complete</option>
           <option value="incomplete">Incomplete</option>
@@ -118,14 +125,16 @@ export function SubmissionDetail({ name, submission, resolveAuthorName, onGraded
         <input
           type="text"
           value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && status && !saving && save()}
+          onChange={(e) => changeComment(e.target.value)}
+          onKeyDown={(e) => !controlled && e.key === "Enter" && status && !saving && save()}
           placeholder="Add a comment for the intern (optional)"
           aria-label={`Comment for ${name}`}
         />
-        <button className="btn btn-secondary" onClick={save} disabled={saving}>
-          {saving ? "Saving…" : comment.trim() ? "Save and send comment" : submission.graded_at ? "Update" : "Save"}
-        </button>
+        {!controlled && (
+          <button className="btn btn-secondary" onClick={save} disabled={saving}>
+            {saving ? "Saving…" : comment.trim() ? "Save and send comment" : submission.graded_at ? "Update" : "Save"}
+          </button>
+        )}
       </div>
       {error && <div className="meta" style={{ color: "var(--color-danger)" }}>{error}</div>}
     </>
@@ -224,30 +233,63 @@ export default function AdminSubmissions({ lesson, schedule, submissions, intern
 // they attached, and the status and comment boxes. Closing it reloads the progress table.
 export function ReviewModal({ memberId, name, onClose, onChanged }) {
   const [items, setItems] = useState(null);
+  const [drafts, setDrafts] = useState({}); // submission id -> { status, comment }
   const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
 
-  function load() {
+  useEffect(() => {
     Promise.all([fetchLessons(), fetchSubmissionsForIntern(memberId)])
       .then(([lessons, subs]) => {
         const order = new Map(lessons.map((l, i) => [l.id, { lesson: l, week: i + 1 }]));
-        setItems(
-          subs
-            .filter((s) => !s.status)
-            .map((s) => ({ submission: s, ...order.get(s.lesson_id) }))
-            .filter((x) => x.lesson)
-        );
+        const waiting = subs
+          .filter((s) => !s.status)
+          .map((s) => ({ submission: s, ...order.get(s.lesson_id) }))
+          .filter((x) => x.lesson);
+        setItems(waiting);
+        setDrafts(Object.fromEntries(waiting.map((x) => [x.submission.id, { status: "", comment: "" }])));
       })
       .catch((e) => setError(e.message));
-  }
-  useEffect(load, [memberId]);
+  }, [memberId]);
 
-  function done() {
-    onChanged?.();
-    load();
+  // Everything marked in the pop-up is written at once: the status, plus the comment if one is typed.
+  async function saveAndClose() {
+    const touched = (items ?? []).filter((x) => drafts[x.submission.id]?.status || drafts[x.submission.id]?.comment.trim());
+    if (touched.some((x) => !drafts[x.submission.id].status)) {
+      setError("Choose complete or incomplete for each piece you comment on.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      for (const x of touched) {
+        const d = drafts[x.submission.id];
+        await gradeSubmission(x.submission.id, { status: d.status });
+        if (d.comment.trim()) await addSubmissionComment(x.submission.id, d.comment);
+      }
+      if (touched.length) onChanged?.();
+      onClose();
+    } catch (e) {
+      setError(e.message);
+      setSaving(false);
+    }
   }
 
   return (
-    <Modal title={`${name}: work to review`} onClose={onClose} width={720} footer={<button className="btn btn-secondary" onClick={onClose}>Close</button>}>
+    <Modal
+      title={`${name}: work to review`}
+      onClose={onClose}
+      width={720}
+      footer={
+        <>
+          <button className="btn btn-secondary" onClick={onClose} disabled={saving}>
+            Cancel
+          </button>
+          <button className="btn btn-primary" onClick={saveAndClose} disabled={saving || items === null}>
+            {saving ? "Saving…" : "Save and close"}
+          </button>
+        </>
+      }
+    >
       {error && <p className="meta" style={{ color: "var(--color-danger)", marginTop: 0 }}>{error}</p>}
       {items === null && !error && <p className="meta">Loading…</p>}
       {items?.length === 0 && <p className="meta">Nothing left to review for {name}.</p>}
@@ -259,7 +301,13 @@ export function ReviewModal({ memberId, name, onClose, onChanged }) {
           <p className="meta" style={{ marginTop: 0 }}>
             Submitted {new Date(submission.submitted_at).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
           </p>
-          <SubmissionDetail name={name} submission={submission} resolveAuthorName={(id) => (id === memberId ? name : "Committee")} onGraded={done} />
+          <SubmissionDetail
+            name={name}
+            submission={submission}
+            resolveAuthorName={(id) => (id === memberId ? name : "Committee")}
+            draft={drafts[submission.id] ?? { status: "", comment: "" }}
+            onDraft={(d) => setDrafts((prev) => ({ ...prev, [submission.id]: d }))}
+          />
         </section>
       ))}
     </Modal>
