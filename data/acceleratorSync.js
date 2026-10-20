@@ -276,6 +276,13 @@ export async function fetchInternProgress() {
   }).sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" }));
 }
 
+// Every submission one intern has handed in (the admin's review pop-up).
+export async function fetchSubmissionsForIntern(profileId) {
+  const { data, error } = await supabase.from("accelerator_submissions").select("*").eq("profile_id", profileId).order("submitted_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
 export async function fetchSubmissionsForLesson(lessonId) {
   const { data, error } = await supabase.from("accelerator_submissions").select("*").eq("lesson_id", lessonId);
   if (error) throw new Error(error.message);

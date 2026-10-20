@@ -25,7 +25,7 @@ import {
   fetchEvents,
   createEventSeries,
 } from "../data/acceleratorSync.js";
-import AdminSubmissions from "../components/AdminSubmissions.jsx";
+import AdminSubmissions, { ReviewModal } from "../components/AdminSubmissions.jsx";
 import AdminAcceleratorEvents from "../components/AdminAcceleratorEvents.jsx";
 import Modal from "../components/Modal.jsx";
 import CollapsibleSection from "../components/CollapsibleSection.jsx";
@@ -369,9 +369,11 @@ const needsAttention = (p) => p.assignmentsIncomplete > 0 || p.assignmentsMissin
 function InternProgress() {
   const [progress, setProgress] = useState(null);
   const [error, setError] = useState(null);
+  const [reviewing, setReviewing] = useState(null); // { memberId, name } while the review pop-up is open
 
+  const reload = () => fetchInternProgress().then(setProgress).catch((e) => setError(e.message));
   useEffect(() => {
-    fetchInternProgress().then(setProgress).catch((e) => setError(e.message));
+    reload();
   }, []);
 
   return (
@@ -422,7 +424,9 @@ function InternProgress() {
                   {p.assignmentsAwaiting > 0 && (
                     <span className="meta">
                       {" · "}
-                      <Link to={workLink(p.reviewLessonId, p.memberId)}>{p.assignmentsAwaiting} to review</Link>
+                      <button type="button" className="btn-link" onClick={() => setReviewing({ memberId: p.memberId, name: p.displayName })}>
+                        {p.assignmentsAwaiting} to review
+                      </button>
                     </span>
                   )}
                   {p.assignmentsMissing > 0 && (
@@ -453,6 +457,7 @@ function InternProgress() {
           </tbody>
         </table>
       </div>
+      {reviewing && <ReviewModal memberId={reviewing.memberId} name={reviewing.name} onClose={() => setReviewing(null)} onChanged={reload} />}
     </div>
   );
 }

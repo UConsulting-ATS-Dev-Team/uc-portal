@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { getSubmissionFileSignedUrl, gradeSubmission, submissionFiles } from "../data/acceleratorSync.js";
+import { fetchLessons, fetchSubmissionsForIntern, getSubmissionFileSignedUrl, gradeSubmission, submissionFiles } from "../data/acceleratorSync.js";
 import { lessonDue, submissionTiming } from "../data/acceleratorLogic.js";
 import SubmissionCommentThread from "./SubmissionCommentThread.jsx";
+import Modal from "./Modal.jsx";
 
 // Files sit in a private bucket, so a link is made when it is clicked (a signed link made earlier would expire while the page is open).
 function FileLink({ file }) {
@@ -38,21 +39,13 @@ function statusTag(submission) {
   return { text: "To review", className: "accel-tag accel-tag--accelerator" };
 }
 
-// One intern's work for one lesson. Collapsed to a single line; opening it shows the work, the status and the comments.
-function SubmissionItem({ name, submission, timing, focused, resolveAuthorName, onGraded }) {
-  const [open, setOpen] = useState(focused);
-  const [status, setStatus] = useState(submission?.status ?? "");
-  const [feedback, setFeedback] = useState(submission?.feedback ?? "");
+// The work itself: notes, link, files, the status and comments boxes and the comment thread. Shared by the lesson's list and the
+// review pop-up.
+export function SubmissionDetail({ name, submission, resolveAuthorName, onGraded }) {
+  const [status, setStatus] = useState(submission.status ?? "");
+  const [feedback, setFeedback] = useState(submission.feedback ?? "");
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
-  const ref = useRef(null);
-
-  // Arriving from the progress table opens this intern's work and brings it into view.
-  useEffect(() => {
-    if (!focused) return;
-    setOpen(true);
-    ref.current?.scrollIntoView({ block: "center" });
-  }, [focused]);
 
   async function save() {
     if (!status) {
@@ -72,6 +65,73 @@ function SubmissionItem({ name, submission, timing, focused, resolveAuthorName, 
   }
 
   const files = submissionFiles(submission);
+  return (
+    <>
+      <dl className="sub-item__work">
+        <div>
+          <dt>Notes</dt>
+          <dd style={{ whiteSpace: "pre-wrap" }}>{submission.body || <span className="meta">No written response.</span>}</dd>
+        </div>
+        <div>
+          <dt>Link</dt>
+          <dd>
+            {submission.link_url ? (
+              <a href={submission.link_url} target="_blank" rel="noreferrer">
+                {submission.link_url}
+              </a>
+            ) : (
+              <span className="meta">None</span>
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>Files</dt>
+          <dd>
+            {files.length === 0 ? (
+              <span className="meta">None</span>
+            ) : (
+              <ul className="sub-item__files">
+                {files.map((f) => (
+                  <li key={f.path}>
+                    <FileLink file={f} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </dd>
+        </div>
+      </dl>
+
+      <div className="sub-item__grade">
+        <select aria-label={`Status for ${name}`} value={status} onChange={(e) => setStatus(e.target.value)}>
+          <option value="">Not reviewed</option>
+          <option value="complete">Complete</option>
+          <option value="incomplete">Incomplete</option>
+        </select>
+        <input type="text" value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Comments for the intern" aria-label={`Comments for ${name}`} />
+        <button className="btn btn-secondary" onClick={save} disabled={saving}>
+          {saving ? "Saving…" : submission.graded_at ? "Update" : "Save"}
+        </button>
+      </div>
+      {error && <div className="meta" style={{ color: "var(--color-danger)" }}>{error}</div>}
+
+      <SubmissionCommentThread submissionId={submission.id} resolveAuthorName={resolveAuthorName} />
+    </>
+  );
+}
+
+// One intern's work for one lesson. Collapsed to a single line; opening it shows the work, the status and the comments.
+function SubmissionItem({ name, submission, timing, focused, resolveAuthorName, onGraded }) {
+  const [open, setOpen] = useState(focused);
+  const ref = useRef(null);
+
+  // Arriving from the progress table opens this intern's work and brings it into view.
+  useEffect(() => {
+    if (!focused) return;
+    setOpen(true);
+    ref.current?.scrollIntoView({ block: "center" });
+  }, [focused]);
+
   const tag = submission ? statusTag(submission) : null;
   const timingTag = TIMING_TAG[timing];
 
@@ -89,55 +149,7 @@ function SubmissionItem({ name, submission, timing, focused, resolveAuthorName, 
 
       {open && submission && (
         <div className="sub-item__body">
-          <dl className="sub-item__work">
-            <div>
-              <dt>Notes</dt>
-              <dd style={{ whiteSpace: "pre-wrap" }}>{submission.body || <span className="meta">No written response.</span>}</dd>
-            </div>
-            <div>
-              <dt>Link</dt>
-              <dd>
-                {submission.link_url ? (
-                  <a href={submission.link_url} target="_blank" rel="noreferrer">
-                    {submission.link_url}
-                  </a>
-                ) : (
-                  <span className="meta">None</span>
-                )}
-              </dd>
-            </div>
-            <div>
-              <dt>Files</dt>
-              <dd>
-                {files.length === 0 ? (
-                  <span className="meta">None</span>
-                ) : (
-                  <ul className="sub-item__files">
-                    {files.map((f) => (
-                      <li key={f.path}>
-                        <FileLink file={f} />
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </dd>
-            </div>
-          </dl>
-
-          <div className="sub-item__grade">
-            <select aria-label={`Status for ${name}`} value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="">Not reviewed</option>
-              <option value="complete">Complete</option>
-              <option value="incomplete">Incomplete</option>
-            </select>
-            <input type="text" value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Comments for the intern" aria-label={`Comments for ${name}`} />
-            <button className="btn btn-secondary" onClick={save} disabled={saving}>
-              {saving ? "Saving…" : submission.graded_at ? "Update" : "Save"}
-            </button>
-          </div>
-          {error && <div className="meta" style={{ color: "var(--color-danger)" }}>{error}</div>}
-
-          <SubmissionCommentThread submissionId={submission.id} resolveAuthorName={resolveAuthorName} />
+          <SubmissionDetail name={name} submission={submission} resolveAuthorName={resolveAuthorName} onGraded={onGraded} />
         </div>
       )}
     </div>
@@ -183,5 +195,51 @@ export default function AdminSubmissions({ lesson, schedule, submissions, intern
         {rows.length === 0 && <p className="meta">No interns have signed up yet.</p>}
       </div>
     </>
+  );
+}
+
+// The pop-up behind "N to review": one intern's work waiting for review, each piece with the lesson it is for, the links and files
+// they attached, and the status and comment boxes. Closing it reloads the progress table.
+export function ReviewModal({ memberId, name, onClose, onChanged }) {
+  const [items, setItems] = useState(null);
+  const [error, setError] = useState(null);
+
+  function load() {
+    Promise.all([fetchLessons(), fetchSubmissionsForIntern(memberId)])
+      .then(([lessons, subs]) => {
+        const order = new Map(lessons.map((l, i) => [l.id, { lesson: l, week: i + 1 }]));
+        setItems(
+          subs
+            .filter((s) => !s.status)
+            .map((s) => ({ submission: s, ...order.get(s.lesson_id) }))
+            .filter((x) => x.lesson)
+        );
+      })
+      .catch((e) => setError(e.message));
+  }
+  useEffect(load, [memberId]);
+
+  function done() {
+    onChanged?.();
+    load();
+  }
+
+  return (
+    <Modal title={`${name}: work to review`} onClose={onClose} width={720} footer={<button className="btn btn-secondary" onClick={onClose}>Close</button>}>
+      {error && <p className="meta" style={{ color: "var(--color-danger)", marginTop: 0 }}>{error}</p>}
+      {items === null && !error && <p className="meta">Loading…</p>}
+      {items?.length === 0 && <p className="meta">Nothing left to review for {name}.</p>}
+      {items?.map(({ submission, lesson, week }) => (
+        <section key={submission.id} className="review-item">
+          <h3 className="review-item__title">
+            Week {week}: {lesson.title}
+          </h3>
+          <p className="meta" style={{ marginTop: 0 }}>
+            Submitted {new Date(submission.submitted_at).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+          </p>
+          <SubmissionDetail name={name} submission={submission} resolveAuthorName={(id) => (id === memberId ? name : "Committee")} onGraded={done} />
+        </section>
+      ))}
+    </Modal>
   );
 }
