@@ -91,8 +91,9 @@ export async function submitAssignment(lessonId, { body, linkUrl, files }) {
   return data;
 }
 
-export async function getSubmissionFileSignedUrl(path) {
-  const { data, error } = await supabase.storage.from("accelerator-submissions").createSignedUrl(path, 600);
+// `downloadAs` makes the browser save the file under that name instead of opening it in its own viewer.
+export async function getSubmissionFileSignedUrl(path, downloadAs) {
+  const { data, error } = await supabase.storage.from("accelerator-submissions").createSignedUrl(path, 600, downloadAs ? { download: downloadAs } : undefined);
   if (error) throw new Error(error.message);
   return data.signedUrl;
 }

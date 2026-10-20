@@ -10,13 +10,14 @@ import Modal from "./Modal.jsx";
 function FileLink({ file }) {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState(null);
-  async function open(e) {
+  async function open(e, download = false) {
     e.preventDefault();
     setProblem(null);
-    const win = window.open("", "_blank");
+    // A download needs no new tab; opening does, made inside the click so a pop-up blocker allows it.
+    const win = download ? null : window.open("", "_blank");
     setBusy(true);
     try {
-      const url = await getSubmissionFileSignedUrl(file.path);
+      const url = await getSubmissionFileSignedUrl(file.path, download ? file.name : undefined);
       if (win) win.location.href = url;
       else window.location.href = url;
     } catch (err) {
@@ -31,6 +32,12 @@ function FileLink({ file }) {
       <a href="#open" onClick={open}>
         {busy ? "Opening…" : file.name}
       </a>
+      <span className="meta">
+        {" · "}
+        <a href="#download" onClick={(e) => open(e, true)}>
+          Download
+        </a>
+      </span>
       {problem && <span className="meta" style={{ color: "var(--color-danger)" }}> Couldn't open it: {problem}</span>}
     </>
   );
