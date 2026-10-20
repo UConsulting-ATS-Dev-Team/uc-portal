@@ -10,7 +10,7 @@ import { supabase } from "../data/supabaseClient.js";
 // own namesById map; the intern side has no such lookup available (and
 // doesn't need one -- RLS scopes a thread to just this intern + admins, so
 // "not me" always means "an admin").
-export default function SubmissionCommentThread({ submissionId, resolveAuthorName }) {
+export default function SubmissionCommentThread({ submissionId, resolveAuthorName, hideComposer = false, reloadKey = 0 }) {
   const [comments, setComments] = useState([]);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
@@ -24,7 +24,7 @@ export default function SubmissionCommentThread({ submissionId, resolveAuthorNam
     load();
     supabase.auth.getUser().then(({ data }) => setSelfId(data?.user?.id ?? null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [submissionId]);
+  }, [submissionId, reloadKey]);
 
   async function handleSend() {
     if (!body.trim()) return;
@@ -51,6 +51,7 @@ export default function SubmissionCommentThread({ submissionId, resolveAuthorNam
           <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{c.body}</p>
         </div>
       ))}
+      {!hideComposer && (
       <div style={{ display: "flex", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
         <input
           type="text"
@@ -64,6 +65,7 @@ export default function SubmissionCommentThread({ submissionId, resolveAuthorNam
           {sending ? "Sending…" : "Send"}
         </button>
       </div>
+      )}
     </div>
   );
 }

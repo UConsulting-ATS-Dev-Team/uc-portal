@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { fetchLessons, fetchSubmissionsForIntern, getSubmissionFileSignedUrl, gradeSubmission, submissionFiles } from "../data/acceleratorSync.js";
+import { addSubmissionComment, fetchLessons, fetchSubmissionsForIntern, getSubmissionFileSignedUrl, gradeSubmission, submissionFiles } from "../data/acceleratorSync.js";
 import { lessonDue, submissionTiming } from "../data/acceleratorLogic.js";
 import SubmissionCommentThread from "./SubmissionCommentThread.jsx";
 import Modal from "./Modal.jsx";
@@ -45,7 +45,10 @@ export function SubmissionDetail({ name, submission, resolveAuthorName, onGraded
   const [status, setStatus] = useState(submission.status ?? "");
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [comment, setComment] = useState("");
+  const [threadVersion, setThreadVersion] = useState(0);
 
+  // One click sets the status and, if something is typed, posts it as a comment the intern sees.
   async function save() {
     if (!status) {
       setError("Choose complete or incomplete.");
@@ -55,6 +58,9 @@ export function SubmissionDetail({ name, submission, resolveAuthorName, onGraded
     setError(null);
     try {
       await gradeSubmission(submission.id, { status });
+      if (comment.trim()) await addSubmissionComment(submission.id, comment);
+      setComment("");
+      setThreadVersion((v) => v + 1);
       onGraded();
     } catch (err) {
       setError(err.message);
@@ -101,19 +107,27 @@ export function SubmissionDetail({ name, submission, resolveAuthorName, onGraded
         </div>
       </dl>
 
+      <SubmissionCommentThread submissionId={submission.id} resolveAuthorName={resolveAuthorName} hideComposer reloadKey={threadVersion} />
+
       <div className="sub-item__grade">
         <select aria-label={`Status for ${name}`} value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="">Not reviewed</option>
           <option value="complete">Complete</option>
           <option value="incomplete">Incomplete</option>
         </select>
+        <input
+          type="text"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && status && !saving && save()}
+          placeholder="Add a comment for the intern (optional)"
+          aria-label={`Comment for ${name}`}
+        />
         <button className="btn btn-secondary" onClick={save} disabled={saving}>
-          {saving ? "Saving…" : submission.graded_at ? "Update" : "Save"}
+          {saving ? "Saving…" : comment.trim() ? "Save and send comment" : submission.graded_at ? "Update" : "Save"}
         </button>
       </div>
       {error && <div className="meta" style={{ color: "var(--color-danger)" }}>{error}</div>}
-
-      <SubmissionCommentThread submissionId={submission.id} resolveAuthorName={resolveAuthorName} />
     </>
   );
 }
