@@ -236,7 +236,7 @@ export async function fetchInternProgress() {
     const chats = coffeeChatProgress(ownChats, programPeriods(events, { lessons, chats: ownChats, schedule }), new Date());
     // Where an admin should look: the first piece of work waiting for review, and the first missing or late one.
     const now = new Date();
-    const lessonIds = { review: null, missing: null, late: null };
+    const lessonIds = { review: null, incomplete: null, missing: null, late: null };
     let missing = 0;
     let late = 0;
     let lateOpen = 0; // late and not yet marked complete: the ones still worth opening
@@ -244,6 +244,7 @@ export async function fetchInternProgress() {
       const sub = own.find((s) => s.lesson_id === lesson.id);
       const timing = submissionTiming(lesson, sub, schedule, now);
       if (sub && !sub.status) lessonIds.review ??= lesson.id;
+      if (sub?.status === "incomplete") lessonIds.incomplete ??= lesson.id;
       if (timing === "missing") {
         missing += 1;
         lessonIds.missing ??= lesson.id;
@@ -260,6 +261,7 @@ export async function fetchInternProgress() {
       assignmentsLate: late,
       assignmentsLateOpen: lateOpen,
       reviewLessonId: lessonIds.review,
+      incompleteLessonId: lessonIds.incomplete,
       missingLessonId: lessonIds.missing,
       lateLessonId: lessonIds.late,
       assignmentsComplete: assignments.complete,

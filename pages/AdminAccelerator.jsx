@@ -438,7 +438,12 @@ function InternProgress() {
                 </td>
                 <td>
                   {p.assignmentsComplete} / {p.totalLessons}
-                  {p.assignmentsIncomplete > 0 && <span className="meta" style={{ color: "var(--color-danger)" }}> · {p.assignmentsIncomplete} incomplete</span>}
+                  {p.assignmentsIncomplete > 0 && (
+                    <span className="meta" style={{ color: "var(--color-danger)" }}>
+                      {" · "}
+                      <Link to={workLink(p.incompleteLessonId, p.memberId)} style={{ color: "inherit" }}>{p.assignmentsIncomplete} incomplete</Link>
+                    </span>
+                  )}
                   {p.assignmentsAwaiting > 0 && (
                     <span className="meta">
                       {" · "}
@@ -451,13 +456,6 @@ function InternProgress() {
                     <span className="meta" style={{ color: "var(--color-danger)" }}>
                       {" · "}
                       <Link to={workLink(p.missingLessonId, p.memberId)} style={{ color: "inherit" }}>{p.assignmentsMissing} missing</Link>
-                    </span>
-                  )}
-                  {/* Late work that is already marked complete needs nothing, so it is plain text, not a link to open. */}
-                  {p.assignmentsLate > 0 && (
-                    <span className="meta">
-                      {" · "}
-                      {p.assignmentsLateOpen > 0 ? <Link to={workLink(p.lateLessonId, p.memberId)}>{p.assignmentsLateOpen} late</Link> : `${p.assignmentsLate} late (complete)`}
                     </span>
                   )}
                 </td>
