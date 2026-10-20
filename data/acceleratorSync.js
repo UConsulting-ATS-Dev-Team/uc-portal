@@ -92,7 +92,7 @@ export async function submitAssignment(lessonId, { body, linkUrl, files }) {
 }
 
 export async function getSubmissionFileSignedUrl(path) {
-  const { data, error } = await supabase.storage.from("accelerator-submissions").createSignedUrl(path, 60);
+  const { data, error } = await supabase.storage.from("accelerator-submissions").createSignedUrl(path, 600);
   if (error) throw new Error(error.message);
   return data.signedUrl;
 }

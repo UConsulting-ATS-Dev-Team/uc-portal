@@ -5,25 +5,34 @@ import SubmissionCommentThread from "./SubmissionCommentThread.jsx";
 import Modal from "./Modal.jsx";
 
 // Files sit in a private bucket, so a link is made when it is clicked (a signed link made earlier would expire while the page is open).
+// A blank tab is opened first, inside the click, so a pop-up blocker allows it; if it is blocked anyway, or the link can't be made,
+// the reason shows beside the file instead of nothing happening.
 function FileLink({ file }) {
   const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState(null);
   async function open(e) {
     e.preventDefault();
+    setProblem(null);
     const win = window.open("", "_blank");
     setBusy(true);
     try {
       const url = await getSubmissionFileSignedUrl(file.path);
       if (win) win.location.href = url;
-    } catch {
+      else window.location.href = url;
+    } catch (err) {
       win?.close();
+      setProblem(err.message || "Couldn't open this file.");
     } finally {
       setBusy(false);
     }
   }
   return (
-    <a href="#open" onClick={open}>
-      {busy ? "Opening…" : file.name}
-    </a>
+    <>
+      <a href="#open" onClick={open}>
+        {busy ? "Opening…" : file.name}
+      </a>
+      {problem && <span className="meta" style={{ color: "var(--color-danger)" }}> Couldn't open it: {problem}</span>}
+    </>
   );
 }
 
