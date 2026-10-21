@@ -174,13 +174,13 @@ export function SubmissionDetail({ name, submission, resolveAuthorName, onGraded
 }
 
 // One intern's work for one lesson. Collapsed to a single line; opening it shows the work, the status and the comments.
-function SubmissionItem({ name, submission, timing, linked, open, onToggle, resolveAuthorName, onGraded }) {
+function SubmissionItem({ name, submission, timing, linked, focusKey, open, onToggle, resolveAuthorName, onGraded }) {
   const ref = useRef(null);
 
   // Arriving from the progress table opens this intern's work and brings it into view.
   useEffect(() => {
     if (linked) ref.current?.scrollIntoView({ block: "center" });
-  }, [linked]);
+  }, [linked, focusKey]);
 
   function toggle() {
     if (submission) onToggle();
@@ -190,7 +190,7 @@ function SubmissionItem({ name, submission, timing, linked, open, onToggle, reso
   const timingTag = TIMING_TAG[timing];
 
   return (
-    <div ref={ref} className={`sub-item${open ? " is-open" : ""}${open ? " is-focused" : ""}`}>
+    <div ref={ref} className={`sub-item${open ? " is-open" : ""}${open || (linked && !submission) ? " is-focused" : ""}`}>
       <button type="button" className="sub-item__head" onClick={toggle} aria-expanded={submission ? open : undefined} disabled={!submission}>
         <span className="sub-item__name">{name}</span>
         <span className="sub-item__tags">
@@ -212,11 +212,16 @@ function SubmissionItem({ name, submission, timing, linked, open, onToggle, reso
 
 // Every intern for one lesson, in first-name order, whether or not they have handed it in: submitted work to open and grade,
 // and a Missing tag on anyone who hasn't once it is past due.
-export default function AdminSubmissions({ lesson, schedule, submissions, interns, namesById, focusIntern, onGraded }) {
+export default function AdminSubmissions({ lesson, schedule, submissions, interns, namesById, focusIntern, focusKey, onGraded }) {
   const now = new Date();
   // Only one line is open at a time, and it is the outlined one: opening another folds the first. A link from the progress table
   // starts with that intern's line open; otherwise everything starts folded.
   const [openId, setOpenId] = useState(focusIntern ?? null);
+  // Clicking another link from the progress table while this panel is already showing moves to that intern's line (focusKey changes on
+  // every click, so clicking the same intern again still works).
+  useEffect(() => {
+    if (focusIntern) setOpenId(focusIntern);
+  }, [focusIntern, focusKey]);
   const byProfile = new Map(submissions.map((s) => [s.profile_id, s]));
   const people = interns.map((i) => ({ id: i.memberId, name: i.displayName }));
   // Someone who submitted but isn't in the intern list (an account since changed) still appears.
@@ -245,6 +250,7 @@ export default function AdminSubmissions({ lesson, schedule, submissions, intern
             submission={r.submission}
             timing={submissionTiming(lesson, r.submission, schedule, now)}
             linked={focusIntern === r.id}
+            focusKey={focusKey}
             open={openId === r.id}
             onToggle={() => setOpenId(openId === r.id ? null : r.id)}
             resolveAuthorName={(id) => namesById.get(id) ?? id}

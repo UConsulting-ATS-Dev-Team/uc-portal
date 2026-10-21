@@ -479,7 +479,7 @@ function InternProgress() {
   );
 }
 
-function LessonManager({ lesson, schedule, focusIntern, onChanged }) {
+function LessonManager({ lesson, schedule, focusIntern, focusKey, onChanged }) {
   const [materials, setMaterials] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [linkLabel, setLinkLabel] = useState("");
@@ -590,7 +590,7 @@ function LessonManager({ lesson, schedule, focusIntern, onChanged }) {
         </button>
       </div>
 
-      <AdminSubmissions lesson={lesson} schedule={schedule} submissions={submissions} interns={interns} namesById={namesById} focusIntern={focusIntern} onGraded={loadSubmissions} />
+      <AdminSubmissions lesson={lesson} schedule={schedule} submissions={submissions} interns={interns} namesById={namesById} focusIntern={focusIntern} focusKey={focusKey} onGraded={loadSubmissions} />
     </div>
   );
 }
@@ -782,7 +782,7 @@ export default function AdminAccelerator() {
   useEffect(() => {
     if (!linkedLesson) return;
     setSelectedId(linkedLesson);
-    setFocus({ lessonId: linkedLesson, internId: linkedIntern });
+    setFocus({ lessonId: linkedLesson, internId: linkedIntern, n: Date.now() });
     setSearchParams({}, { replace: true });
   }, [linkedLesson, linkedIntern]);
 
@@ -876,7 +876,7 @@ export default function AdminAccelerator() {
                 <p>{lesson.topic_overview}</p>
               </div>
             )}
-            {selectedId === lesson.id && <LessonManager lesson={lesson} schedule={schedule} focusIntern={focus?.lessonId === lesson.id ? focus.internId : null} onChanged={load} />}
+            {selectedId === lesson.id && <LessonManager lesson={lesson} schedule={schedule} focusIntern={focus?.lessonId === lesson.id ? focus.internId : null} focusKey={focus?.n} onChanged={load} />}
           </div>
         ))}
       </CollapsibleSection>
