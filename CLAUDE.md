@@ -379,7 +379,7 @@ which are chronological and not rewritten when later work supersedes them.
   complete work is locked; an intern can fix and resubmit incomplete work. Coffee chats: 3 slots a week (two club
   members, then another intern or a third club member), 24 over the 8-week minimum. A "week" closes at the exact date and time of
   each accelerator meeting (events of kind `accelerator`), and a chat counts toward the week it was LOGGED in (`created_at`, which
-  interns can't write: column grants), so don't change that without revisiting the grants. Events can recur (`series_id`) and each
+  interns can't write: column grants), so don't change that without revisiting the grants. A chat logged within 2 hours after a week closes (`CHAT_GRACE_MS`) still counts toward the week that just ended if it fills one of that week's empty slots (`assignChatsToPeriods`); otherwise it counts toward the new week. The daily coffee-chat reminder email does not apply the grace. Events can recur (`series_id`) and each
   has an `attendance_method`: `admin` (committee marks it) or `photo` (the intern submits a photo, stored in the private
   `accelerator-event-photos` bucket). Admin side lives on `/admin/accelerator`.
 - **Admin surface (restructured 2026-10-06):** there is no admin-only home page; admins land on the same Home as

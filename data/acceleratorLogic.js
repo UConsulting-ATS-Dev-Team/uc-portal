@@ -276,13 +276,36 @@ export function coffeeChatSlots(chatsInWeek) {
   };
 }
 
+// A chat logged within this long after a week closes (someone who forgets and logs it right at the start of the meeting) still
+// counts toward the week that just ended, as long as that week still has a slot it fills.
+export const CHAT_GRACE_MS = 2 * 60 * 60 * 1000;
+
+// Which week each chat counts toward: the week it was logged in, except that one logged inside the grace window after a week
+// closed goes back to that week when it fills one of its empty slots (otherwise it stays in the new week).
+function assignChatsToPeriods(chats, periods) {
+  const buckets = periods.map(() => []);
+  const sorted = [...chats].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  for (const chat of sorted) {
+    const t = Date.parse(chat.created_at);
+    const i = periods.findIndex((p) => t > p.startMs && t <= p.endMs);
+    if (i < 0) continue;
+    if (i > 0 && t <= periods[i].startMs + CHAT_GRACE_MS) {
+      const before = coffeeChatSlots(buckets[i - 1]).counted;
+      if (coffeeChatSlots([...buckets[i - 1], chat]).counted > before) {
+        buckets[i - 1].push(chat);
+        continue;
+      }
+    }
+    buckets[i].push(chat);
+  }
+  return buckets;
+}
+
 export function coffeeChatProgress(chats, periods, now = new Date()) {
   const nowMs = now.getTime();
-  const perWeek = periods.map((period) => {
-    const inWeek = chats.filter((c) => {
-      const t = Date.parse(c.created_at);
-      return t > period.startMs && t <= period.endMs;
-    });
+  const buckets = assignChatsToPeriods(chats, periods);
+  const perWeek = periods.map((period, pi) => {
+    const inWeek = buckets[pi];
     const slots = coffeeChatSlots(inWeek);
     return {
       ...period,
