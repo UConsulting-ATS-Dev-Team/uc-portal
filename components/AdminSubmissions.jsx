@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { addSubmissionComment, fetchLessons, fetchSubmissionsForIntern, getSubmissionFileSignedUrl, gradeSubmission, submissionFiles } from "../data/acceleratorSync.js";
-import { lessonDue, submissionTiming } from "../data/acceleratorLogic.js";
+import { addSubmissionComment, fetchLessons, fetchMeetingSchedule, fetchSubmissionsForIntern, getSubmissionFileSignedUrl, gradeSubmission, submissionFiles } from "../data/acceleratorSync.js";
+import { lessonDue, lessonWeekNumbers, submissionTiming } from "../data/acceleratorLogic.js";
 import SubmissionCommentThread from "./SubmissionCommentThread.jsx";
 import Modal from "./Modal.jsx";
 
@@ -272,9 +272,10 @@ export function ReviewModal({ memberId, name, onClose, onChanged }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    Promise.all([fetchLessons(), fetchSubmissionsForIntern(memberId)])
-      .then(([lessons, subs]) => {
-        const order = new Map(lessons.map((l, i) => [l.id, { lesson: l, week: i + 1 }]));
+    Promise.all([fetchLessons(), fetchSubmissionsForIntern(memberId), fetchMeetingSchedule().catch(() => null)])
+      .then(([lessons, subs, schedule]) => {
+        const weeks = lessonWeekNumbers(lessons, schedule);
+        const order = new Map(lessons.map((l, i) => [l.id, { lesson: l, week: weeks[i] }]));
         const waiting = subs
           .filter((s) => !s.status)
           .map((s) => ({ submission: s, ...order.get(s.lesson_id) }))

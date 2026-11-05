@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { fetchMaterials, materialHref, submissionFiles, submitAssignment, uploadSubmissionFile } from "../data/acceleratorSync.js";
-import { assignmentProgress, daysUntil, dueWording, formatDue, lessonDue, lessonOpensAt, submissionState, ymd } from "../data/acceleratorLogic.js";
+import { assignmentProgress, daysUntil, dueWording, formatDue, lessonDue, lessonOpensAt, lessonWeekNumbers, submissionState, ymd } from "../data/acceleratorLogic.js";
 import { useAcceleratorData } from "../data/useAcceleratorData.js";
 import AcceleratorTabs from "../components/AcceleratorTabs.jsx";
 import SubmissionCommentThread from "../components/SubmissionCommentThread.jsx";
@@ -204,6 +204,7 @@ export default function AcceleratorAssignments() {
   }, [searchParams, loading]);
 
   const submissionByLesson = new Map(submissions.map((s) => [s.lesson_id, s]));
+  const weekNumbers = lessonWeekNumbers(lessons, schedule);
   const progress = assignmentProgress(lessons, submissions);
 
   // A lesson that is open, not yet submitted and due within a week (or overdue) gets a banner.
@@ -233,7 +234,7 @@ export default function AcceleratorAssignments() {
       {dueSoon.map(({ lesson, i, due, days, overdue }) => (
         <div key={lesson.id} className="rail-card is-accent" style={{ marginBottom: "var(--space-4)" }}>
           <div className="rail-card__title">
-            {overdue ? `Week ${i + 1}: "${lesson.title}" is overdue` : `Week ${i + 1}: "${lesson.title}" is due ${dueWording(days)}`}
+            {overdue ? `Week ${weekNumbers[i]}: "${lesson.title}" is overdue` : `Week ${weekNumbers[i]}: "${lesson.title}" is due ${dueWording(days)}`}
           </div>
           <p style={{ margin: 0 }} className="meta">
             Due {formatDue(due.date, due.hasTime)}. Scroll down and submit below.
@@ -255,7 +256,7 @@ export default function AcceleratorAssignments() {
           return (
             <div id={`lesson-${lesson.id}`} className={`lesson-card${isExpanded ? " is-open" : ""}${!prevSubmitted ? " is-locked" : ""}`} key={lesson.id}>
               <div className="lesson-card__head">
-                <span className={`lesson-card__num${state === "complete" ? " is-done" : ""}`}>{state === "complete" ? "\u2713" : i + 1}</span>
+                <span className={`lesson-card__num${state === "complete" ? " is-done" : ""}`}>{state === "complete" ? "\u2713" : weekNumbers[i]}</span>
                 <div className="lesson-card__main">
                   <div className="lesson-card__title">{lesson.title}</div>
                   <div className="lesson-card__meta">

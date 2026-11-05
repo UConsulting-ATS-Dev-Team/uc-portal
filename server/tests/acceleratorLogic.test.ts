@@ -395,6 +395,20 @@ describe("assignments are due at the weekly accelerator", () => {
     expect(L.lessonOpensAt(1, lessons, none, null, at(2026, 10, 10)).open).toBe(true);
   });
 
+  it("numbers weeks by date, so two assignments for the same week share one number", () => {
+    const five = [
+      { id: "a", lesson_date: "2026-10-12" },
+      { id: "b", lesson_date: "2026-10-19" },
+      { id: "c1", lesson_date: "2026-10-26" },
+      { id: "c2", lesson_date: "2026-10-26" },
+      { id: "d", lesson_date: "2026-11-02" },
+    ];
+    expect(L.lessonWeekNumbers(five, tuesday5)).toEqual([1, 2, 3, 3, 4]);
+    expect(L.lessonWeekNumbers(five, null)).toEqual([1, 2, 3, 3, 4]);
+    // Two different dates inside one meeting-to-meeting week are the same week once a meeting day is set.
+    expect(L.lessonWeekNumbers([{ lesson_date: "2026-10-21" }, { lesson_date: "2026-10-25" }], tuesday5)).toEqual([1, 1]);
+  });
+
   it("opens two assignments given the same week together, and a later week only when it starts", () => {
     const five = [
       { id: "a", lesson_date: "2026-10-12" },

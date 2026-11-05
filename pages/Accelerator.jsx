@@ -16,6 +16,7 @@ import {
   formatTimeRange,
   formatTimeShort,
   lessonDue,
+  lessonWeekNumbers,
   itemsByDate,
   monthGrid,
   monthToShow,
@@ -307,18 +308,19 @@ export default function Accelerator() {
 
   // The next assignments to hand in, nearest first, and what the committee has said about the ones already handed in.
   const submissionByLesson = new Map(submissions.map((s) => [s.lesson_id, s]));
+  const weekNumbers = lessonWeekNumbers(lessons, schedule);
   const upcoming = lessons
     .map((lesson, i) => {
       const due = lessonDue(lesson, schedule);
-      return { lesson, number: i + 1, due, days: daysUntil(ymd(due.date), today), overdue: due.date < now };
+      return { lesson, number: weekNumbers[i], due, days: daysUntil(ymd(due.date), today), overdue: due.date < now };
     })
     .filter(({ lesson }) => !submissionByLesson.has(lesson.id))
     .slice(0, 3);
   const needsFix = lessons
-    .map((lesson, i) => ({ lesson, number: i + 1, submission: submissionByLesson.get(lesson.id) }))
+    .map((lesson, i) => ({ lesson, number: weekNumbers[i], submission: submissionByLesson.get(lesson.id) }))
     .filter(({ submission }) => submission?.status === "incomplete");
   const recentlyComplete = lessons
-    .map((lesson, i) => ({ lesson, number: i + 1, submission: submissionByLesson.get(lesson.id) }))
+    .map((lesson, i) => ({ lesson, number: weekNumbers[i], submission: submissionByLesson.get(lesson.id) }))
     .filter(({ submission }) => submission?.status === "complete" && submission.graded_at && now - new Date(submission.graded_at) < 14 * 86400000);
 
   const pct = (n, d) => (d > 0 ? (n / d) * 100 : 0);
@@ -346,7 +348,7 @@ export default function Accelerator() {
     const sub = submissionByLesson.get(lesson.id);
     const state = !sub ? "todo" : sub.status === "complete" ? "complete" : sub.status === "incomplete" ? "incomplete" : "waiting";
     const due = lessonDue(lesson, schedule);
-    return { key: lesson.id, state, title: `Week ${i + 1}: ${lesson.title}`, detail: `Due ${formatDue(due.date, due.hasTime)}`, tag: ASSIGNMENT_STATE[state][0], tagClass: ASSIGNMENT_STATE[state][1], to: `/accelerator/assignments?lesson=${lesson.id}` };
+    return { key: lesson.id, state, title: `Week ${weekNumbers[i]}: ${lesson.title}`, detail: `Due ${formatDue(due.date, due.hasTime)}`, tag: ASSIGNMENT_STATE[state][0], tagClass: ASSIGNMENT_STATE[state][1], to: `/accelerator/assignments?lesson=${lesson.id}` };
   });
   const openAssignments = assignmentRows.filter((r) => r.state !== "complete");
   const assignmentShown = (openAssignments.length > 0 ? openAssignments : assignmentRows).slice(0, 12);

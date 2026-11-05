@@ -87,14 +87,26 @@ export function defaultAttendanceMethod(kind) {
 
 // ---- Calendar items ----------------------------------------------------------------------------------
 
+// The week number of each lesson, in the same order as `lessons` (already in date order). Lessons that fall in the same week (two
+// assignments given for the week of the same meeting) share a number instead of counting up, so they both read "Week 4".
+export function lessonWeekNumbers(lessons, schedule = null) {
+  const seen = new Map();
+  return lessons.map((lesson) => {
+    const key = schedule ? lessonStart(lesson, schedule).getTime() : lesson.lesson_date;
+    if (!seen.has(key)) seen.set(key, seen.size + 1);
+    return seen.get(key);
+  });
+}
+
 // Lessons are on the calendar as "Week N" items alongside the admin-managed events. `lessons` must already be
 // in date order (fetchLessons sorts them), which is also what numbers the weeks.
 export function calendarItems(events, lessons, schedule = null) {
+  const weeks = lessonWeekNumbers(lessons, schedule);
   const lessonItems = lessons.map((lesson, i) => {
     const due = lessonDue(lesson, schedule);
     return {
     id: `lesson-${lesson.id}`,
-    title: `Week ${i + 1}: ${lesson.title}`,
+    title: `Week ${weeks[i]}: ${lesson.title}`,
     date: schedule ? ymd(due.date) : lesson.lesson_date,
     time: schedule ? `${pad(due.date.getHours())}:${pad(due.date.getMinutes())}` : null,
     kind: "lesson",

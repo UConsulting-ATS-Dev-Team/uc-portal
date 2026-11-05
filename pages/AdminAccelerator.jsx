@@ -30,7 +30,7 @@ import AdminAcceleratorEvents from "../components/AdminAcceleratorEvents.jsx";
 import Modal from "../components/Modal.jsx";
 import CollapsibleSection from "../components/CollapsibleSection.jsx";
 import AdminAcceleratorChats from "../components/AdminAcceleratorChats.jsx";
-import { MAX_RECURRING_EVENTS, defaultAttendanceMethod, expandRecurrence, formatDue, formatTimeShort, lessonDue, lessonStart, parseYmd, ymd } from "../data/acceleratorLogic.js";
+import { MAX_RECURRING_EVENTS, defaultAttendanceMethod, expandRecurrence, formatDue, formatTimeShort, lessonDue, lessonStart, lessonWeekNumbers, parseYmd, ymd } from "../data/acceleratorLogic.js";
 import "../styles/jobDetail.css";
 import "../styles/admin.css";
 
@@ -833,10 +833,10 @@ export default function AdminAccelerator() {
         <p className="meta">Each lesson is due at that week's accelerator.</p>
         {loading && <p className="meta">Loading…</p>}
         {!loading && lessons.length === 0 && <p className="meta">No lessons yet. Add the first one.</p>}
-        {lessons.map((lesson, i) => (
+        {lessons.map((lesson, i, all) => (
           <div key={lesson.id} className={`lesson-card${selectedId === lesson.id ? " is-open" : ""}`}>
             <div className="lesson-card__head">
-              <span className="lesson-card__num">{i + 1}</span>
+              <span className="lesson-card__num">{lessonWeekNumbers(all, schedule)[i]}</span>
               <div className="lesson-card__main">
                 <div className="lesson-card__title">{lesson.title}</div>
                 <div className="lesson-card__meta">

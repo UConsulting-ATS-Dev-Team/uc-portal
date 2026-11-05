@@ -1,7 +1,7 @@
 import { supabase } from "./supabaseClient.js";
 import { fetchAllRows } from "./fetchAllRows.js";
 import { prepareImageForUpload } from "./imageConvert.js";
-import { assignmentProgress, attendanceProgress, coffeeChatProgress, lessonDue, lessonOpensAt, programPeriods, submissionTiming } from "./acceleratorLogic.js";
+import { assignmentProgress, attendanceProgress, coffeeChatProgress, lessonDue, lessonOpensAt, lessonWeekNumbers, programPeriods, submissionTiming } from "./acceleratorLogic.js";
 
 // Real accelerator program (freshmen onboarding) -- see the
 // intern_accelerator migration's own header comment for the full
@@ -219,7 +219,8 @@ export async function fetchInternProgress() {
   // chronologically-ordered curriculum (fetchLessons() already sorts by
   // lesson_date) rather than a stored, hand-entered number -- see the
   // lesson_date migration's own comment for why.
-  const lessonByWeek = new Map(lessons.map((l, i) => [l.id, i + 1]));
+  const weekNumbers = lessonWeekNumbers(lessons, schedule);
+  const lessonByWeek = new Map(lessons.map((l, i) => [l.id, weekNumbers[i]]));
 
   // Names are stored first name first, so a plain alphabetical sort is a first-name sort.
   return interns.map((intern) => {

@@ -70,6 +70,15 @@ function lessonDueDay(lessonDate: string, weekday: number | null): string {
   return new Date(Date.UTC(y, m - 1, d + offset)).toISOString().slice(0, 10);
 }
 
+// The day an assignment's week starts: the meeting day on or after its "Week of" date (the same rule as lessonStart() in
+// data/acceleratorLogic.js). Assignments that share a start day share a week number.
+function lessonStartDay(lessonDate: string, weekday: number | null): string {
+  if (weekday == null) return lessonDate;
+  const [y, m, d] = lessonDate.split("-").map(Number);
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return new Date(Date.UTC(y, m - 1, d + ((weekday - dow + 7) % 7))).toISOString().slice(0, 10);
+}
+
 async function assignmentCandidates(admin: Admin, interns: Account[]): Promise<Candidate[]> {
   const { data: lessons } = await admin.from("accelerator_lessons").select("id, title, lesson_date, due_date, due_time").order("lesson_date");
   const { data: settings } = await admin.from("accelerator_settings").select("meeting_weekday, meeting_time").maybeSingle();
@@ -89,7 +98,8 @@ async function assignmentCandidates(admin: Admin, interns: Account[]): Promise<C
   const done = new Set((submissions ?? []).map((s) => `${s.lesson_id}:${s.profile_id}`));
   const out: Candidate[] = [];
   for (const lesson of due) {
-    const weekNumber = ordered.findIndex((l) => l.id === lesson.id) + 1;
+    // Two assignments given the same week share one number.
+    const weekNumber = [...new Set(ordered.map((l) => lessonStartDay(l.lesson_date as string, weekday)))].indexOf(lessonStartDay(lesson.lesson_date as string, weekday)) + 1;
     const dueDate = lesson.dueClock ? longDateTime(pacificInstant(lesson.dueDay, lesson.dueClock)) : longDate(pacificInstant(lesson.dueDay, "12:00"));
     for (const intern of interns) {
       if (!done.has(`${lesson.id}:${intern.member_id}`)) {
