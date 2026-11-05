@@ -401,12 +401,12 @@ export function submissionTiming(lesson, submission, schedule, now = new Date())
   return new Date(submission.first_submitted_at ?? submission.submitted_at) > due ? "late" : "ontime";
 }
 
-// The first lesson is always open. Each later one opens once the previous is handed in AND that week's accelerator has
-// happened (when the meeting time is set), so the next assignment starts after the accelerator.
+// The first lesson is always open. Each later one opens once the previous week's accelerator has happened (when the meeting time is
+// set), whether or not the previous assignment was handed in: someone who is behind can still see and start the current one.
+// (`submissionByLesson` is kept in the signature for the callers; it no longer gates anything.)
 export function lessonOpensAt(index, lessons, submissionByLesson, schedule, now = new Date()) {
   if (index === 0) return { open: true, waitingForMeeting: null };
   const prev = lessons[index - 1];
-  if (!submissionByLesson.has(prev.id)) return { open: false, waitingForMeeting: null };
   if (!schedule) return { open: true, waitingForMeeting: null };
   const meeting = lessonWeekEnd(prev, schedule).date;
   return now >= meeting ? { open: true, waitingForMeeting: null } : { open: false, waitingForMeeting: meeting };

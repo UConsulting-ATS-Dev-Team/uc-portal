@@ -36,8 +36,8 @@ const STATE_LABEL = {
   awaiting_review: { text: "Submitted, awaiting review", className: "accel-tag" },
 };
 
-// Weekly assignments. A lesson stays locked until the previous one has a real submission (the submission itself,
-// not a timer, is the anti-skip mechanism). The committee marks each one complete or incomplete with comments;
+// Weekly assignments. A lesson opens once the previous week's accelerator has passed, whether or not the previous assignment was
+// handed in (the Missing and Late flags on the admin side show who is behind). The committee marks each one complete or incomplete with comments;
 // the intern never sees a numeric grade. Incomplete work is fixed and resubmitted, complete work is final.
 function LessonMaterials({ lessonId }) {
   const [materials, setMaterials] = useState([]);
@@ -247,7 +247,7 @@ export default function AcceleratorAssignments() {
         {lessons.map((lesson, i) => {
           const submission = submissionByLesson.get(lesson.id);
           const state = submissionState(submission);
-          // Locked until the previous lesson has a real submission; the first lesson is always open.
+          // The first lesson is always open; each later one opens once the previous week's accelerator has passed.
           const opens = lessonOpensAt(i, lessons, submissionByLesson, schedule, now);
           const prevSubmitted = opens.open;
           const isExpanded = expandedId === lesson.id;
@@ -260,7 +260,7 @@ export default function AcceleratorAssignments() {
                   <div className="lesson-card__title">{lesson.title}</div>
                   <div className="lesson-card__meta">
                     Due {formatDue(lessonDue(lesson, schedule).date, lessonDue(lesson, schedule).hasTime)}
-                    {!prevSubmitted && (opens.waitingForMeeting ? ` \u00b7 Opens after the accelerator, ${formatDue(opens.waitingForMeeting, true)}` : " \u00b7 Locked until the previous week is submitted")}
+                    {!prevSubmitted && (opens.waitingForMeeting ? ` \u00b7 Opens after the accelerator, ${formatDue(opens.waitingForMeeting, true)}` : "")}
                   </div>
                 </div>
                 {label ? <span className={label.className}>{label.text}</span> : <span className={`accel-tag${prevSubmitted ? " accel-tag--accelerator" : " accel-tag--optional"}`}>{prevSubmitted ? "To do" : "Locked"}</span>}

@@ -381,7 +381,7 @@ describe("assignments are due at the weekly accelerator", () => {
     expect(due.date.getDate()).toBe(12);
   });
 
-  it("opens the next assignment only after the previous one is in and its accelerator has passed", () => {
+  it("opens the next assignment once the previous week's accelerator has passed, whether or not the previous one was handed in", () => {
     const none = new Map();
     const submitted = new Map([["a", {}]]);
     expect(L.lessonOpensAt(0, lessons, none, tuesday5, at(2026, 10, 10)).open).toBe(true);
@@ -390,7 +390,9 @@ describe("assignments are due at the weekly accelerator", () => {
     expect(early.open).toBe(false);
     expect(early.waitingForMeeting?.getTime()).toBe(at(2026, 10, 20, 17).getTime());
     expect(L.lessonOpensAt(1, lessons, submitted, tuesday5, at(2026, 10, 20, 17, 1)).open).toBe(true);
-    expect(L.lessonOpensAt(1, lessons, submitted, null, at(2026, 10, 10)).open).toBe(true);
+    // Nothing handed in for the first one: the second still opens after the accelerator.
+    expect(L.lessonOpensAt(1, lessons, none, tuesday5, at(2026, 10, 20, 17, 1)).open).toBe(true);
+    expect(L.lessonOpensAt(1, lessons, none, null, at(2026, 10, 10)).open).toBe(true);
   });
 });
 
