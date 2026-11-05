@@ -12,7 +12,7 @@ import { assignmentProgress, attendanceProgress, coffeeChatProgress, lessonDue, 
 // why a required submission (not a timer) is the anti-skip mechanism.
 
 export async function fetchLessons() {
-  const { data, error } = await supabase.from("accelerator_lessons").select("*").order("lesson_date", { ascending: true });
+  const { data, error } = await supabase.from("accelerator_lessons").select("*").order("lesson_date", { ascending: true }).order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
   return data ?? [];
 }

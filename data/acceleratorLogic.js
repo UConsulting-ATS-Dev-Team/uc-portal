@@ -401,15 +401,14 @@ export function submissionTiming(lesson, submission, schedule, now = new Date())
   return new Date(submission.first_submitted_at ?? submission.submitted_at) > due ? "late" : "ontime";
 }
 
-// The first lesson is always open. Each later one opens once the previous week's accelerator has happened (when the meeting time is
-// set), whether or not the previous assignment was handed in: someone who is behind can still see and start the current one.
-// (`submissionByLesson` is kept in the signature for the callers; it no longer gates anything.)
+// The first lesson is always open. Every other one opens when ITS OWN week starts (the accelerator meeting on or after its "Week of"
+// date), whether or not an earlier assignment was handed in: someone who is behind can still see and start the current one. Going by
+// the lesson's own start, not the previous lesson's end, means two assignments given the same week both open together.
+// (`lessons` and `submissionByLesson` stay in the signature for the callers; neither gates anything now.)
 export function lessonOpensAt(index, lessons, submissionByLesson, schedule, now = new Date()) {
-  if (index === 0) return { open: true, waitingForMeeting: null };
-  const prev = lessons[index - 1];
-  if (!schedule) return { open: true, waitingForMeeting: null };
-  const meeting = lessonWeekEnd(prev, schedule).date;
-  return now >= meeting ? { open: true, waitingForMeeting: null } : { open: false, waitingForMeeting: meeting };
+  if (index === 0 || !schedule) return { open: true, waitingForMeeting: null };
+  const start = lessonStart(lessons[index], schedule);
+  return now >= start ? { open: true, waitingForMeeting: null } : { open: false, waitingForMeeting: start };
 }
 
 // Days from today (local midnight) to a "YYYY-MM-DD" due date: negative once it has passed.

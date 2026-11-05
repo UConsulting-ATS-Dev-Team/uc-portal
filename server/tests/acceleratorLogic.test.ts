@@ -394,6 +394,21 @@ describe("assignments are due at the weekly accelerator", () => {
     expect(L.lessonOpensAt(1, lessons, none, tuesday5, at(2026, 10, 20, 17, 1)).open).toBe(true);
     expect(L.lessonOpensAt(1, lessons, none, null, at(2026, 10, 10)).open).toBe(true);
   });
+
+  it("opens two assignments given the same week together, and a later week only when it starts", () => {
+    const five = [
+      { id: "a", lesson_date: "2026-10-12" },
+      { id: "b", lesson_date: "2026-10-19" },
+      { id: "c1", lesson_date: "2026-10-26" },
+      { id: "c2", lesson_date: "2026-10-26" },
+      { id: "d", lesson_date: "2026-11-02" },
+    ];
+    const none = new Map();
+    const afterMeeting = at(2026, 10, 27, 17, 30); // the Tuesday meeting of the week of Oct 26 has begun
+    expect(L.lessonOpensAt(2, five, none, tuesday5, afterMeeting).open).toBe(true);
+    expect(L.lessonOpensAt(3, five, none, tuesday5, afterMeeting).open).toBe(true);
+    expect(L.lessonOpensAt(4, five, none, tuesday5, afterMeeting).open).toBe(false);
+  });
 });
 
 describe("submission timing", () => {
