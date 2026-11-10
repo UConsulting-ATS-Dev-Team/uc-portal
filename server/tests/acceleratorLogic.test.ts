@@ -168,6 +168,31 @@ describe("coffee-chat weeks close at each accelerator meeting", () => {
     expect(p.perWeek[1].chats.map((c: { contact_name: string }) => c.contact_name)).toEqual(["after"]);
   });
 
+  it("fills an earlier week that fell short with a chat that doesn't fit its own week, by itself", () => {
+    const periods = L.programPeriods(events); // weeks close Wed Oct 14, Oct 21, Oct 28, ... at 6 PM
+    const week1 = [chat(at(2026, 10, 12, 9), true, "w1a"), chat(at(2026, 10, 13, 9), true, "w1b")]; // week 1: 2 of 3
+    const week2 = [chat(at(2026, 10, 15, 9), true, "a"), chat(at(2026, 10, 16, 9), true, "b"), chat(at(2026, 10, 17, 9), true, "c"), chat(at(2026, 10, 18, 9), false, "extra")];
+    const p = L.coffeeChatProgress([...week1, ...week2], periods, at(2026, 10, 19, 9));
+    expect(p.perWeek[0].counted).toBe(3); // the 4th chat of week 2 went back to week 1
+    expect(p.perWeek[1].counted).toBe(3);
+    expect(p.behind.length).toBe(0);
+    expect(p.spilledIds.has("extra-" + at(2026, 10, 18, 9).getTime())).toBe(true);
+    expect(p.counted).toBe(6);
+  });
+
+  it("leaves a chat uncounted when no earlier week has a slot it can fill, and says whether another one would count", () => {
+    const periods = L.programPeriods(events);
+    const full = (d: number, tag: string) => [chat(at(2026, 10, d, 9), true, tag + "1"), chat(at(2026, 10, d, 10), true, tag + "2"), chat(at(2026, 10, d, 11), true, tag + "3")];
+    const p = L.coffeeChatProgress([...full(12, "a"), ...full(15, "b"), chat(at(2026, 10, 18, 9), true, "extra")], periods, at(2026, 10, 19, 9));
+    expect(p.counted).toBe(6);
+    expect(p.canLogClub).toBe(false);
+    expect(p.canLogIntern).toBe(false);
+    // With an earlier week short, a club chat or an intern chat logged now would count.
+    const short = L.coffeeChatProgress([chat(at(2026, 10, 12, 9), true, "only"), ...full(15, "b"), chat(at(2026, 10, 18, 9), true, "x")], periods, at(2026, 10, 19, 9));
+    expect(short.canLogClub).toBe(true);
+    expect(short.canLogIntern).toBe(true);
+  });
+
   it("gives a 2-hour grace: a chat logged just after the meeting still fills the week that closed, if it has an empty slot", () => {
     const periods = L.programPeriods(events);
     const first = chat(at(2026, 10, 12, 9), false, "intern");

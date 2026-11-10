@@ -31,8 +31,10 @@ function SlotCard({ slot }) {
   );
 }
 
-function ChatForm({ week, onLogged }) {
-  const defaultIsClub = week.canLogClub;
+// `canLogClub` / `canLogIntern` say which kinds of chat would count right now: this week's own slots, or (when this week is full) an
+// earlier week that fell short. `catchUp` means this week is full and the chat will go back to an earlier week.
+function ChatForm({ week, canLogClub, canLogIntern, catchUp, onLogged }) {
+  const defaultIsClub = canLogClub;
   const blank = { chatDate: ymd(new Date()), contactName: "", isClub: defaultIsClub, year: "", major: "", summary: "" };
   const [form, setForm] = useState(blank);
   const [photo, setPhoto] = useState(null);
@@ -42,11 +44,11 @@ function ChatForm({ week, onLogged }) {
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
   // The chosen type may have stopped being allowed since it was picked (its slot just filled).
-  const isClub = form.isClub ? week.canLogClub : !week.canLogIntern;
+  const isClub = form.isClub ? canLogClub : !canLogIntern;
 
   function validate() {
-    if (isClub && !week.canLogClub) return "This week's club member and intern slots are all taken.";
-    if (!isClub && !week.canLogIntern) return "Your intern slot this week is taken. Log a chat with a club member instead.";
+    if (isClub && !canLogClub) return "This week's club member and intern slots are all taken.";
+    if (!isClub && !canLogIntern) return "Your intern slot this week is taken. Log a chat with a club member instead.";
     if (!form.contactName.trim()) return "Enter the name of the person you met.";
     if (!form.year) return `Choose ${isClub ? "the club member's" : "the intern's"} year.`;
     if (!form.major.trim()) return `Enter ${isClub ? "the club member's" : "the intern's"} major.`;
@@ -90,17 +92,18 @@ function ChatForm({ week, onLogged }) {
 
   return (
     <form className="accel-form" onSubmit={submit}>
-      <h3 style={{ marginTop: 0 }}>Log a coffee chat for week {week.number}</h3>
+      <h3 style={{ marginTop: 0 }}>{catchUp ? "Log another coffee chat" : `Log a coffee chat for week ${week.number}`}</h3>
+      {catchUp && <p className="meta">This week is full, so this chat will count toward an earlier week that is short.</p>}
       <fieldset className="accel-form__type">
         <legend className="meta">Who did you meet?</legend>
-        <label className={!week.canLogClub ? "is-disabled" : ""}>
-          <input type="radio" name="chat-type" checked={isClub} disabled={!week.canLogClub} onChange={() => set({ isClub: true })} /> Club member
+        <label className={!canLogClub ? "is-disabled" : ""}>
+          <input type="radio" name="chat-type" checked={isClub} disabled={!canLogClub} onChange={() => set({ isClub: true })} /> Club member
         </label>
-        <label className={!week.canLogIntern ? "is-disabled" : ""}>
-          <input type="radio" name="chat-type" checked={!isClub} disabled={!week.canLogIntern} onChange={() => set({ isClub: false })} /> Another intern
+        <label className={!canLogIntern ? "is-disabled" : ""}>
+          <input type="radio" name="chat-type" checked={!isClub} disabled={!canLogIntern} onChange={() => set({ isClub: false })} /> Another intern
         </label>
       </fieldset>
-      {!week.canLogIntern && week.canLogClub && <p className="meta">Your intern slot this week is taken, so this one needs to be a club member.</p>}
+      {!canLogIntern && canLogClub && <p className="meta">Your intern slot this week is taken, so this one needs to be a club member.</p>}
       <div className="accel-form__row">
         <div className="field">
           <label htmlFor="chat-date">Date</label>
@@ -199,13 +202,15 @@ export default function AcceleratorCoffeeChats() {
               <SlotCard key={i} slot={slot} />
             ))}
           </div>
-          {current.done ? (
+          {current.done && (
             <p className="meta" style={{ marginTop: "var(--space-4)" }}>
               All three are logged. Next week opens right after the accelerator meeting, so a chat logged before then counts toward this week and one logged after counts toward the next.
+              {(progress.canLogClub || progress.canLogIntern) && " An earlier week is still short, so you can log the chat you missed below."}
             </p>
-          ) : (
+          )}
+          {(!current.done || progress.canLogClub || progress.canLogIntern) && (
             <div style={{ marginTop: "var(--space-5)" }}>
-              <ChatForm key={`${current.number}-${current.counted}`} week={current} onLogged={reload} />
+              <ChatForm key={`${current.number}-${progress.counted}`} week={current} canLogClub={progress.canLogClub} canLogIntern={progress.canLogIntern} catchUp={current.done} onLogged={reload} />
             </div>
           )}
         </div>
@@ -259,7 +264,7 @@ export default function AcceleratorCoffeeChats() {
                 <div>
                   <strong>{chat.contact_name}</strong>{" "}
                   <span className={`accel-tag${chat.is_uc_member ? " accel-tag--good" : " accel-tag--optional"}`}>{chat.is_uc_member ? "Club member" : "Another intern"}</span>{" "}
-                  {info && (info.counts ? <span className="accel-tag">Week {info.week.number}</span> : <span className="accel-tag accel-tag--flag">Doesn't count, slot taken</span>)}
+                  {info && (info.counts ? <span className="accel-tag">Week {info.week.number}{progress.spilledIds.has(chat.id) ? ", counted back" : ""}</span> : <span className="accel-tag accel-tag--flag">Doesn't count, slot taken</span>)}
                 </div>
                 <div className="meta">
                   {parseYmd(chat.chat_date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
