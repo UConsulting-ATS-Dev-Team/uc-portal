@@ -159,25 +159,29 @@ describe("coffee-chat weeks close at each accelerator meeting", () => {
     expect(periods[0].dueLabel).toContain("end of day");
   });
 
-  it("counts a chat logged before the meeting toward that week, and one logged after toward the next", () => {
+  it("counts a chat logged before the meeting toward that week, and one logged after toward the next once the first week is full", () => {
     const periods = L.programPeriods(events);
     const before = chat(at(2026, 10, 14, 17, 59), true, "before");
-    const after = chat(at(2026, 10, 14, 21, 1), true, "after"); // past the 2-hour grace window
-    const p = L.coffeeChatProgress([before, after], periods, at(2026, 10, 15, 9));
-    expect(p.perWeek[0].chats.map((c: { contact_name: string }) => c.contact_name)).toEqual(["before"]);
+    const filler = [chat(at(2026, 10, 13, 9), true, "f1"), chat(at(2026, 10, 13, 10), true, "f2")]; // week 1 is full with these
+    const after = chat(at(2026, 10, 14, 21, 1), true, "after"); // well after the meeting
+    const p = L.coffeeChatProgress([...filler, before, after], periods, at(2026, 10, 15, 9));
+    expect(p.perWeek[0].chats.map((c: { contact_name: string }) => c.contact_name).sort()).toEqual(["before", "f1", "f2"]);
     expect(p.perWeek[1].chats.map((c: { contact_name: string }) => c.contact_name)).toEqual(["after"]);
   });
 
-  it("fills an earlier week that fell short with a chat that doesn't fit its own week, by itself", () => {
+  it("completes a week that fell short before the new week starts counting, by itself", () => {
     const periods = L.programPeriods(events); // weeks close Wed Oct 14, Oct 21, Oct 28, ... at 6 PM
     const week1 = [chat(at(2026, 10, 12, 9), true, "w1a"), chat(at(2026, 10, 13, 9), true, "w1b")]; // week 1: 2 of 3
-    const week2 = [chat(at(2026, 10, 15, 9), true, "a"), chat(at(2026, 10, 16, 9), true, "b"), chat(at(2026, 10, 17, 9), true, "c"), chat(at(2026, 10, 18, 9), false, "extra")];
+    const week2 = [chat(at(2026, 10, 15, 9), true, "a"), chat(at(2026, 10, 16, 9), true, "b"), chat(at(2026, 10, 17, 9), true, "c"), chat(at(2026, 10, 18, 9), false, "d")];
     const p = L.coffeeChatProgress([...week1, ...week2], periods, at(2026, 10, 19, 9));
-    expect(p.perWeek[0].counted).toBe(3); // the 4th chat of week 2 went back to week 1
+    expect(p.perWeek[0].counted).toBe(3); // the first chat logged in week 2 finished week 1
     expect(p.perWeek[1].counted).toBe(3);
     expect(p.behind.length).toBe(0);
-    expect(p.spilledIds.has("extra-" + at(2026, 10, 18, 9).getTime())).toBe(true);
+    expect(p.spilledIds.has("a-" + at(2026, 10, 15, 9).getTime())).toBe(true);
+    expect(p.spilledIds.size).toBe(1);
     expect(p.counted).toBe(6);
+    // A chat logged right now: which week would it count toward? Week 2 has 3 of 3 and week 1 is done, so none.
+    expect(p.clubChatWeek).toBe(null);
   });
 
   it("leaves a chat uncounted when no earlier week has a slot it can fill, and says whether another one would count", () => {
@@ -193,7 +197,7 @@ describe("coffee-chat weeks close at each accelerator meeting", () => {
     expect(short.canLogIntern).toBe(true);
   });
 
-  it("gives a 2-hour grace: a chat logged just after the meeting still fills the week that closed, if it has an empty slot", () => {
+  it("a chat logged just after a meeting finishes the week that closed when it was short", () => {
     const periods = L.programPeriods(events);
     const first = chat(at(2026, 10, 12, 9), false, "intern");
     const second = chat(at(2026, 10, 13, 9), true, "club");
@@ -204,17 +208,18 @@ describe("coffee-chat weeks close at each accelerator meeting", () => {
     expect(p.behind.length).toBe(0);
   });
 
-  it("does not use the grace window when the closed week is already full, or after two hours", () => {
+  it("counts toward the week it was logged in when no earlier week is short", () => {
     const periods = L.programPeriods(events);
     const full = [chat(at(2026, 10, 12, 9), true, "a"), chat(at(2026, 10, 12, 10), true, "b"), chat(at(2026, 10, 12, 11), true, "c")];
-    const justAfter = chat(at(2026, 10, 14, 18, 8), true, "next");
-    const p1 = L.coffeeChatProgress([...full, justAfter], periods, at(2026, 10, 14, 19));
+    const next = chat(at(2026, 10, 14, 18, 8), true, "next");
+    const p1 = L.coffeeChatProgress([...full, next], periods, at(2026, 10, 14, 19));
     expect(p1.perWeek[0].counted).toBe(3);
     expect(p1.perWeek[1].counted).toBe(1);
-    const tooLate = chat(at(2026, 10, 14, 20, 30), true, "late");
-    const p2 = L.coffeeChatProgress([full[0], tooLate], periods, at(2026, 10, 14, 21));
-    expect(p2.perWeek[0].counted).toBe(1);
-    expect(p2.perWeek[1].counted).toBe(1);
+    // A short earlier week is filled first, even by a chat logged hours later.
+    const later = chat(at(2026, 10, 14, 20, 30), true, "later");
+    const p2 = L.coffeeChatProgress([full[0], later], periods, at(2026, 10, 14, 21));
+    expect(p2.perWeek[0].counted).toBe(2);
+    expect(p2.perWeek[1].counted).toBe(0);
   });
 
   it("counts a chat logged exactly at the meeting time toward the week it closes", () => {
@@ -263,7 +268,9 @@ describe("coffee-chat weeks close at each accelerator meeting", () => {
     expect(periods[1].endMs).toBe(at(2026, 10, 28, 18).getTime());
     const p = L.coffeeChatProgress([chat(at(2027, 2, 23, 9), true), chat(at(2027, 2, 24, 21), true), chat(at(2027, 2, 28, 9), true)], periods, today);
     expect(p.current.endMs).toBe(at(2027, 3, 3, 18).getTime());
-    expect(p.current.counted).toBe(2); // the Feb 23 chat belongs to last week; the two logged since Wed Feb 24 6 PM (past the 2-hour grace) count now
+    // Weeks from October that fell short are completed first, so three chats this late all go to the earliest short week.
+    expect(p.perWeek[0].counted).toBe(3);
+    expect(p.current.counted).toBe(0);
   });
 });
 

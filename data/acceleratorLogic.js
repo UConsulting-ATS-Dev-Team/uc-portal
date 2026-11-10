@@ -288,42 +288,25 @@ export function coffeeChatSlots(chatsInWeek) {
   };
 }
 
-// A chat logged within this long after a week closes (someone who forgets and logs it right at the start of the meeting) still
-// counts toward the week that just ended, as long as that week still has a slot it fills.
-export const CHAT_GRACE_MS = 2 * 60 * 60 * 1000;
-
-// Which week each chat counts toward: the week it was logged in, except that one logged inside the grace window after a week
-// closed goes back to that week when it fills one of its empty slots (otherwise it stays in the new week).
+// Which week each chat counts toward. A chat first goes to the EARLIEST earlier week that is still short and has a slot of its kind
+// (so a week someone fell behind in is completed before this week starts counting; it also covers someone who logs a chat right
+// after a meeting that belonged to the week that just closed). Only when no earlier week has room does it count toward the week it
+// was logged in, and if that is full too it doesn't count. Chats are placed oldest first, so the result never depends on the order
+// they were looked at, and nobody has to move a chat by hand.
 function assignChatsToPeriods(chats, periods) {
   const buckets = periods.map(() => []);
-  const spilled = new Set();
+  const spilled = new Set(); // chats that count toward an earlier week than the one they were logged in
   const sorted = [...chats].sort((a, b) => a.created_at.localeCompare(b.created_at));
   for (const chat of sorted) {
     const t = Date.parse(chat.created_at);
-    const i = periods.findIndex((p) => t > p.startMs && t <= p.endMs);
-    if (i < 0) continue;
-    if (i > 0 && t <= periods[i].startMs + CHAT_GRACE_MS) {
-      const before = coffeeChatSlots(buckets[i - 1]).counted;
-      if (coffeeChatSlots([...buckets[i - 1], chat]).counted > before) {
-        buckets[i - 1].push(chat);
-        continue;
-      }
-    }
-    buckets[i].push(chat);
-  }
-
-  // A chat that doesn't fit its own week (all its slots are full) is not wasted: it fills an empty slot of an earlier week that fell
-  // short, the earliest such week first. This is how a chat someone did earlier but logged late still counts, without anyone having
-  // to move it by hand. A chat that can't fill any earlier slot simply doesn't count.
-  for (let i = 0; i < buckets.length; i++) {
-    const inSlots = new Set(coffeeChatSlots(buckets[i]).slots.filter((s) => s.chat).map((s) => s.chat.id));
-    const extras = buckets[i].filter((c) => !inSlots.has(c.id)).sort((a, b) => a.created_at.localeCompare(b.created_at));
-    for (const chat of extras) {
-      const j = buckets.findIndex((bucket, k) => k < i && coffeeChatSlots([...bucket, chat]).counted > coffeeChatSlots(bucket).counted);
-      if (j < 0) continue;
-      buckets[i] = buckets[i].filter((c) => c.id !== chat.id);
-      buckets[j].push(chat);
+    const home = periods.findIndex((p) => t > p.startMs && t <= p.endMs);
+    if (home < 0) continue;
+    const earlier = buckets.findIndex((bucket, k) => k < home && coffeeChatSlots([...bucket, chat]).counted > coffeeChatSlots(bucket).counted);
+    if (earlier >= 0) {
+      buckets[earlier].push(chat);
       spilled.add(chat.id);
+    } else {
+      buckets[home].push(chat);
     }
   }
   return { buckets, spilled };
@@ -332,11 +315,19 @@ function assignChatsToPeriods(chats, periods) {
 export function coffeeChatProgress(chats, periods, now = new Date()) {
   const nowMs = now.getTime();
   const { buckets, spilled } = assignChatsToPeriods(chats, periods);
-  // Would one more chat logged right now count? Yes if its own week has a slot for it or an earlier week is short and has one.
+  // Where would one more chat logged right now count? The week number it would fill, or null if it wouldn't count at all.
   const totalCounted = (b) => b.reduce((n, inWeek) => n + coffeeChatSlots(inWeek).counted, 0);
   const baseCounted = totalCounted(buckets);
-  const wouldCount = (isClub) =>
-    Number.isFinite(nowMs) && totalCounted(assignChatsToPeriods([...chats, { id: "__probe__", created_at: new Date(nowMs).toISOString(), is_uc_member: isClub }], periods).buckets) > baseCounted;
+  const countsToward = (isClub) => {
+    if (!Number.isFinite(nowMs)) return null;
+    const probe = { id: "__probe__", created_at: new Date(nowMs).toISOString(), is_uc_member: isClub };
+    const result = assignChatsToPeriods([...chats, probe], periods).buckets;
+    if (totalCounted(result) <= baseCounted) return null;
+    const idx = result.findIndex((bucket) => bucket.some((c) => c.id === "__probe__"));
+    return idx >= 0 ? periods[idx].number : null;
+  };
+  const clubWeek = countsToward(true);
+  const internWeek = countsToward(false);
   const perWeek = periods.map((period, pi) => {
     const inWeek = buckets[pi];
     const slots = coffeeChatSlots(inWeek);
@@ -356,8 +347,11 @@ export function coffeeChatProgress(chats, periods, now = new Date()) {
     current: perWeek.find((w) => w.isCurrent) ?? null,
     // Chats that count toward an earlier week than the one they were logged in.
     spilledIds: spilled,
-    canLogClub: wouldCount(true),
-    canLogIntern: wouldCount(false),
+    canLogClub: clubWeek !== null,
+    canLogIntern: internWeek !== null,
+    // The week number a new club-member / intern chat would count toward right now.
+    clubChatWeek: clubWeek,
+    internChatWeek: internWeek,
     // Closed weeks that ended without all three slots filled.
     behind: perWeek.filter((w) => w.isPast && !w.done),
   };
