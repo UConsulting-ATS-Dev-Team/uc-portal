@@ -1,22 +1,51 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { fetchAllCoffeeChats, fetchEvents, fetchInterns, fetchLessons, fetchMeetingSchedule } from "../data/acceleratorSync.js";
-import { CHAT_SLOT_LABELS, CHATS_PER_WEEK, coffeeChatProgress, parseYmd, programPeriods } from "../data/acceleratorLogic.js";
+import { adminSetChatWeek, fetchAllCoffeeChats, fetchEvents, fetchInterns, fetchLessons, fetchMeetingSchedule } from "../data/acceleratorSync.js";
+import { CHAT_SLOT_LABELS, CHATS_PER_WEEK, coffeeChatProgress, coffeeChatSlots, parseYmd, programPeriods } from "../data/acceleratorLogic.js";
 import AcceleratorChatPhoto from "./AcceleratorChatPhoto.jsx";
 import CollapsibleSection from "./CollapsibleSection.jsx";
 import "../styles/accelerator.css";
 
-// Read-only: every intern's coffee chats at a glance. One row per intern, with this week's three slots side by side; open a
+// Every intern's coffee chats at a glance (the only change an admin can make here is which week a chat counts toward). One row per intern, with this week's three slots side by side; open a
 // row for everything that intern has logged, with the picture and what they talked about.
 export default function AdminAcceleratorChats() {
   const [data, setData] = useState(null);
   const [openId, setOpenId] = useState(null);
   const [error, setError] = useState(null);
+  const [busyId, setBusyId] = useState(null);
 
-  useEffect(() => {
-    Promise.all([fetchInterns(), fetchAllCoffeeChats(), fetchEvents(), fetchLessons(), fetchMeetingSchedule()])
+  function load() {
+    return Promise.all([fetchInterns(), fetchAllCoffeeChats(), fetchEvents(), fetchLessons(), fetchMeetingSchedule()])
       .then(([interns, chats, events, lessons, schedule]) => setData({ interns, chats, events, lessons, schedule }))
       .catch((e) => setError(e.message));
+  }
+
+  useEffect(() => {
+    load();
   }, []);
+
+  // A chat counts toward the week it was logged in. When one really belongs to an earlier week (done then, logged late), this
+  // counts it toward that week by moving its logged time inside it. Refused when that week already has all three slots filled.
+  async function moveChat(row, chat, weekNumber) {
+    const target = row.perWeek.find((w) => w.number === weekNumber);
+    if (!target) return;
+    const others = target.chats.filter((c) => c.id !== chat.id);
+    if (coffeeChatSlots([...others, chat]).counted <= coffeeChatSlots(others).counted) {
+      setError(`Week ${weekNumber} already has all of ${row.intern.displayName}'s chat slots filled, so this chat wouldn't count there.`);
+      return;
+    }
+    if (!window.confirm(`Count this chat toward week ${weekNumber} for ${row.intern.displayName}?`)) return;
+    setError(null);
+    setBusyId(chat.id);
+    try {
+      // Just inside the end of that week (or now, for the current week).
+      const when = new Date(Math.min(target.endMs - 60000, Date.now()));
+      await adminSetChatWeek(chat.id, when, weekNumber);
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+    setBusyId(null);
+  }
 
   const rows = useMemo(() => {
     if (!data) return null;
@@ -26,7 +55,11 @@ export default function AdminAcceleratorChats() {
       const periods = programPeriods(data.events, { lessons: data.lessons, chats: own, today: now, schedule: data.schedule });
       const progress = coffeeChatProgress(own, periods, now);
       const week = progress.current ?? progress.perWeek[progress.perWeek.length - 1];
-      return { intern, own, week, behind: progress.behind.length };
+      const weekOf = new Map();
+      for (const w of progress.perWeek) for (const c of w.chats) weekOf.set(c.id, w.number);
+      // Weeks that have started (not the projected future ones), for the "count toward" menu.
+      const choices = progress.perWeek.filter((w) => w.startMs < now.getTime());
+      return { intern, own, week, behind: progress.behind.length, perWeek: progress.perWeek, weekOf, choices };
     });
   }, [data]);
 
@@ -56,7 +89,8 @@ export default function AdminAcceleratorChats() {
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ intern, own, week, behind }) => {
+              {rows.map((row) => {
+                const { intern, own, week, behind } = row;
                 const open = openId === intern.memberId;
                 return (
                   <Fragment key={intern.memberId}>
@@ -116,6 +150,24 @@ export default function AdminAcceleratorChats() {
                                   {chat.member_year && ` · ${chat.member_year}, ${chat.member_major}`}
                                 </div>
                                 <p className="accel-chat__summary">{chat.summary}</p>
+                                <div className="meta">
+                                  <label>
+                                    Counts toward{" "}
+                                    <select
+                                      aria-label={`Week this chat counts toward for ${intern.displayName}`}
+                                      value={row.weekOf.get(chat.id) ?? ""}
+                                      disabled={busyId === chat.id}
+                                      onChange={(e) => moveChat(row, chat, Number(e.target.value))}
+                                    >
+                                      {!row.weekOf.has(chat.id) && <option value="">No week</option>}
+                                      {row.choices.map((w) => (
+                                        <option key={w.number} value={w.number}>
+                                          Week {w.number}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                </div>
                               </div>
                             </div>
                           ))}

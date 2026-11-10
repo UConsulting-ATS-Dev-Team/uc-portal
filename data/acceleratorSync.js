@@ -658,6 +658,12 @@ function nameFor(member, rosterNames) {
 }
 
 // Every intern's coffee chats (admin only; RLS lets admins read them all).
+// Admin: count a chat toward another week (a chat counts toward the week it was logged in, so this sets when it counts as logged).
+export async function adminSetChatWeek(chatId, loggedAt, weekNumber) {
+  const { error } = await supabase.rpc("admin_set_chat_week", { p_chat_id: chatId, p_logged_at: loggedAt.toISOString(), p_week_number: weekNumber });
+  if (error) throw new Error(error.message);
+}
+
 export async function fetchAllCoffeeChats() {
   return fetchAllRows("accelerator_coffee_chats", "*");
 }

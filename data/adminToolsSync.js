@@ -9,6 +9,7 @@ export const AUDIT_GROUPS = {
   messages: ["message_sent", "message_scheduled", "message_cancelled", "imessage_logged", "sender_added", "sender_removed"],
   mailing: ["contacts_imported", "contacts_removed", "contacts_tagged", "suppression_added", "suppression_removed"],
   automatic: ["automatic_email_on", "automatic_email_off", "automatic_email_reworded"],
+  accelerator: ["chat_week_changed"],
 };
 
 export async function fetchAuditLog({ group = "", offset = 0, limit = 50 } = {}) {

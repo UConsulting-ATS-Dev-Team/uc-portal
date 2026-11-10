@@ -58,6 +58,8 @@ function describe(row) {
       return `Turned off the automatic email ${who}`;
     case "automatic_email_reworded":
       return `Reworded the automatic email ${who}`;
+    case "chat_week_changed":
+      return `Counted a coffee chat of ${who} toward week ${d.week}`;
     default:
       return row.action.replace(/_/g, " ");
   }
@@ -69,6 +71,7 @@ const FILTERS = [
   { key: "messages", label: "Messages" },
   { key: "mailing", label: "Mailing list" },
   { key: "automatic", label: "Automatic emails" },
+  { key: "accelerator", label: "Accelerator" },
 ];
 
 // What admins have done: role and membership changes, deactivations, sends, imports. Written by the database itself, so it can't
