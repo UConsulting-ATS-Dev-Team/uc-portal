@@ -4,6 +4,7 @@ import {
   createEventSeries,
   deleteEvent,
   deleteEventSeries,
+  fetchAllAttendance,
   fetchAttendanceForEvent,
   fetchEvents,
   fetchInterns,
@@ -346,9 +347,16 @@ export default function AdminAcceleratorEvents() {
   const [showPast, setShowPast] = useState(false);
   const [error, setError] = useState(null);
 
+  const [marks, setMarks] = useState({ byEvent: new Map(), interns: 0 });
+
   async function load() {
     try {
-      setEvents(await fetchEvents());
+      const [evs, attendance, interns] = await Promise.all([fetchEvents(), fetchAllAttendance(), fetchInterns()]);
+      const ids = new Set(interns.map((i) => i.memberId));
+      const byEvent = new Map();
+      for (const a of attendance) if (ids.has(a.profile_id)) byEvent.set(a.event_id, (byEvent.get(a.event_id) ?? 0) + 1);
+      setMarks({ byEvent, interns: ids.size });
+      setEvents(evs);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -365,8 +373,14 @@ export default function AdminAcceleratorEvents() {
     for (const e of events) if (e.series_id) counts.set(e.series_id, (counts.get(e.series_id) ?? 0) + 1);
     return counts;
   }, [events]);
-  const visible = showPast ? events : events.filter((e) => e.event_date >= todayKey);
-  const pastCount = events.length - events.filter((e) => e.event_date >= todayKey).length;
+  // Where attendance stands for an event that has happened: how many interns have a mark (attended, absent or a photo).
+  const markedOf = (e) => marks.byEvent.get(e.id) ?? 0;
+  const needsMarking = (e) => e.event_date <= todayKey && e.attendance_method === "admin" && marks.interns > 0 && markedOf(e) < marks.interns;
+  const unmarkedCount = events.filter(needsMarking).length;
+  // Past events still waiting for attendance stay on the list; fully marked ones fold into "Show past events".
+  const isHidden = (e) => e.event_date < todayKey && !needsMarking(e);
+  const visible = showPast ? events : events.filter((e) => !isHidden(e));
+  const pastCount = events.filter(isHidden).length;
   const reveal = useReveal(visible.length, PREVIEW_COUNT, 5);
 
   async function remove(event) {
@@ -396,7 +410,7 @@ export default function AdminAcceleratorEvents() {
     <>
     <CollapsibleSection
       title="Calendar Events and Attendance"
-      summary={loading ? "Loading…" : `${events.filter((e) => e.event_date >= todayKey).length} upcoming, ${events.length} in all`}
+      summary={loading ? "Loading…" : `${events.filter((e) => e.event_date >= todayKey).length} upcoming, ${events.length} in all${unmarkedCount ? `, ${unmarkedCount} need attendance` : ""}`}
       action={
         <button className="btn btn-primary btn-add" onClick={() => setModal({ editing: null })}>
           Add event
@@ -433,6 +447,11 @@ export default function AdminAcceleratorEvents() {
                   </div>
                 </div>
                 <span className={`accel-tag${event.required ? "" : " accel-tag--optional"}`}>{event.required ? "Required" : "Optional"}</span>
+                {event.event_date <= todayKey && marks.interns > 0 && (
+                  <span className={`accel-tag${markedOf(event) >= marks.interns ? " accel-tag--good" : markedOf(event) > 0 || event.attendance_method !== "admin" ? "" : " accel-tag--flag"}`}>
+                    {markedOf(event) >= marks.interns ? "Attendance marked" : markedOf(event) > 0 ? `Marked ${markedOf(event)} of ${marks.interns}` : event.attendance_method === "admin" ? "Not marked yet" : "No photos yet"}
+                  </span>
+                )}
                 <button className="btn btn-secondary" onClick={() => setOpenId(event.id)}>
                   Attendance
                 </button>
@@ -460,7 +479,7 @@ export default function AdminAcceleratorEvents() {
       </div>
 
     </CollapsibleSection>
-      {openId && events.find((e) => e.id === openId) && <AttendanceModal event={events.find((e) => e.id === openId)} onClose={() => setOpenId(null)} />}
+      {openId && events.find((e) => e.id === openId) && <AttendanceModal event={events.find((e) => e.id === openId)} onClose={() => { setOpenId(null); load(); }} />}
       {modal && (
         <EventModal
           editing={modal.editing}

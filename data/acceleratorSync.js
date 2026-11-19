@@ -613,6 +613,11 @@ export async function deleteEventSeries(seriesId) {
   if (error) throw new Error(error.message);
 }
 
+// Every attendance row for every event (the admin event list shows which events have been marked).
+export async function fetchAllAttendance() {
+  return fetchAllRows("accelerator_attendance", "event_id, profile_id", undefined, "event_id");
+}
+
 export async function fetchAttendanceForEvent(eventId) {
   const { data, error } = await supabase.from("accelerator_attendance").select("*").eq("event_id", eventId);
   if (error) throw new Error(error.message);
