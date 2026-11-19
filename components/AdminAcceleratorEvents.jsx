@@ -317,12 +317,13 @@ function AttendanceModal({ event, onClose }) {
         return (
           <div key={intern.memberId} style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", padding: "var(--space-2) 0" }}>
             {record?.photo_path && <AcceleratorEventPhoto path={record.photo_path} />}
-            <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ flex: "1 1 0", minWidth: 0, overflowWrap: "anywhere" }}>
               {intern.displayName}
               {record?.source === "photo" && <span className="accel-tag" style={{ marginLeft: "var(--space-3)" }}>Photo submitted</span>}
             </span>
             <select
               aria-label={`Attendance for ${intern.displayName}`}
+              style={{ width: 140, flex: "0 0 140px" }}
               value={draft.get(intern.memberId) ?? ""}
               onChange={(e) => setDraft((prev) => new Map(prev).set(intern.memberId, e.target.value))}
             >
